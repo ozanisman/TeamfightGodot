@@ -253,7 +253,7 @@ func _should_choose(unit: Node2D, candidate: Dictionary, current: Dictionary, st
 
 
 func _score_ally(unit: Node2D, ally: Node2D, strategy: Dictionary) -> float:
-	var dist := unit.global_position.distance_to(ally.global_position)
+	var dist := Vector2(unit.get("world_pos")).distance_to(Vector2(ally.get("world_pos")))
 	var max_hp := maxf(float(ally.get("max_hp")), CombatData.EPSILON)
 	var hp_ratio := float(ally.get("hp")) / max_hp
 	var score := dist * float(strategy.get("ally_distance_weight", 1.0))
@@ -265,7 +265,7 @@ func _score_ally(unit: Node2D, ally: Node2D, strategy: Dictionary) -> float:
 
 
 func _score_candidate(unit: Node2D, enemy: Node2D, strategy: Dictionary, allies: Array[Node2D], enemies: Array[Node2D]) -> Dictionary:
-	var dist := unit.global_position.distance_to(enemy.global_position)
+	var dist := Vector2(unit.get("world_pos")).distance_to(Vector2(enemy.get("world_pos")))
 	var max_hp := maxf(float(enemy.get("max_hp")), CombatData.EPSILON)
 	var hp_ratio := float(enemy.get("hp")) / max_hp
 	var attack_range := float(unit.get("attack_range"))

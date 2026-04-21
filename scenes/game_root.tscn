@@ -56,3 +56,43 @@ offset_top = 92.0
 offset_right = 800.0
 offset_bottom = 118.0
 text = "Minimal Godot shell ready. Later steps will add draft, combat, and UI."
+
+[node name="ResultLabel" type="Label" parent="HUD"]
+visible = false
+offset_left = 16.0
+offset_top = 118.0
+offset_right = 900.0
+offset_bottom = 144.0
+text = ""
+
+[node name="CommenceButton" type="Button" parent="HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -90.0
+offset_top = -64.0
+offset_right = 90.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "COMMENCE"
+
+[node name="RestartButton" type="Button" parent="HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -90.0
+offset_top = -64.0
+offset_right = 90.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "RESTART"

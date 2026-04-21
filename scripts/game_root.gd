@@ -11,8 +11,6 @@ const PHASE_MATCH_OVER := 3
 
 const WORLD_SIZE := Vector2(10.0, 10.0)
 const TICK_RATE := 0.1
-const PREPARATION_DURATION := 1.0
-const COMBAT_DURATION := 6.0
 const DRAFT_SEQUENCE: Array[String] = [
 	"P1_PICK",
 	"P2_PICK",
@@ -32,11 +30,15 @@ const DRAFT_SEQUENCE: Array[String] = [
 @onready var tick_label: Label = $HUD/TickLabel
 @onready var selection_label: Label = $HUD/SelectionLabel
 @onready var help_label: Label = $HUD/HelpLabel
+@onready var commence_button: Button = $HUD/CommenceButton
+@onready var restart_button: Button = $HUD/RestartButton
+@onready var result_label: Label = $HUD/ResultLabel
 
 var world_state
 var _tick_accumulator: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _match_running: bool = false
+var _match_result: Dictionary = {}
 var player_picks: Array[String] = []
 var enemy_picks: Array[String] = []
 var banned_heroes: Array[String] = []
@@ -45,15 +47,19 @@ var draft_step_index: int = 0
 
 func _ready() -> void:
 	set_process(true)
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
 	_rng.seed = 42
 	world_state = WorldStateScript.new()
 	world_state.tick_rate = TICK_RATE
 	world_state.world_size = WORLD_SIZE
 	battlefield.call("set_world_size", WORLD_SIZE)
+	battlefield.call("bootstrap_combat_registry")
 	draft_screen.hero_selected.connect(_on_draft_hero_selected)
 	draft_screen.random_draft_requested.connect(_on_random_draft_requested)
 	draft_screen.start_match_requested.connect(_on_start_match_requested)
 	battlefield.focus_changed.connect(_on_battlefield_focus_changed)
+	commence_button.pressed.connect(_on_commence_requested)
+	restart_button.pressed.connect(_on_restart_requested)
 	world_state.phase_changed.connect(_on_phase_changed)
 	_refresh_draft_screen()
 	_sync_visibility()
@@ -69,40 +75,27 @@ func _process(delta: float) -> void:
 	while _tick_accumulator >= world_state.tick_rate:
 		_tick_accumulator -= world_state.tick_rate
 		world_state.advance_tick()
-		battlefield.call("step_simulation", world_state.tick_rate)
-		_step_simulation()
+		var match_result: Dictionary = battlefield.call("step_simulation", world_state.tick_rate)
+		if not match_result.is_empty():
+			_finish_match(match_result)
 
 	_refresh_ui()
-
-
-func _step_simulation() -> void:
-	match int(world_state.phase):
-		PHASE_PREPARATION:
-			if world_state.time >= PREPARATION_DURATION:
-				world_state.set_phase(PHASE_COMBAT)
-		PHASE_COMBAT:
-			if world_state.time >= COMBAT_DURATION:
-				world_state.set_phase(PHASE_MATCH_OVER)
-				_match_running = false
-		PHASE_MATCH_OVER:
-			_match_running = false
-		PHASE_DRAFTING:
-			pass
 
 
 func _refresh_ui() -> void:
 	phase_label.text = "PHASE: %s" % _phase_name(int(world_state.phase))
 	tick_label.text = "TICK: %d  TIME: %.1fs" % [world_state.tick, world_state.time]
 	selection_label.text = _selection_text()
+	result_label.text = _result_text()
 	match int(world_state.phase):
 		PHASE_DRAFTING:
 			help_label.text = "Draft heroes, then press START MATCH."
 		PHASE_PREPARATION:
-			help_label.text = "Preparation phase: unit placement lands in the next step."
+			help_label.text = "Preparation phase: place units, then start combat."
 		PHASE_COMBAT:
-			help_label.text = "Combat phase shell is active."
+			help_label.text = "Combat is running."
 		PHASE_MATCH_OVER:
-			help_label.text = "Match over."
+			help_label.text = "Match over. Use Restart to draft again."
 		_:
 			help_label.text = "Teamfight shell ready."
 
@@ -120,6 +113,9 @@ func _sync_visibility() -> void:
 	draft_screen.visible = drafting
 	battlefield.visible = not drafting
 	$HUD.visible = not drafting
+	commence_button.visible = int(world_state.phase) == PHASE_PREPARATION
+	restart_button.visible = int(world_state.phase) == PHASE_MATCH_OVER
+	result_label.visible = int(world_state.phase) == PHASE_MATCH_OVER
 
 
 func _on_draft_hero_selected(hero_id: String) -> void:
@@ -181,6 +177,7 @@ func _begin_match() -> void:
 	world_state.time = 0.0
 	_tick_accumulator = 0.0
 	_match_running = true
+	_match_result.clear()
 	battlefield.call("load_rosters", player_picks, enemy_picks)
 	battlefield.call("set_phase", PHASE_PREPARATION)
 	world_state.set_phase(PHASE_PREPARATION)
@@ -218,3 +215,52 @@ func _selection_text() -> String:
 	if int(world_state.phase) == PHASE_DRAFTING:
 		return "Selection: draft heroes, then start the match."
 	return selection_label.text if selection_label.text != "" else "Selection: hover or drag a unit."
+
+
+func _result_text() -> String:
+	if _match_result.is_empty():
+		return ""
+	return "Winner: %s | Player Kills: %d | Enemy Kills: %d" % [
+		String(_match_result.get("winner", "")),
+		int(_match_result.get("player_kills", 0)),
+		int(_match_result.get("enemy_kills", 0))
+	]
+
+
+func _on_commence_requested() -> void:
+	if int(world_state.phase) != PHASE_PREPARATION:
+		return
+	battlefield.call("capture_spawn_positions")
+	world_state.set_phase(PHASE_COMBAT)
+	battlefield.call("set_phase", PHASE_COMBAT)
+
+
+func _finish_match(match_result: Dictionary) -> void:
+	_match_result = match_result
+	_match_running = false
+	world_state.set_phase(PHASE_MATCH_OVER)
+	battlefield.call("set_phase", PHASE_MATCH_OVER)
+	_sync_visibility()
+	_refresh_ui()
+
+
+func _on_restart_requested() -> void:
+	if int(world_state.phase) != PHASE_MATCH_OVER:
+		return
+	_reset_to_draft()
+
+
+func _reset_to_draft() -> void:
+	_match_running = false
+	_match_result.clear()
+	player_picks.clear()
+	enemy_picks.clear()
+	banned_heroes.clear()
+	draft_step_index = 0
+	world_state.tick = 0
+	world_state.time = 0.0
+	world_state.set_phase(PHASE_DRAFTING)
+	battlefield.call("clear_rosters")
+	_refresh_draft_screen()
+	_sync_visibility()
+	_refresh_ui()

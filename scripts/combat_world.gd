@@ -2,7 +2,8 @@ extends RefCounted
 class_name CombatWorld
 
 const CombatData = preload("res://scripts/combat_data.gd")
-const TargetingSystem = preload("res://scripts/targeting_system.gd")
+const CombatRegistryScript = preload("res://scripts/combat_registry.gd")
+const TargetingSystemScript = preload("res://scripts/targeting_system.gd")
 
 signal combat_event_recorded(event: Dictionary)
 
@@ -11,7 +12,8 @@ var time: float = 0.0
 var tick: int = 0
 var units: Array[Node2D] = []
 var projectiles: Array[Dictionary] = []
-var targeting_system: TargetingSystem = TargetingSystem.new()
+var targeting_system = TargetingSystemScript.new()
+var combat_registry = CombatRegistryScript.new()
 var player_kills: int = 0
 var enemy_kills: int = 0
 var record_events: bool = true
@@ -38,8 +40,12 @@ func set_units(new_units: Array[Node2D]) -> void:
 			_next_instance_id += 1
 
 
-func get_targeting_system() -> TargetingSystem:
+func get_targeting_system() -> Object:
 	return targeting_system
+
+
+func get_combat_registry() -> Object:
+	return combat_registry
 
 
 func capture_spawn_positions() -> void:
@@ -95,7 +101,7 @@ func nearby_units(pos: Vector2, radius: float, team: String = "", exclude_id: in
 			continue
 		if team != "" and String(unit.get("team")) != team:
 			continue
-		if unit.global_position.distance_squared_to(pos) <= radius_sq:
+		if Vector2(unit.get("world_pos")).distance_squared_to(pos) <= radius_sq:
 			result.append(unit)
 	return result
 
@@ -133,7 +139,9 @@ func spawn_projectile(
 	radius: float = CombatData.DEFAULT_PROJECTILE_RADIUS,
 	stun_duration: float = CombatData.DEFAULT_PROJECTILE_STUN_DURATION,
 	is_ability: bool = false,
-	is_ultimate: bool = false
+	is_ultimate: bool = false,
+	splash_radius: float = 0.0,
+	splash_ratio: float = 0.0
 ) -> void:
 	projectiles.append({
 		"attacker_id": int(attacker.get("instance_id")),
@@ -148,6 +156,8 @@ func spawn_projectile(
 		"stun_duration": stun_duration,
 		"is_ability": is_ability,
 		"is_ultimate": is_ultimate,
+		"splash_radius": splash_radius,
+		"splash_ratio": splash_ratio,
 	})
 
 
@@ -239,6 +249,28 @@ func step(dt: float) -> void:
 					ally.set("assists", int(ally.get("assists")) + 1)
 
 
+func winner() -> String:
+	if time < CombatData.MATCH_DURATION:
+		return ""
+	if player_kills > enemy_kills:
+		return "player"
+	if enemy_kills > player_kills:
+		return "enemy"
+	return "draw"
+
+
+func get_match_result() -> Dictionary:
+	var result := winner()
+	if result == "":
+		return {}
+	return {
+		"winner": result,
+		"player_kills": player_kills,
+		"enemy_kills": enemy_kills,
+		"time": time,
+	}
+
+
 func _resolve_projectile_hit(projectile: Dictionary, target: Node2D) -> void:
 	var attacker := get_unit_by_id(int(projectile.get("attacker_id", -1)))
 	if attacker == null:
@@ -269,8 +301,33 @@ func _resolve_projectile_hit(projectile: Dictionary, target: Node2D) -> void:
 		"target_name": String(target.get("display_name")),
 		"damage": total_dmg,
 		"shield_absorbed": absorbed,
-		"distance": attacker.global_position.distance_to(target.global_position),
+		"distance": Vector2(attacker.get("world_pos")).distance_to(Vector2(target.get("world_pos"))),
 		"target_hp_after": float(target.get("hp")),
 		"target_shield_after": float(target.get("shield")),
 		"target_selection_reason": String(projectile.get("reason", "Auto Attack")),
 	})
+
+	var splash_radius := float(projectile.get("splash_radius", 0.0))
+	var splash_ratio := float(projectile.get("splash_ratio", 0.0))
+	if splash_radius > 0.0 and splash_ratio > 0.0:
+		var splash_damage := total_dmg * splash_ratio
+		for splash_target in nearby_units(Vector2(target.get("world_pos")), splash_radius, "", int(target.get("instance_id"))):
+			if String(splash_target.get("team")) == String(attacker.get("team")):
+				continue
+			var splash_result: Dictionary = splash_target.call("take_damage", splash_damage, self, String(projectile.get("damage_type", "true")), int(projectile.get("attacker_id", -1)))
+			var splash_absorbed := float(splash_result.get("absorbed", 0.0))
+			var splash_hp_loss := float(splash_result.get("hp_loss", 0.0))
+			var splash_total := splash_absorbed + splash_hp_loss
+			record_event({
+				"timestamp": time,
+				"attacker_id": int(projectile.get("attacker_id", -1)),
+				"attacker_name": String(attacker.get("display_name")),
+				"target_id": int(splash_target.get("instance_id")),
+				"target_name": String(splash_target.get("display_name")),
+				"damage": splash_total,
+				"shield_absorbed": splash_absorbed,
+				"distance": Vector2(attacker.get("world_pos")).distance_to(Vector2(splash_target.get("world_pos"))),
+				"target_hp_after": float(splash_target.get("hp")),
+				"target_shield_after": float(splash_target.get("shield")),
+				"target_selection_reason": String(projectile.get("reason", "Auto Attack")) + " splash",
+			})

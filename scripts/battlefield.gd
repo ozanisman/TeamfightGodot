@@ -5,12 +5,15 @@ const ChampionCatalog = preload("res://scripts/champion_catalog.gd")
 const CombatData = preload("res://scripts/combat_data.gd")
 const CombatWorldScript = preload("res://scripts/combat_world.gd")
 const BattleUnitScene = preload("res://scenes/battle_unit.tscn")
+const FloatingTextEffect = preload("res://scripts/floating_text_effect.gd")
 
 const PREP_LEFT_MIN := 0.5
 const PREP_LEFT_MAX := 4.5
 const PREP_Y_MIN := 0.5
 const PREP_Y_MAX := 9.5
 const PREP_SNAP_GRID := 2.0
+const PROJECTILE_DRAW_SCALE := 0.25
+const PROJECTILE_DRAW_MIN_RADIUS := 1.0
 const TEAM_COLOR_PLAYER := Color(0.35, 0.60, 1.0)
 const TEAM_COLOR_ENEMY := Color(0.92, 0.35, 0.35)
 
@@ -25,11 +28,13 @@ var _selected_unit: Node2D = null
 var _hovered_unit: Node2D = null
 var _dragging_unit: Node2D = null
 var _combat_world = CombatWorldScript.new()
+var _floating_texts: Array[FloatingTextEffect] = []
 
 
 func _ready() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
+	_combat_world.combat_event_recorded.connect(_on_combat_event_recorded)
 	queue_redraw()
 
 
@@ -51,6 +56,9 @@ func load_rosters(player_heroes: Array[String], enemy_heroes: Array[String]) -> 
 	_enemy_heroes = enemy_heroes.duplicate()
 	_rebuild_units()
 	_combat_world.set_units(_units)
+	var combat_registry: Object = _combat_world.get_combat_registry()
+	for unit in _units:
+		unit.call("set_combat_registry", combat_registry)
 	_combat_world.capture_spawn_positions()
 	_sync_all_units()
 	_sync_focus_label()
@@ -60,6 +68,10 @@ func capture_spawn_positions() -> void:
 	_combat_world.capture_spawn_positions()
 
 
+func bootstrap_combat_registry() -> void:
+	ChampionCatalog.bootstrap_combat_registry(_combat_world.get_combat_registry())
+
+
 func clear_rosters() -> void:
 	for unit in _units:
 		unit.queue_free()
@@ -67,15 +79,18 @@ func clear_rosters() -> void:
 	_selected_unit = null
 	_hovered_unit = null
 	_dragging_unit = null
+	_floating_texts.clear()
 	_combat_world.clear()
 	_sync_focus_label()
 
 
-func step_simulation(dt: float) -> void:
+func step_simulation(dt: float) -> Dictionary:
 	if current_phase == 2:
 		_combat_world.step(dt)
+		_step_floating_texts(dt)
 	_sync_all_units()
 	_update_hover_state()
+	return _combat_world.get_match_result()
 
 
 func _rebuild_units() -> void:
@@ -100,7 +115,8 @@ func _spawn_team(hero_ids: Array[String], team: String, draggable: bool) -> void
 			String(hero.get("role", "")),
 			team,
 			TEAM_COLOR_PLAYER if team == "player" else TEAM_COLOR_ENEMY,
-			draggable
+			draggable,
+			String(hero.get("passive_id", ""))
 		)
 		unit.call(
 			"set_combat_stats",
@@ -248,6 +264,41 @@ func _sync_all_units() -> void:
 	queue_redraw()
 
 
+func _step_floating_texts(dt: float) -> void:
+	for floating_text in _floating_texts:
+		floating_text.step(dt)
+	_floating_texts = _floating_texts.filter(func(effect: FloatingTextEffect) -> bool: return effect.is_alive())
+
+
+func _on_combat_event_recorded(event: Dictionary) -> void:
+	var world_pos: Variant = _world_pos_for_unit_id(int(event.get("target_id", -1)))
+	if world_pos == null:
+		world_pos = Vector2(5.0, 5.0)
+
+	var text := ""
+	var color := Color.WHITE
+	if float(event.get("damage", 0.0)) > 0.0:
+		text = "-%.0f" % float(event.get("damage", 0.0))
+		color = Color(1.0, 0.35, 0.35)
+	elif float(event.get("healing", 0.0)) > 0.0:
+		text = "+%.0f" % float(event.get("healing", 0.0))
+		color = Color(0.35, 1.0, 0.55)
+	elif float(event.get("shield_added", 0.0)) > 0.0:
+		text = "+%.0f" % float(event.get("shield_added", 0.0))
+		color = Color(0.35, 0.65, 1.0)
+	if text.is_empty():
+		return
+
+	_floating_texts.append(FloatingTextEffect.new(text, world_pos, color, 1.0))
+
+
+func _world_pos_for_unit_id(instance_id: int) -> Variant:
+	for unit in _units:
+		if int(unit.get("instance_id")) == instance_id:
+			return unit.get("world_pos")
+	return null
+
+
 func _sync_focus_label() -> void:
 	var text := "Hover a unit to inspect it."
 	if _dragging_unit != null:
@@ -295,5 +346,21 @@ func _draw() -> void:
 		for projectile in _combat_world.projectiles:
 			var proj_pos: Vector2 = projectile.get("pos")
 			var screen_pos := _world_to_screen(proj_pos)
-			var radius := maxf(2.0, float(projectile.get("radius", CombatData.DEFAULT_PROJECTILE_RADIUS)) * size.x)
+			var radius := maxf(PROJECTILE_DRAW_MIN_RADIUS, float(projectile.get("radius", CombatData.DEFAULT_PROJECTILE_RADIUS)) * size.x * PROJECTILE_DRAW_SCALE)
 			draw_circle(screen_pos, radius, Color(1.0, 0.87, 0.35))
+
+		for floating_text in _floating_texts:
+			var text_pos := _world_to_screen(floating_text.world_pos)
+			var font := ThemeDB.fallback_font
+			if font:
+				var font_size := 14
+				var text_size := font.get_string_size(floating_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+				draw_string(
+					font,
+					Vector2(text_pos.x - text_size.x * 0.5, text_pos.y),
+					floating_text.text,
+					HORIZONTAL_ALIGNMENT_LEFT,
+					-1,
+					font_size,
+					floating_text.color
+				)

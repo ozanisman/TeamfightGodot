@@ -2,10 +2,11 @@ extends Node2D
 class_name BattleUnit
 
 const CombatData = preload("res://scripts/combat_data.gd")
+const CombatEffectContextScript = preload("res://scripts/combat_effect_context.gd")
 
 enum UnitState { MOVING, ATTACKING, CASTING, WAITING, KITING, STUNNED, DEAD }
 
-const BASE_RADIUS := 18.0
+const BASE_RADIUS := 21.0
 
 var hero_id: String = ""
 var display_name: String = ""
@@ -33,6 +34,7 @@ var mana_per_attack: float = 0.0
 var ability_cd: float = 0.0
 var ultimate_cd: float = 0.0
 var respawn_time: float = CombatData.RESPAWN_TIME
+var passive_id: String = ""
 
 var attack_damage: float = 0.0
 var attack_range: float = 0.3
@@ -44,6 +46,8 @@ var projectile_radius: float = CombatData.DEFAULT_PROJECTILE_RADIUS
 var alive: bool = true
 var current_state: int = UnitState.WAITING
 var attack_cooldown_remaining: float = 0.0
+var casting_remaining: float = 0.0
+var _is_casting_ult: bool = false
 var ability_timer: float = 0.0
 var ultimate_timer: float = 0.0
 var stun_timer: float = 0.0
@@ -91,19 +95,29 @@ var mana: float = 0.0
 var recent_damage_sources: Dictionary = {}
 var recent_benefactors: Dictionary = {}
 var _regen_accumulator: float = 0.0
+var _cached_on_attack: Array = []
+var _cached_on_defense: Array = []
+var _cached_on_tick: Array = []
+var _cached_post_attack: Array = []
+var _cached_post_take_damage: Array = []
+var _ability_effect = null
+var _ultimate_effect = null
+var _combat_registry = null
 
 
 func _ready() -> void:
 	queue_redraw()
 
 
-func set_identity(new_hero_id: String, new_display_name: String, new_role: String, new_team: String, new_color: Color, new_draggable: bool) -> void:
+func set_identity(new_hero_id: String, new_display_name: String, new_role: String, new_team: String, new_color: Color, new_draggable: bool, new_passive_id: String = "") -> void:
 	hero_id = new_hero_id
 	display_name = new_display_name
 	role = new_role
 	team = new_team
 	color = new_color
 	draggable = new_draggable
+	passive_id = new_passive_id
+	_refresh_effect_cache()
 	queue_redraw()
 
 
@@ -147,6 +161,8 @@ func set_combat_stats(
 	alive = true
 	current_state = UnitState.WAITING
 	attack_cooldown_remaining = 0.0
+	casting_remaining = 0.0
+	_is_casting_ult = false
 	ability_timer = ability_cd
 	ultimate_timer = ultimate_cd
 	respawn_timer = 0.0
@@ -159,6 +175,32 @@ func set_spawn_position(pos: Vector2) -> void:
 
 func set_world_position(pos: Vector2) -> void:
 	world_pos = pos
+
+
+func set_combat_registry(registry: Object) -> void:
+	_combat_registry = registry
+	_refresh_effect_cache()
+
+
+func _refresh_effect_cache() -> void:
+	if _combat_registry == null:
+		_ability_effect = null
+		_ultimate_effect = null
+		_cached_on_attack = []
+		_cached_on_defense = []
+		_cached_on_tick = []
+		_cached_post_attack = []
+		_cached_post_take_damage = []
+		return
+
+	var keys: Array[String] = [role, hero_id, passive_id]
+	_ability_effect = _combat_registry.call("get_ability", keys)
+	_ultimate_effect = _combat_registry.call("get_ultimate", keys)
+	_cached_on_attack = _combat_registry.call("get_passives", "on_attack", keys)
+	_cached_on_defense = _combat_registry.call("get_passives", "on_defense", keys)
+	_cached_on_tick = _combat_registry.call("get_passives", "on_tick", keys)
+	_cached_post_attack = _combat_registry.call("get_passives", "post_attack", keys)
+	_cached_post_take_damage = _combat_registry.call("get_passives", "post_take_damage", keys)
 
 
 func set_focus(is_selected: bool, is_hovered: bool, is_dragging: bool) -> void:
@@ -180,6 +222,10 @@ func get_state_label() -> String:
 			return "ATTACKING"
 		UnitState.CASTING:
 			return "CASTING"
+		UnitState.WAITING:
+			if current_target != null and in_range:
+				return "ATTACKING"
+			return "MOVING"
 		UnitState.KITING:
 			return "KITING"
 		UnitState.STUNNED:
@@ -187,7 +233,7 @@ func get_state_label() -> String:
 		UnitState.DEAD:
 			return "DEAD"
 		_:
-			return "WAITING"
+			return "MOVING"
 
 
 func get_forced_target_id() -> int:
@@ -259,6 +305,11 @@ func heal(amount: float, world: Object, source_id: int = -1) -> void:
 func take_damage(amount: float, world: Object, damage_type: String = "true", source_id: int = -1) -> Dictionary:
 	var pre_res_damage := amount
 	var final_damage := amount
+	var defense_context := CombatEffectContextScript.new(self, world, current_target, current_ally_target, amount)
+	var defense_mult := 1.0
+	for effect in _cached_on_defense:
+		defense_mult *= float(effect.apply_on_defense(defense_context))
+	final_damage *= defense_mult
 	if damage_type == "physical":
 		final_damage *= (1.0 - armor)
 	elif damage_type == "magic":
@@ -273,9 +324,13 @@ func take_damage(amount: float, world: Object, damage_type: String = "true", sou
 		final_damage -= absorbed
 	damage_received += final_damage
 	hp = maxf(0.0, hp - final_damage)
+	defense_context.damage = final_damage
+	for effect in _cached_post_take_damage:
+		effect.apply_post_take_damage(defense_context)
 	if hp <= 0.0:
 		alive = false
 		current_state = UnitState.DEAD
+		visible = false
 		respawn_timer = respawn_time
 		current_target = null
 		current_ally_target = null
@@ -342,6 +397,19 @@ func update(dt: float, world: Object) -> void:
 		current_state = UnitState.STUNNED
 		return
 
+	if casting_remaining > 0.0:
+		casting_remaining = maxf(0.0, casting_remaining - dt)
+		if casting_remaining <= 0.0:
+			if _is_casting_ult:
+				if not _execute_ultimate(world):
+					mana = minf(max_mana, mana + max_mana)
+					ultimate_timer = 0.0
+			else:
+				if not _execute_ability(world):
+					ability_timer = 0.0
+		current_state = UnitState.CASTING
+		return
+
 	var targeting_system = world.call("get_targeting_system")
 	var strategy: Dictionary = targeting_system.call("get_strategy_for", self)
 	perceived_threat = maxf(0.0, perceived_threat - float(strategy.get("threat_decay_rate", CombatData.THREAT_DECAY_DEFAULT)) * dt)
@@ -350,6 +418,9 @@ func update(dt: float, world: Object) -> void:
 	_regen_accumulator += dt
 	if _regen_accumulator >= CombatData.REGEN_TICK_INTERVAL:
 		_regen_accumulator -= CombatData.REGEN_TICK_INTERVAL
+		var tick_context := CombatEffectContextScript.new(self, world, current_target, current_ally_target)
+		for effect in _cached_on_tick:
+			effect.apply_on_tick(tick_context)
 
 	var allies: Array[Node2D] = world.call("get_allies_for", self)
 	var enemies: Array[Node2D] = world.call("get_enemies_for", self)
@@ -372,10 +443,18 @@ func update(dt: float, world: Object) -> void:
 
 	_set_target_debug(target, float(candidate.get("distance", 0.0)), bool(candidate.get("in_range", false)))
 
-	if in_range and attack_cooldown_remaining <= 0.0:
-		_perform_auto_attack(world, String(candidate.get("reason", "target")))
-		current_state = UnitState.ATTACKING
-		return
+	if in_range:
+		if max_mana > 0.0 and ultimate_timer <= 0.0 and mana >= max_mana:
+			if _begin_cast(world, true):
+				current_state = UnitState.CASTING
+				return
+		if ability_timer <= 0.0:
+			if _begin_cast(world, false):
+				current_state = UnitState.CASTING
+				return
+		if attack_cooldown_remaining <= 0.0:
+			_perform_auto_attack(world, String(candidate.get("reason", "target")))
+			return
 
 	if bool(strategy.get("prefers_kiting", false)) and attack_cooldown_remaining > 0.0 and taunted_by < 0:
 		if _kite_from_enemies(world, enemies, dt):
@@ -467,13 +546,100 @@ func _perform_auto_attack(world: Object, reason: String) -> void:
 		world.call("record_event", attack_result)
 
 
+func _begin_cast(world: Object, is_ult: bool) -> bool:
+	if not is_alive():
+		return false
+
+	if is_ult:
+		if max_mana <= 0.0 or mana < max_mana or ultimate_timer > 0.0:
+			return false
+		mana -= max_mana
+		ultimate_timer = ultimate_cd
+		ultimates_used += 1
+	else:
+		if ability_timer > 0.0:
+			return false
+		ability_timer = ability_cd
+		abilities_used += 1
+
+	casting_remaining = CombatData.CASTING_WINDUP
+	_is_casting_ult = is_ult
+	current_state = UnitState.CASTING
+	return true
+
+
+func _execute_ability(world: Object) -> bool:
+	var effect = _ability_effect
+	if effect == null:
+		return false
+	var context := CombatEffectContextScript.new(self, world, current_target, current_ally_target)
+	var result: Dictionary = effect.execute_active(context)
+	if result.is_empty():
+		return false
+	if bool(result.get("use_projectile", false)):
+		if current_target == null or not bool(current_target.call("is_alive")):
+			return false
+		world.call(
+			"spawn_projectile",
+			self,
+			current_target,
+			float(result.get("damage", 0.0)),
+			String(result.get("damage_type", "physical")),
+			String(result.get("reason", "Ability")),
+			float(result.get("projectile_speed", projectile_speed)),
+			float(result.get("projectile_radius", projectile_radius)),
+			float(result.get("stun_duration", 0.0)),
+			true,
+			false,
+			float(result.get("splash_radius", 0.0)),
+			float(result.get("splash_ratio", 0.0))
+		)
+		return true
+	world.call("record_event", result)
+	return true
+
+
+func _execute_ultimate(world: Object) -> bool:
+	var effect = _ultimate_effect
+	if effect == null:
+		return false
+	var context := CombatEffectContextScript.new(self, world, current_target, current_ally_target)
+	var result: Dictionary = effect.execute_active(context)
+	if result.is_empty():
+		return false
+	if bool(result.get("use_projectile", false)):
+		if current_target == null or not bool(current_target.call("is_alive")):
+			return false
+		world.call(
+			"spawn_projectile",
+			self,
+			current_target,
+			float(result.get("damage", 0.0)),
+			String(result.get("damage_type", "physical")),
+			String(result.get("reason", "Ultimate")),
+			float(result.get("projectile_speed", projectile_speed)),
+			float(result.get("projectile_radius", projectile_radius)),
+			float(result.get("stun_duration", 0.0)),
+			false,
+			true,
+			float(result.get("splash_radius", 0.0)),
+			float(result.get("splash_ratio", 0.0))
+		)
+		return true
+	world.call("record_event", result)
+	return true
+
+
 func attack(target: Node2D, world: Object, reason: String) -> Dictionary:
 	if not is_alive() or not bool(target.call("is_alive")):
 		return {}
 
 	var damage_mult := 1.0
+	var context := CombatEffectContextScript.new(self, world, target, current_ally_target)
+	for effect in _cached_on_attack:
+		damage_mult *= float(effect.apply_on_attack(context))
 	var damage := attack_damage * damage_mult
-	var distance: float = world.call("get_unit_by_id", int(target.get("instance_id"))).global_position.distance_to(global_position)
+	var distance: float = Vector2(world_pos).distance_to(Vector2(target.get("world_pos")))
 
 	auto_attacks_done += 1
 	if attack_range > CombatData.RANGED_THRESHOLD:
@@ -503,6 +669,9 @@ func attack(target: Node2D, world: Object, reason: String) -> Dictionary:
 
 
 func on_attack_hit(target: Node2D, damage: float, world: Object, is_auto: bool = true) -> void:
+	var context := CombatEffectContextScript.new(self, world, target, current_ally_target, damage)
+	for effect in _cached_post_attack:
+		effect.apply_post_attack(context)
 	if is_auto and life_steal > 0.0 and damage > 0.0:
 		heal(damage * life_steal, world, int(get("instance_id")))
 
@@ -515,6 +684,8 @@ func respawn(world: Object = null) -> void:
 	current_state = UnitState.WAITING
 	alive = true
 	attack_cooldown_remaining = 0.0
+	casting_remaining = 0.0
+	_is_casting_ult = false
 	ability_timer = ability_cd
 	ultimate_timer = ultimate_cd
 	stun_timer = 0.0
@@ -527,6 +698,7 @@ func respawn(world: Object = null) -> void:
 	forced_target_timer = 0.0
 	forced_target_id = -1
 	forced_target_kind = ""
+	visible = true
 	current_target = null
 	current_ally_target = null
 	target_id = -1
@@ -535,7 +707,12 @@ func respawn(world: Object = null) -> void:
 	regen_reset()
 	recent_damage_sources.clear()
 	recent_benefactors.clear()
-	set_world_position(spawn_pos)
+	var respawn_x := spawn_pos.x
+	if team == "player":
+		respawn_x = 0.9
+	elif team == "enemy":
+		respawn_x = CombatData.WORLD_SIZE.x - 0.9
+	set_world_position(Vector2(respawn_x, spawn_pos.y))
 	queue_redraw()
 
 

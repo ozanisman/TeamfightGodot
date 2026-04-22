@@ -69,6 +69,7 @@ var taunt_timer: float = 0.0
 var taunted_by: int = -1
 var forced_target_timer: float = 0.0
 var forced_target_id: int = -1
+var forced_target_source_id: int = -1
 var forced_target_kind: String = ""
 
 var current_target: Node2D = null
@@ -307,9 +308,16 @@ func get_forced_target_id() -> int:
 	return -1
 
 
+func get_forced_target_source_id() -> int:
+	if forced_target_timer > 0.0 and forced_target_source_id >= 0:
+		return forced_target_source_id
+	return -1
+
+
 func apply_taunt(duration: float, source_id: int) -> void:
 	forced_target_timer = maxf(forced_target_timer, duration)
 	forced_target_id = source_id
+	forced_target_source_id = source_id
 	forced_target_kind = "taunt"
 	taunt_timer = forced_target_timer
 	taunted_by = source_id
@@ -318,6 +326,7 @@ func apply_taunt(duration: float, source_id: int) -> void:
 func apply_forced_target(duration: float, source_id: int, target_id: int = -1, kind: String = "taunt") -> void:
 	forced_target_timer = maxf(forced_target_timer, duration)
 	forced_target_id = target_id if target_id >= 0 else source_id
+	forced_target_source_id = source_id
 	forced_target_kind = kind
 	if kind == "taunt":
 		taunt_timer = forced_target_timer
@@ -419,6 +428,7 @@ func update_cooldowns(dt: float) -> void:
 		forced_target_timer = maxf(0.0, forced_target_timer - dt)
 		if forced_target_timer <= 0.0:
 			forced_target_id = -1
+			forced_target_source_id = -1
 			forced_target_kind = ""
 			taunt_timer = 0.0
 			taunted_by = -1
@@ -485,22 +495,16 @@ func update(dt: float, world: Object) -> void:
 	var enemies: Array[Node2D] = world.call("get_enemies_for", self)
 	var nearby_allies: Array[Node2D] = world.call("get_nearby_allies_for", self)
 	var nearby_enemies: Array[Node2D] = world.call("get_nearby_enemies_for", self)
+	var forced_target: Node2D = world.call("get_unit_by_id", get_forced_target_id()) if get_forced_target_id() >= 0 else null
 
+	var ally_candidates := _assemble_candidate_pool(nearby_allies, allies, [current_ally_target])
 	if role == "support" or role == "tank":
-		var ally_candidates := nearby_allies if not nearby_allies.is_empty() else allies
-		if current_ally_target != null and bool(current_ally_target.call("is_alive")) and not _contains_unit_id(ally_candidates, int(current_ally_target.get("instance_id"))):
-			ally_candidates.append(current_ally_target)
-		current_ally_target = targeting_system.call("select_ally", self, ally_candidates)
+		var ally_candidate: Dictionary = targeting_system.call("select_ally", self, ally_candidates)
+		current_ally_target = ally_candidate.get("target") if not ally_candidate.is_empty() else null
 	else:
 		current_ally_target = null
 
-	var enemy_candidates := nearby_enemies if not nearby_enemies.is_empty() else enemies
-	if current_target != null and bool(current_target.call("is_alive")) and not _contains_unit_id(enemy_candidates, int(current_target.get("instance_id"))):
-		enemy_candidates.append(current_target)
-	if get_forced_target_id() >= 0:
-		var forced_target: Node2D = world.call("get_unit_by_id", get_forced_target_id())
-		if forced_target != null and bool(forced_target.call("is_alive")) and not _contains_unit_id(enemy_candidates, int(forced_target.get("instance_id"))):
-			enemy_candidates.append(forced_target)
+	var enemy_candidates := _assemble_candidate_pool(nearby_enemies, enemies, [current_target, forced_target])
 	var kite_enemies := nearby_enemies if not nearby_enemies.is_empty() else enemy_candidates
 
 	var candidate: Dictionary = _retarget_if_needed(world, enemy_candidates, allies, targeting_system)
@@ -567,8 +571,18 @@ func _retarget_if_needed(world: Object, enemies: Array[Node2D], allies: Array[No
 		retarget_timer = 0.0
 		return forced_candidate
 
+	var frontline_roles: Array[String] = ["tank", "fighter"]
+	var backline_roles: Array[String] = ["marksman", "mage", "support"]
+	var assassin_pressuring_frontline := (
+		String(role) == "assassin"
+		and current_target != null
+		and current_target.call("is_alive")
+		and String(current_target.get("role")) in frontline_roles
+		and _has_alive_role(alive_enemies, backline_roles)
+	)
+
 	var strategy: Dictionary = targeting_system.call("get_strategy_for", self)
-	var needs_evaluation := current_target == null or not bool(current_target.call("is_alive")) or retarget_timer <= 0.0
+	var needs_evaluation := current_target == null or not bool(current_target.call("is_alive")) or retarget_timer <= 0.0 or assassin_pressuring_frontline
 	if not needs_evaluation:
 		return targeting_system.call("score_target", self, current_target, strategy, allies, alive_enemies)
 
@@ -594,6 +608,15 @@ func _retarget_if_needed(world: Object, enemies: Array[Node2D], allies: Array[No
 		last_target_reason = "kept target; %s" % String(current_candidate.get("reason", "target"))
 		return current_candidate
 
+	if assassin_pressuring_frontline and String(candidate.get("target").get("role")) in backline_roles:
+		_set_current_target(world, candidate.get("target"))
+		target_switch_lock_timer = 0.0
+		last_target_score = float(candidate.get("score", 0.0))
+		last_target_reason = "assassin breaks frontline lock; %s" % String(candidate.get("reason", "target"))
+		retargeted_this_tick = true
+		retarget_reason_this_tick = last_target_reason
+		return candidate
+
 	if targeting_system.call("should_switch", float(current_candidate.get("score", 0.0)), float(candidate.get("score", 0.0)), strategy, self):
 		_set_current_target(world, candidate.get("target"))
 		target_switch_lock_timer = CombatData.TARGET_SWITCH_LOCK_DURATION
@@ -606,6 +629,15 @@ func _retarget_if_needed(world: Object, enemies: Array[Node2D], allies: Array[No
 	last_target_score = float(current_candidate.get("score", 0.0))
 	last_target_reason = "kept target"
 	return current_candidate
+
+
+func _assemble_candidate_pool(primary: Array[Node2D], fallback: Array[Node2D], preserve: Array[Node2D] = []) -> Array[Node2D]:
+	var pool: Array[Node2D] = primary if not primary.is_empty() else fallback
+	var result: Array[Node2D] = pool.duplicate()
+	for unit in preserve:
+		if unit != null and is_instance_valid(unit) and bool(unit.call("is_alive")) and not _contains_unit_id(result, int(unit.get("instance_id"))):
+			result.append(unit)
+	return result
 
 
 func _perform_auto_attack(world: Object, reason: String) -> void:
@@ -833,6 +865,7 @@ func respawn(world: Object = null) -> void:
 	taunted_by = -1
 	forced_target_timer = 0.0
 	forced_target_id = -1
+	forced_target_source_id = -1
 	forced_target_kind = ""
 	visible = true
 	current_target = null
@@ -932,6 +965,15 @@ func _set_current_target(world: Object, target: Node2D) -> void:
 func _contains_unit_id(units: Array[Node2D], unit_id: int) -> bool:
 	for unit in units:
 		if is_instance_valid(unit) and int(unit.get("instance_id")) == unit_id:
+			return true
+	return false
+
+
+func _has_alive_role(units: Array[Node2D], roles: Array[String]) -> bool:
+	for unit in units:
+		if not is_instance_valid(unit) or not bool(unit.call("is_alive")):
+			continue
+		if String(unit.get("role")) in roles:
 			return true
 	return false
 

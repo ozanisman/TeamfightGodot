@@ -80,26 +80,16 @@ func get_alive_units(team: String = "") -> Array[Node2D]:
 
 
 func get_allies_for(unit: Node2D) -> Array[Node2D]:
-	return get_units_for_team(String(unit.get("team")))
+	return get_alive_units(String(unit.get("team")))
 
 
 func get_enemies_for(unit: Node2D) -> Array[Node2D]:
-	return get_units_for_team("", int(unit.get("instance_id")), String(unit.get("team")))
-
-
-func get_units_for_team(team: String = "", exclude_id: int = -1, exclude_team: String = "") -> Array[Node2D]:
 	var result: Array[Node2D] = []
-	for cell_units in _spatial_cells.values():
-		for unit in cell_units:
-			if not is_instance_valid(unit) or not bool(unit.call("is_alive")):
-				continue
-			if exclude_id >= 0 and int(unit.get("instance_id")) == exclude_id:
-				continue
-			if team != "" and String(unit.get("team")) != team:
-				continue
-			if exclude_team != "" and String(unit.get("team")) == exclude_team:
-				continue
-			result.append(unit)
+	var unit_team := String(unit.get("team"))
+	for other in get_alive_units():
+		if String(other.get("team")) == unit_team:
+			continue
+		result.append(other)
 	return result
 
 

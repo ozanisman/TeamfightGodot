@@ -32,6 +32,7 @@
 - Keep explicit types in helpers that parse `Variant` data; this project treats those warnings as errors.
 - Run `--check-only` on `scripts/batch_runner.gd` before smoke runs after batch-path edits.
 - Call `clear()` on batch match engines after each match so unit refs do not leak across runs.
+- Before declaring work finished after any Godot run, verify all Godot processes are terminated
 
 ## Done
 - Minimal change.

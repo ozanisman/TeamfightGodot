@@ -1,3 +1,0 @@
-C:/Users/ozani/Desktop/TeamfightGodot/native/batch_core/build/CMakeFiles/batch_core.dir
-C:/Users/ozani/Desktop/TeamfightGodot/native/batch_core/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/ozani/Desktop/TeamfightGodot/native/batch_core/build/CMakeFiles/ZERO_CHECK.dir

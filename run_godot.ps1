@@ -5,7 +5,9 @@ param(
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $godotExe = "C:\Godot\godot.exe"
-$logFile = Join-Path $projectRoot "godot.log"
+$logsDir = Join-Path $projectRoot "logs"
+$logFile = Join-Path $logsDir "godot.log"
+$null = New-Item -ItemType Directory -Force -Path $logsDir
 $timeoutSeconds = 120
 if ($env:RUN_GODOT_TIMEOUT_SECONDS) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS

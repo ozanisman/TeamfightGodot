@@ -68,6 +68,7 @@ func begin_combat() -> void:
 			continue
 		unit.call("apply_combat_metrics", _combat_metrics)
 		unit.call("set_collision_enabled", true)
+	_combat_world.rebuild_spatial_index()
 	queue_redraw()
 
 
@@ -81,6 +82,7 @@ func load_rosters(player_heroes: Array[String], enemy_heroes: Array[String]) -> 
 	_combat_world.set_units(_units)
 	var combat_registry: Object = _combat_world.get_combat_registry()
 	for unit in _units:
+		unit.call("set_combat_world", _combat_world)
 		unit.call("set_combat_registry", combat_registry)
 	_combat_world.capture_spawn_positions()
 	_sync_all_units()

@@ -29,6 +29,7 @@ func _run_smoke() -> int:
 	_test_archer(test_worlds)
 	_test_mage(test_worlds)
 	_test_oracle(test_worlds)
+	_test_spatial_targeting(test_worlds)
 
 	for world in test_worlds:
 		if is_instance_valid(world):
@@ -323,3 +324,27 @@ func _test_oracle(_worlds: Array[Object]) -> void:
 	hero.call("attack", target, world, "Smoke Passive")
 	_resolve_first_projectile(world, target)
 	_assert_close(float(hero.mana), 5.0, "Oracle post-attack mana restore")
+
+
+func _test_spatial_targeting(_worlds: Array[Object]) -> void:
+	var world := CombatWorldScript.new()
+	var hero := _make_unit("archer", "player", Vector2(96.0, 96.0))
+	var near_enemy := _make_dummy("NearEnemy", Vector2(192.0, 96.0), 1000.0)
+	var far_enemy := _make_dummy("FarEnemy", Vector2(1600.0, 96.0), 1000.0)
+	_worlds.append(world)
+
+	world.set_units([hero, near_enemy, far_enemy])
+	hero.call("set_combat_world", world)
+	hero.call("set_combat_registry", world.get_combat_registry())
+
+	var nearby := world.call("get_nearby_enemies_for", hero)
+	_assert_true(nearby.size() == 1, "Spatial query should return only the nearby enemy")
+	if nearby.size() == 1:
+		_assert_true(int(nearby[0].get("instance_id")) == int(near_enemy.get("instance_id")), "Spatial query returned the wrong nearby enemy")
+
+	var targeting_system = world.get_targeting_system()
+	var pick: Dictionary = targeting_system.call("select_target", hero, nearby, [])
+	_assert_true(not pick.is_empty(), "Targeting should pick from spatial candidates")
+	if not pick.is_empty():
+		var picked_target: Node2D = pick.get("target")
+		_assert_true(int(picked_target.get("instance_id")) == int(near_enemy.get("instance_id")), "Targeting should score the nearby enemy")

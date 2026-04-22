@@ -19,12 +19,16 @@ var enemy_kills: int = 0
 var record_events: bool = true
 var _events_current_tick: Array[Dictionary] = []
 var _next_instance_id: int = 1
+var _spatial_cells: Dictionary = {}
+var _spatial_cell_by_unit_id: Dictionary = {}
 
 
 func clear() -> void:
 	units.clear()
 	projectiles.clear()
 	_events_current_tick.clear()
+	_spatial_cells.clear()
+	_spatial_cell_by_unit_id.clear()
 	time = 0.0
 	tick = 0
 	player_kills = 0
@@ -34,10 +38,13 @@ func clear() -> void:
 
 func set_units(new_units: Array[Node2D]) -> void:
 	units = new_units.duplicate()
+	_spatial_cells.clear()
+	_spatial_cell_by_unit_id.clear()
 	for unit in units:
 		if is_instance_valid(unit):
 			unit.set("instance_id", _next_instance_id)
 			_next_instance_id += 1
+	rebuild_spatial_index()
 
 
 func get_targeting_system() -> Object:
@@ -73,41 +80,80 @@ func get_alive_units(team: String = "") -> Array[Node2D]:
 
 
 func get_allies_for(unit: Node2D) -> Array[Node2D]:
-	return get_alive_units(String(unit.get("team")))
+	return get_units_for_team(String(unit.get("team")))
 
 
 func get_enemies_for(unit: Node2D) -> Array[Node2D]:
-	var result: Array[Node2D] = []
-	for other in units:
-		if not is_instance_valid(other) or not bool(other.call("is_alive")):
-			continue
-		if other == unit:
-			continue
-		if String(other.get("team")) == String(unit.get("team")):
-			continue
-		result.append(other)
-	return result
+	return get_units_for_team("", int(unit.get("instance_id")), String(unit.get("team")))
 
 
-func nearby_units(pos: Vector2, radius: float, team: String = "", exclude_id: int = -1) -> Array[Node2D]:
-	if radius <= 0.0:
-		return []
-	var radius_sq := radius * radius
+func get_units_for_team(team: String = "", exclude_id: int = -1, exclude_team: String = "") -> Array[Node2D]:
 	var result: Array[Node2D] = []
-	for unit in units:
-		if not is_instance_valid(unit) or not bool(unit.call("is_alive")):
-			continue
-		if exclude_id >= 0 and int(unit.get("instance_id")) == exclude_id:
-			continue
-		if team != "" and String(unit.get("team")) != team:
-			continue
-		if unit.global_position.distance_squared_to(pos) <= radius_sq:
+	for cell_units in _spatial_cells.values():
+		for unit in cell_units:
+			if not is_instance_valid(unit) or not bool(unit.call("is_alive")):
+				continue
+			if exclude_id >= 0 and int(unit.get("instance_id")) == exclude_id:
+				continue
+			if team != "" and String(unit.get("team")) != team:
+				continue
+			if exclude_team != "" and String(unit.get("team")) == exclude_team:
+				continue
 			result.append(unit)
 	return result
 
 
-func notify_unit_moved(_unit: Node2D, _old_pos: Vector2) -> void:
-	pass
+func nearby_units(pos: Vector2, radius: float, team: String = "", exclude_id: int = -1) -> Array[Node2D]:
+	return get_units_in_radius(pos, radius, team, exclude_id)
+
+
+func get_units_in_radius(pos: Vector2, radius: float, team: String = "", exclude_id: int = -1) -> Array[Node2D]:
+	if radius <= 0.0:
+		return []
+	var radius_sq := radius * radius
+	var min_cell := _cell_coords_for_pos(pos - Vector2(radius, radius))
+	var max_cell := _cell_coords_for_pos(pos + Vector2(radius, radius))
+	var result: Array[Node2D] = []
+	for cell_x in range(min_cell.x, max_cell.x + 1):
+		for cell_y in range(min_cell.y, max_cell.y + 1):
+			var cell_key := _cell_key(cell_x, cell_y)
+			var cell_units: Array = _spatial_cells.get(cell_key, [])
+			for unit in cell_units:
+				if not is_instance_valid(unit) or not bool(unit.call("is_alive")):
+					continue
+				if exclude_id >= 0 and int(unit.get("instance_id")) == exclude_id:
+					continue
+				if team != "" and String(unit.get("team")) != team:
+					continue
+				if unit.global_position.distance_squared_to(pos) <= radius_sq:
+					result.append(unit)
+	return result
+
+
+func get_nearby_allies_for(unit: Node2D, radius: float = CombatData.SPATIAL_GRID_CELL_SIZE * CombatData.TARGET_BROAD_PHASE_CELL_RADIUS) -> Array[Node2D]:
+	return get_units_in_radius(unit.global_position, radius, String(unit.get("team")))
+
+
+func get_nearby_enemies_for(unit: Node2D, radius: float = CombatData.SPATIAL_GRID_CELL_SIZE * CombatData.TARGET_BROAD_PHASE_CELL_RADIUS) -> Array[Node2D]:
+	var result: Array[Node2D] = []
+	for enemy in get_units_in_radius(unit.global_position, radius, "", int(unit.get("instance_id"))):
+		if String(enemy.get("team")) != String(unit.get("team")):
+			result.append(enemy)
+	return result
+
+
+func rebuild_spatial_index() -> void:
+	_spatial_cells.clear()
+	_spatial_cell_by_unit_id.clear()
+	for unit in units:
+		if is_instance_valid(unit):
+			_add_unit_to_spatial_cell(unit, _cell_key_for_position(unit.global_position))
+
+
+func notify_unit_moved(unit: Node2D, _old_pos: Vector2) -> void:
+	if unit == null or not is_instance_valid(unit) or not bool(unit.call("is_alive")):
+		return
+	_update_unit_spatial_cell(unit)
 
 
 func adjust_target_pressure(old_target: Node2D, new_target: Node2D) -> void:
@@ -117,6 +163,55 @@ func adjust_target_pressure(old_target: Node2D, new_target: Node2D) -> void:
 		old_target.set("incoming_target_count", max(0, int(old_target.get("incoming_target_count")) - 1))
 	if new_target != null and is_instance_valid(new_target) and bool(new_target.call("is_alive")):
 		new_target.set("incoming_target_count", int(new_target.get("incoming_target_count")) + 1)
+
+
+func _update_unit_spatial_cell(unit: Node2D) -> void:
+	var unit_id := int(unit.get("instance_id"))
+	var new_key := _cell_key_for_position(unit.global_position)
+	var old_key := String(_spatial_cell_by_unit_id.get(unit_id, ""))
+	if old_key == new_key:
+		return
+	if old_key != "":
+		_remove_unit_from_spatial_cell(unit, old_key)
+	_add_unit_to_spatial_cell(unit, new_key)
+
+
+func _add_unit_to_spatial_cell(unit: Node2D, cell_key: String) -> void:
+	if not _spatial_cells.has(cell_key):
+		_spatial_cells[cell_key] = []
+	var cell_units: Array = _spatial_cells[cell_key]
+	cell_units.append(unit)
+	_spatial_cells[cell_key] = cell_units
+	_spatial_cell_by_unit_id[int(unit.get("instance_id"))] = cell_key
+
+
+func _remove_unit_from_spatial_cell(unit: Node2D, cell_key: String) -> void:
+	if not _spatial_cells.has(cell_key):
+		return
+	var cell_units: Array = _spatial_cells[cell_key]
+	var unit_id := int(unit.get("instance_id"))
+	for i in range(cell_units.size() - 1, -1, -1):
+		if not is_instance_valid(cell_units[i]) or int(cell_units[i].get("instance_id")) == unit_id:
+			cell_units.remove_at(i)
+	if cell_units.is_empty():
+		_spatial_cells.erase(cell_key)
+	else:
+		_spatial_cells[cell_key] = cell_units
+	_spatial_cell_by_unit_id.erase(unit_id)
+
+
+func _cell_key_for_position(pos: Vector2) -> String:
+	var cell := _cell_coords_for_pos(pos)
+	return _cell_key(cell.x, cell.y)
+
+
+func _cell_coords_for_pos(pos: Vector2) -> Vector2i:
+	var cell_size := maxf(CombatData.SPATIAL_GRID_CELL_SIZE, CombatData.EPSILON)
+	return Vector2i(floori(pos.x / cell_size), floori(pos.y / cell_size))
+
+
+func _cell_key(cell_x: int, cell_y: int) -> String:
+	return "%d:%d" % [cell_x, cell_y]
 
 
 func refresh_target_pressure(source_units: Array[Node2D] = []) -> void:

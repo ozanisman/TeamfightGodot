@@ -9,7 +9,7 @@ var pixels_per_unit: float = 1.0
 
 
 func setup(viewport_size: Vector2) -> void:
-	var arena_side := minf(float(CombatData.VIEWER_WIDTH), float(CombatData.VIEWER_HEIGHT))
+	var arena_side := minf(viewport_size.x, viewport_size.y) * CombatData.BATTLEFIELD_SCALE
 	arena_size = Vector2(arena_side, arena_side)
 	pixels_per_unit = arena_side / maxf(CombatData.WORLD_SIZE_VECTOR.x, CombatData.EPSILON)
 	arena_origin = Vector2(

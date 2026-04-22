@@ -38,6 +38,7 @@ var ability_cd: float = 0.0
 var ultimate_cd: float = 0.0
 var respawn_time: float = CombatData.RESPAWN_TIME
 var passive_id: String = ""
+var _combat_world: Object = null
 
 var attack_damage: float = 0.0
 var attack_range: float = 0.3
@@ -129,7 +130,10 @@ func _physics_process(_delta: float) -> void:
 		return
 	if velocity == Vector2.ZERO:
 		return
+	var previous_position := global_position
 	move_and_slide()
+	if _combat_world != null and global_position != previous_position:
+		_combat_world.call("notify_unit_moved", self, previous_position)
 
 
 func set_identity(new_hero_id: String, new_display_name: String, new_role: String, new_team: String, new_color: Color, new_draggable: bool, new_passive_id: String = "") -> void:
@@ -199,7 +203,14 @@ func set_spawn_position(pos: Vector2) -> void:
 
 
 func set_world_position(pos: Vector2) -> void:
+	var previous_position := global_position
 	global_position = pos
+	if _combat_world != null and _combat_ready and global_position != previous_position:
+		_combat_world.call("notify_unit_moved", self, previous_position)
+
+
+func set_combat_world(world: Object) -> void:
+	_combat_world = world
 
 
 func apply_combat_metrics(metrics: Object) -> void:
@@ -207,6 +218,7 @@ func apply_combat_metrics(metrics: Object) -> void:
 		return
 	_combat_metrics = metrics
 	_combat_ready = true
+	var previous_position := global_position
 	move_speed = float(metrics.call("scale_length", move_speed))
 	attack_range = float(metrics.call("scale_length", attack_range))
 	projectile_speed = float(metrics.call("scale_length", projectile_speed))
@@ -219,6 +231,8 @@ func apply_combat_metrics(metrics: Object) -> void:
 	combat_bounds_max = rect.position + rect.size
 	global_position = metrics.call("world_to_combat", spawn_pos)
 	velocity = Vector2.ZERO
+	if _combat_world != null and global_position != previous_position:
+		_combat_world.call("notify_unit_moved", self, previous_position)
 
 
 func set_collision_enabled(enabled: bool) -> void:
@@ -469,13 +483,27 @@ func update(dt: float, world: Object) -> void:
 
 	var allies: Array[Node2D] = world.call("get_allies_for", self)
 	var enemies: Array[Node2D] = world.call("get_enemies_for", self)
+	var nearby_allies: Array[Node2D] = world.call("get_nearby_allies_for", self)
+	var nearby_enemies: Array[Node2D] = world.call("get_nearby_enemies_for", self)
 
 	if role == "support" or role == "tank":
-		current_ally_target = targeting_system.call("select_ally", self, allies)
+		var ally_candidates := nearby_allies if not nearby_allies.is_empty() else allies
+		if current_ally_target != null and bool(current_ally_target.call("is_alive")) and not _contains_unit_id(ally_candidates, int(current_ally_target.get("instance_id"))):
+			ally_candidates.append(current_ally_target)
+		current_ally_target = targeting_system.call("select_ally", self, ally_candidates)
 	else:
 		current_ally_target = null
 
-	var candidate: Dictionary = _retarget_if_needed(world, enemies, allies, targeting_system)
+	var enemy_candidates := nearby_enemies if not nearby_enemies.is_empty() else enemies
+	if current_target != null and bool(current_target.call("is_alive")) and not _contains_unit_id(enemy_candidates, int(current_target.get("instance_id"))):
+		enemy_candidates.append(current_target)
+	if get_forced_target_id() >= 0:
+		var forced_target: Node2D = world.call("get_unit_by_id", get_forced_target_id())
+		if forced_target != null and bool(forced_target.call("is_alive")) and not _contains_unit_id(enemy_candidates, int(forced_target.get("instance_id"))):
+			enemy_candidates.append(forced_target)
+	var kite_enemies := nearby_enemies if not nearby_enemies.is_empty() else enemy_candidates
+
+	var candidate: Dictionary = _retarget_if_needed(world, enemy_candidates, allies, targeting_system)
 	if candidate.is_empty():
 		current_state = UnitState.WAITING
 		velocity = Vector2.ZERO
@@ -505,7 +533,7 @@ func update(dt: float, world: Object) -> void:
 			return
 
 	if bool(strategy.get("prefers_kiting", false)) and attack_cooldown_remaining > 0.0 and taunted_by < 0:
-		if _kite_from_enemies(world, enemies, dt):
+		if _kite_from_enemies(world, kite_enemies, dt):
 			current_state = UnitState.KITING
 			return
 
@@ -782,6 +810,7 @@ func on_attack_hit(target: Node2D, damage: float, world: Object, is_auto: bool =
 
 
 func respawn(world: Object = null) -> void:
+	var previous_position := global_position
 	hp = max_hp
 	shield = 0.0
 	mana = 0.0
@@ -819,6 +848,8 @@ func respawn(world: Object = null) -> void:
 		global_position = _combat_metrics.call("world_to_combat", spawn_pos)
 	else:
 		global_position = spawn_pos
+	if _combat_world != null and global_position != previous_position:
+		_combat_world.call("notify_unit_moved", self, previous_position)
 	queue_redraw()
 
 
@@ -896,6 +927,13 @@ func _set_current_target(world: Object, target: Node2D) -> void:
 	current_target = target
 	world.call("adjust_target_pressure", old_target, target)
 	target_id = -1 if target == null else int(target.get("instance_id"))
+
+
+func _contains_unit_id(units: Array[Node2D], unit_id: int) -> bool:
+	for unit in units:
+		if is_instance_valid(unit) and int(unit.get("instance_id")) == unit_id:
+			return true
+	return false
 
 
 func _set_target_debug(target: Node2D, distance: float, is_in_range: bool) -> void:

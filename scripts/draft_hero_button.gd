@@ -2,12 +2,12 @@ extends Button
 class_name DraftHeroButton
 
 const ROLE_COLORS := {
-	"tank": Color(0.22, 0.50, 0.86),
+	"tank": Color(0.18, 0.42, 0.84),
 	"fighter": Color(0.92, 0.48, 0.14),
 	"assassin": Color(0.72, 0.24, 0.92),
-	"marksman": Color(0.16, 0.74, 0.60),
-	"mage": Color(0.18, 0.68, 0.96),
-	"support": Color(0.82, 0.60, 0.22),
+	"marksman": Color(0.12, 0.56, 0.40),
+	"mage": Color(0.12, 0.82, 0.86),
+	"support": Color(0.87, 0.65, 0.27),
 }
 
 var hero_id: String = ""
@@ -36,6 +36,9 @@ func setup(new_hero_id: String, new_hero_data: Dictionary) -> void:
 	add_theme_stylebox_override("pressed", button_style.duplicate() as StyleBoxFlat)
 	add_theme_stylebox_override("disabled", button_style.duplicate() as StyleBoxFlat)
 	add_theme_stylebox_override("focus", button_style.duplicate() as StyleBoxFlat)
+	add_theme_font_size_override("font_size", 20)
+	add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.5))
+	add_theme_constant_override("outline_size", 2)
 	_ensure_fonts()
 	_update_font_state()
 
@@ -43,6 +46,7 @@ func setup(new_hero_id: String, new_hero_data: Dictionary) -> void:
 func set_pick_owner(owner: String) -> void:
 	pick_owner = owner
 	_update_font_state()
+	_update_dim_state()
 	queue_redraw()
 
 
@@ -76,3 +80,21 @@ func _update_font_state() -> void:
 		add_theme_font_override("font", bold_button_font if bold_button_font != null else ThemeDB.fallback_font)
 	else:
 		add_theme_font_override("font", regular_button_font if regular_button_font != null else ThemeDB.fallback_font)
+
+
+func _update_dim_state() -> void:
+	if base_button_style == null:
+		return
+
+	var dimmed := pick_owner == "player" or pick_owner == "enemy" or pick_owner == "banned"
+	var role_style := get_theme_stylebox("normal")
+	if role_style is StyleBoxFlat:
+		var button_style := (role_style as StyleBoxFlat).duplicate() as StyleBoxFlat
+		if dimmed:
+			button_style.bg_color = button_style.bg_color.lerp(Color(0.10, 0.10, 0.10, 1.0), 0.40)
+			button_style.border_color = button_style.border_color.lerp(Color(0.05, 0.05, 0.05, 1.0), 0.30)
+		add_theme_stylebox_override("normal", button_style)
+		add_theme_stylebox_override("hover", button_style.duplicate() as StyleBoxFlat)
+		add_theme_stylebox_override("pressed", button_style.duplicate() as StyleBoxFlat)
+		add_theme_stylebox_override("disabled", button_style.duplicate() as StyleBoxFlat)
+		add_theme_stylebox_override("focus", button_style.duplicate() as StyleBoxFlat)

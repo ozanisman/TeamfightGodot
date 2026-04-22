@@ -23,12 +23,12 @@ const DRAFT_SEQUENCE: Array[String] = [
 ]
 
 const ROLE_COLORS := {
-	"tank": Color(0.22, 0.50, 0.86),
+	"tank": Color(0.18, 0.42, 0.84),
 	"fighter": Color(0.92, 0.48, 0.14),
 	"assassin": Color(0.72, 0.24, 0.92),
-	"marksman": Color(0.16, 0.74, 0.60),
-	"mage": Color(0.18, 0.68, 0.96),
-	"support": Color(0.82, 0.60, 0.22),
+	"marksman": Color(0.12, 0.56, 0.40),
+	"mage": Color(0.12, 0.82, 0.86),
+	"support": Color(0.87, 0.65, 0.27),
 }
 
 const TOOLTIP_SIZE := Vector2(360.0, 520.0)
@@ -46,6 +46,7 @@ const TOOLTIP_MARGIN := 8.0
 @onready var hero_grid: GridContainer = $Panel/OuterMargin/VBox/ContentRow/HeroPanel/HeroMargin/HeroVBox/HeroGridScroll/HeroGrid
 @onready var random_button: Button = $Panel/OuterMargin/VBox/ActionsRow/RandomButton
 @onready var start_button: Button = $Panel/OuterMargin/VBox/ActionsRow/StartButton
+@onready var clear_filters_button: Button = $Panel/OuterMargin/VBox/TopRow/ClearFiltersButton
 @onready var tooltip_panel: PanelContainer = $TooltipPanel
 @onready var tooltip_accent: ColorRect = $TooltipPanel/TooltipMargin/TooltipVBox/TooltipAccent
 @onready var tooltip_title: Label = $TooltipPanel/TooltipMargin/TooltipVBox/TooltipTitle
@@ -83,6 +84,7 @@ func _notification(what: int) -> void:
 func _bind_actions() -> void:
 	random_button.pressed.connect(_on_random_button_pressed)
 	start_button.pressed.connect(_on_start_button_pressed)
+	clear_filters_button.pressed.connect(_on_clear_filters_pressed)
 
 
 func set_draft_state(
@@ -203,6 +205,15 @@ func _refresh_hero_grid() -> void:
 
 func _on_role_filter_pressed(role: String) -> void:
 	role_filter_toggled.emit(role)
+
+
+func _on_clear_filters_pressed() -> void:
+	if active_role_filters.is_empty():
+		return
+	active_role_filters.clear()
+	_refresh_role_filter_buttons()
+	_refresh_hero_grid()
+	_refresh_hero_summary()
 
 
 func _on_random_button_pressed() -> void:

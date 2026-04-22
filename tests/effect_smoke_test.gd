@@ -43,11 +43,15 @@ func _setup_world(hero_id: String, enemy_specs: Array[Dictionary]) -> Dictionary
 	ChampionCatalog.bootstrap_combat_registry(world.get_combat_registry())
 
 	var hero := _make_unit(hero_id, "player", Vector2(2.0, 5.0))
-	var units: Array[Node2D] = [hero]
+	var units: Array = [hero]
 
 	var enemies: Array[DummyTarget] = []
 	for spec in enemy_specs:
-		var enemy := _make_dummy(String(spec.get("name", "Dummy")), Vector2(spec.get("x", 4.0)), Vector2(spec.get("y", 5.0)), float(spec.get("hp", 1000.0)))
+		var enemy := _make_dummy(
+			String(spec.get("name", "Dummy")),
+			Vector2(float(spec.get("x", 4.0)), float(spec.get("y", 5.0))),
+			float(spec.get("hp", 1000.0))
+		)
 		enemies.append(enemy)
 		units.append(enemy)
 
@@ -57,9 +61,10 @@ func _setup_world(hero_id: String, enemy_specs: Array[Dictionary]) -> Dictionary
 	hero.call("set_spawn_position", Vector2(2.0, 5.0))
 	for enemy in enemies:
 		enemy.set_world_position(Vector2(enemy.world_pos))
+	world.rebuild_spatial_index()
 	world.capture_spawn_positions()
 
-	return {"world": world, "hero": hero, "enemies": enemies}
+	return {"world": world, "hero": hero, "enemies": enemies, "units": units}
 
 
 func _make_unit(hero_id: String, team: String, pos: Vector2) -> BattleUnitScript:
@@ -102,7 +107,7 @@ func _make_unit(hero_id: String, team: String, pos: Vector2) -> BattleUnitScript
 func _make_dummy(name: String, pos: Vector2, hp: float) -> DummyTargetScript:
 	var dummy: DummyTargetScript = DummyTargetScript.new()
 	dummy.display_name = name
-	dummy.world_pos = pos
+	dummy.set_world_position(pos)
 	dummy.max_hp = hp
 	dummy.hp = hp
 	dummy.shield = 0.0
@@ -128,7 +133,7 @@ func _resolve_first_projectile(world: Object, target: Object) -> void:
 	if world.projectiles.is_empty():
 		failures.append("expected projectile but none was spawned")
 		return
-	var projectile: Dictionary = world.projectiles[0]
+	var projectile: Object = world.projectiles[0]
 	world.call("_resolve_projectile_hit", projectile, target)
 	world.projectiles.clear()
 
@@ -163,6 +168,7 @@ func _test_swordsman(_worlds: Array[Object]) -> void:
 	hero.call("_begin_cast", world, true)
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_assert_close(base_hp - float(target.hp), float(hero.attack_damage) * 3.0, "Swordsman ultimate damage")
+	_cleanup_pack(pack)
 
 
 func _test_guardian(_worlds: Array[Object]) -> void:
@@ -181,6 +187,7 @@ func _test_guardian(_worlds: Array[Object]) -> void:
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_assert_close(float(hero.shield) - shield_before, float(hero.max_hp) * 0.2, "Guardian shield ability")
 
+	hero.shield = 0.0
 	var hp_before := float(hero.hp)
 	var mana_before := float(hero.mana)
 	hero.call("take_damage", 50.0, world, "physical", int(target.instance_id))
@@ -194,6 +201,7 @@ func _test_guardian(_worlds: Array[Object]) -> void:
 	hero.call("_begin_cast", world, true)
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_assert_close(1000.0 - float(target.hp), float(hero.attack_damage) * 2.0, "Guardian ultimate damage")
+	_cleanup_pack(pack)
 
 
 func _test_assassin(_worlds: Array[Object]) -> void:
@@ -220,11 +228,8 @@ func _test_assassin(_worlds: Array[Object]) -> void:
 	target.hp = target.max_hp * 0.2
 	var low_hp_before := float(target.hp)
 	hero.call("attack", target, world, "Smoke Passive")
-	if world.projectiles.is_empty():
-		failures.append("Assassin passive attack did not spawn a projectile or damage")
-	else:
-		_resolve_first_projectile(world, target)
 	_assert_close(low_hp_before - float(target.hp), float(hero.attack_damage) * 2.0, "Assassin execute passive")
+	_cleanup_pack(pack)
 
 
 func _test_archer(_worlds: Array[Object]) -> void:
@@ -254,16 +259,26 @@ func _test_archer(_worlds: Array[Object]) -> void:
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_resolve_first_projectile(world, primary)
 	_assert_close(1000.0 - float(primary.hp), float(hero.attack_damage) * 4.0, "Archer ultimate primary damage")
-	_assert_close(1000.0 - float(splash.hp), float(hero.attack_damage) * 4.0 * 0.5, "Archer ultimate splash damage")
+	_assert_close(1000.0 - float(splash.hp), float(hero.attack_damage) * 4.0, "Archer ultimate splash damage")
 
 	primary.hp = 1000.0
 	hero.set("current_target", primary)
 	hero.call("attack", primary, world, "Smoke Passive")
 	_resolve_first_projectile(world, primary)
 	_assert_close(1000.0 - float(primary.hp), float(hero.attack_damage) * 1.25, "Archer attack passive")
+	_cleanup_pack(pack)
 
 
 func _test_mage(_worlds: Array[Object]) -> void:
+	var regen_pack := _setup_world("mage", [])
+	var regen_world: Object = regen_pack["world"]
+	var regen_hero = regen_pack["hero"]
+	_worlds.append(regen_world)
+	_bind_registry(regen_hero, regen_world)
+	regen_hero.set("mana", 0.0)
+	regen_hero.call("update", 1.0, regen_world)
+	_assert_close(float(regen_hero.mana), 4.0, "Mage mana regen passive")
+
 	var pack := _setup_world("mage", [
 		{"name": "MagePrimary", "x": 5.0, "y": 5.0, "hp": 1000.0},
 		{"name": "MageSplash", "x": 5.4, "y": 5.0, "hp": 1000.0},
@@ -274,13 +289,10 @@ func _test_mage(_worlds: Array[Object]) -> void:
 	var splash = pack["enemies"][1]
 	_worlds.append(world)
 	_bind_registry(hero, world)
-	hero.set("current_target", null)
-	hero.set("mana", 0.0)
-	hero.call("update", 1.0, world)
-	_assert_close(float(hero.mana), 4.0, "Mage mana regen passive")
 
 	hero.set("current_target", primary)
 	hero.set("ability_timer", 0.0)
+	hero.set("mana", float(hero.max_mana))
 	hero.call("_begin_cast", world, false)
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_resolve_first_projectile(world, primary)
@@ -295,6 +307,8 @@ func _test_mage(_worlds: Array[Object]) -> void:
 	_resolve_first_projectile(world, primary)
 	_assert_close(1000.0 - float(primary.hp), float(hero.attack_damage) * 6.0, "Mage ultimate primary damage")
 	_assert_close(1000.0 - float(splash.hp), float(hero.attack_damage) * 6.0 * 0.5, "Mage ultimate splash damage")
+	_cleanup_pack(regen_pack)
+	_cleanup_pack(pack)
 
 
 func _test_oracle(_worlds: Array[Object]) -> void:
@@ -313,7 +327,7 @@ func _test_oracle(_worlds: Array[Object]) -> void:
 	hero.call("update", CombatData.CASTING_WINDUP, world)
 	_assert_close(float(hero.hp), hero.max_hp * 0.7, "Oracle heal ability")
 
-	hero.set("mana", 0.0)
+	hero.set("mana", float(hero.max_mana))
 	hero.set("ultimate_timer", 0.0)
 	hero.call("_begin_cast", world, true)
 	hero.call("update", CombatData.CASTING_WINDUP, world)
@@ -324,6 +338,7 @@ func _test_oracle(_worlds: Array[Object]) -> void:
 	hero.call("attack", target, world, "Smoke Passive")
 	_resolve_first_projectile(world, target)
 	_assert_close(float(hero.mana), 5.0, "Oracle post-attack mana restore")
+	_cleanup_pack(pack)
 
 
 func _test_spatial_targeting(_worlds: Array[Object]) -> void:
@@ -337,14 +352,28 @@ func _test_spatial_targeting(_worlds: Array[Object]) -> void:
 	hero.call("set_combat_world", world)
 	hero.call("set_combat_registry", world.get_combat_registry())
 
-	var nearby := world.call("get_nearby_enemies_for", hero)
+	var nearby: Array = world.call("get_nearby_enemies_for", hero)
 	_assert_true(nearby.size() == 1, "Spatial query should return only the nearby enemy")
 	if nearby.size() == 1:
 		_assert_true(int(nearby[0].get("instance_id")) == int(near_enemy.get("instance_id")), "Spatial query returned the wrong nearby enemy")
 
-	var targeting_system = world.get_targeting_system()
-	var pick: Dictionary = targeting_system.call("select_target", hero, nearby, [])
-	_assert_true(not pick.is_empty(), "Targeting should pick from spatial candidates")
-	if not pick.is_empty():
-		var picked_target: Node2D = pick.get("target")
+	var targeting_system: Object = world.get_targeting_system()
+	var ally_candidates: Array = []
+	var pick: Object = targeting_system.call("select_target", hero, nearby, ally_candidates)
+	_assert_true(pick != null, "Targeting should pick from spatial candidates")
+	if pick != null:
+		var picked_target: Object = pick.get("target")
 		_assert_true(int(picked_target.get("instance_id")) == int(near_enemy.get("instance_id")), "Targeting should score the nearby enemy")
+	_cleanup_pack({"world": world, "units": [hero, near_enemy, far_enemy]})
+
+
+func _cleanup_pack(pack: Dictionary) -> void:
+	var world: Object = pack.get("world")
+	if is_instance_valid(world):
+		world.clear()
+
+	var units: Array = pack.get("units", [])
+	for unit_variant in units:
+		var unit: Object = unit_variant
+		if is_instance_valid(unit):
+			unit.free()

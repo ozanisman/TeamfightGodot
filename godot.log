@@ -2,3 +2,16 @@ Godot Engine v4.6.2.stable.official.71f334935 - https://godotengine.org
 
 ERROR: Failed to read the root certificate store.
    at: get_system_ca_certificates (platform/windows/os_windows.cpp:2570)
+ERROR: Snapshot 0 diverged: native={"abilities_used":1,"alive":true,"assists":0,"auto_attacks_done":3,"damage_dealt":52.473751,"damage_dealt_ability":10.49475,"damage_dealt_auto":41.979,"damage_dealt_ultimate":0.0,"damage_mitigated":0.125,"damage_received":49.875,"deaths":0,"display_name":"Swordsman","healing_done":0.0,"hero_id":"swordsman","hp":70.125,"in_range":true,"instance_id":1,"kills":0,"passive_id":"duelist","position":"(4.995862, 2.138719)","role":"fighter","shield":0.0,"shielding_done":0.0,"stuns_dealt":0,"target_id":4,"team":"player","ultimates_used":0} fallback={"abilities_used":0,"alive":true,"assists":0,"auto_attacks_done":0,"damage_dealt":0.0,"damage_dealt_ability":0.0,"damage_dealt_auto":0.0,"damage_dealt_ultimate":0.0,"damage_mitigated":0.0,"damage_received":0.0,"deaths":0,"display_name":"Swordsman","healing_done":0.0,"hero_id":"swordsman","hp":120.0,"in_range":false,"instance_id":1,"kills":0,"passive_id":"duelist","position":"(1.0, 2.0)","role":"fighter","shield":0.0,"shielding_done":0.0,"stuns_dealt":0,"target_id":5,"team":"player","ultimates_used":0}
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/batch_native_parity_test.gd:20)
+ERROR: run_match summary diverged: native={"duration_seconds":6.4,"enemy_kills":2,"kind":"match_summary","player_kills":1,"schema_version":1,"termination":"timeout","ticks":32,"time":6.4,"winner":"timeout"} fallback={"duration_seconds":6.4,"enemy_kills":1,"kind":"match_summary","player_kills":0,"schema_version":1,"termination":"timeout","ticks":32,"time":6.4,"winner":"timeout"}
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/batch_native_parity_test.gd:20)
+ERROR: Snapshot 0 diverged: native={"abilities_used":1,"alive":true,"assists":0,"auto_attacks_done":3,"damage_dealt":52.473751,"damage_dealt_ability":10.49475,"damage_dealt_auto":41.979,"damage_dealt_ultimate":0.0,"damage_mitigated":0.125,"damage_received":49.875,"deaths":0,"display_name":"Swordsman","healing_done":0.0,"hero_id":"swordsman","hp":70.125,"in_range":true,"instance_id":1,"kills":0,"passive_id":"duelist","position":"(4.995862, 2.138719)","role":"fighter","shield":0.0,"shielding_done":0.0,"stuns_dealt":0,"target_id":4,"team":"player","ultimates_used":0} fallback={"abilities_used":1,"alive":true,"assists":0,"auto_attacks_done":3,"damage_dealt":67.83,"damage_dealt_ability":0.0,"damage_dealt_auto":0.0,"damage_dealt_ultimate":0.0,"damage_mitigated":23.3125,"damage_received":69.9375,"deaths":0,"display_name":"Swordsman","healing_done":4.788,"hero_id":"swordsman","hp":54.8505,"in_range":true,"instance_id":1,"kills":0,"passive_id":"duelist","position":"(4.765445, 2.481563)","role":"fighter","shield":0.0,"shielding_done":0.0,"stuns_dealt":1,"target_id":4,"team":"player","ultimates_used":0}
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/batch_native_parity_test.gd:20)
+NATIVE PARITY FAIL: 3 issue(s)

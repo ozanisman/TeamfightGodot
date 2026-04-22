@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ozani\Desktop\TeamfightGodot\native\batch_core\build\CMakeFiles\136ed189fea59411aae1a9f39266b073\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{FE82DA16-4556-371D-A376-ABB3178D3BA5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

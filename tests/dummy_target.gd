@@ -13,6 +13,9 @@ var alive: bool = true
 var instance_id: int = 0
 var current_target = null
 var current_ally_target = null
+var spawn_pos: Vector2 = Vector2.ZERO
+var incoming_target_count: int = 0
+var perceived_threat: float = 0.0
 
 
 func is_alive() -> bool:
@@ -24,7 +27,12 @@ func update(_dt: float, _world: Object) -> void:
 
 
 func set_world_position(pos: Vector2) -> void:
+	global_position = pos
 	world_pos = pos
+
+
+func set_spawn_position(pos: Vector2) -> void:
+	spawn_pos = pos
 
 
 func take_damage(amount: float, _world: Object, _damage_type: String = "true", _source_id: int = -1) -> Dictionary:

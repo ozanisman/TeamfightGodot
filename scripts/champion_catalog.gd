@@ -28,6 +28,117 @@ const HEROES: Array[Dictionary] = [
 
 const ROLE_ORDER: Array[String] = ["tank", "fighter", "assassin", "marksman", "mage", "support"]
 
+const HERO_DETAILS := {
+	"swordsman": {
+		"description": "A balanced frontline duelist who excels at locking down single targets with concussive strikes.",
+		"ability_desc": "Deals 150% damage and stuns the target for 1.0s.",
+		"ultimate_desc": "Strikes for 300% damage and applies a 2.0s stun.",
+		"passive_desc": "Increases attack damage by 20%.",
+	},
+	"archer": {
+		"description": "A classic long-range scout that provides consistent physical DPS from the backline.",
+		"ability_desc": "Fires a focused shot dealing 150% damage.",
+		"ultimate_desc": "Rains down arrows for 400% massive physical damage and deals splash damage on impact.",
+		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
+	},
+	"guardian": {
+		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
+		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
+		"ultimate_desc": "Slams the ground for 200% damage and a 3.0s stun.",
+		"passive_desc": "Reduces incoming damage by 10%.",
+	},
+	"assassin": {
+		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
+		"ability_desc": "Quick dash for 120% damage and a short 0.5s stun.",
+		"ultimate_desc": "Executes a target with 500% physical damage.",
+		"passive_desc": "Deals double damage to targets below 30% HP.",
+	},
+	"mage": {
+		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
+		"ability_desc": "Fires a magical projectile dealing 200% magic damage.",
+		"ultimate_desc": "Calls down a meteor for 600% magic damage and deals splash damage on impact.",
+		"passive_desc": "Restores 3 mana every second. Meteor impact deals 50% splash damage in a 2.5 unit radius.",
+	},
+	"sniper": {
+		"description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
+		"ability_desc": "High-precision strike for 180% damage.",
+		"ultimate_desc": "Lethal long-range shot for 350% damage.",
+		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
+	},
+	"berserker": {
+		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
+		"ability_desc": "Damages self for 10% max HP and gains 150% of the value as a shield.",
+		"ultimate_desc": "Unleashes a devastating strike for 300% true damage.",
+		"passive_desc": "Heals for 15% of all damage dealt by auto-attacks.",
+	},
+	"paladin": {
+		"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
+		"ability_desc": "Heals self for 15% max HP.",
+		"ultimate_desc": "Heals self for 30% max HP and deals 200% damage.",
+		"passive_desc": "Regenerates 5 HP every second.",
+	},
+	"rogue": {
+		"description": "An evasive melee fighter who relies on high dodge chance and speed to survive encounters.",
+		"ability_desc": "Deals 80% magic damage and stuns for 2.0s.",
+		"ultimate_desc": "Lethal execution dealing 350% physical damage.",
+		"passive_desc": "Grants a 25% chance to dodge incoming damage.",
+	},
+	"oracle": {
+		"description": "A mystical seer who converts mana into healing, sustaining allies through long-range purification.",
+		"ability_desc": "Heals an ally or self for 20% max HP.",
+		"ultimate_desc": "Shields an ally or self for 40% max HP.",
+		"passive_desc": "Restores 5 mana after each auto-attack.",
+	},
+	"colossus": {
+		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
+		"ability_desc": "Deals 100% damage and taunts all targets in a 1 unit radius for 2.0s.",
+		"ultimate_desc": "Colossal impact for 250% damage and a 3.5s stun.",
+		"passive_desc": "Reduces all incoming damage by 10%.",
+	},
+	"wraith": {
+		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
+		"ability_desc": "Magic strike for 120% damage and 0.8s stun.",
+		"ultimate_desc": "Teleports for 250% magic damage and 1.5s stun.",
+		"passive_desc": "Increases attack damage by 15%.",
+	},
+	"warlock": {
+		"description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
+		"ability_desc": "Deals 150% magic damage and heals self for 20% of it.",
+		"ultimate_desc": "Rifts the ground for 400% magic damage and 1.0s stun.",
+		"passive_desc": "Heals for 3 HP after each auto-attack.",
+	},
+	"monk": {
+		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
+		"ability_desc": "Precise strike for 120% damage and 0.8s stun.",
+		"ultimate_desc": "Rapid flurry for 250% damage and 1.5s stun.",
+		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
+	},
+	"artillery": {
+		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
+		"ability_desc": "Explosive shell dealing 120% damage and 0.8s stun.",
+		"ultimate_desc": "Fires a massive artillery shell for 500% damage.",
+		"passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
+	},
+	"cleric": {
+		"description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
+		"ability_desc": "Heals an ally or self for 30% max HP.",
+		"ultimate_desc": "Heals for 55% max HP and stuns target for 1.5s.",
+		"passive_desc": "Regenerates 2% of max HP every second.",
+	},
+	"siren": {
+		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
+		"ability_desc": "Binds target stunning for 0.5s stun.",
+		"ultimate_desc": "Shrieks for 300% magic damage and stunning for 1.0s.",
+		"passive_desc": "Drains 5 mana from the target on each auto-attack.",
+	},
+	"valkyrie": {
+		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
+		"ability_desc": "Bashes target for 150% damage and 0.5s stun.",
+		"ultimate_desc": "War cry dealing 300% damage and 1.5s stun.",
+		"passive_desc": "Deals 20% bonus damage while above 80% HP.",
+	},
+}
+
 
 static func get_all() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -106,7 +217,8 @@ static func bootstrap_combat_registry(registry: Object) -> void:
 	if registry == null:
 		return
 	registry.call("reset")
-	_register_role_effects(registry)
+	_register_systemic_role_effects(registry)
+	_register_champion_effects(registry)
 
 
 static func _augment_hero(hero: Dictionary) -> Dictionary:
@@ -114,6 +226,8 @@ static func _augment_hero(hero: Dictionary) -> Dictionary:
 	var role := String(result.get("role", ""))
 	var hero_id := String(result.get("id", ""))
 	result.merge(_defaults_for(role, hero_id), true)
+	if HERO_DETAILS.has(hero_id):
+		result.merge(HERO_DETAILS[hero_id], true)
 	return result
 
 
@@ -201,43 +315,140 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 			}
 
 
-static func _register_role_effects(registry: Object) -> void:
-	registry.call("register_ability", "tank", _effect_shield(0.0, 0.2, "Guardian Shield"))
-	registry.call("register_ultimate", "tank", _effect_multi([
+static func _register_systemic_role_effects(registry: Object) -> void:
+	for hero in HEROES:
+		var hero_id := String(hero.get("id", ""))
+		var role := String(hero.get("role", ""))
+		if role == "tank":
+			registry.call("register_passive", "post_take_damage", hero_id, _effect_post_damage_mana_gain(0.10))
+		elif role == "mage":
+			registry.call("register_passive", "on_tick", hero_id, _effect_mana_regen(1.0))
+
+
+static func _register_champion_effects(registry: Object) -> void:
+	registry.call("register_ability", "swordsman", _effect_multi([
+		_effect_damage(1.5, "physical", "Concussive Blow"),
+		_effect_stun(1.0, "Concussive Blow"),
+	], "Concussive Blow"))
+	registry.call("register_ultimate", "swordsman", _effect_multi([
+		_effect_damage(3.0, "physical", "Blade Dance"),
+		_effect_stun(2.0, "Blade Dance"),
+	], "Blade Dance"))
+	registry.call("register_passive", "on_attack", "duelist", _effect_constant_multiplier(1.2))
+
+	registry.call("register_ability", "archer", _effect_projectile(1.5, "physical", "Volley", 8.0, 0.03))
+	registry.call("register_ultimate", "archer", _effect_projectile(4.0, "physical", "Rain of Arrows", 10.0, 0.06, 0.0, 2.0, 0.5))
+	registry.call("register_passive", "on_attack", "eagle_eye", _effect_constant_multiplier(1.25))
+	registry.call("register_passive", "post_attack", "eagle_eye", _effect_post_attack_splash(2.0, 0.5, "physical", "Rain of Arrows", 3.0))
+
+	registry.call("register_ability", "guardian", _effect_shield(0.0, 0.2, "Guardian Shield"))
+	registry.call("register_ultimate", "guardian", _effect_multi([
 		_effect_damage(2.0, "physical", "Aegis Crash"),
 		_effect_stun(3.0, "Aegis Crash"),
 	], "Aegis Crash"))
-	registry.call("register_passive", "on_defense", "tank", _effect_constant_multiplier(0.9))
-	registry.call("register_passive", "post_take_damage", "tank", _effect_post_damage_mana_gain(0.10))
-
-	registry.call("register_ability", "fighter", _effect_multi([
-		_effect_damage(1.2, "physical", "Precision Strike"),
-		_effect_stun(0.5, "Precision Strike"),
-	], "Precision Strike"))
-	registry.call("register_ultimate", "fighter", _effect_multi([
-		_effect_damage(2.5, "physical", "Fury Burst"),
-		_effect_stun(1.5, "Fury Burst"),
-	], "Fury Burst"))
-	registry.call("register_passive", "on_attack", "fighter", _effect_constant_multiplier(1.15))
+	registry.call("register_passive", "on_defense", "bastion", _effect_constant_multiplier(0.9))
 
 	registry.call("register_ability", "assassin", _effect_multi([
-		_effect_damage(1.2, "physical", "Shadow Strike"),
-		_effect_stun(0.5, "Shadow Strike"),
-	], "Shadow Strike"))
-	registry.call("register_ultimate", "assassin", _effect_damage(3.5, "physical", "Execution"))
-	registry.call("register_passive", "on_attack", "assassin", _effect_target_hp_threshold_multiplier(0.30, 2.0))
-
-	registry.call("register_ability", "marksman", _effect_projectile(1.5, "physical", "Focused Shot", 8.0, 0.03))
-	registry.call("register_ultimate", "marksman", _effect_projectile(4.0, "physical", "Rain of Arrows", 10.0, 0.05))
-	registry.call("register_passive", "on_attack", "marksman", _effect_distance_threshold_multiplier(3.0, 1.25))
+		_effect_damage(1.2, "physical", "Shadow Dash"),
+		_effect_stun(0.5, "Shadow Dash"),
+	], "Shadow Dash"))
+	registry.call("register_ultimate", "assassin", _effect_damage(3.5, "physical", "Assassinate"))
+	registry.call("register_passive", "on_attack", "executioner", _effect_target_hp_threshold_multiplier(0.30, 2.0))
 
 	registry.call("register_ability", "mage", _effect_projectile(2.0, "magic", "Arcane Bolt", 7.0, 0.03))
 	registry.call("register_ultimate", "mage", _effect_projectile(6.0, "magic", "Meteor Bombardment", 4.0, 0.07, 0.0, 2.5, 0.5))
-	registry.call("register_passive", "on_tick", "mage", _effect_mana_regen(3.0))
+	registry.call("register_passive", "on_tick", "mana_font", _effect_mana_regen(3.0))
 
-	registry.call("register_ability", "support", _effect_heal(0.0, 0.2, "Purify"))
-	registry.call("register_ultimate", "support", _effect_shield(0.0, 0.4, "Divine Shield"))
-	registry.call("register_passive", "post_attack", "support", _effect_mana_restore_on_hit(5.0))
+	registry.call("register_ability", "sniper", _effect_projectile(1.8, "physical", "Headshot", 12.0, CombatData.DEFAULT_PROJECTILE_RADIUS))
+	registry.call("register_ultimate", "sniper", _effect_projectile(3.5, "physical", "ULTIMATE", 15.0, CombatData.DEFAULT_PROJECTILE_RADIUS))
+	registry.call("register_passive", "on_attack", "marksman", _effect_distance_threshold_multiplier(3.0, 1.25))
+
+	registry.call("register_ability", "berserker", _effect_multi([
+		_effect_self_damage(0.10, "Blood Price"),
+		_effect_self_shield(0.15, "Blood Price"),
+	], "Blood Price"))
+	registry.call("register_ultimate", "berserker", _effect_damage(3.0, "true", "Berserker Rage"))
+	registry.call("register_passive", "post_attack", "bloodlust", _effect_damage_based_heal(0.15))
+
+	registry.call("register_ability", "paladin", _effect_heal(0.0, 0.15, "Lay on Hands"))
+	registry.call("register_ultimate", "paladin", _effect_multi([
+		_effect_heal(0.0, 0.30, "Divine Judgment"),
+		_effect_damage(2.0, "physical", "Divine Judgment"),
+	], "Divine Judgment"))
+	registry.call("register_passive", "on_tick", "rejuvenation", _effect_heal(5.0, 0.0, "Rejuvenation"))
+
+	registry.call("register_ability", "rogue", _effect_multi([
+		_effect_damage(0.8, "magic", "Poison Vial"),
+		_effect_stun(2.0, "Poison Vial"),
+	], "Poison Vial"))
+	registry.call("register_ultimate", "rogue", _effect_damage(3.5, "physical", "Eviscerate"))
+	registry.call("register_passive", "on_defense", "agility", _effect_dodge(0.25, 0.0, 1.0))
+
+	registry.call("register_ability", "oracle", _effect_heal(0.0, 0.2, "Purify"))
+	registry.call("register_ultimate", "oracle", _effect_shield(0.0, 0.4, "Divine Shield"))
+	registry.call("register_passive", "post_attack", "enlightenment", _effect_mana_restore_on_hit(5.0))
+
+	registry.call("register_ability", "colossus", _effect_multi([
+		_effect_self_aoe_taunt(1.0, 2.0, "Seismic Slam"),
+		_effect_self_aoe_damage(1.0, 1.0, "physical", "Seismic Slam"),
+	], "Seismic Slam"))
+	registry.call("register_ultimate", "colossus", _effect_multi([
+		_effect_damage(2.5, "physical", "Earthshaker"),
+		_effect_stun(3.5, "Earthshaker"),
+	], "Earthshaker"))
+	registry.call("register_passive", "on_defense", "tenacity", _effect_constant_multiplier(0.9))
+
+	registry.call("register_ability", "wraith", _effect_multi([
+		_effect_damage(1.2, "magic", "Spectral Touch"),
+		_effect_stun(0.8, "Spectral Touch"),
+	], "Spectral Touch"))
+	registry.call("register_ultimate", "wraith", _effect_multi([
+		_effect_damage(2.5, "magic", "Phantom Strike"),
+		_effect_stun(1.5, "Phantom Strike"),
+	], "Phantom Strike"))
+	registry.call("register_passive", "on_attack", "swiftness", _effect_constant_multiplier(1.15))
+
+	registry.call("register_ability", "warlock", _effect_projectile(1.5, "magic", "Soul Siphon", 5.0, CombatData.DEFAULT_PROJECTILE_RADIUS))
+	registry.call("register_ultimate", "warlock", _effect_projectile(4.0, "magic", "Chaos Rift", 5.0, CombatData.DEFAULT_PROJECTILE_RADIUS, 1.0))
+	registry.call("register_passive", "post_attack", "vampirism", _effect_heal(3.0, 0.0, "Vampirism"))
+
+	registry.call("register_ability", "monk", _effect_multi([
+		_effect_damage(1.2, "physical", "Pressure Point"),
+		_effect_stun(0.8, "Pressure Point"),
+	], "Pressure Point"))
+	registry.call("register_ultimate", "monk", _effect_multi([
+		_effect_damage(2.5, "physical", "Hundred-Hand Slap"),
+		_effect_stun(1.5, "Hundred-Hand Slap"),
+	], "Hundred-Hand Slap"))
+	registry.call("register_passive", "post_attack", "technique", _effect_every_n_attacks_stun(3, 0.5, "Pressure Point"))
+
+	registry.call("register_ability", "artillery", _effect_projectile(1.2, "physical", "Shell Shock", 3.0, 0.05, 0.8))
+	registry.call("register_ultimate", "artillery", _effect_projectile(5.0, "physical", "Big Bertha", 3.0, 0.08))
+	registry.call("register_passive", "post_attack", "demolition", _effect_post_attack_splash(0.5, 0.5, "physical", "Explosion"))
+
+	registry.call("register_ability", "cleric", _effect_heal(0.0, 0.3, "Holy Mending"))
+	registry.call("register_ultimate", "cleric", _effect_multi([
+		_effect_heal(0.0, 0.55, "Divine Aura"),
+		_effect_stun(1.5, "Divine Aura"),
+	], "Divine Aura"))
+	registry.call("register_passive", "on_tick", "devotion", _effect_heal(0.0, 0.02, "Devotion"))
+
+	registry.call("register_ability", "siren", _effect_stun(0.5, "Enthralling Song"))
+	registry.call("register_ultimate", "siren", _effect_multi([
+		_effect_damage(3.0, "magic", "Banshee Wail"),
+		_effect_stun(1.0, "Banshee Wail"),
+	], "Banshee Wail"))
+	registry.call("register_passive", "post_attack", "siphon", _effect_drain_target_mana_on_hit(5.0))
+
+	registry.call("register_ability", "valkyrie", _effect_multi([
+		_effect_damage(1.5, "physical", "Shield Slam"),
+		_effect_stun(0.5, "Shield Slam"),
+	], "Shield Slam"))
+	registry.call("register_ultimate", "valkyrie", _effect_multi([
+		_effect_damage(3.0, "physical", "Valhalla Call"),
+		_effect_stun(1.5, "Valhalla Call"),
+	], "Valhalla Call"))
+	registry.call("register_passive", "on_attack", "bravery", _effect_self_hp_threshold_multiplier(0.8, 1.2))
 
 
 static func _effect_multi(effects: Array, effect_reason: String = "") -> Object:
@@ -286,6 +497,46 @@ static func _effect_mana_restore_on_hit(flat_amount: float) -> Object:
 
 static func _effect_post_damage_mana_gain(damage_ratio: float) -> Object:
 	return CombatEffectScript.new().setup_post_damage_mana_gain(damage_ratio)
+
+
+static func _effect_damage_based_heal(damage_ratio: float) -> Object:
+	return CombatEffectScript.new().setup_damage_based_heal(damage_ratio)
+
+
+static func _effect_drain_target_mana_on_hit(flat_amount: float) -> Object:
+	return CombatEffectScript.new().setup_drain_target_mana_on_hit(flat_amount)
+
+
+static func _effect_self_hp_threshold_multiplier(threshold: float, multiplier: float) -> Object:
+	return CombatEffectScript.new().setup_self_hp_threshold_multiplier(threshold, multiplier)
+
+
+static func _effect_self_damage(damage_ratio: float, effect_reason: String = "") -> Object:
+	return CombatEffectScript.new().setup_self_damage(damage_ratio, effect_reason)
+
+
+static func _effect_self_shield(shield_ratio: float, effect_reason: String = "") -> Object:
+	return CombatEffectScript.new().setup_self_shield(shield_ratio, effect_reason)
+
+
+static func _effect_self_aoe_damage(radius: float, multiplier: float = 1.0, damage_type: String = "physical", effect_reason: String = "") -> Object:
+	return CombatEffectScript.new().setup_self_aoe_damage(radius, multiplier, damage_type, effect_reason)
+
+
+static func _effect_self_aoe_taunt(radius: float, duration: float, effect_reason: String = "") -> Object:
+	return CombatEffectScript.new().setup_self_aoe_taunt(radius, duration, effect_reason)
+
+
+static func _effect_post_attack_splash(radius: float, ratio: float, damage_type: String = "physical", effect_reason: String = "", threshold_multiplier: float = 0.0) -> Object:
+	return CombatEffectScript.new().setup_post_attack_splash(radius, ratio, damage_type, effect_reason, threshold_multiplier)
+
+
+static func _effect_every_n_attacks_stun(every_n: int, duration: float, effect_reason: String = "") -> Object:
+	return CombatEffectScript.new().setup_every_n_attacks_stun(every_n, duration, effect_reason)
+
+
+static func _effect_dodge(chance: float, on_dodge_multiplier: float = 0.0, on_hit_multiplier: float = 1.0) -> Object:
+	return CombatEffectScript.new().setup_dodge(chance, on_dodge_multiplier, on_hit_multiplier)
 
 
 static func _best_by_power(heroes: Array[Dictionary]) -> Dictionary:

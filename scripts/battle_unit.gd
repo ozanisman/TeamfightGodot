@@ -92,6 +92,7 @@ var deaths: int = 0
 var assists: int = 0
 
 var mana: float = 0.0
+var attack_count: int = 0
 var recent_damage_sources: Dictionary = {}
 var recent_benefactors: Dictionary = {}
 var _regen_accumulator: float = 0.0
@@ -158,6 +159,7 @@ func set_combat_stats(
 	ultimate_cd = new_ultimate_cd
 	projectile_radius = new_projectile_radius
 	mana = 0.0
+	attack_count = 0
 	alive = true
 	current_state = UnitState.WAITING
 	attack_cooldown_remaining = 0.0
@@ -193,7 +195,7 @@ func _refresh_effect_cache() -> void:
 		_cached_post_take_damage = []
 		return
 
-	var keys: Array[String] = [role, hero_id, passive_id]
+	var keys: Array[String] = [hero_id, passive_id, role]
 	_ability_effect = _combat_registry.call("get_ability", keys)
 	_ultimate_effect = _combat_registry.call("get_ultimate", keys)
 	_cached_on_attack = _combat_registry.call("get_passives", "on_attack", keys)
@@ -324,7 +326,7 @@ func take_damage(amount: float, world: Object, damage_type: String = "true", sou
 		final_damage -= absorbed
 	damage_received += final_damage
 	hp = maxf(0.0, hp - final_damage)
-	defense_context.damage = final_damage
+	defense_context.damage = absorbed + final_damage
 	for effect in _cached_post_take_damage:
 		effect.apply_post_take_damage(defense_context)
 	if hp <= 0.0:
@@ -393,6 +395,20 @@ func update(dt: float, world: Object) -> void:
 	recent_damage_sources = _prune_recent(recent_damage_sources, cutoff)
 	recent_benefactors = _prune_recent(recent_benefactors, cutoff)
 
+	if stun_timer <= 0.0:
+		_apply_separation(world, dt)
+
+	var targeting_system = world.call("get_targeting_system")
+	var strategy: Dictionary = targeting_system.call("get_strategy_for", self)
+	perceived_threat = maxf(0.0, perceived_threat - float(strategy.get("threat_decay_rate", CombatData.THREAT_DECAY_DEFAULT)) * dt)
+
+	_regen_accumulator += dt
+	if _regen_accumulator >= CombatData.REGEN_TICK_INTERVAL:
+		_regen_accumulator -= CombatData.REGEN_TICK_INTERVAL
+		var tick_context := CombatEffectContextScript.new(self, world, current_target, current_ally_target)
+		for effect in _cached_on_tick:
+			effect.apply_on_tick(tick_context)
+
 	if stun_timer > 0.0:
 		current_state = UnitState.STUNNED
 		return
@@ -409,18 +425,6 @@ func update(dt: float, world: Object) -> void:
 					ability_timer = 0.0
 		current_state = UnitState.CASTING
 		return
-
-	var targeting_system = world.call("get_targeting_system")
-	var strategy: Dictionary = targeting_system.call("get_strategy_for", self)
-	perceived_threat = maxf(0.0, perceived_threat - float(strategy.get("threat_decay_rate", CombatData.THREAT_DECAY_DEFAULT)) * dt)
-	_apply_separation(world, dt)
-
-	_regen_accumulator += dt
-	if _regen_accumulator >= CombatData.REGEN_TICK_INTERVAL:
-		_regen_accumulator -= CombatData.REGEN_TICK_INTERVAL
-		var tick_context := CombatEffectContextScript.new(self, world, current_target, current_ally_target)
-		for effect in _cached_on_tick:
-			effect.apply_on_tick(tick_context)
 
 	var allies: Array[Node2D] = world.call("get_allies_for", self)
 	var enemies: Array[Node2D] = world.call("get_enemies_for", self)
@@ -595,8 +599,34 @@ func _execute_ability(world: Object) -> bool:
 			float(result.get("splash_ratio", 0.0))
 		)
 		return true
-	world.call("record_event", result)
-	return true
+	var target: Node2D = current_target
+	if float(result.get("healing", 0.0)) > 0.0 or float(result.get("shield_added", 0.0)) > 0.0:
+		target = current_ally_target if current_ally_target != null else self
+	if target != null:
+		var active_damage := float(result.get("damage", 0.0))
+		if active_damage > 0.0:
+			damage_dealt += active_damage
+			if _is_casting_ult:
+				damage_dealt_ultimate += active_damage
+			else:
+				damage_dealt_ability += active_damage
+		world.call("record_event", {
+			"timestamp": float(world.get("time")),
+			"attacker_id": int(get("instance_id")),
+			"attacker_name": display_name,
+			"target_id": int(target.get("instance_id")),
+			"target_name": String(target.get("display_name")),
+			"damage": float(result.get("damage", 0.0)),
+			"healing": float(result.get("healing", 0.0)),
+			"shield_absorbed": float(result.get("shield_absorbed", 0.0)),
+			"shield_added": float(result.get("shield_added", 0.0)),
+			"distance": Vector2(world_pos).distance_to(Vector2(target.get("world_pos"))),
+			"target_hp_after": float(target.get("hp")),
+			"target_shield_after": float(target.get("shield")),
+			"target_selection_reason": String(result.get("reason", "Ability")),
+		})
+		return true
+	return false
 
 
 func _execute_ultimate(world: Object) -> bool:
@@ -626,8 +656,34 @@ func _execute_ultimate(world: Object) -> bool:
 			float(result.get("splash_ratio", 0.0))
 		)
 		return true
-	world.call("record_event", result)
-	return true
+	var target: Node2D = current_target
+	if float(result.get("healing", 0.0)) > 0.0 or float(result.get("shield_added", 0.0)) > 0.0:
+		target = current_ally_target if current_ally_target != null else self
+	if target != null:
+		var active_damage := float(result.get("damage", 0.0))
+		if active_damage > 0.0:
+			damage_dealt += active_damage
+			if _is_casting_ult:
+				damage_dealt_ultimate += active_damage
+			else:
+				damage_dealt_ability += active_damage
+		world.call("record_event", {
+			"timestamp": float(world.get("time")),
+			"attacker_id": int(get("instance_id")),
+			"attacker_name": display_name,
+			"target_id": int(target.get("instance_id")),
+			"target_name": String(target.get("display_name")),
+			"damage": float(result.get("damage", 0.0)),
+			"healing": float(result.get("healing", 0.0)),
+			"shield_absorbed": float(result.get("shield_absorbed", 0.0)),
+			"shield_added": float(result.get("shield_added", 0.0)),
+			"distance": Vector2(world_pos).distance_to(Vector2(target.get("world_pos"))),
+			"target_hp_after": float(target.get("hp")),
+			"target_shield_after": float(target.get("shield")),
+			"target_selection_reason": String(result.get("reason", "Ultimate")),
+		})
+		return true
+	return false
 
 
 func attack(target: Node2D, world: Object, reason: String) -> Dictionary:
@@ -680,6 +736,7 @@ func respawn(world: Object = null) -> void:
 	hp = max_hp
 	shield = 0.0
 	mana = 0.0
+	attack_count = 0
 	perceived_threat = 0.0
 	current_state = UnitState.WAITING
 	alive = true
@@ -707,11 +764,12 @@ func respawn(world: Object = null) -> void:
 	regen_reset()
 	recent_damage_sources.clear()
 	recent_benefactors.clear()
+	attack_count = 0
 	var respawn_x := spawn_pos.x
 	if team == "player":
 		respawn_x = 0.9
 	elif team == "enemy":
-		respawn_x = CombatData.WORLD_SIZE.x - 0.9
+		respawn_x = CombatData.WORLD_SIZE_VECTOR.x - 0.9
 	set_world_position(Vector2(respawn_x, spawn_pos.y))
 	queue_redraw()
 

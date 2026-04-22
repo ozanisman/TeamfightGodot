@@ -19,7 +19,7 @@ const TEAM_COLOR_ENEMY := Color(0.92, 0.35, 0.35)
 
 signal focus_changed(text: String)
 
-var world_size: Vector2 = CombatData.WORLD_SIZE
+var world_size: Vector2 = CombatData.WORLD_SIZE_VECTOR
 var current_phase: int = 0
 var _player_heroes: Array[String] = []
 var _enemy_heroes: Array[String] = []

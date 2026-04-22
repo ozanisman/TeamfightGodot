@@ -26,13 +26,13 @@ const DRAFT_SEQUENCE: Array[String] = [
 
 @onready var draft_screen := $DraftScreen
 @onready var battlefield := $Battlefield
-@onready var phase_label: Label = $HUD/PhaseLabel
-@onready var tick_label: Label = $HUD/TickLabel
-@onready var selection_label: Label = $HUD/SelectionLabel
-@onready var help_label: Label = $HUD/HelpLabel
-@onready var commence_button: Button = $HUD/CommenceButton
-@onready var restart_button: Button = $HUD/RestartButton
-@onready var result_label: Label = $HUD/ResultLabel
+@onready var phase_label: Label = $HUD/HUDRoot/HeaderPanel/HeaderMargin/HeaderVBox/StatusRow/StatusStack/PhaseLabel
+@onready var tick_label: Label = $HUD/HUDRoot/HeaderPanel/HeaderMargin/HeaderVBox/StatusRow/StatusStack/TickLabel
+@onready var selection_label: Label = $HUD/HUDRoot/SelectionPanel/SelectionMargin/SelectionVBox/SelectionLabel
+@onready var help_label: Label = $HUD/HUDRoot/HeaderPanel/HeaderMargin/HeaderVBox/HelpLabel
+@onready var commence_button: Button = $HUD/HUDRoot/HeaderPanel/HeaderMargin/HeaderVBox/StatusRow/ActionRow/CommenceButton
+@onready var restart_button: Button = $HUD/HUDRoot/HeaderPanel/HeaderMargin/HeaderVBox/StatusRow/ActionRow/RestartButton
+@onready var result_label: Label = $HUD/HUDRoot/SelectionPanel/SelectionMargin/SelectionVBox/ResultLabel
 
 var world_state
 var _tick_accumulator: float = 0.0
@@ -42,6 +42,7 @@ var _match_result: Dictionary = {}
 var player_picks: Array[String] = []
 var enemy_picks: Array[String] = []
 var banned_heroes: Array[String] = []
+var active_role_filters: Array[String] = []
 var draft_step_index: int = 0
 
 
@@ -57,6 +58,7 @@ func _ready() -> void:
 	draft_screen.hero_selected.connect(_on_draft_hero_selected)
 	draft_screen.random_draft_requested.connect(_on_random_draft_requested)
 	draft_screen.start_match_requested.connect(_on_start_match_requested)
+	draft_screen.role_filter_toggled.connect(_on_role_filter_toggled)
 	battlefield.focus_changed.connect(_on_battlefield_focus_changed)
 	commence_button.pressed.connect(_on_commence_requested)
 	restart_button.pressed.connect(_on_restart_requested)
@@ -189,7 +191,7 @@ func _refresh_draft_screen() -> void:
 		enemy_picks,
 		banned_heroes,
 		draft_step_index,
-		draft_screen.get_active_role_filters()
+		active_role_filters
 	)
 
 
@@ -256,6 +258,7 @@ func _reset_to_draft() -> void:
 	player_picks.clear()
 	enemy_picks.clear()
 	banned_heroes.clear()
+	active_role_filters.clear()
 	draft_step_index = 0
 	world_state.tick = 0
 	world_state.time = 0.0
@@ -264,3 +267,11 @@ func _reset_to_draft() -> void:
 	_refresh_draft_screen()
 	_sync_visibility()
 	_refresh_ui()
+
+
+func _on_role_filter_toggled(role: String) -> void:
+	if active_role_filters.has(role):
+		active_role_filters.erase(role)
+	else:
+		active_role_filters.append(role)
+	_refresh_draft_screen()

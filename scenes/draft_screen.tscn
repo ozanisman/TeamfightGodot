@@ -1,6 +1,21 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/draft_screen.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Tooltip"]
+bg_color = Color(0.09, 0.11, 0.16, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.27, 0.34, 0.47, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
+shadow_color = Color(0, 0, 0, 0.35)
 
 [node name="DraftScreen" type="Control"]
 layout_mode = 3
@@ -19,67 +34,250 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Panel"]
+[node name="OuterMargin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
 
-[node name="TopRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="VBox" type="VBoxContainer" parent="Panel/OuterMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
 
-[node name="TurnLabel" type="Label" parent="Panel/VBox/TopRow"]
+[node name="TitleLabel" type="Label" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 34
+text = "TEAMFIGHT DRAFT"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="Panel/OuterMargin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 3
+text = "Draft 10 picks total. Use role filters to narrow the pool, then start the match."
+horizontal_alignment = 1
+
+[node name="TopRow" type="HBoxContainer" parent="Panel/OuterMargin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TurnLabel" type="Label" parent="Panel/OuterMargin/VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 1
+theme_override_font_sizes/font_size = 18
 text = "TURN: P1 PICK"
 
-[node name="Filters" type="HBoxContainer" parent="Panel/VBox/TopRow"]
+[node name="PickCountLabel" type="Label" parent="Panel/OuterMargin/VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 1
+theme_override_font_sizes/font_size = 18
+text = "PICKS: 0 / 10"
+
+[node name="Filters" type="HBoxContainer" parent="Panel/OuterMargin/VBox/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
-[node name="ContentRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="ContentRow" type="HBoxContainer" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/separation = 16
 
-[node name="Rosters" type="VBoxContainer" parent="Panel/VBox/ContentRow"]
+[node name="RosterPanel" type="PanelContainer" parent="Panel/OuterMargin/VBox/ContentRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(220, 0)
+custom_minimum_size = Vector2(280, 0)
+size_flags_horizontal = 1
 size_flags_vertical = 3
 
-[node name="PlayerRoster" type="Label" parent="Panel/VBox/ContentRow/Rosters"]
+[node name="RosterMargin" type="MarginContainer" parent="Panel/OuterMargin/VBox/ContentRow/RosterPanel"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="Rosters" type="VBoxContainer" parent="Panel/OuterMargin/VBox/ContentRow/RosterPanel/RosterMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="PlayerRoster" type="Label" parent="Panel/OuterMargin/VBox/ContentRow/RosterPanel/RosterMargin/Rosters"]
+layout_mode = 2
+size_flags_horizontal = 3
 autowrap_mode = 3
 text = "PLAYER 1 TEAM\n- none"
 
-[node name="EnemyRoster" type="Label" parent="Panel/VBox/ContentRow/Rosters"]
+[node name="EnemyRoster" type="Label" parent="Panel/OuterMargin/VBox/ContentRow/RosterPanel/RosterMargin/Rosters"]
 layout_mode = 2
+size_flags_horizontal = 3
 autowrap_mode = 3
 text = "PLAYER 2 TEAM\n- none"
 
-[node name="BannedRoster" type="Label" parent="Panel/VBox/ContentRow/Rosters"]
+[node name="BannedRoster" type="Label" parent="Panel/OuterMargin/VBox/ContentRow/RosterPanel/RosterMargin/Rosters"]
 layout_mode = 2
+size_flags_horizontal = 3
 autowrap_mode = 3
 text = "BANNED\n- none"
 
-[node name="HeroGridScroll" type="ScrollContainer" parent="Panel/VBox/ContentRow"]
+[node name="HeroPanel" type="PanelContainer" parent="Panel/OuterMargin/VBox/ContentRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="HeroGrid" type="GridContainer" parent="Panel/VBox/ContentRow/HeroGridScroll"]
+[node name="HeroMargin" type="MarginContainer" parent="Panel/OuterMargin/VBox/ContentRow/HeroPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="HeroVBox" type="VBoxContainer" parent="Panel/OuterMargin/VBox/ContentRow/HeroPanel/HeroMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="HeroSummaryLabel" type="Label" parent="Panel/OuterMargin/VBox/ContentRow/HeroPanel/HeroMargin/HeroVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 3
+text = "Available heroes"
+
+[node name="HeroGridScroll" type="ScrollContainer" parent="Panel/OuterMargin/VBox/ContentRow/HeroPanel/HeroMargin/HeroVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HeroGrid" type="GridContainer" parent="Panel/OuterMargin/VBox/ContentRow/HeroPanel/HeroMargin/HeroVBox/HeroGridScroll"]
 layout_mode = 2
 columns = 4
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
 
-[node name="ActionsRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="ActionsRow" type="HBoxContainer" parent="Panel/OuterMargin/VBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 12
 
-[node name="RandomButton" type="Button" parent="Panel/VBox/ActionsRow"]
+[node name="RandomButton" type="Button" parent="Panel/OuterMargin/VBox/ActionsRow"]
 layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 44)
 text = "RANDOM DRAFT"
 
-[node name="StartButton" type="Button" parent="Panel/VBox/ActionsRow"]
+[node name="StartButton" type="Button" parent="Panel/OuterMargin/VBox/ActionsRow"]
 layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 44)
 text = "START MATCH"
+
+[node name="TooltipPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 360.0
+offset_bottom = 520.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Tooltip")
+
+[node name="TooltipMargin" type="MarginContainer" parent="TooltipPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
+
+[node name="TooltipVBox" type="VBoxContainer" parent="TooltipPanel/TooltipMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="TooltipAccent" type="ColorRect" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+size_flags_horizontal = 3
+size_flags_vertical = 0
+color = Color(0.29, 0.36, 0.53, 1)
+
+[node name="TooltipTitle" type="Label" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 2
+text = "CHAMPION"
+
+[node name="TooltipRole" type="Label" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.72, 0.78, 0.92, 1)
+text = "ROLE"
+
+[node name="TooltipStats" type="RichTextLabel" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.82, 0.86, 0.92, 1)
+text = "CORE STATS"
+
+[node name="TooltipDescription" type="RichTextLabel" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.90, 0.90, 0.94, 1)
+text = "DESCRIPTION"
+
+[node name="TooltipAbility" type="RichTextLabel" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.67, 0.82, 1, 1)
+text = "ABILITY"
+
+[node name="TooltipUltimate" type="RichTextLabel" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_colors/font_color = Color(1, 0.81, 0.45, 1)
+text = "ULTIMATE"
+
+[node name="TooltipPassive" type="RichTextLabel" parent="TooltipPanel/TooltipMargin/TooltipVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_content = true
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.73, 0.87, 0.82, 1)
+text = "PASSIVE"

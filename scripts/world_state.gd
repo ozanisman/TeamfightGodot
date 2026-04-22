@@ -29,4 +29,4 @@ func set_phase(new_phase: Phase) -> void:
 
 func advance_tick() -> void:
 	tick += 1
-	time = float(tick) * tick_rate
+	time = maxf(0.0, time - tick_rate)

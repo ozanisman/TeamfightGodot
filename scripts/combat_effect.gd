@@ -2,6 +2,8 @@ extends RefCounted
 class_name CombatEffect
 
 const CombatData = preload("res://scripts/combat_data.gd")
+const CombatUnitState = preload("res://scripts/combat_unit_state.gd")
+const CombatEffectResult = preload("res://scripts/combat_effect_result.gd")
 
 enum Kind {
 	MULTI,
@@ -220,24 +222,34 @@ func setup_self_shield(new_shield_ratio: float, new_reason: String = "") -> Obje
 
 
 func apply_on_attack(context: Object) -> float:
-	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
+	var unit: Object = context.unit
+	var target: Object = context.target
+	var unit_state: CombatUnitState = _unit_state_ref(unit)
+	var target_state: CombatUnitState = _unit_state_ref(target)
+	var combat_scale: float = unit_state.combat_scale if unit_state != null else _unit_combat_scale(unit)
+	var unit_pos: Vector2 = unit_state.global_position if unit_state != null else _unit_position(unit)
+	var target_pos: Vector2 = target_state.global_position if target_state != null else _unit_position(target)
 	match kind:
 		Kind.CONSTANT_MULTIPLIER:
 			return multiplier
 		Kind.TARGET_HP_THRESHOLD_MULTIPLIER:
-			if context.target != null and is_instance_valid(context.target):
-				var target_hp_ratio := float(context.target.get("hp")) / maxf(float(context.target.get("max_hp")), CombatData.EPSILON)
+			if target != null and is_instance_valid(target):
+				var target_hp_ratio: float = _unit_hp(target) / maxf(_unit_max_hp(target), CombatData.EPSILON)
+				if target_state != null:
+					target_hp_ratio = target_state.hp / maxf(target_state.max_hp, CombatData.EPSILON)
 				if target_hp_ratio < threshold:
 					return multiplier
 			return 1.0
 		Kind.DISTANCE_THRESHOLD_MULTIPLIER:
-			if context.target != null and is_instance_valid(context.target):
-				var dist: float = context.unit.global_position.distance_to(context.target.global_position)
+			if target != null and is_instance_valid(target):
+				var dist: float = unit_pos.distance_to(target_pos)
 				if dist > threshold * combat_scale:
 					return multiplier
 			return 1.0
 		Kind.SELF_HP_THRESHOLD_MULTIPLIER:
-			var self_hp_ratio := float(context.unit.get("hp")) / maxf(float(context.unit.get("max_hp")), CombatData.EPSILON)
+			var self_hp_ratio: float = _unit_hp(unit) / maxf(_unit_max_hp(unit), CombatData.EPSILON)
+			if unit_state != null:
+				self_hp_ratio = unit_state.hp / maxf(unit_state.max_hp, CombatData.EPSILON)
 			if self_hp_ratio > threshold:
 				return multiplier
 			return 1.0
@@ -251,11 +263,13 @@ func apply_on_attack(context: Object) -> float:
 
 
 func apply_on_defense(context: Object) -> float:
+	var world: Object = context.world
 	match kind:
 		Kind.CONSTANT_MULTIPLIER:
 			return multiplier
 		Kind.DODGE:
-			if randf() < dodge_chance:
+			var roll: float = _world_random_float(world)
+			if roll < dodge_chance:
 				return on_dodge_multiplier
 			return on_hit_multiplier
 		Kind.MULTI:
@@ -268,229 +282,508 @@ func apply_on_defense(context: Object) -> float:
 
 
 func apply_on_tick(context: Object) -> void:
+	var unit: Object = context.unit
+	var unit_state: CombatUnitState = _unit_state_ref(unit)
 	match kind:
 		Kind.MANA_REGEN:
-			var amount := maxf(0.0, flat_amount + (float(context.unit.get("max_mana")) * max_mana_ratio))
-			context.unit.set("mana", minf(float(context.unit.get("max_mana")), float(context.unit.get("mana")) + amount))
+			var max_mana: float = _unit_max_mana(unit)
+			var current_mana: float = _unit_mana(unit)
+			if unit_state != null:
+				max_mana = unit_state.max_mana
+				current_mana = unit_state.mana
+			var amount: float = maxf(0.0, flat_amount + (max_mana * max_mana_ratio))
+			_set_unit_mana(unit, minf(max_mana, current_mana + amount))
 		Kind.MULTI:
 			for child in children:
 				child.apply_on_tick(context)
 
 
 func apply_post_attack(context: Object) -> void:
-	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
+	var unit: Object = context.unit
+	var target: Object = context.target
+	var world: Object = context.world
+	var unit_id: int = _unit_instance_id(unit)
+	var unit_state: CombatUnitState = _unit_state_ref(unit)
+	var target_state: CombatUnitState = _unit_state_ref(target)
+	var combat_scale: float = unit_state.combat_scale if unit_state != null else _unit_combat_scale(unit)
 	match kind:
 		Kind.DAMAGE_BASED_HEAL:
 			if context.damage > 0.0:
-				context.unit.call("heal", context.damage * damage_ratio, context.world, int(context.unit.get("instance_id")))
+				if unit_state != null:
+					unit_state.heal(context.damage * damage_ratio, world, unit_id)
+				else:
+					_unit_heal(unit, context.damage * damage_ratio, world, unit_id)
 		Kind.MANA_RESTORE_ON_HIT:
-			context.unit.set("mana", minf(float(context.unit.get("max_mana")), float(context.unit.get("mana")) + flat_amount))
+			var max_mana: float = _unit_max_mana(unit)
+			var current_mana: float = _unit_mana(unit)
+			if unit_state != null:
+				max_mana = unit_state.max_mana
+				current_mana = unit_state.mana
+			_set_unit_mana(unit, minf(max_mana, current_mana + flat_amount))
 		Kind.DRAIN_TARGET_MANA_ON_HIT:
-			if context.target != null and is_instance_valid(context.target):
-				context.target.set("mana", maxf(0.0, float(context.target.get("mana")) - flat_amount))
+			if target != null and is_instance_valid(target):
+				if target_state != null:
+					_set_unit_mana(target, maxf(0.0, target_state.mana - flat_amount))
+				else:
+					_set_unit_mana(target, maxf(0.0, _unit_mana(target) - flat_amount))
 		Kind.POST_ATTACK_SPLASH:
-			if context.target == null or not bool(context.target.call("is_alive")):
+			if target == null or not _unit_is_alive(target):
 				return
-			if threshold > 0.0 and context.damage <= float(context.unit.get("attack_damage")) * threshold:
+			if threshold > 0.0 and context.damage <= _unit_attack_damage(unit) * threshold:
 				return
 			var combat_radius := radius * combat_scale
 			if combat_radius <= 0.0 or splash_ratio <= 0.0:
 				return
-			var center: Vector2 = context.target.global_position
+			var center: Vector2 = target_state.global_position if target_state != null else _unit_position(target)
 			var total_aoe_dmg := 0.0
-			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
-				if enemy == context.target or String(enemy.get("team")) == String(context.unit.get("team")):
+			for enemy in _world_nearby_units(world, center, combat_radius, "", unit_id):
+				if enemy == target or _unit_team(enemy) == _unit_team(unit):
 					continue
-				var absorbed_loss: Dictionary = enemy.call("take_damage", context.damage * splash_ratio, context.world, damage_type, int(context.unit.get("instance_id")))
-				var absorbed := float(absorbed_loss.get("absorbed", 0.0))
-				var hp_loss := float(absorbed_loss.get("hp_loss", 0.0))
-				var dealt := absorbed + hp_loss
+				var absorbed_loss: Dictionary = _unit_take_damage(enemy, context.damage * splash_ratio, world, damage_type, unit_id)
+				var absorbed: float = float(absorbed_loss.get("absorbed", 0.0))
+				var hp_loss: float = float(absorbed_loss.get("hp_loss", 0.0))
+				var dealt: float = absorbed + hp_loss
 				total_aoe_dmg += dealt
-				context.world.call("record_event", {
-					"timestamp": float(context.world.get("time")),
-					"attacker_id": int(context.unit.get("instance_id")),
-					"attacker_name": String(context.unit.get("display_name")),
-					"target_id": int(enemy.get("instance_id")),
-					"target_name": String(enemy.get("display_name")),
+				_world_record_event(world, {
+					"timestamp": _world_time(world),
+					"attacker_id": unit_id,
+					"attacker_name": _unit_display_name(unit),
+					"target_id": _unit_instance_id(enemy),
+					"target_name": _unit_display_name(enemy),
 					"damage": dealt,
 					"shield_absorbed": absorbed,
-					"distance": center.distance_to(enemy.global_position),
-					"target_hp_after": float(enemy.get("hp")),
-					"target_shield_after": float(enemy.get("shield")),
+					"distance": center.distance_to(_unit_position(enemy)),
+					"target_hp_after": _unit_hp(enemy),
+					"target_shield_after": _unit_shield(enemy),
 					"target_selection_reason": reason,
 				})
-			context.unit.set("damage_dealt", float(context.unit.get("damage_dealt")) + total_aoe_dmg)
+			_add_unit_damage_dealt(unit, total_aoe_dmg)
 		Kind.EVERY_N_ATTACKS_STUN:
 			if every_n <= 0:
 				return
-			var attack_count := int(context.unit.get("attack_count"))
+			var attack_count: int = _unit_attack_count(unit)
+			if unit_state != null:
+				attack_count = unit_state.attack_count
 			attack_count += 1
-			context.unit.set("attack_count", attack_count)
-			if attack_count >= every_n and context.target != null and bool(context.target.call("is_alive")):
-				context.target.call("apply_stun", stun_duration, context.world, int(context.unit.get("instance_id")))
-				context.unit.set("attack_count", 0)
+			_set_unit_attack_count(unit, attack_count)
+			if attack_count >= every_n and target != null and _unit_is_alive(target):
+				_unit_apply_stun(target, stun_duration, world, unit_id)
+				_set_unit_attack_count(unit, 0)
 		Kind.MULTI:
 			for child in children:
 				child.apply_post_attack(context)
 
 
 func apply_post_take_damage(context: Object) -> void:
+	var unit: Object = context.unit
+	var unit_state: CombatUnitState = _unit_state_ref(unit)
 	match kind:
 		Kind.POST_DAMAGE_MANA_GAIN:
 			if context.damage > 0.0:
-				context.unit.set("mana", minf(float(context.unit.get("max_mana")), float(context.unit.get("mana")) + context.damage * damage_ratio))
+				var max_mana: float = _unit_max_mana(unit)
+				var current_mana: float = _unit_mana(unit)
+				if unit_state != null:
+					max_mana = unit_state.max_mana
+					current_mana = unit_state.mana
+				_set_unit_mana(unit, minf(max_mana, current_mana + context.damage * damage_ratio))
 		Kind.MULTI:
 			for child in children:
 				child.apply_post_take_damage(context)
 
 
-func execute_active(context: Object) -> Dictionary:
-	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
+func execute_active(context: Object) -> CombatEffectResult:
+	var unit: Object = context.unit
+	var target: Object = context.target
+	var target_ally: Object = context.target_ally
+	var world: Object = context.world
+	var unit_id: int = _unit_instance_id(unit)
+	var unit_state: CombatUnitState = _unit_state_ref(unit)
+	var target_state: CombatUnitState = _unit_state_ref(target)
+	var target_ally_state: CombatUnitState = _unit_state_ref(target_ally)
+	var combat_scale: float = unit_state.combat_scale if unit_state != null else _unit_combat_scale(unit)
 	match kind:
 		Kind.MULTI:
-			var result: Dictionary = {}
+			var result: CombatEffectResult = CombatEffectResult.new()
 			for child in children:
-				var child_result: Dictionary = child.execute_active(context)
-				result = _merge_results(result, child_result)
+				result.merge(child.execute_active(context))
 			return result
 		Kind.DAMAGE:
-			if context.target == null or not bool(context.target.call("is_alive")):
-				return {}
-			var damage := float(context.unit.get("attack_damage")) * damage_multiplier
-			var damage_result: Dictionary = context.target.call("take_damage", damage, context.world, damage_type, int(context.unit.get("instance_id")))
-			var absorbed := float(damage_result.get("absorbed", 0.0))
-			var hp_loss := float(damage_result.get("hp_loss", 0.0))
-			var total_dmg := absorbed + hp_loss
+			if target == null or not _unit_is_alive(target):
+				return CombatEffectResult.new()
+			var result_damage: CombatEffectResult = CombatEffectResult.new()
+			var damage: float = _unit_attack_damage(unit) * damage_multiplier
+			if unit_state != null:
+				damage = unit_state.attack_damage * damage_multiplier
+			var damage_result: Dictionary = _unit_take_damage(target, damage, world, damage_type, unit_id)
+			var absorbed: float = float(damage_result.get("absorbed", 0.0))
+			var hp_loss: float = float(damage_result.get("hp_loss", 0.0))
+			var total_dmg: float = absorbed + hp_loss
 			context.damage = total_dmg
+			result_damage.damage = total_dmg
+			result_damage.damage_type = damage_type
+			result_damage.reason = reason
+			result_damage.shield_absorbed = absorbed
+			result_damage.emit_event = true
+			result_damage.event_target = target
 			if stun_duration > 0.0:
-				context.target.call("apply_stun", stun_duration, context.world, int(context.unit.get("instance_id")))
+				_unit_apply_stun(target, stun_duration, world, unit_id)
 			if trigger_on_hit:
-				context.unit.call("on_attack_hit", context.target, total_dmg, context.world, false)
-			return _make_event(context, context.target, total_dmg, absorbed)
+				_unit_on_attack_hit(unit, target, total_dmg, world, false)
+			return result_damage
 		Kind.HEAL:
-			var heal_target: Node2D = context.target_ally if context.target_ally != null else context.unit
+			var heal_target: Object = target_ally if target_ally != null else unit
+			var heal_target_state: CombatUnitState = target_ally_state if target_ally_state != null else unit_state
 			if heal_target == null:
-				return {}
-			var heal_amount := flat_amount
+				return CombatEffectResult.new()
+			var heal_amount: float = flat_amount
 			if damage_ratio > 0.0:
-				heal_amount = float(heal_target.get("max_hp")) * damage_ratio
-			heal_target.call("heal", heal_amount, context.world, int(context.unit.get("instance_id")))
-			return _make_event(context, heal_target, 0.0, 0.0, heal_amount)
+				heal_amount = _unit_max_hp(heal_target) * damage_ratio
+				if heal_target_state != null:
+					heal_amount = heal_target_state.max_hp * damage_ratio
+			if heal_target_state != null:
+				heal_target_state.heal(heal_amount, world, unit_id)
+			else:
+				_unit_heal(heal_target, heal_amount, world, unit_id)
+			var heal_result: CombatEffectResult = CombatEffectResult.new()
+			heal_result.healing = heal_amount
+			heal_result.reason = reason
+			heal_result.emit_event = true
+			heal_result.event_target = heal_target
+			return heal_result
 		Kind.SHIELD:
-			var shield_target: Node2D = context.target_ally if context.target_ally != null else context.unit
+			var shield_target: Object = target_ally if target_ally != null else unit
+			var shield_target_state: CombatUnitState = target_ally_state if target_ally_state != null else unit_state
 			if shield_target == null:
-				return {}
-			var shield_amount := flat_amount
+				return CombatEffectResult.new()
+			var shield_amount: float = flat_amount
 			if damage_ratio > 0.0:
-				shield_amount = float(shield_target.get("max_hp")) * damage_ratio
-			shield_target.call("add_shield", shield_amount, context.world, int(context.unit.get("instance_id")))
-			return _make_event(context, shield_target, 0.0, 0.0, 0.0, shield_amount)
+				shield_amount = _unit_max_hp(shield_target) * damage_ratio
+				if shield_target_state != null:
+					shield_amount = shield_target_state.max_hp * damage_ratio
+			if shield_target_state != null:
+				shield_target_state.add_shield(shield_amount, world, unit_id)
+			else:
+				_unit_add_shield(shield_target, shield_amount, world, unit_id)
+			var shield_result: CombatEffectResult = CombatEffectResult.new()
+			shield_result.shield_added = shield_amount
+			shield_result.reason = reason
+			shield_result.emit_event = true
+			shield_result.event_target = shield_target
+			return shield_result
 		Kind.STUN:
-			if context.target == null or not bool(context.target.call("is_alive")):
-				return {}
-			context.target.call("apply_stun", stun_duration, context.world, int(context.unit.get("instance_id")))
-			return _make_event(context, context.target, 0.0, 0.0)
+			if target == null or not _unit_is_alive(target):
+				return CombatEffectResult.new()
+			_unit_apply_stun(target, stun_duration, world, unit_id)
+			var stun_result: CombatEffectResult = CombatEffectResult.new()
+			stun_result.reason = reason
+			stun_result.emit_event = true
+			stun_result.event_target = target
+			return stun_result
 		Kind.PROJECTILE:
-			return {
-				"use_projectile": true,
-				"damage": float(context.unit.get("attack_damage")) * damage_multiplier,
-				"damage_type": damage_type,
-				"reason": reason if not reason.is_empty() else "Ability",
-				"projectile_speed": projectile_speed * combat_scale,
-				"projectile_radius": projectile_radius * combat_scale,
-				"stun_duration": stun_duration,
-				"splash_radius": splash_radius * combat_scale,
-				"splash_ratio": splash_ratio,
-			}
+			var projectile_result: CombatEffectResult = CombatEffectResult.new()
+			projectile_result.use_projectile = true
+			projectile_result.damage = _unit_attack_damage(unit) * damage_multiplier
+			projectile_result.damage_type = damage_type
+			projectile_result.reason = reason if not reason.is_empty() else "Ability"
+			projectile_result.projectile_speed = projectile_speed * combat_scale
+			projectile_result.projectile_radius = projectile_radius * combat_scale
+			projectile_result.stun_duration = stun_duration
+			projectile_result.splash_radius = splash_radius * combat_scale
+			projectile_result.splash_ratio = splash_ratio
+			return projectile_result
 		Kind.SELF_AOE_DAMAGE:
-			var center: Vector2 = context.unit.global_position
+			var center: Vector2 = unit_state.global_position if unit_state != null else _unit_position(unit)
 			var total_aoe_dmg := 0.0
 			var primary_dmg := 0.0
 			var combat_radius := radius * combat_scale
 			if combat_radius <= 0.0:
-				return {}
-			var damage_amount := float(context.unit.get("attack_damage")) * damage_multiplier
-			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
-				if String(enemy.get("team")) == String(context.unit.get("team")):
+				return CombatEffectResult.new()
+			var damage_amount: float = _unit_attack_damage(unit) * damage_multiplier
+			if unit_state != null:
+				damage_amount = unit_state.attack_damage * damage_multiplier
+			for enemy in _world_nearby_units(world, center, combat_radius, "", unit_id):
+				if _unit_team(enemy) == _unit_team(unit):
 					continue
-				var absorbed_loss: Dictionary = enemy.call("take_damage", damage_amount, context.world, damage_type, int(context.unit.get("instance_id")))
-				var absorbed := float(absorbed_loss.get("absorbed", 0.0))
-				var hp_loss := float(absorbed_loss.get("hp_loss", 0.0))
-				var dealt := absorbed + hp_loss
+				var absorbed_loss: Dictionary = _unit_take_damage(enemy, damage_amount, world, damage_type, unit_id)
+				var absorbed: float = float(absorbed_loss.get("absorbed", 0.0))
+				var hp_loss: float = float(absorbed_loss.get("hp_loss", 0.0))
+				var dealt: float = absorbed + hp_loss
 				total_aoe_dmg += dealt
-				if context.target != null and int(enemy.get("instance_id")) == int(context.target.get("instance_id")):
+				if target != null and _unit_instance_id(enemy) == _unit_instance_id(target):
 					primary_dmg = dealt
 				else:
-					context.world.call("record_event", {
-						"timestamp": float(context.world.get("time")),
-						"attacker_id": int(context.unit.get("instance_id")),
-						"attacker_name": String(context.unit.get("display_name")),
-						"target_id": int(enemy.get("instance_id")),
-						"target_name": String(enemy.get("display_name")),
+					_world_record_event(world, {
+						"timestamp": _world_time(world),
+						"attacker_id": unit_id,
+						"attacker_name": _unit_display_name(unit),
+						"target_id": _unit_instance_id(enemy),
+						"target_name": _unit_display_name(enemy),
 						"damage": dealt,
 						"shield_absorbed": absorbed,
-						"distance": center.distance_to(enemy.global_position),
-						"target_hp_after": float(enemy.get("hp")),
-						"target_shield_after": float(enemy.get("shield")),
+						"distance": center.distance_to(_unit_position(enemy)),
+						"target_hp_after": _unit_hp(enemy),
+						"target_shield_after": _unit_shield(enemy),
 						"target_selection_reason": reason,
 					})
-			context.unit.set("damage_dealt", float(context.unit.get("damage_dealt")) + maxf(0.0, total_aoe_dmg - primary_dmg))
+			_add_unit_damage_dealt(unit, maxf(0.0, total_aoe_dmg - primary_dmg))
 			if total_aoe_dmg <= 0.0:
-				return {}
-			return {"damage": primary_dmg, "total_impact": total_aoe_dmg, "reason": reason}
+				return CombatEffectResult.new()
+			var aoe_result: CombatEffectResult = CombatEffectResult.new()
+			aoe_result.damage = primary_dmg
+			aoe_result.total_impact = total_aoe_dmg
+			aoe_result.reason = reason
+			return aoe_result
 		Kind.SELF_AOE_TAUNT:
 			var combat_radius := radius * combat_scale
 			if combat_radius <= 0.0:
-				return {}
-			var taunted_count := 0
-			var center: Vector2 = context.unit.global_position
-			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
-				if String(enemy.get("team")) == String(context.unit.get("team")):
+				return CombatEffectResult.new()
+			var taunted_count: int = 0
+			var center: Vector2 = _unit_position(unit)
+			for enemy in _world_nearby_units(world, center, combat_radius, "", unit_id):
+				if _unit_team(enemy) == _unit_team(unit):
 					continue
-				enemy.call("apply_taunt", stun_duration, int(context.unit.get("instance_id")))
+				_unit_apply_taunt(enemy, stun_duration, unit_id)
 				taunted_count += 1
-			return {"damage": 0.0, "reason": reason, "taunted_count": taunted_count}
+			var taunt_result: CombatEffectResult = CombatEffectResult.new()
+			taunt_result.reason = reason
+			taunt_result.taunted_count = taunted_count
+			taunt_result.emit_event = true
+			return taunt_result
 		Kind.SELF_DAMAGE:
-			var self_damage_amount := float(context.unit.get("max_hp")) * damage_ratio
-			context.unit.call("take_damage", self_damage_amount, context.world, "true", int(context.unit.get("instance_id")))
-			return _make_event(context, context.unit, 0.0, 0.0)
+			var self_damage_amount: float = _unit_max_hp(unit) * damage_ratio
+			if unit_state != null:
+				self_damage_amount = unit_state.max_hp * damage_ratio
+				unit_state.take_damage(self_damage_amount, world, "true", unit_id)
+			else:
+				_unit_take_damage(unit, self_damage_amount, world, "true", unit_id)
+			var self_damage_result: CombatEffectResult = CombatEffectResult.new()
+			self_damage_result.reason = reason
+			self_damage_result.emit_event = true
+			self_damage_result.event_target = unit
+			return self_damage_result
 		Kind.SELF_SHIELD:
-			var self_shield_amount := float(context.unit.get("max_hp")) * damage_ratio
-			context.unit.call("add_shield", self_shield_amount, context.world, int(context.unit.get("instance_id")))
-			return _make_event(context, context.unit, 0.0, 0.0, 0.0, self_shield_amount)
+			var self_shield_amount: float = _unit_max_hp(unit) * damage_ratio
+			if unit_state != null:
+				self_shield_amount = unit_state.max_hp * damage_ratio
+				unit_state.add_shield(self_shield_amount, world, unit_id)
+			else:
+				_unit_add_shield(unit, self_shield_amount, world, unit_id)
+			var self_shield_result: CombatEffectResult = CombatEffectResult.new()
+			self_shield_result.shield_added = self_shield_amount
+			self_shield_result.reason = reason
+			self_shield_result.emit_event = true
+			self_shield_result.event_target = unit
+			return self_shield_result
 		_:
-			return {}
+			return CombatEffectResult.new()
 
 
-func _make_event(context: Object, event_target: Node2D, damage: float, shield_absorbed: float, healing: float = 0.0, shield_added: float = 0.0) -> Dictionary:
-	if event_target == null:
+func _unit_state_ref(unit: Object) -> CombatUnitState:
+	if unit != null and unit.get_script() == CombatUnitState:
+		return unit
+	return null
+
+
+func _unit_state(unit: Object) -> Object:
+	if unit != null and unit.get_script() == CombatUnitState:
+		return unit
+	return null
+
+
+func _unit_instance_id(unit: Object) -> int:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.instance_id
+	return int(unit.get("instance_id"))
+
+
+func _unit_display_name(unit: Object) -> String:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.display_name
+	return String(unit.get("display_name"))
+
+
+func _unit_team(unit: Object) -> String:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.team
+	return String(unit.get("team"))
+
+
+func _unit_position(unit: Object) -> Vector2:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.global_position
+	return unit.global_position
+
+
+func _unit_is_alive(unit: Object) -> bool:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.is_alive()
+	return bool(unit.call("is_alive"))
+
+
+func _unit_hp(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.hp
+	return float(unit.get("hp"))
+
+
+func _unit_max_hp(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.max_hp
+	return float(unit.get("max_hp"))
+
+
+func _unit_mana(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.mana
+	return float(unit.get("mana"))
+
+
+func _unit_max_mana(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.max_mana
+	return float(unit.get("max_mana"))
+
+
+func _unit_attack_damage(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.attack_damage
+	return float(unit.get("attack_damage"))
+
+
+func _unit_combat_scale(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.combat_scale
+	return float(unit.get("combat_scale"))
+
+
+func _unit_attack_count(unit: Object) -> int:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.attack_count
+	return int(unit.get("attack_count"))
+
+
+func _set_unit_mana(unit: Object, value: float) -> void:
+	var state := _unit_state(unit)
+	if state != null:
+		state.set_mana(value)
+	elif unit != null and unit.has_method("set_mana"):
+		unit.call("set_mana", value)
+	else:
+		unit.set("mana", value)
+
+
+func _set_unit_attack_count(unit: Object, value: int) -> void:
+	var state := _unit_state(unit)
+	if state != null:
+		state.set_attack_count(value)
+	elif unit != null and unit.has_method("set_attack_count"):
+		unit.call("set_attack_count", value)
+	else:
+		unit.set("attack_count", value)
+
+
+func _add_unit_damage_dealt(unit: Object, amount: float) -> void:
+	var state := _unit_state(unit)
+	if state != null:
+		state.add_damage_dealt(amount)
+	elif unit != null and unit.has_method("add_damage_dealt"):
+		unit.call("add_damage_dealt", amount)
+	else:
+		unit.set("damage_dealt", float(unit.get("damage_dealt")) + amount)
+
+
+func _unit_shield(unit: Object) -> float:
+	var state := _unit_state(unit)
+	if state != null:
+		return state.shield
+	return float(unit.get("shield"))
+
+
+func _unit_take_damage(unit: Object, amount: float, world: Object, damage_type: String, source_id: int) -> Dictionary:
+	if unit == null:
 		return {}
-	return {
-		"timestamp": float(context.world.get("time")),
-		"attacker_id": int(context.unit.get("instance_id")),
-		"attacker_name": String(context.unit.get("display_name")),
-		"target_id": int(event_target.get("instance_id")),
-		"target_name": String(event_target.get("display_name")),
-		"damage": damage,
-		"healing": healing,
-		"shield_absorbed": shield_absorbed,
-		"shield_added": shield_added,
-		"distance": context.unit.global_position.distance_to(event_target.global_position),
-		"target_hp_after": float(event_target.get("hp")),
-		"target_shield_after": float(event_target.get("shield")),
-		"target_selection_reason": reason,
-	}
+	if unit.get_script() == CombatUnitState:
+		return unit.take_damage(amount, world, damage_type, source_id)
+	return unit.call("take_damage", amount, world, damage_type, source_id)
 
 
-func _merge_results(base: Dictionary, extra: Dictionary) -> Dictionary:
-	if extra.is_empty():
-		return base
-	if base.is_empty():
-		return extra
-	var merged := base.duplicate()
-	for key in extra.keys():
-		if merged.has(key) and typeof(merged[key]) in [TYPE_INT, TYPE_FLOAT] and typeof(extra[key]) in [TYPE_INT, TYPE_FLOAT]:
-			merged[key] = float(merged[key]) + float(extra[key])
-		else:
-			merged[key] = extra[key]
-	return merged
+func _unit_heal(unit: Object, amount: float, world: Object, source_id: int) -> void:
+	if unit == null:
+		return
+	if unit.get_script() == CombatUnitState:
+		unit.heal(amount, world, source_id)
+	else:
+		unit.call("heal", amount, world, source_id)
+
+
+func _unit_add_shield(unit: Object, amount: float, world: Object, source_id: int) -> void:
+	if unit == null:
+		return
+	if unit.get_script() == CombatUnitState:
+		unit.add_shield(amount, world, source_id)
+	else:
+		unit.call("add_shield", amount, world, source_id)
+
+
+func _unit_apply_stun(unit: Object, duration: float, world: Object, source_id: int) -> void:
+	if unit == null:
+		return
+	if unit.get_script() == CombatUnitState:
+		unit.apply_stun(duration, world, source_id)
+	else:
+		unit.call("apply_stun", duration, world, source_id)
+
+
+func _unit_apply_taunt(unit: Object, duration: float, source_id: int) -> void:
+	if unit == null:
+		return
+	if unit.get_script() == CombatUnitState:
+		unit.apply_taunt(duration, source_id)
+	else:
+		unit.call("apply_taunt", duration, source_id)
+
+
+func _unit_on_attack_hit(unit: Object, target: Object, damage: float, world: Object, is_auto: bool) -> void:
+	if unit == null:
+		return
+	if unit.get_script() == CombatUnitState:
+		unit.on_attack_hit(target, damage, world, is_auto)
+	else:
+		unit.call("on_attack_hit", target, damage, world, is_auto)
+
+
+func _world_time(world: Object) -> float:
+	if world == null:
+		return 0.0
+	return float(world.get("time"))
+
+
+func _world_random_float(world: Object) -> float:
+	if world != null and world.has_method("random_float"):
+		return float(world.call("random_float"))
+	return randf()
+
+
+func _world_nearby_units(world: Object, center: Vector2, radius: float, team: String = "", exclude_id: int = -1) -> Array:
+	if world != null and world.has_method("nearby_units"):
+		return world.call("nearby_units", center, radius, team, exclude_id)
+	return []
+
+
+func _world_record_event(world: Object, event: Dictionary) -> void:
+	if world == null:
+		return
+	if world.has_method("record_event"):
+		world.call("record_event", event)

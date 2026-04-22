@@ -34,108 +34,126 @@ const HERO_DETAILS := {
 		"ability_desc": "Deals 150% damage and stuns the target for 1.0s.",
 		"ultimate_desc": "Strikes for 300% damage and applies a 2.0s stun.",
 		"passive_desc": "Increases attack damage by 20%.",
+		"passive_id": "duelist",
 	},
 	"archer": {
 		"description": "A classic long-range scout that provides consistent physical DPS from the backline.",
 		"ability_desc": "Fires a focused shot dealing 150% damage.",
 		"ultimate_desc": "Rains down arrows for 400% massive physical damage and deals splash damage on impact.",
 		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
+		"passive_id": "eagle_eye",
 	},
 	"guardian": {
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
 		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
 		"ultimate_desc": "Slams the ground for 200% damage and a 3.0s stun.",
 		"passive_desc": "Reduces incoming damage by 10%.",
+		"passive_id": "bastion",
 	},
 	"assassin": {
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
 		"ability_desc": "Quick dash for 120% damage and a short 0.5s stun.",
 		"ultimate_desc": "Executes a target with 500% physical damage.",
 		"passive_desc": "Deals double damage to targets below 30% HP.",
+		"passive_id": "executioner",
 	},
 	"mage": {
 		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
 		"ability_desc": "Fires a magical projectile dealing 200% magic damage.",
 		"ultimate_desc": "Calls down a meteor for 600% magic damage and deals splash damage on impact.",
 		"passive_desc": "Restores 3 mana every second. Meteor impact deals 50% splash damage in a 2.5 unit radius.",
+		"passive_id": "mana_font",
 	},
 	"sniper": {
 		"description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
 		"ability_desc": "High-precision strike for 180% damage.",
 		"ultimate_desc": "Lethal long-range shot for 350% damage.",
 		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
+		"passive_id": "marksman",
 	},
 	"berserker": {
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"ability_desc": "Damages self for 10% max HP and gains 150% of the value as a shield.",
 		"ultimate_desc": "Unleashes a devastating strike for 300% true damage.",
 		"passive_desc": "Heals for 15% of all damage dealt by auto-attacks.",
+		"passive_id": "bloodlust",
 	},
 	"paladin": {
 		"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
 		"ability_desc": "Heals self for 15% max HP.",
 		"ultimate_desc": "Heals self for 30% max HP and deals 200% damage.",
 		"passive_desc": "Regenerates 5 HP every second.",
+		"passive_id": "rejuvenation",
 	},
 	"rogue": {
 		"description": "An evasive melee fighter who relies on high dodge chance and speed to survive encounters.",
 		"ability_desc": "Deals 80% magic damage and stuns for 2.0s.",
 		"ultimate_desc": "Lethal execution dealing 350% physical damage.",
 		"passive_desc": "Grants a 25% chance to dodge incoming damage.",
+		"passive_id": "agility",
 	},
 	"oracle": {
 		"description": "A mystical seer who converts mana into healing, sustaining allies through long-range purification.",
 		"ability_desc": "Heals an ally or self for 20% max HP.",
 		"ultimate_desc": "Shields an ally or self for 40% max HP.",
 		"passive_desc": "Restores 5 mana after each auto-attack.",
+		"passive_id": "enlightenment",
 	},
 	"colossus": {
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
 		"ability_desc": "Deals 100% damage and taunts all targets in a 1 unit radius for 2.0s.",
 		"ultimate_desc": "Colossal impact for 250% damage and a 3.5s stun.",
 		"passive_desc": "Reduces all incoming damage by 10%.",
+		"passive_id": "tenacity",
 	},
 	"wraith": {
 		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
 		"ability_desc": "Magic strike for 120% damage and 0.8s stun.",
 		"ultimate_desc": "Teleports for 250% magic damage and 1.5s stun.",
 		"passive_desc": "Increases attack damage by 15%.",
+		"passive_id": "swiftness",
 	},
 	"warlock": {
 		"description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
 		"ability_desc": "Deals 150% magic damage and heals self for 20% of it.",
 		"ultimate_desc": "Rifts the ground for 400% magic damage and 1.0s stun.",
 		"passive_desc": "Heals for 3 HP after each auto-attack.",
+		"passive_id": "vampirism",
 	},
 	"monk": {
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
 		"ability_desc": "Precise strike for 120% damage and 0.8s stun.",
 		"ultimate_desc": "Rapid flurry for 250% damage and 1.5s stun.",
 		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
+		"passive_id": "technique",
 	},
 	"artillery": {
 		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
 		"ability_desc": "Explosive shell dealing 120% damage and 0.8s stun.",
 		"ultimate_desc": "Fires a massive artillery shell for 500% damage.",
 		"passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
+		"passive_id": "demolition",
 	},
 	"cleric": {
 		"description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
 		"ability_desc": "Heals an ally or self for 30% max HP.",
 		"ultimate_desc": "Heals for 55% max HP and stuns target for 1.5s.",
 		"passive_desc": "Regenerates 2% of max HP every second.",
+		"passive_id": "devotion",
 	},
 	"siren": {
 		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"ultimate_desc": "Shrieks for 300% magic damage and stunning for 1.0s.",
 		"passive_desc": "Drains 5 mana from the target on each auto-attack.",
+		"passive_id": "siphon",
 	},
 	"valkyrie": {
 		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
 		"ability_desc": "Bashes target for 150% damage and 0.5s stun.",
 		"ultimate_desc": "War cry dealing 300% damage and 1.5s stun.",
 		"passive_desc": "Deals 20% bonus damage while above 80% HP.",
+		"passive_id": "bravery",
 	},
 }
 
@@ -243,7 +261,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"tenacity": 0.20,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_tank" % hero_id,
+				"passive_id": "bastion",
 			}
 		"fighter":
 			return {
@@ -256,7 +274,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"life_steal": 0.10,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_fighter" % hero_id,
+				"passive_id": "duelist",
 			}
 		"assassin":
 			return {
@@ -267,7 +285,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"magic_resist": 0.05,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_assassin" % hero_id,
+				"passive_id": "executioner",
 			}
 		"marksman":
 			return {
@@ -278,7 +296,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"magic_resist": 0.05,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_marksman" % hero_id,
+				"passive_id": "marksman",
 			}
 		"mage":
 			return {
@@ -289,7 +307,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"magic_resist": 0.25,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_mage" % hero_id,
+				"passive_id": "mana_font",
 			}
 		"support":
 			return {
@@ -300,7 +318,7 @@ static func _defaults_for(role: String, hero_id: String) -> Dictionary:
 				"magic_resist": 0.20,
 				"respawn_time": CombatData.RESPAWN_TIME,
 				"projectile_radius": CombatData.DEFAULT_PROJECTILE_RADIUS,
-				"passive_id": "%s_support" % hero_id,
+				"passive_id": "enlightenment",
 			}
 		_:
 			return {

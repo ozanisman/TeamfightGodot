@@ -1,6 +1,7 @@
 extends Control
 class_name GameRoot
 
+const CombatData = preload("res://scripts/combat_data.gd")
 const WorldStateScript = preload("res://scripts/world_state.gd")
 const ChampionCatalog = preload("res://scripts/champion_catalog.gd")
 
@@ -70,6 +71,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if not _match_running:
+		_refresh_ui()
+		return
+
+	if int(world_state.phase) != PHASE_COMBAT:
 		_refresh_ui()
 		return
 
@@ -174,7 +179,7 @@ func _run_ai_draft_step() -> void:
 
 func _begin_match() -> void:
 	world_state.tick = 0
-	world_state.time = 0.0
+	world_state.time = CombatData.MATCH_DURATION
 	_tick_accumulator = 0.0
 	_match_running = true
 	_match_result.clear()
@@ -232,6 +237,9 @@ func _on_commence_requested() -> void:
 		return
 	battlefield.call("capture_spawn_positions")
 	battlefield.call("begin_combat")
+	_tick_accumulator = 0.0
+	world_state.tick = 0
+	world_state.time = CombatData.MATCH_DURATION
 	world_state.set_phase(PHASE_COMBAT)
 	battlefield.call("set_phase", PHASE_COMBAT)
 

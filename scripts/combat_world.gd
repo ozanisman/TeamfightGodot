@@ -51,7 +51,7 @@ func get_combat_registry() -> Object:
 func capture_spawn_positions() -> void:
 	for unit in units:
 		if is_instance_valid(unit):
-			unit.call("set_spawn_position", unit.get("world_pos"))
+			unit.call("set_spawn_position", unit.global_position)
 
 
 func get_unit_by_id(instance_id: int) -> Node2D:
@@ -101,7 +101,7 @@ func nearby_units(pos: Vector2, radius: float, team: String = "", exclude_id: in
 			continue
 		if team != "" and String(unit.get("team")) != team:
 			continue
-		if Vector2(unit.get("world_pos")).distance_squared_to(pos) <= radius_sq:
+		if unit.global_position.distance_squared_to(pos) <= radius_sq:
 			result.append(unit)
 	return result
 
@@ -147,7 +147,7 @@ func spawn_projectile(
 		"attacker_id": int(attacker.get("instance_id")),
 		"target_id": int(target.get("instance_id")),
 		"team": String(attacker.get("team")),
-		"pos": attacker.get("world_pos"),
+		"pos": attacker.global_position,
 		"speed": speed,
 		"radius": radius,
 		"damage": damage,
@@ -186,7 +186,7 @@ func step(dt: float) -> void:
 			projectiles_to_remove.append(i)
 			continue
 
-		var target_pos: Vector2 = target.get("world_pos")
+		var target_pos: Vector2 = target.global_position
 		var proj_pos: Vector2 = projectile.get("pos")
 		var direction: Vector2 = target_pos - proj_pos
 		var dist: float = direction.length()
@@ -301,7 +301,7 @@ func _resolve_projectile_hit(projectile: Dictionary, target: Node2D) -> void:
 		"target_name": String(target.get("display_name")),
 		"damage": total_dmg,
 		"shield_absorbed": absorbed,
-		"distance": Vector2(attacker.get("world_pos")).distance_to(Vector2(target.get("world_pos"))),
+		"distance": attacker.global_position.distance_to(target.global_position),
 		"target_hp_after": float(target.get("hp")),
 		"target_shield_after": float(target.get("shield")),
 		"target_selection_reason": String(projectile.get("reason", "Auto Attack")),
@@ -311,7 +311,7 @@ func _resolve_projectile_hit(projectile: Dictionary, target: Node2D) -> void:
 	var splash_ratio := float(projectile.get("splash_ratio", 0.0))
 	if splash_radius > 0.0 and splash_ratio > 0.0:
 		var splash_damage := total_dmg * splash_ratio
-		for splash_target in nearby_units(Vector2(target.get("world_pos")), splash_radius, "", int(target.get("instance_id"))):
+		for splash_target in nearby_units(target.global_position, splash_radius, "", int(target.get("instance_id"))):
 			if String(splash_target.get("team")) == String(attacker.get("team")):
 				continue
 			var splash_result: Dictionary = splash_target.call("take_damage", splash_damage, self, String(projectile.get("damage_type", "true")), int(projectile.get("attacker_id", -1)))
@@ -326,7 +326,7 @@ func _resolve_projectile_hit(projectile: Dictionary, target: Node2D) -> void:
 				"target_name": String(splash_target.get("display_name")),
 				"damage": splash_total,
 				"shield_absorbed": splash_absorbed,
-				"distance": Vector2(attacker.get("world_pos")).distance_to(Vector2(splash_target.get("world_pos"))),
+				"distance": attacker.global_position.distance_to(splash_target.global_position),
 				"target_hp_after": float(splash_target.get("hp")),
 				"target_shield_after": float(splash_target.get("shield")),
 				"target_selection_reason": String(projectile.get("reason", "Auto Attack")) + " splash",

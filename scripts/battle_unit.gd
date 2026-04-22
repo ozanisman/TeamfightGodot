@@ -1,4 +1,4 @@
-extends Node2D
+extends CharacterBody2D
 class_name BattleUnit
 
 const CombatData = preload("res://scripts/combat_data.gd")
@@ -8,6 +8,8 @@ enum UnitState { MOVING, ATTACKING, CASTING, WAITING, KITING, STUNNED, DEAD }
 
 const BASE_RADIUS := 21.0
 
+@onready var collision_shape: CollisionShape2D = $CollisionShape2D
+
 var hero_id: String = ""
 var display_name: String = ""
 var role: String = ""
@@ -15,7 +17,8 @@ var team: String = ""
 var color: Color = Color.WHITE
 
 var spawn_pos: Vector2 = Vector2.ZERO
-var world_pos: Vector2 = Vector2.ZERO
+var _combat_metrics: Object = null
+var _combat_ready: bool = false
 
 var selected: bool = false
 var hovered: bool = false
@@ -42,6 +45,11 @@ var attack_speed: float = 1.0
 var move_speed: float = 1.0
 var projectile_speed: float = CombatData.DEFAULT_PROJECTILE_SPEED
 var projectile_radius: float = CombatData.DEFAULT_PROJECTILE_RADIUS
+var combat_scale: float = 1.0
+var combat_ranged_threshold: float = CombatData.RANGED_THRESHOLD
+var combat_contact_buffer: float = CombatData.MELEE_CONTACT_BUFFER
+var combat_bounds_min: Vector2 = Vector2.ZERO
+var combat_bounds_max: Vector2 = Vector2.ZERO
 
 var alive: bool = true
 var current_state: int = UnitState.WAITING
@@ -107,7 +115,21 @@ var _combat_registry = null
 
 
 func _ready() -> void:
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+	if collision_shape != null and collision_shape.shape is CircleShape2D:
+		(collision_shape.shape as CircleShape2D).radius = BASE_RADIUS
 	queue_redraw()
+
+
+func _physics_process(_delta: float) -> void:
+	if collision_layer == 0 or not _combat_ready or _combat_metrics == null:
+		return
+	if not is_alive() or current_state == UnitState.DEAD:
+		velocity = Vector2.ZERO
+		return
+	if velocity == Vector2.ZERO:
+		return
+	move_and_slide()
 
 
 func set_identity(new_hero_id: String, new_display_name: String, new_role: String, new_team: String, new_color: Color, new_draggable: bool, new_passive_id: String = "") -> void:
@@ -168,6 +190,7 @@ func set_combat_stats(
 	ability_timer = ability_cd
 	ultimate_timer = ultimate_cd
 	respawn_timer = 0.0
+	velocity = Vector2.ZERO
 	queue_redraw()
 
 
@@ -176,7 +199,33 @@ func set_spawn_position(pos: Vector2) -> void:
 
 
 func set_world_position(pos: Vector2) -> void:
-	world_pos = pos
+	global_position = pos
+
+
+func apply_combat_metrics(metrics: Object) -> void:
+	if metrics == null:
+		return
+	_combat_metrics = metrics
+	_combat_ready = true
+	move_speed = float(metrics.call("scale_length", move_speed))
+	attack_range = float(metrics.call("scale_length", attack_range))
+	projectile_speed = float(metrics.call("scale_length", projectile_speed))
+	projectile_radius = float(metrics.call("scale_length", projectile_radius))
+	combat_scale = float(metrics.call("scale_length", 1.0))
+	combat_ranged_threshold = float(metrics.call("scale_length", CombatData.RANGED_THRESHOLD))
+	combat_contact_buffer = float(metrics.call("scale_length", CombatData.MELEE_CONTACT_BUFFER))
+	var rect: Rect2 = metrics.call("get_rect")
+	combat_bounds_min = rect.position
+	combat_bounds_max = rect.position + rect.size
+	global_position = metrics.call("world_to_combat", spawn_pos)
+	velocity = Vector2.ZERO
+
+
+func set_collision_enabled(enabled: bool) -> void:
+	collision_layer = 1 if enabled else 0
+	collision_mask = 1 if enabled else 0
+	if not enabled:
+		velocity = Vector2.ZERO
 
 
 func set_combat_registry(registry: Object) -> void:
@@ -334,6 +383,7 @@ func take_damage(amount: float, world: Object, damage_type: String = "true", sou
 		current_state = UnitState.DEAD
 		visible = false
 		respawn_timer = respawn_time
+		velocity = Vector2.ZERO
 		current_target = null
 		current_ally_target = null
 		in_range = false
@@ -362,15 +412,6 @@ func update_cooldowns(dt: float) -> void:
 		stun_timer = maxf(0.0, stun_timer - dt)
 
 
-func sync_screen_position(viewport_size: Vector2, world_size: Vector2) -> void:
-	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-		return
-	position = Vector2(
-		clampf(world_pos.x / maxf(world_size.x, 0.001), 0.0, 1.0) * viewport_size.x,
-		clampf(world_pos.y / maxf(world_size.y, 0.001), 0.0, 1.0) * viewport_size.y
-	)
-
-
 func contains_screen_point(screen_pos: Vector2) -> bool:
 	return global_position.distance_to(screen_pos) <= BASE_RADIUS + 6.0
 
@@ -385,6 +426,7 @@ func update(dt: float, world: Object) -> void:
 	if not is_alive():
 		current_state = UnitState.DEAD
 		respawn_timer = respawn_time
+		velocity = Vector2.ZERO
 		current_target = null
 		current_ally_target = null
 		return
@@ -394,9 +436,6 @@ func update(dt: float, world: Object) -> void:
 	var cutoff := float(world.get("time")) - CombatData.ASSIST_WINDOW
 	recent_damage_sources = _prune_recent(recent_damage_sources, cutoff)
 	recent_benefactors = _prune_recent(recent_benefactors, cutoff)
-
-	if stun_timer <= 0.0:
-		_apply_separation(world, dt)
 
 	var targeting_system = world.call("get_targeting_system")
 	var strategy: Dictionary = targeting_system.call("get_strategy_for", self)
@@ -411,10 +450,12 @@ func update(dt: float, world: Object) -> void:
 
 	if stun_timer > 0.0:
 		current_state = UnitState.STUNNED
+		velocity = Vector2.ZERO
 		return
 
 	if casting_remaining > 0.0:
 		casting_remaining = maxf(0.0, casting_remaining - dt)
+		velocity = Vector2.ZERO
 		if casting_remaining <= 0.0:
 			if _is_casting_ult:
 				if not _execute_ultimate(world):
@@ -437,17 +478,20 @@ func update(dt: float, world: Object) -> void:
 	var candidate: Dictionary = _retarget_if_needed(world, enemies, allies, targeting_system)
 	if candidate.is_empty():
 		current_state = UnitState.WAITING
+		velocity = Vector2.ZERO
 		return
 
 	var target: Node2D = candidate.get("target")
 	if target == null or not bool(target.call("is_alive")):
 		current_state = UnitState.WAITING
+		velocity = Vector2.ZERO
 		_set_current_target(world, null)
 		return
 
 	_set_target_debug(target, float(candidate.get("distance", 0.0)), bool(candidate.get("in_range", false)))
 
 	if in_range:
+		velocity = Vector2.ZERO
 		if max_mana > 0.0 and ultimate_timer <= 0.0 and mana >= max_mana:
 			if _begin_cast(world, true):
 				current_state = UnitState.CASTING
@@ -539,6 +583,7 @@ func _retarget_if_needed(world: Object, enemies: Array[Node2D], allies: Array[No
 func _perform_auto_attack(world: Object, reason: String) -> void:
 	current_state = UnitState.ATTACKING
 	if not is_alive() or current_target == null or not bool(current_target.call("is_alive")):
+		velocity = Vector2.ZERO
 		current_state = UnitState.WAITING
 		return
 
@@ -603,6 +648,7 @@ func _execute_ability(world: Object) -> bool:
 	if float(result.get("healing", 0.0)) > 0.0 or float(result.get("shield_added", 0.0)) > 0.0:
 		target = current_ally_target if current_ally_target != null else self
 	if target != null:
+		velocity = Vector2.ZERO
 		var active_damage := float(result.get("damage", 0.0))
 		if active_damage > 0.0:
 			damage_dealt += active_damage
@@ -620,7 +666,7 @@ func _execute_ability(world: Object) -> bool:
 			"healing": float(result.get("healing", 0.0)),
 			"shield_absorbed": float(result.get("shield_absorbed", 0.0)),
 			"shield_added": float(result.get("shield_added", 0.0)),
-			"distance": Vector2(world_pos).distance_to(Vector2(target.get("world_pos"))),
+			"distance": global_position.distance_to(target.global_position),
 			"target_hp_after": float(target.get("hp")),
 			"target_shield_after": float(target.get("shield")),
 			"target_selection_reason": String(result.get("reason", "Ability")),
@@ -660,6 +706,7 @@ func _execute_ultimate(world: Object) -> bool:
 	if float(result.get("healing", 0.0)) > 0.0 or float(result.get("shield_added", 0.0)) > 0.0:
 		target = current_ally_target if current_ally_target != null else self
 	if target != null:
+		velocity = Vector2.ZERO
 		var active_damage := float(result.get("damage", 0.0))
 		if active_damage > 0.0:
 			damage_dealt += active_damage
@@ -677,7 +724,7 @@ func _execute_ultimate(world: Object) -> bool:
 			"healing": float(result.get("healing", 0.0)),
 			"shield_absorbed": float(result.get("shield_absorbed", 0.0)),
 			"shield_added": float(result.get("shield_added", 0.0)),
-			"distance": Vector2(world_pos).distance_to(Vector2(target.get("world_pos"))),
+			"distance": global_position.distance_to(target.global_position),
 			"target_hp_after": float(target.get("hp")),
 			"target_shield_after": float(target.get("shield")),
 			"target_selection_reason": String(result.get("reason", "Ultimate")),
@@ -695,10 +742,12 @@ func attack(target: Node2D, world: Object, reason: String) -> Dictionary:
 	for effect in _cached_on_attack:
 		damage_mult *= float(effect.apply_on_attack(context))
 	var damage := attack_damage * damage_mult
-	var distance: float = Vector2(world_pos).distance_to(Vector2(target.get("world_pos")))
+	var distance: float = global_position.distance_to(target.global_position)
+	var ranged_threshold := combat_ranged_threshold
 
 	auto_attacks_done += 1
-	if attack_range > CombatData.RANGED_THRESHOLD:
+	if attack_range > ranged_threshold:
+		velocity = Vector2.ZERO
 		world.call("spawn_projectile", self, target, damage, "physical", reason, projectile_speed, projectile_radius, 0.0, false, false)
 		return {}
 
@@ -740,6 +789,7 @@ func respawn(world: Object = null) -> void:
 	perceived_threat = 0.0
 	current_state = UnitState.WAITING
 	alive = true
+	velocity = Vector2.ZERO
 	attack_cooldown_remaining = 0.0
 	casting_remaining = 0.0
 	_is_casting_ult = false
@@ -765,12 +815,10 @@ func respawn(world: Object = null) -> void:
 	recent_damage_sources.clear()
 	recent_benefactors.clear()
 	attack_count = 0
-	var respawn_x := spawn_pos.x
-	if team == "player":
-		respawn_x = 0.9
-	elif team == "enemy":
-		respawn_x = CombatData.WORLD_SIZE_VECTOR.x - 0.9
-	set_world_position(Vector2(respawn_x, spawn_pos.y))
+	if _combat_ready and _combat_metrics != null:
+		global_position = _combat_metrics.call("world_to_combat", spawn_pos)
+	else:
+		global_position = spawn_pos
 	queue_redraw()
 
 
@@ -779,11 +827,15 @@ func regen_reset() -> void:
 
 
 func _move_toward(target: Node2D, dt: float, world: Object) -> void:
-	var unit_pos: Vector2 = world_pos
-	var target_pos: Vector2 = target.get("world_pos")
-	var direction: Vector2 = target_pos - unit_pos
-	var distance: float = direction.length()
-	if distance <= CombatData.EPSILON:
+	if not _combat_ready or _combat_metrics == null:
+		velocity = Vector2.ZERO
+		return
+	var unit_pos := global_position
+	var target_pos: Vector2 = target.global_position
+	var to_target := target_pos - unit_pos
+	var target_distance := unit_pos.distance_to(target_pos)
+	if target_distance <= CombatData.EPSILON or to_target.length() <= CombatData.EPSILON:
+		velocity = Vector2.ZERO
 		return
 
 	var speed := move_speed
@@ -791,41 +843,16 @@ func _move_toward(target: Node2D, dt: float, world: Object) -> void:
 		speed *= CombatData.KITE_SPEED_MODIFIER
 	var max_step := speed * dt
 	var desired_step := 0.0
-	if not CombatData.is_melee_in_contact(distance, attack_range):
-		desired_step = maxf(0.0, distance - CombatData.effective_attack_range(attack_range))
+	var ranged_threshold := combat_ranged_threshold
+	var contact_buffer := combat_contact_buffer
+	if not CombatData.is_melee_in_contact(target_distance, attack_range, ranged_threshold, contact_buffer):
+		desired_step = maxf(0.0, target_distance - CombatData.effective_attack_range(attack_range, ranged_threshold, contact_buffer))
 	var step := minf(max_step, desired_step)
 	if step <= 0.0:
+		velocity = Vector2.ZERO
 		return
 
-	var old_pos := unit_pos
-	set_world_position(unit_pos + direction * (step / distance))
-	_clamp_position_to_world()
-	world.call("notify_unit_moved", self, old_pos)
-
-
-func _apply_separation(world: Object, dt: float) -> void:
-	if move_speed <= 0.0:
-		return
-
-	var radius := CombatData.SEPARATION_RADIUS_RANGED if attack_range > CombatData.SEPARATION_RANGE_THRESHOLD else CombatData.SEPARATION_RADIUS_MELEE
-	var allies: Array[Node2D] = world.call("nearby_units", world_pos, radius, team, int(get("instance_id")))
-	var separation := Vector2.ZERO
-
-	for ally in allies:
-		var ally_pos: Vector2 = ally.get("world_pos")
-		var dist_sq: float = world_pos.distance_squared_to(ally_pos)
-		if dist_sq > 0.0 and dist_sq < radius * radius:
-			var dist: float = sqrt(dist_sq)
-			if dist > CombatData.EPSILON:
-				var force := (radius - dist) / radius
-				var diff: Vector2 = (world_pos - ally_pos) * (force / dist)
-				separation += diff
-
-	if separation != Vector2.ZERO:
-		var old_pos := world_pos
-		set_world_position(world_pos + separation * move_speed * CombatData.NUDGE_SPEED_MODIFIER * dt)
-		_clamp_position_to_world()
-		world.call("notify_unit_moved", self, old_pos)
+	velocity = to_target.normalized() * (step / maxf(dt, CombatData.EPSILON))
 
 
 func _kite_from_enemies(world: Object, enemies: Array[Node2D], dt: float) -> bool:
@@ -833,33 +860,33 @@ func _kite_from_enemies(world: Object, enemies: Array[Node2D], dt: float) -> boo
 	var count := 0
 	var danger_radius := attack_range * CombatData.KITE_DANGER_THRESHOLD
 	for enemy in enemies:
-		var enemy_pos: Vector2 = enemy.get("world_pos")
-		var dist_sq: float = world_pos.distance_squared_to(enemy_pos)
+		var enemy_pos: Vector2 = enemy.global_position
+		var dist_sq: float = global_position.distance_squared_to(enemy_pos)
 		if dist_sq > 0.0 and dist_sq < danger_radius * danger_radius:
 			var dist: float = sqrt(dist_sq)
 			if dist > CombatData.EPSILON:
 				var weight := 1.0 / dist
-				var diff: Vector2 = (world_pos - enemy_pos) * (weight / dist)
+				var diff: Vector2 = (global_position - enemy_pos) * (weight / dist)
 				repulsion += diff
 				count += 1
 
 	if count <= 0 or repulsion == Vector2.ZERO:
+		velocity = Vector2.ZERO
 		return false
 
-	var velocity := repulsion.normalized()
-	if velocity.x == 0.0 and velocity.y == 0.0:
-		velocity = Vector2(CombatData.RECOVERY_VELOCITY if world_pos.x < CombatData.WORLD_CENTER else -CombatData.RECOVERY_VELOCITY, CombatData.RECOVERY_VELOCITY if world_pos.y < CombatData.WORLD_CENTER else -CombatData.RECOVERY_VELOCITY).normalized()
+	if not _combat_ready or _combat_metrics == null:
+		velocity = Vector2.ZERO
+		return false
+	var velocity_dir := repulsion.normalized()
+	if velocity_dir.x == 0.0 and velocity_dir.y == 0.0:
+		var combat_center: Vector2 = _combat_metrics.get_rect().get_center()
+		velocity_dir = Vector2(
+			CombatData.RECOVERY_VELOCITY if global_position.x < combat_center.x else -CombatData.RECOVERY_VELOCITY,
+			CombatData.RECOVERY_VELOCITY if global_position.y < combat_center.y else -CombatData.RECOVERY_VELOCITY
+		).normalized()
 	last_kite_timer = CombatData.KITE_DURATION
-	var old_pos := world_pos
-	set_world_position(world_pos + velocity * move_speed * CombatData.KITE_SPEED_MODIFIER * dt)
-	_clamp_position_to_world()
-	world.call("notify_unit_moved", self, old_pos)
+	velocity = velocity_dir * move_speed * CombatData.KITE_SPEED_MODIFIER
 	return true
-
-
-func _clamp_position_to_world() -> void:
-	world_pos.x = clampf(world_pos.x, CombatData.WORLD_BOUNDARY_MIN, CombatData.WORLD_BOUNDARY_MAX)
-	world_pos.y = clampf(world_pos.y, CombatData.WORLD_BOUNDARY_MIN, CombatData.WORLD_BOUNDARY_MAX)
 
 
 func _set_current_target(world: Object, target: Node2D) -> void:

@@ -28,6 +28,7 @@ const KITE_SPEED_MODIFIER := 0.5
 const KITE_DURATION := 1.0
 const NUDGE_SPEED_MODIFIER := 0.4
 const BOUNDARY_DETECTION_MARGIN := 0.05
+const ARENA_WALL_THICKNESS := 32.0
 const RECOVERY_VELOCITY := 1.0
 const SEPARATION_RADIUS_RANGED := 0.8
 const SEPARATION_RADIUS_MELEE := 0.25
@@ -234,14 +235,14 @@ const KDA_DEATHS_FLOOR := 0.1
 # =============================================================================
 const VALID_ROLES := ["tank", "fighter", "assassin", "marksman", "mage", "support"]
 
-static func effective_attack_range(attack_range: float) -> float:
-	if attack_range <= RANGED_THRESHOLD:
-		return attack_range + MELEE_CONTACT_BUFFER
+static func effective_attack_range(attack_range: float, ranged_threshold: float = RANGED_THRESHOLD, contact_buffer: float = MELEE_CONTACT_BUFFER) -> float:
+	if attack_range <= ranged_threshold:
+		return attack_range + contact_buffer
 	return attack_range
 
 
-static func is_melee_in_contact(distance: float, attack_range: float) -> bool:
-	if attack_range > RANGED_THRESHOLD:
+static func is_melee_in_contact(distance: float, attack_range: float, ranged_threshold: float = RANGED_THRESHOLD, contact_buffer: float = MELEE_CONTACT_BUFFER) -> bool:
+	if attack_range > ranged_threshold:
 		return distance <= attack_range
-	var effective_range := effective_attack_range(attack_range)
+	var effective_range := effective_attack_range(attack_range, ranged_threshold, contact_buffer)
 	return distance <= effective_range or is_equal_approx(distance, effective_range)

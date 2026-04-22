@@ -103,8 +103,6 @@ func _refresh_ui() -> void:
 
 
 func _on_phase_changed(_new_phase: int) -> void:
-	if int(world_state.phase) == PHASE_COMBAT:
-		battlefield.call("capture_spawn_positions")
 	battlefield.call("set_phase", int(world_state.phase))
 	_sync_visibility()
 	_refresh_ui()
@@ -233,6 +231,7 @@ func _on_commence_requested() -> void:
 	if int(world_state.phase) != PHASE_PREPARATION:
 		return
 	battlefield.call("capture_spawn_positions")
+	battlefield.call("begin_combat")
 	world_state.set_phase(PHASE_COMBAT)
 	battlefield.call("set_phase", PHASE_COMBAT)
 

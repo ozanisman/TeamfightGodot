@@ -220,6 +220,7 @@ func setup_self_shield(new_shield_ratio: float, new_reason: String = "") -> Obje
 
 
 func apply_on_attack(context: Object) -> float:
+	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
 	match kind:
 		Kind.CONSTANT_MULTIPLIER:
 			return multiplier
@@ -231,8 +232,8 @@ func apply_on_attack(context: Object) -> float:
 			return 1.0
 		Kind.DISTANCE_THRESHOLD_MULTIPLIER:
 			if context.target != null and is_instance_valid(context.target):
-				var dist := Vector2(context.unit.get("world_pos")).distance_to(Vector2(context.target.get("world_pos")))
-				if dist > threshold:
+				var dist: float = context.unit.global_position.distance_to(context.target.global_position)
+				if dist > threshold * combat_scale:
 					return multiplier
 			return 1.0
 		Kind.SELF_HP_THRESHOLD_MULTIPLIER:
@@ -277,6 +278,7 @@ func apply_on_tick(context: Object) -> void:
 
 
 func apply_post_attack(context: Object) -> void:
+	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
 	match kind:
 		Kind.DAMAGE_BASED_HEAL:
 			if context.damage > 0.0:
@@ -291,11 +293,12 @@ func apply_post_attack(context: Object) -> void:
 				return
 			if threshold > 0.0 and context.damage <= float(context.unit.get("attack_damage")) * threshold:
 				return
-			if radius <= 0.0 or splash_ratio <= 0.0:
+			var combat_radius := radius * combat_scale
+			if combat_radius <= 0.0 or splash_ratio <= 0.0:
 				return
-			var center: Vector2 = context.target.get("world_pos")
+			var center: Vector2 = context.target.global_position
 			var total_aoe_dmg := 0.0
-			for enemy in context.world.call("nearby_units", center, radius, "", int(context.unit.get("instance_id"))):
+			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
 				if enemy == context.target or String(enemy.get("team")) == String(context.unit.get("team")):
 					continue
 				var absorbed_loss: Dictionary = enemy.call("take_damage", context.damage * splash_ratio, context.world, damage_type, int(context.unit.get("instance_id")))
@@ -311,7 +314,7 @@ func apply_post_attack(context: Object) -> void:
 					"target_name": String(enemy.get("display_name")),
 					"damage": dealt,
 					"shield_absorbed": absorbed,
-					"distance": center.distance_to(Vector2(enemy.get("world_pos"))),
+					"distance": center.distance_to(enemy.global_position),
 					"target_hp_after": float(enemy.get("hp")),
 					"target_shield_after": float(enemy.get("shield")),
 					"target_selection_reason": reason,
@@ -342,6 +345,7 @@ func apply_post_take_damage(context: Object) -> void:
 
 
 func execute_active(context: Object) -> Dictionary:
+	var combat_scale := float(context.unit.get("combat_scale")) if context.unit != null else 1.0
 	match kind:
 		Kind.MULTI:
 			var result: Dictionary = {}
@@ -392,20 +396,21 @@ func execute_active(context: Object) -> Dictionary:
 				"damage": float(context.unit.get("attack_damage")) * damage_multiplier,
 				"damage_type": damage_type,
 				"reason": reason if not reason.is_empty() else "Ability",
-				"projectile_speed": projectile_speed,
-				"projectile_radius": projectile_radius,
+				"projectile_speed": projectile_speed * combat_scale,
+				"projectile_radius": projectile_radius * combat_scale,
 				"stun_duration": stun_duration,
-				"splash_radius": splash_radius,
+				"splash_radius": splash_radius * combat_scale,
 				"splash_ratio": splash_ratio,
 			}
 		Kind.SELF_AOE_DAMAGE:
-			var center: Vector2 = context.unit.get("world_pos")
+			var center: Vector2 = context.unit.global_position
 			var total_aoe_dmg := 0.0
 			var primary_dmg := 0.0
-			if radius <= 0.0:
+			var combat_radius := radius * combat_scale
+			if combat_radius <= 0.0:
 				return {}
 			var damage_amount := float(context.unit.get("attack_damage")) * damage_multiplier
-			for enemy in context.world.call("nearby_units", center, radius, "", int(context.unit.get("instance_id"))):
+			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
 				if String(enemy.get("team")) == String(context.unit.get("team")):
 					continue
 				var absorbed_loss: Dictionary = enemy.call("take_damage", damage_amount, context.world, damage_type, int(context.unit.get("instance_id")))
@@ -424,7 +429,7 @@ func execute_active(context: Object) -> Dictionary:
 						"target_name": String(enemy.get("display_name")),
 						"damage": dealt,
 						"shield_absorbed": absorbed,
-						"distance": center.distance_to(Vector2(enemy.get("world_pos"))),
+						"distance": center.distance_to(enemy.global_position),
 						"target_hp_after": float(enemy.get("hp")),
 						"target_shield_after": float(enemy.get("shield")),
 						"target_selection_reason": reason,
@@ -434,11 +439,12 @@ func execute_active(context: Object) -> Dictionary:
 				return {}
 			return {"damage": primary_dmg, "total_impact": total_aoe_dmg, "reason": reason}
 		Kind.SELF_AOE_TAUNT:
-			if radius <= 0.0:
+			var combat_radius := radius * combat_scale
+			if combat_radius <= 0.0:
 				return {}
 			var taunted_count := 0
-			var center: Vector2 = context.unit.get("world_pos")
-			for enemy in context.world.call("nearby_units", center, radius, "", int(context.unit.get("instance_id"))):
+			var center: Vector2 = context.unit.global_position
+			for enemy in context.world.call("nearby_units", center, combat_radius, "", int(context.unit.get("instance_id"))):
 				if String(enemy.get("team")) == String(context.unit.get("team")):
 					continue
 				enemy.call("apply_taunt", stun_duration, int(context.unit.get("instance_id")))
@@ -469,7 +475,7 @@ func _make_event(context: Object, event_target: Node2D, damage: float, shield_ab
 		"healing": healing,
 		"shield_absorbed": shield_absorbed,
 		"shield_added": shield_added,
-		"distance": Vector2(context.unit.get("world_pos")).distance_to(Vector2(event_target.get("world_pos"))),
+		"distance": context.unit.global_position.distance_to(event_target.global_position),
 		"target_hp_after": float(event_target.get("hp")),
 		"target_shield_after": float(event_target.get("shield")),
 		"target_selection_reason": reason,

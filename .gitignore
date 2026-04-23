@@ -20,3 +20,6 @@ mono_crash.*.json
 Python/
 *.log
 /logs
+native/bin/
+native/build/
+*.uid

@@ -3,9 +3,10 @@
 This directory holds the future compiled simulation runtime for Teamfight.
 
 Current state:
-- the production game still uses the GDScript fallback core
-- this folder contains the native API skeleton and build target layout
-- the runtime backend will switch to this implementation once the library is built and loaded
+- the native core owns a real match runtime state shape
+- the compiled path currently bridges to the reference GDScript oracle for parity
+- the project root contains [teamfight_simulation_core.gdextension](/C:/Users/ozani/Desktop/TeamfightGodot/teamfight_simulation_core.gdextension)
+- the production runtime will switch to the native path once the library is built and loaded
 
 Expected contract:
 - `TeamfightSimulationCore.clear()`

@@ -1,4 +1,4 @@
-class_name TeamfightSimulationCore
+class_name TeamfightSimulationCoreReference
 extends RefCounted
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
@@ -138,9 +138,18 @@ func _spawn_unit(spawn_data: Dictionary, team: StringName, instance_id: int) -> 
 		"casting_effect": null,
 		"casting_target_id": 0,
 		"casting_ally_target_id": 0,
+		"cast_resolved_this_tick": false,
 		"stun_remaining": 0.0,
 		"respawn_timer": 0.0,
 		"respawned_this_tick": false,
+		"target_id": 0,
+		"distance_to_target": 0.0,
+		"in_range": false,
+		"current_target_score": INF,
+		"retarget_timer": 0.0,
+		"target_switch_lock_timer": 0.0,
+		"incoming_target_count": 0,
+		"perceived_threat": 0.0,
 		"alive": true,
 		"attack_count": 0,
 		"damage_dealt": 0.0,
@@ -181,6 +190,12 @@ func _role_config_for(role: StringName) -> Dictionary:
 	if role_config is Dictionary:
 		return Dictionary(role_config)
 	return {"stat_mods": {}, "passive_on_tick": null, "passive_post_take_damage": null}
+
+func _scale_priority_dict(base: Dictionary) -> Dictionary:
+	var scaled: Dictionary = {}
+	for key in base.keys():
+		scaled[key] = float(base[key]) * SimConstantsScript.ROLE_PRIORITY_GLOBAL_SCALE
+	return scaled
 
 func _build_passive_effects(champion_dict: Dictionary, role_config: Dictionary) -> Dictionary:
 	var passive_effects: Dictionary = {
@@ -226,9 +241,26 @@ func _step_tick() -> void:
 	_time += _tick_rate
 	for unit in _units:
 		unit["respawned_this_tick"] = false
+		unit["cast_resolved_this_tick"] = false
+		unit["retarget_timer"] = maxf(0.0, float(unit.get("retarget_timer", 0.0)) - _tick_rate)
+		unit["target_switch_lock_timer"] = maxf(0.0, float(unit.get("target_switch_lock_timer", 0.0)) - _tick_rate)
+	_refresh_target_pressure()
 	_update_cooldowns_and_status()
 	_update_projectiles()
 	_process_actions()
+
+func _refresh_target_pressure() -> void:
+	for unit in _units:
+		unit["incoming_target_count"] = 0
+	for unit in _units:
+		if not bool(unit.get("alive", false)):
+			continue
+		var target_id: int = int(unit.get("target_id", 0))
+		if target_id == 0:
+			continue
+		var target: Dictionary = _unit_by_id(target_id)
+		if not target.is_empty() and bool(target.get("alive", false)):
+			target["incoming_target_count"] = int(target.get("incoming_target_count", 0)) + 1
 
 func _update_cooldowns_and_status() -> void:
 	for unit in _units:
@@ -249,7 +281,14 @@ func _update_cooldowns_and_status() -> void:
 		if float(unit.get("casting_remaining", 0.0)) > 0.0:
 			unit["casting_remaining"] = maxf(0.0, float(unit.get("casting_remaining", 0.0)) - _tick_rate)
 			if float(unit.get("casting_remaining", 0.0)) <= 0.0:
-				_resolve_cast(unit)
+				var failed_cast_kind: StringName = StringName(String(unit.get("casting_kind", "")))
+				if not _resolve_cast(unit):
+					if failed_cast_kind == ACTION_ABILITY:
+						unit["ability_cooldown"] = 0.0
+					elif failed_cast_kind == ACTION_ULTIMATE:
+						unit["ultimate_cooldown"] = 0.0
+						unit["mana"] = minf(float(Dictionary(unit.get("stats", {})).get("max_mana", 0.0)), float(unit.get("mana", 0.0)) + float(Dictionary(unit.get("stats", {})).get("max_mana", 0.0)))
+				unit["cast_resolved_this_tick"] = true
 		var regen_accumulator: float = float(unit.get("regen_accumulator", 0.0)) + _tick_rate
 		while regen_accumulator >= SimConstantsScript.REGEN_TICK_INTERVAL:
 			regen_accumulator -= SimConstantsScript.REGEN_TICK_INTERVAL
@@ -265,6 +304,8 @@ func _process_actions() -> void:
 			continue
 		if bool(unit.get("respawned_this_tick", false)):
 			continue
+		if bool(unit.get("cast_resolved_this_tick", false)):
+			continue
 		if float(unit.get("casting_remaining", 0.0)) > 0.0:
 			continue
 		if float(unit.get("stun_remaining", 0.0)) > 0.0:
@@ -272,9 +313,17 @@ func _process_actions() -> void:
 
 		var target: Dictionary = _select_enemy_target(unit)
 		if target.is_empty():
+			unit["target_id"] = 0
+			unit["distance_to_target"] = 0.0
+			unit["in_range"] = false
+			unit["current_target_score"] = INF
 			continue
 
 		var distance: float = _distance_between(unit, target)
+		unit["target_id"] = int(target.get("instance_id", 0))
+		unit["distance_to_target"] = distance
+		unit["in_range"] = SimConstantsScript.is_melee_in_contact(distance, _attack_range(unit))
+		unit["current_target_score"] = _score_enemy_target(unit, target, _strategy_for_unit(unit))
 		if _try_cast_ultimate(unit, target, distance):
 			continue
 		if _try_cast_ability(unit, target, distance):
@@ -322,7 +371,7 @@ func _start_cast(unit: Dictionary, target: Dictionary, distance: float, action_k
 	unit["casting_ally_target_id"] = int(target_ally.get("instance_id", 0)) if not target_ally.is_empty() else 0
 	return true
 
-func _resolve_cast(unit: Dictionary) -> void:
+func _resolve_cast(unit: Dictionary) -> bool:
 	var effect: Variant = unit.get("casting_effect", null)
 	var action_kind: StringName = StringName(String(unit.get("casting_kind", "")))
 	var target: Dictionary = _unit_by_id(int(unit.get("casting_target_id", 0)))
@@ -332,19 +381,17 @@ func _resolve_cast(unit: Dictionary) -> void:
 	unit["casting_effect"] = null
 	unit["casting_target_id"] = 0
 	unit["casting_ally_target_id"] = 0
+	unit["cast_resolved_this_tick"] = false
 	if effect == null:
-		return
+		return false
 	if action_kind == ACTION_ABILITY or action_kind == ACTION_ULTIMATE:
 		if target.is_empty() and target_ally.is_empty():
-			return
+			return false
 	var context: Dictionary = _build_context(unit, target, target_ally, 0.0, action_kind)
 	var result: Dictionary = _execute_effect(effect, context)
 	if result.is_empty():
-		return
-	if action_kind == ACTION_ABILITY:
-		unit["damage_dealt_ability"] += float(result.get("damage", 0.0))
-	elif action_kind == ACTION_ULTIMATE:
-		unit["damage_dealt_ultimate"] += float(result.get("damage", 0.0))
+		return false
+	return true
 
 func _perform_auto_attack(unit: Dictionary, target: Dictionary, distance: float) -> void:
 	var stats: Dictionary = Dictionary(unit.get("stats", {}))
@@ -486,6 +533,8 @@ func _apply_damage(source: Dictionary, target: Dictionary, damage: float, damage
 		source_damage[int(source.get("instance_id", 0))] = entry
 		target["damage_sources"] = source_damage
 		target["last_hit_time"] = _time
+		if float(target.get("stats", {}).get("max_hp", 0.0)) > 0.0 and incoming > float(target.get("stats", {}).get("max_hp", 0.0)) * SimConstantsScript.THREAT_BURST_THRESHOLD:
+			target["perceived_threat"] = float(target.get("perceived_threat", 0.0)) + ((incoming / float(target.get("stats", {}).get("max_hp", 1.0))) * SimConstantsScript.THREAT_BURST_MULTIPLIER)
 
 	if float(target.get("hp", 0.0)) <= 0.0:
 		_handle_death(source, target)
@@ -727,9 +776,8 @@ func _heal_unit(source: Dictionary, target: Dictionary, amount: float) -> void:
 	var stats: Dictionary = Dictionary(target.get("stats", {}))
 	var max_hp: float = float(stats.get("max_hp", 0.0))
 	var new_hp: float = minf(max_hp, float(target.get("hp", 0.0)) + amount)
-	var healed: float = maxf(0.0, new_hp - float(target.get("hp", 0.0)))
 	target["hp"] = new_hp
-	source["healing_done"] = float(source.get("healing_done", 0.0)) + healed
+	source["healing_done"] = float(source.get("healing_done", 0.0)) + amount
 
 func _restore_mana(source: Dictionary, target: Dictionary, amount: float) -> void:
 	if amount <= 0.0 or target.is_empty():
@@ -779,53 +827,202 @@ func _select_enemy_target(unit: Dictionary) -> Dictionary:
 		if not taunt_target.is_empty() and bool(taunt_target.get("alive", false)):
 			return taunt_target
 
+	var strategy: Dictionary = _strategy_for_unit(unit)
+	var current_target: Dictionary = _unit_by_id(int(unit.get("target_id", 0)))
+	if not current_target.is_empty() and bool(current_target.get("alive", false)) and StringName(String(current_target.get("team", ""))) != StringName(String(unit.get("team", ""))):
+		if float(unit.get("target_switch_lock_timer", 0.0)) > 0.0:
+			return current_target
+		if float(unit.get("retarget_timer", 0.0)) > 0.0:
+			return current_target
+	unit["retarget_timer"] = SimConstantsScript.RETARGET_INTERVAL
+
 	var best: Dictionary = {}
+	var best_score: float = INF
 	for candidate in _units:
 		if not bool(candidate.get("alive", false)):
 			continue
 		if StringName(String(candidate.get("team", ""))) == StringName(String(unit.get("team", ""))):
 			continue
-		if best.is_empty():
+		var candidate_score: float = _score_enemy_target(unit, candidate, strategy)
+		if candidate_score < best_score - SimConstantsScript.EPSILON:
+			best_score = candidate_score
 			best = candidate
-			continue
-		if _is_better_target(unit, candidate, best):
-			best = candidate
+		elif is_equal_approx(candidate_score, best_score) and not best.is_empty():
+			if int(candidate.get("instance_id", 0)) < int(best.get("instance_id", 0)):
+				best = candidate
+	if not current_target.is_empty() and bool(current_target.get("alive", false)) and StringName(String(current_target.get("team", ""))) != StringName(String(unit.get("team", ""))):
+		var current_score: float = _score_enemy_target(unit, current_target, strategy)
+		if best.is_empty() or current_target.get("instance_id", 0) == best.get("instance_id", 0):
+			unit["current_target_score"] = current_score
+			return current_target
+		if not _should_switch(unit, current_score, best_score, strategy):
+			unit["current_target_score"] = current_score
+			return current_target
+		unit["target_switch_lock_timer"] = SimConstantsScript.TARGET_SWITCH_LOCK_DURATION
+		unit["retarget_timer"] = SimConstantsScript.RETARGET_INTERVAL
 	return best
 
 func _select_ally_target(unit: Dictionary) -> Dictionary:
-	var best: Dictionary = unit
+	var alive_allies: Array = []
 	for candidate in _units:
 		if not bool(candidate.get("alive", false)):
 			continue
 		if StringName(String(candidate.get("team", ""))) != StringName(String(unit.get("team", ""))):
 			continue
-		if _is_better_ally(unit, candidate, best):
+		alive_allies.append(candidate)
+	if alive_allies.is_empty():
+		return {}
+
+	var critical_allies: Array = []
+	for candidate in alive_allies:
+		var candidate_stats: Dictionary = Dictionary(candidate.get("stats", {}))
+		var candidate_hp_ratio: float = float(candidate.get("hp", 0.0)) / maxf(0.0001, float(candidate_stats.get("max_hp", 1.0)))
+		if candidate_hp_ratio <= SimConstantsScript.ALLY_CRITICAL_HP_RATIO:
+			critical_allies.append(candidate)
+
+	var pool: Array = critical_allies if not critical_allies.is_empty() else alive_allies
+	var strategy: Dictionary = _strategy_for_unit(unit)
+	var best: Dictionary = {}
+	var best_score: float = INF
+	for candidate in pool:
+		var score: float = _score_ally_target(unit, candidate, strategy)
+		if best.is_empty() or score < best_score - SimConstantsScript.EPSILON or (is_equal_approx(score, best_score) and int(candidate.get("instance_id", 0)) < int(best.get("instance_id", 0))):
+			best_score = score
 			best = candidate
 	return best
 
-func _is_better_target(attacker: Dictionary, candidate: Dictionary, current_best: Dictionary) -> bool:
-	var candidate_distance: float = _distance_between(attacker, candidate)
-	var best_distance: float = _distance_between(attacker, current_best)
-	if candidate_distance < best_distance - SimConstantsScript.EPSILON:
-		return true
-	if candidate_distance > best_distance + SimConstantsScript.EPSILON:
-		return false
-	var candidate_ratio: float = float(candidate.get("hp", 0.0)) / maxf(0.0001, float(Dictionary(candidate.get("stats", {})).get("max_hp", 1.0)))
-	var best_ratio: float = float(current_best.get("hp", 0.0)) / maxf(0.0001, float(Dictionary(current_best.get("stats", {})).get("max_hp", 1.0)))
-	if candidate_ratio < best_ratio - SimConstantsScript.EPSILON:
-		return true
-	if candidate_ratio > best_ratio + SimConstantsScript.EPSILON:
-		return false
-	return int(candidate.get("instance_id", 0)) < int(current_best.get("instance_id", 0))
+func _score_ally_target(unit: Dictionary, ally: Dictionary, strategy: Dictionary) -> float:
+	var stats: Dictionary = Dictionary(ally.get("stats", {}))
+	var dist: float = _distance_between(unit, ally)
+	var hp_ratio: float = float(ally.get("hp", 0.0)) / maxf(0.0001, float(stats.get("max_hp", 1.0)))
+	var score: float = dist * float(strategy.get("ally_distance_weight", 1.0))
+	score += hp_ratio * float(strategy.get("ally_hp_weight", 0.0)) * SimConstantsScript.SCORE_HP_WEIGHT_SCALE
+	score -= float(ally.get("perceived_threat", 0.0)) * float(strategy.get("ally_threat_weight", 0.0))
+	score += float(strategy.get("ally_role_priorities", {}).get(StringName(String(stats.get("role", ""))), 0.0))
+	return score
 
-func _is_better_ally(attacker: Dictionary, candidate: Dictionary, current_best: Dictionary) -> bool:
-	var candidate_ratio: float = float(candidate.get("hp", 0.0)) / maxf(0.0001, float(Dictionary(candidate.get("stats", {})).get("max_hp", 1.0)))
-	var best_ratio: float = float(current_best.get("hp", 0.0)) / maxf(0.0001, float(Dictionary(current_best.get("stats", {})).get("max_hp", 1.0)))
-	if candidate_ratio < best_ratio - SimConstantsScript.EPSILON:
-		return true
-	if candidate_ratio > best_ratio + SimConstantsScript.EPSILON:
+func _strategy_for_unit(unit: Dictionary) -> Dictionary:
+	var role: StringName = StringName(String(Dictionary(unit.get("stats", {})).get("role", "")))
+	match role:
+		&"tank":
+			return {
+				"name": "Protector",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_TANK,
+				"hp_weight": 0.0,
+				"ally_distance_weight": 1.0,
+				"ally_hp_weight": 0.0,
+				"ally_threat_weight": SimConstantsScript.SCORE_THREAT_WEIGHT_SCALE * SimConstantsScript.SCORE_THREAT_WEIGHT_SCALE,
+				"ally_role_priorities": _scale_priority_dict(SimConstantsScript.ALLY_ROLE_PRIORITIES_TANK),
+				"stickiness_bonus": SimConstantsScript.STICKINESS_DEFAULT,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_TANK,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_TANK,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_TANK,
+				"execute_bonus_weight": 0.0,
+				"role_priorities": _scale_priority_dict(SimConstantsScript.ROLE_PRIORITIES_TANK),
+			}
+		&"assassin":
+			return {
+				"name": "Diver",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_ASSASSIN,
+				"hp_weight": SimConstantsScript.HP_WEIGHT_ASSASSIN,
+				"stickiness_bonus": SimConstantsScript.STICKINESS_DEFAULT,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_ASSASSIN,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_ASSASSIN,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_ASSASSIN,
+				"execute_bonus_weight": SimConstantsScript.EXECUTE_BONUS_WEIGHT_DEFAULT,
+				"role_priorities": _scale_priority_dict(SimConstantsScript.ROLE_PRIORITIES_ASSASSIN),
+			}
+		&"marksman":
+			return {
+				"name": "Kiter",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_DEFAULT,
+				"hp_weight": SimConstantsScript.HP_WEIGHT_DPS_DEFAULT,
+				"stickiness_bonus": SimConstantsScript.STICKINESS_MARKSMAN,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_MARKSMAN,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_MARKSMAN,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_MARKSMAN,
+				"execute_bonus_weight": SimConstantsScript.EXECUTE_BONUS_WEIGHT_DEFAULT,
+				"role_priorities": {},
+			}
+		&"fighter":
+			return {
+				"name": "Brawler",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_FIGHTER_CLOSE,
+				"hp_weight": SimConstantsScript.HP_WEIGHT_DPS_DEFAULT,
+				"stickiness_bonus": SimConstantsScript.STICKINESS_DEFAULT,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_FIGHTER,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_FIGHTER,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_FIGHTER,
+				"execute_bonus_weight": SimConstantsScript.EXECUTE_BONUS_WEIGHT_DEFAULT,
+				"role_priorities": _scale_priority_dict(SimConstantsScript.ROLE_PRIORITIES_FIGHTER),
+			}
+		&"mage":
+			return {
+				"name": "Spellcaster",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_MAGE,
+				"hp_weight": SimConstantsScript.HP_WEIGHT_MAGE,
+				"stickiness_bonus": SimConstantsScript.STICKINESS_DEFAULT,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_MAGE,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_MAGE,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_MAGE,
+				"execute_bonus_weight": SimConstantsScript.EXECUTE_BONUS_WEIGHT_DEFAULT,
+				"role_priorities": _scale_priority_dict(SimConstantsScript.ROLE_PRIORITIES_MAGE),
+			}
+		&"support":
+			return {
+				"name": "Enchanter",
+				"distance_weight": SimConstantsScript.DISTANCE_WEIGHT_SUPPORT,
+				"hp_weight": 0.0,
+				"ally_distance_weight": 1.0,
+				"ally_hp_weight": SimConstantsScript.HP_WEIGHT_SUPPORT,
+				"ally_threat_weight": SimConstantsScript.SCORE_THREAT_WEIGHT_SCALE * SimConstantsScript.SCORE_THREAT_WEIGHT_SCALE,
+				"ally_role_priorities": _scale_priority_dict(SimConstantsScript.ALLY_ROLE_PRIORITIES_SUPPORT),
+				"stickiness_bonus": SimConstantsScript.STICKINESS_SUPPORT,
+				"in_range_bonus": SimConstantsScript.IN_RANGE_BONUS_SUPPORT,
+				"tank_penalty": SimConstantsScript.TANK_PENALTY_SUPPORT,
+				"threat_response_weight": SimConstantsScript.THREAT_RESPONSE_SUPPORT,
+				"execute_bonus_weight": 0.0,
+				"role_priorities": _scale_priority_dict(SimConstantsScript.ROLE_PRIORITIES_SUPPORT),
+			}
+		_:
+			return {"name": "Default", "distance_weight": 1.0, "hp_weight": 0.0, "ally_distance_weight": 1.0, "ally_hp_weight": 0.0, "ally_threat_weight": 0.0, "ally_role_priorities": {}, "stickiness_bonus": 2.0, "in_range_bonus": 0.6, "tank_penalty": 2.0, "threat_response_weight": 0.0, "execute_bonus_weight": 0.0, "role_priorities": {}}
+
+func _score_enemy_target(attacker: Dictionary, enemy: Dictionary, strategy: Dictionary) -> float:
+	var dist: float = _distance_between(attacker, enemy)
+	var attack_range: float = _attack_range(attacker)
+	var effective_range: float = _effective_attack_range(attacker)
+	var in_range: bool = SimConstantsScript.is_melee_in_contact(dist, attack_range)
+	var hp_ratio: float = float(enemy.get("hp", 0.0)) / maxf(0.0001, float(Dictionary(enemy.get("stats", {})).get("max_hp", 1.0)))
+	var score: float = 0.0
+	var range_gap: float = maxf(0.0, dist - maxf(effective_range, SimConstantsScript.EPSILON))
+	var norm_gap: float = range_gap / maxf(effective_range, SimConstantsScript.EPSILON)
+	score += pow(norm_gap, SimConstantsScript.DISTANCE_EXPONENT) * float(strategy.get("distance_weight", 1.0)) * SimConstantsScript.SCORE_DISTANCE_WEIGHT_SCALE
+	if in_range:
+		score -= float(strategy.get("in_range_bonus", 0.0))
+	score += hp_ratio * float(strategy.get("hp_weight", 0.0)) * SimConstantsScript.SCORE_HP_WEIGHT_SCALE
+	if float(strategy.get("execute_bonus_weight", 0.0)) > 0.0 and in_range and hp_ratio <= SimConstantsScript.TARGET_EXECUTE_HP_RATIO:
+		score -= float(strategy.get("execute_bonus_weight", 0.0))
+	score += float(strategy.get("role_priorities", {}).get(StringName(String(Dictionary(enemy.get("stats", {})).get("role", ""))), 0.0))
+	if StringName(String(Dictionary(enemy.get("stats", {})).get("role", ""))) == &"tank":
+		score += float(strategy.get("tank_penalty", 0.0))
+	if int(enemy.get("target_id", 0)) == int(attacker.get("instance_id", 0)):
+		var falloff: float = 1.0 / (1.0 + maxf(0.0, dist - attack_range) * SimConstantsScript.THREAT_RESPONSE_RANGE_FALLOFF)
+		score -= float(strategy.get("threat_response_weight", 0.0)) * falloff
+	var enemy_incoming: float = float(enemy.get("incoming_target_count", 0))
+	var prey_focus: float = enemy_incoming * SimConstantsScript.PREY_INCOMING_TARGET_SCALE + float(enemy.get("perceived_threat", 0.0)) * SimConstantsScript.PREY_PERCEIVED_THREAT_SCALE
+	if StringName(String(Dictionary(enemy.get("stats", {})).get("role", ""))) in [&"tank", &"fighter"]:
+		prey_focus *= SimConstantsScript.PREY_FRONTLINE_SCALE
+	if float(strategy.get("execute_bonus_weight", 0.0)) > 0.0:
+		score -= prey_focus * 0.0
+	if int(attacker.get("target_id", 0)) == int(enemy.get("instance_id", 0)):
+		score -= maxf(1.0, float(strategy.get("distance_weight", 1.0))) * float(strategy.get("stickiness_bonus", 0.0))
+	return score
+
+func _should_switch(unit: Dictionary, current_score: float, new_score: float, strategy: Dictionary) -> bool:
+	if float(unit.get("target_switch_lock_timer", 0.0)) > 0.0:
 		return false
-	return int(candidate.get("instance_id", 0)) < int(current_best.get("instance_id", 0))
+	var margin: float = float(strategy.get("switch_margin", SimConstantsScript.TARGET_SWITCH_MARGIN))
+	return new_score <= (current_score - margin)
 
 func _distance_between(left: Dictionary, right: Dictionary) -> float:
 	return _distance_between_dicts(left, right)
@@ -900,20 +1097,24 @@ func _respawn_unit(unit: Dictionary) -> void:
 	unit["hp"] = float(Dictionary(unit.get("stats", {})).get("max_hp", 0.0))
 	unit["mana"] = 0.0
 	unit["shield"] = 0.0
-	unit["attack_cooldown"] = 0.0
 	unit["ability_cooldown"] = float(Dictionary(unit.get("stats", {})).get("ability_cd", 0.0))
-	unit["ultimate_cooldown"] = float(Dictionary(unit.get("stats", {})).get("ultimate_cd", 0.0))
 	unit["stun_remaining"] = 0.0
 	unit["taunt_remaining"] = 0.0
 	unit["respawn_timer"] = 0.0
 	unit["damage_sources"] = {}
 	unit["last_hit_time"] = 0.0
 	unit["respawned_this_tick"] = true
+	unit["casting_remaining"] = 0.0
+	unit["casting_kind"] = &""
+	unit["casting_effect"] = null
+	unit["casting_target_id"] = 0
+	unit["casting_ally_target_id"] = 0
+	unit["taunt_target_id"] = 0
 	if StringName(String(unit.get("team", ""))) == TEAM_PLAYER:
-		unit["x"] = float(unit.get("spawn_x", unit.get("x", 0.0)))
+		unit["x"] = float(SimConstantsScript.DRAFT_X_BASE)
 		unit["y"] = float(unit.get("spawn_y", unit.get("y", 0.0)))
 	else:
-		unit["x"] = float(unit.get("spawn_x", unit.get("x", 0.0)))
+		unit["x"] = float(SimConstantsScript.WORLD_SIZE - SimConstantsScript.DRAFT_X_BASE)
 		unit["y"] = float(unit.get("spawn_y", unit.get("y", 0.0)))
 
 func _build_summary():

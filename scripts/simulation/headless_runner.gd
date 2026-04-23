@@ -78,10 +78,12 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 		var expected_payload: Dictionary = ParityToolsScript.canonical_match_payload(expected_summary)
 		var actual_signature: String = ParityToolsScript.match_signature(actual_summary)
 		if actual_payload != expected_payload or actual_signature != expected_signature:
+			var payload_diff: String = _summarize_payload_diff(actual_payload, expected_payload)
 			failures.append({
 				"name": String(fixture.get("name", "")),
 				"expected_signature": expected_signature,
 				"actual_signature": actual_signature,
+				"payload_diff": payload_diff,
 			})
 		if backend.has_method("clear"):
 			backend.call("clear")
@@ -94,6 +96,55 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 
 	print("Fixture parity passed for %d case(s)." % fixtures.size())
 	return true
+
+static func _summarize_payload_diff(actual_payload: Dictionary, expected_payload: Dictionary) -> String:
+	var lines: Array[String] = []
+	for key in ["seed", "winner_team", "duration", "player_comp", "enemy_comp"]:
+		var actual_value: Variant = actual_payload.get(key, null)
+		var expected_value: Variant = expected_payload.get(key, null)
+		if actual_value != expected_value:
+			lines.append("%s: actual=%s expected=%s" % [key, JSON.stringify(actual_value), JSON.stringify(expected_value)])
+
+	var actual_units: Array = Array(actual_payload.get("unit_stats", []))
+	var expected_units: Array = Array(expected_payload.get("unit_stats", []))
+	var unit_count: int = mini(actual_units.size(), expected_units.size())
+	if actual_units.size() != expected_units.size():
+		lines.append("unit_stats.count: actual=%d expected=%d" % [actual_units.size(), expected_units.size()])
+
+	for index in range(unit_count):
+		var actual_unit: Dictionary = Dictionary(actual_units[index])
+		var expected_unit: Dictionary = Dictionary(expected_units[index])
+		for key in [
+			"instance_id",
+			"archetype",
+			"team",
+			"won",
+			"damage_dealt",
+			"damage_dealt_auto",
+			"damage_dealt_ability",
+			"damage_dealt_ultimate",
+			"damage_received",
+			"damage_mitigated",
+			"healing_done",
+			"shielding_done",
+			"auto_attacks",
+			"abilities",
+			"ultimates",
+			"stuns",
+			"kills",
+			"deaths",
+			"assists",
+		]:
+			var actual_value: Variant = actual_unit.get(key, null)
+			var expected_value: Variant = expected_unit.get(key, null)
+			if actual_value != expected_value:
+				lines.append("unit_stats[%d].%s: actual=%s expected=%s" % [index, key, JSON.stringify(actual_value), JSON.stringify(expected_value)])
+		if lines.size() >= 24:
+			break
+
+	if lines.is_empty():
+		return "No top-level payload differences detected."
+	return "\n".join(lines)
 
 static func _build_batch_inputs(batch_count: int, base_seed: int, team_size: int):
 	var rng := RandomNumberGenerator.new()
@@ -125,7 +176,9 @@ static func _build_batch_inputs(batch_count: int, base_seed: int, team_size: int
 	return results
 
 static func run_from_cli(tree: SceneTree) -> void:
+	await tree.process_frame
 	var backend: Object = _build_backend()
+	await tree.process_frame
 	if not backend.is_available():
 		push_error("Headless simulation requires a simulation backend.")
 		tree.quit(1)

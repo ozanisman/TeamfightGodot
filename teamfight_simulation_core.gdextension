@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "teamfight_simulation_core_library_init"
+compatibility_minimum = "4.6"
+reloadable = true
+
+[libraries]
+windows.debug.x86_64 = "res://native/bin/teamfight_simulation_core.dll"
+windows.release.x86_64 = "res://native/bin/teamfight_simulation_core.dll"

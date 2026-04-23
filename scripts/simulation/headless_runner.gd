@@ -9,6 +9,7 @@ const NativeSimulationBackendScript := preload("res://scripts/simulation/native_
 const SimulationSchemaScript := preload("res://scripts/simulation/simulation_schema.gd")
 const ParityToolsScript := preload("res://scripts/simulation/parity_tools.gd")
 const ReplayIOScript := preload("res://scripts/simulation/replay_io.gd")
+const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 
 static func _build_backend():
 	var backend: Object = NativeSimulationBackendScript.new()
@@ -176,6 +177,10 @@ static func _build_batch_inputs(batch_count: int, base_seed: int, team_size: int
 	return results
 
 static func run_from_cli(tree: SceneTree) -> void:
+	await tree.process_frame
+	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+		push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
 	await tree.process_frame
 	var backend: Object = _build_backend()
 	await tree.process_frame

@@ -7,12 +7,117 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <limits>
+#include <utility>
 
 static Dictionary effect_dict(const StringName &kind, const Dictionary &params = Dictionary()) {
 	Dictionary effect;
 	effect["kind"] = String(kind);
 	effect["params"] = params;
 	return effect;
+}
+
+int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
+	if (kind == StringName("multi")) {
+		return EFFECT_OPCODE_MULTI;
+	}
+	if (kind == StringName("damage")) {
+		return EFFECT_OPCODE_DAMAGE;
+	}
+	if (kind == StringName("projectile")) {
+		return EFFECT_OPCODE_PROJECTILE;
+	}
+	if (kind == StringName("stun")) {
+		return EFFECT_OPCODE_STUN;
+	}
+	if (kind == StringName("shield")) {
+		return EFFECT_OPCODE_SHIELD;
+	}
+	if (kind == StringName("heal")) {
+		return EFFECT_OPCODE_HEAL;
+	}
+	if (kind == StringName("self_damage")) {
+		return EFFECT_OPCODE_SELF_DAMAGE;
+	}
+	if (kind == StringName("self_shield")) {
+		return EFFECT_OPCODE_SELF_SHIELD;
+	}
+	if (kind == StringName("self_aoe_taunt")) {
+		return EFFECT_OPCODE_SELF_AOE_TAUNT;
+	}
+	if (kind == StringName("self_aoe_damage")) {
+		return EFFECT_OPCODE_SELF_AOE_DAMAGE;
+	}
+	if (kind == StringName("splash_damage")) {
+		return EFFECT_OPCODE_SPLASH_DAMAGE;
+	}
+	if (kind == StringName("threshold_splash_damage")) {
+		return EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE;
+	}
+	if (kind == StringName("mana_regen")) {
+		return EFFECT_OPCODE_MANA_REGEN;
+	}
+	if (kind == StringName("post_damage_mana_gain")) {
+		return EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN;
+	}
+	if (kind == StringName("damage_based_heal")) {
+		return EFFECT_OPCODE_DAMAGE_BASED_HEAL;
+	}
+	if (kind == StringName("mana_restore_on_hit")) {
+		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
+	}
+	if (kind == StringName("drain_target_mana_on_hit")) {
+		return EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT;
+	}
+	if (kind == StringName("every_n_attacks_stun")) {
+		return EFFECT_OPCODE_EVERY_N_ATTACKS_STUN;
+	}
+	if (kind == StringName("dodge")) {
+		return EFFECT_OPCODE_DODGE;
+	}
+	if (kind == StringName("constant_multiplier")) {
+		return EFFECT_OPCODE_CONSTANT_MULTIPLIER;
+	}
+	if (kind == StringName("target_hp_threshold_multiplier")) {
+		return EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER;
+	}
+	if (kind == StringName("distance_threshold_multiplier")) {
+		return EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER;
+	}
+	if (kind == StringName("self_hp_threshold_multiplier")) {
+		return EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER;
+	}
+	return EFFECT_OPCODE_UNKNOWN;
+}
+
+Dictionary TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
+	Dictionary compiled;
+	StringName kind = StringName(String(effect.get("kind", "")));
+	compiled["opcode"] = _opcode_for_kind(kind);
+	compiled["params"] = Dictionary(effect.get("params", Dictionary()));
+	if (kind == StringName("multi")) {
+		Variant effects_value = Dictionary(compiled["params"]).get("effects", Variant());
+		Array effects = effects_value.get_type() == Variant::ARRAY ? Array(effects_value) : Array();
+		compiled["children"] = _compile_effect_array(effects);
+	} else if (kind == StringName("threshold_splash_damage")) {
+		Dictionary params = Dictionary(compiled["params"]);
+		Variant nested = params.get("splash", Variant());
+		if (nested.get_type() == Variant::DICTIONARY) {
+			params["splash"] = _compile_effect(Dictionary(nested));
+		}
+		compiled["params"] = params;
+	}
+	return compiled;
+}
+
+Array TeamfightSimulationCore::_compile_effect_array(const Array &effects) const {
+	Array compiled;
+	for (int64_t index = 0; index < effects.size(); ++index) {
+		Variant effect = effects[index];
+		if (effect.get_type() == Variant::DICTIONARY) {
+			compiled.append(_compile_effect(Dictionary(effect)));
+		}
+	}
+	return compiled;
 }
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
@@ -35,6 +140,9 @@ double TeamfightSimulationCore::_randf() {
 void TeamfightSimulationCore::_reset_runtime_state() {
 	_units.clear();
 	_projectiles.clear();
+	_scratch_projectiles.clear();
+	_summary_unit_stats.clear();
+	_summary_cache.clear();
 	_time = 0.0;
 	_tick_rate = DEFAULT_TICK_RATE;
 	_seed = 0;
@@ -108,7 +216,7 @@ void TeamfightSimulationCore::_build_role_configs() {
 	tank[StringName("passive_on_tick")] = Variant();
 	Dictionary tank_take_damage_params;
 	tank_take_damage_params[StringName("damage_ratio")] = 0.1;
-	tank[StringName("passive_post_take_damage")] = effect_dict(StringName("post_damage_mana_gain"), tank_take_damage_params);
+	tank[StringName("passive_post_take_damage")] = _compile_effect(effect_dict(StringName("post_damage_mana_gain"), tank_take_damage_params));
 
 	Dictionary fighter;
 	fighter[StringName("stat_mods")] = fighter_mods;
@@ -129,7 +237,7 @@ void TeamfightSimulationCore::_build_role_configs() {
 	mage[StringName("stat_mods")] = mage_mods;
 	Dictionary mage_tick_params;
 	mage_tick_params[StringName("flat_amount")] = 1.0;
-	mage[StringName("passive_on_tick")] = effect_dict(StringName("mana_regen"), mage_tick_params);
+	mage[StringName("passive_on_tick")] = _compile_effect(effect_dict(StringName("mana_regen"), mage_tick_params));
 	mage[StringName("passive_post_take_damage")] = Variant();
 
 	Dictionary support;
@@ -150,14 +258,14 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Array duelist_on_attack;
 	Dictionary duelist_multiplier_params;
 	duelist_multiplier_params[StringName("multiplier")] = 1.2;
-	duelist_on_attack.append(effect_dict(StringName("constant_multiplier"), duelist_multiplier_params));
+	duelist_on_attack.append(_compile_effect(effect_dict(StringName("constant_multiplier"), duelist_multiplier_params)));
 	duelist[StringName("on_attack")] = duelist_on_attack;
 
 	Dictionary eagle_eye;
 	Array eagle_eye_on_attack;
 	Dictionary eagle_eye_params;
 	eagle_eye_params[StringName("multiplier")] = 1.25;
-	eagle_eye_on_attack.append(effect_dict(StringName("constant_multiplier"), eagle_eye_params));
+	eagle_eye_on_attack.append(_compile_effect(effect_dict(StringName("constant_multiplier"), eagle_eye_params)));
 	eagle_eye[StringName("on_attack")] = eagle_eye_on_attack;
 	Array eagle_eye_post_attack;
 	Dictionary threshold_params;
@@ -169,14 +277,14 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	splash_params[StringName("reason")] = String("Rain of Arrows");
 	splash_params[StringName("color")] = Array();
 	threshold_params[StringName("splash")] = effect_dict(StringName("splash_damage"), splash_params);
-	eagle_eye_post_attack.append(effect_dict(StringName("threshold_splash_damage"), threshold_params));
+	eagle_eye_post_attack.append(_compile_effect(effect_dict(StringName("threshold_splash_damage"), threshold_params)));
 	eagle_eye[StringName("post_attack")] = eagle_eye_post_attack;
 
 	Dictionary bastion;
 	Array bastion_on_defense;
 	Dictionary bastion_params;
 	bastion_params[StringName("multiplier")] = 0.9;
-	bastion_on_defense.append(effect_dict(StringName("constant_multiplier"), bastion_params));
+	bastion_on_defense.append(_compile_effect(effect_dict(StringName("constant_multiplier"), bastion_params)));
 	bastion[StringName("on_defense")] = bastion_on_defense;
 
 	Dictionary executioner;
@@ -184,14 +292,14 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary executioner_params;
 	executioner_params[StringName("hp_ratio_threshold")] = 0.3;
 	executioner_params[StringName("multiplier")] = 2.0;
-	executioner_on_attack.append(effect_dict(StringName("target_hp_threshold_multiplier"), executioner_params));
+	executioner_on_attack.append(_compile_effect(effect_dict(StringName("target_hp_threshold_multiplier"), executioner_params)));
 	executioner[StringName("on_attack")] = executioner_on_attack;
 
 	Dictionary mana_font;
 	Array mana_font_on_tick;
 	Dictionary mana_font_params;
 	mana_font_params[StringName("flat_amount")] = 3.0;
-	mana_font_on_tick.append(effect_dict(StringName("mana_regen"), mana_font_params));
+	mana_font_on_tick.append(_compile_effect(effect_dict(StringName("mana_regen"), mana_font_params)));
 	mana_font[StringName("on_tick")] = mana_font_on_tick;
 
 	Dictionary marksman;
@@ -199,14 +307,14 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary marksman_params;
 	marksman_params[StringName("min_distance")] = 3.0;
 	marksman_params[StringName("multiplier")] = 1.25;
-	marksman_on_attack.append(effect_dict(StringName("distance_threshold_multiplier"), marksman_params));
+	marksman_on_attack.append(_compile_effect(effect_dict(StringName("distance_threshold_multiplier"), marksman_params)));
 	marksman[StringName("on_attack")] = marksman_on_attack;
 
 	Dictionary bloodlust;
 	Array bloodlust_post_attack;
 	Dictionary bloodlust_params;
 	bloodlust_params[StringName("heal_ratio")] = 0.15;
-	bloodlust_post_attack.append(effect_dict(StringName("damage_based_heal"), bloodlust_params));
+	bloodlust_post_attack.append(_compile_effect(effect_dict(StringName("damage_based_heal"), bloodlust_params)));
 	bloodlust[StringName("post_attack")] = bloodlust_post_attack;
 
 	Dictionary rejuvenation;
@@ -214,7 +322,7 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary rejuvenation_params;
 	rejuvenation_params[StringName("flat_amount")] = 5.0;
 	rejuvenation_params[StringName("reason")] = String("Rejuvenation");
-	rejuvenation_on_tick.append(effect_dict(StringName("heal"), rejuvenation_params));
+	rejuvenation_on_tick.append(_compile_effect(effect_dict(StringName("heal"), rejuvenation_params)));
 	rejuvenation[StringName("on_tick")] = rejuvenation_on_tick;
 
 	Dictionary agility;
@@ -223,28 +331,28 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	agility_params[StringName("dodge_chance")] = 0.25;
 	agility_params[StringName("on_dodge_multiplier")] = 0.0;
 	agility_params[StringName("on_hit_multiplier")] = 1.0;
-	agility_on_defense.append(effect_dict(StringName("dodge"), agility_params));
+	agility_on_defense.append(_compile_effect(effect_dict(StringName("dodge"), agility_params)));
 	agility[StringName("on_defense")] = agility_on_defense;
 
 	Dictionary enlightenment;
 	Array enlightenment_post_attack;
 	Dictionary enlightenment_params;
 	enlightenment_params[StringName("flat_amount")] = 5.0;
-	enlightenment_post_attack.append(effect_dict(StringName("mana_restore_on_hit"), enlightenment_params));
+	enlightenment_post_attack.append(_compile_effect(effect_dict(StringName("mana_restore_on_hit"), enlightenment_params)));
 	enlightenment[StringName("post_attack")] = enlightenment_post_attack;
 
 	Dictionary tenacity;
 	Array tenacity_on_defense;
 	Dictionary tenacity_params;
 	tenacity_params[StringName("multiplier")] = 0.9;
-	tenacity_on_defense.append(effect_dict(StringName("constant_multiplier"), tenacity_params));
+	tenacity_on_defense.append(_compile_effect(effect_dict(StringName("constant_multiplier"), tenacity_params)));
 	tenacity[StringName("on_defense")] = tenacity_on_defense;
 
 	Dictionary swiftness;
 	Array swiftness_on_attack;
 	Dictionary swiftness_params;
 	swiftness_params[StringName("multiplier")] = 1.15;
-	swiftness_on_attack.append(effect_dict(StringName("constant_multiplier"), swiftness_params));
+	swiftness_on_attack.append(_compile_effect(effect_dict(StringName("constant_multiplier"), swiftness_params)));
 	swiftness[StringName("on_attack")] = swiftness_on_attack;
 
 	Dictionary vampirism;
@@ -252,7 +360,7 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary vampirism_params;
 	vampirism_params[StringName("flat_amount")] = 3.0;
 	vampirism_params[StringName("reason")] = String("Vampirism");
-	vampirism_post_attack.append(effect_dict(StringName("heal"), vampirism_params));
+	vampirism_post_attack.append(_compile_effect(effect_dict(StringName("heal"), vampirism_params)));
 	vampirism[StringName("post_attack")] = vampirism_post_attack;
 
 	Dictionary technique;
@@ -260,7 +368,7 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary technique_params;
 	technique_params[StringName("every_n")] = 3;
 	technique_params[StringName("stun_duration")] = 0.5;
-	technique_post_attack.append(effect_dict(StringName("every_n_attacks_stun"), technique_params));
+	technique_post_attack.append(_compile_effect(effect_dict(StringName("every_n_attacks_stun"), technique_params)));
 	technique[StringName("post_attack")] = technique_post_attack;
 
 	Dictionary demolition;
@@ -271,7 +379,7 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	demolition_params[StringName("damage_type")] = String("physical");
 	demolition_params[StringName("reason")] = String("Explosion");
 	demolition_params[StringName("color")] = Array();
-	demolition_post_attack.append(effect_dict(StringName("splash_damage"), demolition_params));
+	demolition_post_attack.append(_compile_effect(effect_dict(StringName("splash_damage"), demolition_params)));
 	demolition[StringName("post_attack")] = demolition_post_attack;
 
 	Dictionary devotion;
@@ -279,14 +387,14 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary devotion_params;
 	devotion_params[StringName("max_hp_ratio")] = 0.02;
 	devotion_params[StringName("reason")] = String("Devotion");
-	devotion_on_tick.append(effect_dict(StringName("heal"), devotion_params));
+	devotion_on_tick.append(_compile_effect(effect_dict(StringName("heal"), devotion_params)));
 	devotion[StringName("on_tick")] = devotion_on_tick;
 
 	Dictionary siphon;
 	Array siphon_post_attack;
 	Dictionary siphon_params;
 	siphon_params[StringName("flat_amount")] = 5.0;
-	siphon_post_attack.append(effect_dict(StringName("drain_target_mana_on_hit"), siphon_params));
+	siphon_post_attack.append(_compile_effect(effect_dict(StringName("drain_target_mana_on_hit"), siphon_params)));
 	siphon[StringName("post_attack")] = siphon_post_attack;
 
 	Dictionary bravery;
@@ -294,7 +402,7 @@ void TeamfightSimulationCore::_build_passive_registry() {
 	Dictionary bravery_params;
 	bravery_params[StringName("min_hp_ratio")] = 0.8;
 	bravery_params[StringName("multiplier")] = 1.2;
-	bravery_on_attack.append(effect_dict(StringName("self_hp_threshold_multiplier"), bravery_params));
+	bravery_on_attack.append(_compile_effect(effect_dict(StringName("self_hp_threshold_multiplier"), bravery_params)));
 	bravery[StringName("on_attack")] = bravery_on_attack;
 
 	_passive_registry[StringName("duelist")] = duelist;
@@ -427,8 +535,10 @@ Dictionary TeamfightSimulationCore::_build_unit_state(const Dictionary &spawn_sp
 	unit["team"] = team;
 	unit["stats"] = stats;
 	unit["passive_effects"] = passive_effects;
-	unit["ability_effect"] = champion.get("ability", Variant());
-	unit["ultimate_effect"] = champion.get("ultimate", Variant());
+	Variant ability_effect = champion.get("ability", Variant());
+	Variant ultimate_effect = champion.get("ultimate", Variant());
+	unit["ability_effect"] = ability_effect.get_type() == Variant::DICTIONARY ? Variant(_compile_effect(Dictionary(ability_effect))) : ability_effect;
+	unit["ultimate_effect"] = ultimate_effect.get_type() == Variant::DICTIONARY ? Variant(_compile_effect(Dictionary(ultimate_effect))) : ultimate_effect;
 	unit["spawn_x"] = x;
 	unit["spawn_y"] = y;
 	unit["x"] = x;
@@ -887,49 +997,54 @@ Array TeamfightSimulationCore::_collect_effects(const Dictionary &unit, const St
 
 double TeamfightSimulationCore::_evaluate_multiplier_effect(const Variant &effect, const Dictionary &context, double current_value) {
 	(void)current_value;
-	Dictionary effect_dict = _effect_to_dict(effect);
-	StringName kind = StringName(String(effect_dict.get("kind", "")));
-	Dictionary params = Dictionary(effect_dict.get("params", Dictionary()));
-	if (kind == StringName("constant_multiplier")) {
-		return double(params.get("multiplier", 1.0));
+	Dictionary effect_dict = effect.get_type() == Variant::DICTIONARY ? Dictionary(effect) : Dictionary();
+	if (!effect_dict.has("opcode")) {
+		effect_dict = _compile_effect(effect_dict);
 	}
-	if (kind == StringName("target_hp_threshold_multiplier")) {
-		Dictionary target = Dictionary(context.get("target", Dictionary()));
-		if (target.is_empty()) {
+	int64_t opcode = int64_t(effect_dict.get("opcode", EFFECT_OPCODE_UNKNOWN));
+	Dictionary params = Dictionary(effect_dict.get("params", Dictionary()));
+	switch (opcode) {
+		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
+			return double(params.get("multiplier", 1.0));
+		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER: {
+			Dictionary target = Dictionary(context.get("target", Dictionary()));
+			if (target.is_empty()) {
+				return 1.0;
+			}
+			double hp_ratio_threshold = double(params.get("hp_ratio_threshold", 0.0));
+			double target_hp = double(target.get("hp", 0.0));
+			double target_max_hp = Math::max(0.0001, double(Dictionary(target.get("stats", Dictionary())).get("max_hp", 1.0)));
+			if (target_hp / target_max_hp < hp_ratio_threshold) {
+				return double(params.get("multiplier", 1.0));
+			}
 			return 1.0;
 		}
-		double hp_ratio_threshold = double(params.get("hp_ratio_threshold", 0.0));
-		double target_hp = double(target.get("hp", 0.0));
-		double target_max_hp = Math::max(0.0001, double(Dictionary(target.get("stats", Dictionary())).get("max_hp", 1.0)));
-		if (target_hp / target_max_hp < hp_ratio_threshold) {
-			return double(params.get("multiplier", 1.0));
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER: {
+			double min_distance = double(params.get("min_distance", 0.0));
+			if (double(context.get("distance", 0.0)) > min_distance) {
+				return double(params.get("multiplier", 1.0));
+			}
+			return 1.0;
 		}
-		return 1.0;
-	}
-	if (kind == StringName("distance_threshold_multiplier")) {
-		double min_distance = double(params.get("min_distance", 0.0));
-		if (double(context.get("distance", 0.0)) > min_distance) {
-			return double(params.get("multiplier", 1.0));
+		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER: {
+			Dictionary source = Dictionary(context.get("unit", Dictionary()));
+			double min_hp_ratio = double(params.get("min_hp_ratio", 0.0));
+			double hp_ratio = double(source.get("hp", 0.0)) / Math::max(0.0001, double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 1.0)));
+			if (hp_ratio > min_hp_ratio) {
+				return double(params.get("multiplier", 1.0));
+			}
+			return 1.0;
 		}
-		return 1.0;
-	}
-	if (kind == StringName("self_hp_threshold_multiplier")) {
-		Dictionary source = Dictionary(context.get("unit", Dictionary()));
-		double min_hp_ratio = double(params.get("min_hp_ratio", 0.0));
-		double hp_ratio = double(source.get("hp", 0.0)) / Math::max(0.0001, double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 1.0)));
-		if (hp_ratio > min_hp_ratio) {
-			return double(params.get("multiplier", 1.0));
+		case EFFECT_OPCODE_DODGE: {
+			double dodge_chance = Math::clamp(double(params.get("dodge_chance", 0.0)), 0.0, 1.0);
+			if (_randf() < dodge_chance) {
+				return double(params.get("on_dodge_multiplier", 0.0));
+			}
+			return double(params.get("on_hit_multiplier", 1.0));
 		}
-		return 1.0;
+		default:
+			return 1.0;
 	}
-	if (kind == StringName("dodge")) {
-		double dodge_chance = Math::clamp(double(params.get("dodge_chance", 0.0)), 0.0, 1.0);
-		if (_randf() < dodge_chance) {
-			return double(params.get("on_dodge_multiplier", 0.0));
-		}
-		return double(params.get("on_hit_multiplier", 1.0));
-	}
-	return 1.0;
 }
 
 double TeamfightSimulationCore::_defense_multiplier(Dictionary &target, Dictionary &source, double damage, const StringName &action_kind) {
@@ -1636,7 +1751,7 @@ void TeamfightSimulationCore::_resolve_projectile(const Dictionary &projectile) 
 }
 
 void TeamfightSimulationCore::_update_projectiles() {
-	Array next_projectiles;
+	_scratch_projectiles.clear();
 	for (int64_t index = 0; index < _projectiles.size(); ++index) {
 		Dictionary data = Dictionary(_projectiles[index]);
 		Dictionary target = _unit_by_id(int64_t(data.get("target_id", 0)));
@@ -1656,211 +1771,220 @@ void TeamfightSimulationCore::_update_projectiles() {
 			Vector2 step = direction * (move_dist / dist);
 			data["x"] = position.x + step.x;
 			data["y"] = position.y + step.y;
-			next_projectiles.append(data);
+			_scratch_projectiles.append(data);
 		}
 	}
-	_projectiles = next_projectiles;
+	using std::swap;
+	swap(_projectiles, _scratch_projectiles);
+	_scratch_projectiles.clear();
 }
 
 Dictionary TeamfightSimulationCore::_execute_effect(const Variant &effect, const Dictionary &context) {
-	Dictionary effect_dict = _effect_to_dict(effect);
-	StringName kind = StringName(String(effect_dict.get("kind", "")));
+	Dictionary effect_dict = effect.get_type() == Variant::DICTIONARY ? Dictionary(effect) : Dictionary();
+	if (!effect_dict.has("opcode")) {
+		effect_dict = _compile_effect(effect_dict);
+	}
+	int64_t opcode = int64_t(effect_dict.get("opcode", EFFECT_OPCODE_UNKNOWN));
 	Dictionary params = Dictionary(effect_dict.get("params", Dictionary()));
 	Dictionary source = Dictionary(context.get("unit", Dictionary()));
 	Dictionary target = Dictionary(context.get("target", Dictionary()));
 	Dictionary target_ally = Dictionary(context.get("target_ally", Dictionary()));
 	Dictionary combined;
-
-	if (kind == StringName("multi")) {
-		Array child_effects = Array(params.get("effects", Array()));
-		for (int64_t index = 0; index < child_effects.size(); ++index) {
-			Dictionary child_result = _execute_effect(child_effects[index], context);
-			_merge_result(combined, child_result);
-		}
-		return combined;
-	}
-	if (kind == StringName("damage")) {
-		if (target.is_empty()) {
-			return Dictionary();
-		}
-		double damage_multiplier = double(params.get("damage_multiplier", 1.0));
-		StringName damage_type = StringName(String(params.get("damage_type", "physical")));
-		double damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * damage_multiplier;
-		double dealt = _apply_damage(source, target, damage, damage_type, StringName(String(context.get("action_kind", StringName("auto")))), context);
-		if (bool(params.get("trigger_on_hit", true))) {
-			_run_post_attack_effects(source, target, dealt, context);
-		}
-		Dictionary result;
-		result["damage"] = dealt;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("projectile")) {
-		if (target.is_empty()) {
-			return Dictionary();
-		}
-		double projectile_speed = double(params.get("speed_override", double(Dictionary(source.get("stats", Dictionary())).get("projectile_speed", DEFAULT_PROJECTILE_SPEED))));
-		double radius = double(params.get("radius_override", 0.0));
-		double damage_multiplier = double(params.get("damage_multiplier", 1.0));
-		StringName damage_type = StringName(String(params.get("damage_type", "physical")));
-		double stun_duration = double(params.get("stun_duration", 0.0));
-		double damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * damage_multiplier;
-		double distance = _distance_between(source, target);
-		double time_remaining = distance / Math::max(0.0001, projectile_speed);
-		Dictionary projectile_state;
-		projectile_state["source_id"] = int64_t(source.get("instance_id", 0));
-		projectile_state["target_id"] = int64_t(target.get("instance_id", 0));
-		projectile_state["damage"] = damage;
-		projectile_state["damage_type"] = damage_type;
-		projectile_state["stun_duration"] = stun_duration;
-		projectile_state["radius"] = radius;
-		projectile_state["time_remaining"] = time_remaining;
-		projectile_state["action_kind"] = context.get("action_kind", StringName("auto"));
-		projectile_state["reason"] = String(params.get("reason", ""));
-		_projectiles.append(projectile_state);
-		Dictionary result;
-		result["damage"] = damage;
-		result["reason"] = String(params.get("reason", ""));
-		result["use_projectile"] = true;
-		return result;
-	}
-	if (kind == StringName("stun")) {
-		if (!target.is_empty()) {
-			_apply_stun(source, target, double(params.get("duration", 0.0)));
-		}
-		Dictionary result;
-		result["stun"] = double(params.get("duration", 0.0));
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("shield")) {
-		Dictionary shield_target = target_ally.is_empty() ? source : target_ally;
-		double amount = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("max_hp_ratio", 0.0));
-		_add_shield(source, shield_target, amount);
-		Dictionary result;
-		result["shield_added"] = amount;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("heal")) {
-		Dictionary heal_target = target_ally.is_empty() ? source : target_ally;
-		double heal_amount = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("max_hp_ratio", 0.0)) + double(heal_target.get("hp", 0.0)) * double(params.get("current_hp_ratio", 0.0)) + double(params.get("flat_amount", 0.0));
-		_heal_unit(source, heal_target, heal_amount);
-		Dictionary result;
-		result["healing"] = heal_amount;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("self_damage")) {
-		double self_damage = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("damage_ratio", 0.0));
-		_apply_damage(source, source, self_damage, StringName(String(params.get("damage_type", "true"))), StringName(String(context.get("action_kind", StringName("auto")))), context);
-		Dictionary result;
-		result["damage"] = self_damage;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("self_shield")) {
-		double self_shield = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("shield_ratio", 0.0));
-		_add_shield(source, source, self_shield);
-		Dictionary result;
-		result["shield_added"] = self_shield;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("self_aoe_taunt")) {
-		_apply_aoe_taunt(source, double(params.get("radius", 0.0)), double(params.get("duration", 0.0)));
-		Dictionary result;
-		result["taunt"] = double(params.get("duration", 0.0));
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("self_aoe_damage")) {
-		double radius_damage = double(params.get("radius", 0.0));
-		double aoe_multiplier = double(params.get("damage_multiplier", 1.0));
-		StringName aoe_type = StringName(String(params.get("damage_type", "physical")));
-		double aoe_damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * aoe_multiplier;
-		_apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind", StringName("auto")))));
-		Dictionary result;
-		result["damage"] = aoe_damage;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
-	}
-	if (kind == StringName("splash_damage")) {
-		double splash_radius = double(params.get("radius", 0.0));
-		double splash_ratio = double(params.get("ratio", 0.0));
-		StringName splash_damage_type = StringName(String(params.get("damage_type", "physical")));
-		String splash_reason = String(params.get("reason", "Splash"));
-		_apply_splash_damage(source, target, double(context.get("damage", 0.0)), splash_radius, splash_damage_type, StringName(String(context.get("action_kind", StringName("auto")))), splash_reason, splash_ratio);
-		Dictionary result;
-		result["damage"] = double(context.get("damage", 0.0));
-		result["reason"] = splash_reason;
-		return result;
-	}
-	if (kind == StringName("threshold_splash_damage")) {
-		double threshold_multiplier = double(params.get("threshold_multiplier", 1.0));
-		if (double(context.get("damage", 0.0)) > double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * threshold_multiplier) {
-			Variant nested = params.get("splash", Variant());
-			if (nested.get_type() != Variant::NIL) {
-				return _execute_effect(nested, context);
+	switch (opcode) {
+		case EFFECT_OPCODE_MULTI: {
+			Array child_effects = Array(effect_dict.get("children", Array()));
+			for (int64_t index = 0; index < child_effects.size(); ++index) {
+				Dictionary child_result = _execute_effect(child_effects[index], context);
+				_merge_result(combined, child_result);
 			}
+			return combined;
 		}
-		return Dictionary();
-	}
-	if (kind == StringName("mana_regen")) {
-		double mana_amount = double(params.get("flat_amount", 0.0)) + (double(Dictionary(source.get("stats", Dictionary())).get("max_mana", 0.0)) * double(params.get("max_mana_ratio", 0.0)));
-		_restore_mana(source, source, mana_amount);
-		Dictionary result;
-		result["mana_restored"] = mana_amount;
-		return result;
-	}
-	if (kind == StringName("post_damage_mana_gain")) {
-		double gain = double(context.get("damage", 0.0)) * double(params.get("damage_ratio", 0.0));
-		_restore_mana(source, source, gain);
-		Dictionary result;
-		result["mana_restored"] = gain;
-		return result;
-	}
-	if (kind == StringName("damage_based_heal")) {
-		double heal_ratio = double(params.get("heal_ratio", 0.0));
-		double heal_amount = double(context.get("damage", 0.0)) * heal_ratio;
-		_heal_unit(source, source, heal_amount);
-		Dictionary result;
-		result["healing"] = heal_amount;
-		return result;
-	}
-	if (kind == StringName("mana_restore_on_hit")) {
-		double restore_amount = double(params.get("flat_amount", 0.0));
-		_restore_mana(source, source, restore_amount);
-		Dictionary result;
-		result["mana_restored"] = restore_amount;
-		return result;
-	}
-	if (kind == StringName("drain_target_mana_on_hit")) {
-		if (target.is_empty()) {
+		case EFFECT_OPCODE_DAMAGE: {
+			if (target.is_empty()) {
+				return Dictionary();
+			}
+			double damage_multiplier = double(params.get("damage_multiplier", 1.0));
+			StringName damage_type = StringName(String(params.get("damage_type", "physical")));
+			double damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * damage_multiplier;
+			double dealt = _apply_damage(source, target, damage, damage_type, StringName(String(context.get("action_kind", StringName("auto")))), context);
+			if (bool(params.get("trigger_on_hit", true))) {
+				_run_post_attack_effects(source, target, dealt, context);
+			}
+			Dictionary result;
+			result["damage"] = dealt;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_PROJECTILE: {
+			if (target.is_empty()) {
+				return Dictionary();
+			}
+			double projectile_speed = double(params.get("speed_override", double(Dictionary(source.get("stats", Dictionary())).get("projectile_speed", DEFAULT_PROJECTILE_SPEED))));
+			double radius = double(params.get("radius_override", 0.0));
+			double damage_multiplier = double(params.get("damage_multiplier", 1.0));
+			StringName damage_type = StringName(String(params.get("damage_type", "physical")));
+			double stun_duration = double(params.get("stun_duration", 0.0));
+			double damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * damage_multiplier;
+			double distance = _distance_between(source, target);
+			double time_remaining = distance / Math::max(0.0001, projectile_speed);
+			Dictionary projectile_state;
+			projectile_state["source_id"] = int64_t(source.get("instance_id", 0));
+			projectile_state["target_id"] = int64_t(target.get("instance_id", 0));
+			projectile_state["damage"] = damage;
+			projectile_state["damage_type"] = damage_type;
+			projectile_state["stun_duration"] = stun_duration;
+			projectile_state["radius"] = radius;
+			projectile_state["time_remaining"] = time_remaining;
+			projectile_state["action_kind"] = context.get("action_kind", StringName("auto"));
+			projectile_state["reason"] = String(params.get("reason", ""));
+			_projectiles.append(projectile_state);
+			Dictionary result;
+			result["damage"] = damage;
+			result["reason"] = String(params.get("reason", ""));
+			result["use_projectile"] = true;
+			return result;
+		}
+		case EFFECT_OPCODE_STUN: {
+			if (!target.is_empty()) {
+				_apply_stun(source, target, double(params.get("duration", 0.0)));
+			}
+			Dictionary result;
+			result["stun"] = double(params.get("duration", 0.0));
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SHIELD: {
+			Dictionary shield_target = target_ally.is_empty() ? source : target_ally;
+			double amount = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("max_hp_ratio", 0.0));
+			_add_shield(source, shield_target, amount);
+			Dictionary result;
+			result["shield_added"] = amount;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_HEAL: {
+			Dictionary heal_target = target_ally.is_empty() ? source : target_ally;
+			double heal_amount = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("max_hp_ratio", 0.0)) + double(heal_target.get("hp", 0.0)) * double(params.get("current_hp_ratio", 0.0)) + double(params.get("flat_amount", 0.0));
+			_heal_unit(source, heal_target, heal_amount);
+			Dictionary result;
+			result["healing"] = heal_amount;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SELF_DAMAGE: {
+			double self_damage = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("damage_ratio", 0.0));
+			_apply_damage(source, source, self_damage, StringName(String(params.get("damage_type", "true"))), StringName(String(context.get("action_kind", StringName("auto")))), context);
+			Dictionary result;
+			result["damage"] = self_damage;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SELF_SHIELD: {
+			double self_shield = double(Dictionary(source.get("stats", Dictionary())).get("max_hp", 0.0)) * double(params.get("shield_ratio", 0.0));
+			_add_shield(source, source, self_shield);
+			Dictionary result;
+			result["shield_added"] = self_shield;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_TAUNT: {
+			_apply_aoe_taunt(source, double(params.get("radius", 0.0)), double(params.get("duration", 0.0)));
+			Dictionary result;
+			result["taunt"] = double(params.get("duration", 0.0));
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_DAMAGE: {
+			double radius_damage = double(params.get("radius", 0.0));
+			double aoe_multiplier = double(params.get("damage_multiplier", 1.0));
+			StringName aoe_type = StringName(String(params.get("damage_type", "physical")));
+			double aoe_damage = double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * aoe_multiplier;
+			_apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind", StringName("auto")))));
+			Dictionary result;
+			result["damage"] = aoe_damage;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_SPLASH_DAMAGE: {
+			double splash_radius = double(params.get("radius", 0.0));
+			double splash_ratio = double(params.get("ratio", 0.0));
+			StringName splash_damage_type = StringName(String(params.get("damage_type", "physical")));
+			String splash_reason = String(params.get("reason", "Splash"));
+			_apply_splash_damage(source, target, double(context.get("damage", 0.0)), splash_radius, splash_damage_type, StringName(String(context.get("action_kind", StringName("auto")))), splash_reason, splash_ratio);
+			Dictionary result;
+			result["damage"] = double(context.get("damage", 0.0));
+			result["reason"] = splash_reason;
+			return result;
+		}
+		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE: {
+			double threshold_multiplier = double(params.get("threshold_multiplier", 1.0));
+			if (double(context.get("damage", 0.0)) > double(Dictionary(source.get("stats", Dictionary())).get("attack_damage", 0.0)) * threshold_multiplier) {
+				Variant nested = params.get("splash", Variant());
+				if (nested.get_type() != Variant::NIL) {
+					return _execute_effect(nested, context);
+				}
+			}
 			return Dictionary();
 		}
-		double drain_amount = double(params.get("flat_amount", 0.0));
-		target["mana"] = Math::max(0.0, double(target.get("mana", 0.0)) - drain_amount);
-		Dictionary result;
-		result["mana_drained"] = drain_amount;
-		return result;
-	}
-	if (kind == StringName("every_n_attacks_stun")) {
-		int64_t every_n = int64_t(params.get("every_n", 0));
-		if (every_n > 0) {
-			int64_t attack_count = int64_t(source.get("attack_count", 0));
-			if (attack_count % every_n == 0 && !target.is_empty()) {
-				_apply_stun(source, target, double(params.get("stun_duration", 0.0)));
-			}
+		case EFFECT_OPCODE_MANA_REGEN: {
+			double mana_amount = double(params.get("flat_amount", 0.0)) + (double(Dictionary(source.get("stats", Dictionary())).get("max_mana", 0.0)) * double(params.get("max_mana_ratio", 0.0)));
+			_restore_mana(source, source, mana_amount);
+			Dictionary result;
+			result["mana_restored"] = mana_amount;
+			return result;
 		}
-		Dictionary result;
-		result["reason"] = String(params.get("reason", ""));
-		return result;
+		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN: {
+			double gain = double(context.get("damage", 0.0)) * double(params.get("damage_ratio", 0.0));
+			_restore_mana(source, source, gain);
+			Dictionary result;
+			result["mana_restored"] = gain;
+			return result;
+		}
+		case EFFECT_OPCODE_DAMAGE_BASED_HEAL: {
+			double heal_ratio = double(params.get("heal_ratio", 0.0));
+			double heal_amount = double(context.get("damage", 0.0)) * heal_ratio;
+			_heal_unit(source, source, heal_amount);
+			Dictionary result;
+			result["healing"] = heal_amount;
+			return result;
+		}
+		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {
+			double restore_amount = double(params.get("flat_amount", 0.0));
+			_restore_mana(source, source, restore_amount);
+			Dictionary result;
+			result["mana_restored"] = restore_amount;
+			return result;
+		}
+		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT: {
+			if (target.is_empty()) {
+				return Dictionary();
+			}
+			double drain_amount = double(params.get("flat_amount", 0.0));
+			target["mana"] = Math::max(0.0, double(target.get("mana", 0.0)) - drain_amount);
+			Dictionary result;
+			result["mana_drained"] = drain_amount;
+			return result;
+		}
+		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN: {
+			int64_t every_n = int64_t(params.get("every_n", 0));
+			if (every_n > 0) {
+				int64_t attack_count = int64_t(source.get("attack_count", 0));
+				if (attack_count % every_n == 0 && !target.is_empty()) {
+					_apply_stun(source, target, double(params.get("stun_duration", 0.0)));
+				}
+			}
+			Dictionary result;
+			result["reason"] = String(params.get("reason", ""));
+			return result;
+		}
+		case EFFECT_OPCODE_DODGE:
+		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
+		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
+		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
+		default:
+			return Dictionary();
 	}
-	if (kind == StringName("dodge") || kind == StringName("constant_multiplier") || kind == StringName("target_hp_threshold_multiplier") || kind == StringName("distance_threshold_multiplier") || kind == StringName("self_hp_threshold_multiplier")) {
-		return Dictionary();
-	}
-	return Dictionary();
 }
 
 void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dictionary &source_result) {
@@ -1879,13 +2003,13 @@ void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dic
 }
 
 Dictionary TeamfightSimulationCore::_build_summary() {
-	Dictionary summary;
-	summary["seed"] = _seed;
-	summary["winner_team"] = String(_winner_team);
-	summary["duration"] = _time;
-	summary["player_comp"] = _player_comp;
-	summary["enemy_comp"] = _enemy_comp;
-	Array unit_stats;
+	_summary_cache.clear();
+	_summary_cache["seed"] = _seed;
+	_summary_cache["winner_team"] = String(_winner_team);
+	_summary_cache["duration"] = _time;
+	_summary_cache["player_comp"] = _player_comp;
+	_summary_cache["enemy_comp"] = _enemy_comp;
+	_summary_unit_stats.clear();
 	for (int64_t index = 0; index < _units.size(); ++index) {
 		Dictionary unit = Dictionary(_units[index]);
 		Dictionary unit_summary;
@@ -1908,10 +2032,10 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 		unit_summary["kills"] = int64_t(unit.get("kills", 0));
 		unit_summary["deaths"] = int64_t(unit.get("deaths", 0));
 		unit_summary["assists"] = int64_t(unit.get("assists", 0));
-		unit_stats.append(unit_summary);
+		_summary_unit_stats.append(unit_summary);
 	}
-	summary["unit_stats"] = unit_stats;
-	return summary;
+	_summary_cache["unit_stats"] = _summary_unit_stats;
+	return _summary_cache;
 }
 
 Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {

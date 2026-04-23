@@ -11,16 +11,30 @@ $null = New-Item -ItemType Directory -Force -Path $logsDir
 $timeoutSeconds = 120
 $checkOnly = $Arguments -contains "--check-only"
 $checkNativeLoad = $Arguments -contains "--check-native-load"
+$checkDeterminism = $Arguments -contains "--check-determinism"
+$checkBenchmark = $Arguments -contains "--check-benchmark"
 if ($checkOnly) {
 	$timeoutSeconds = 15
 }
 elseif ($checkNativeLoad) {
 	$timeoutSeconds = 15
 }
+elseif ($checkDeterminism) {
+	$timeoutSeconds = 30
+}
+elseif ($checkBenchmark) {
+	$timeoutSeconds = 180
+}
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkNativeLoad) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkDeterminism) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmark) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
@@ -33,6 +47,12 @@ if ($checkOnly) {
 }
 elseif ($checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/check_native_load.gd")
+}
+elseif ($checkDeterminism) {
+	$godotArgs += @("--script", "res://scripts/tools/check_determinism.gd")
+}
+elseif ($checkBenchmark) {
+	$godotArgs += @("--script", "res://scripts/tools/check_benchmark.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

@@ -8,7 +8,10 @@
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include <array>
 #include <random>
+#include <unordered_map>
+#include <vector>
 
 using namespace godot;
 
@@ -19,6 +22,107 @@ protected:
 	static void _bind_methods();
 
 private:
+	struct UnitState;
+
+	struct EffectRecord {
+		int64_t opcode = 0;
+		double scalar0 = 0.0;
+		double scalar1 = 0.0;
+		double scalar2 = 0.0;
+		double scalar3 = 0.0;
+		int64_t int0 = 0;
+		int64_t int1 = 0;
+		int64_t int2 = 0;
+		StringName damage_type;
+		String reason;
+		std::vector<EffectRecord> children;
+	};
+
+	struct EffectContext {
+		UnitState *source = nullptr;
+		UnitState *target = nullptr;
+		UnitState *target_ally = nullptr;
+		double damage = 0.0;
+		StringName action_kind;
+		double distance = 0.0;
+	};
+
+	struct UnitState {
+		int64_t instance_id = 0;
+		StringName archetype_id;
+		StringName team;
+		Dictionary stats;
+		std::array<std::vector<EffectRecord>, 5> passive_effects;
+		EffectRecord ability_effect;
+		EffectRecord ultimate_effect;
+		bool has_ability_effect = false;
+		bool has_ultimate_effect = false;
+		double spawn_x = 0.0;
+		double spawn_y = 0.0;
+		double x = 0.0;
+		double y = 0.0;
+		double hp = 0.0;
+		double shield = 0.0;
+		double mana = 0.0;
+		double attack_cooldown = 0.0;
+		double ability_cooldown = 0.0;
+		double ultimate_cooldown = 0.0;
+		double casting_remaining = 0.0;
+		StringName casting_kind;
+		EffectRecord casting_effect;
+		bool has_casting_effect = false;
+		int64_t casting_target_id = 0;
+		int64_t casting_ally_target_id = 0;
+		bool cast_resolved_this_tick = false;
+		int64_t target_id = 0;
+		int64_t current_ally_target_id = 0;
+		double retarget_timer = 0.0;
+		double target_switch_lock_timer = 0.0;
+		double current_target_score = 0.0;
+		double stun_remaining = 0.0;
+		double respawn_timer = 0.0;
+		bool respawned_this_tick = false;
+		bool alive = true;
+		int64_t incoming_target_count = 0;
+		double perceived_threat = 0.0;
+		int64_t attack_count = 0;
+		double damage_dealt = 0.0;
+		double damage_dealt_auto = 0.0;
+		double damage_dealt_ability = 0.0;
+		double damage_dealt_ultimate = 0.0;
+		double damage_received = 0.0;
+		double damage_mitigated = 0.0;
+		double healing_done = 0.0;
+		double shielding_done = 0.0;
+		int64_t auto_attacks = 0;
+		int64_t abilities = 0;
+		int64_t ultimates = 0;
+		int64_t stuns = 0;
+		int64_t kills = 0;
+		int64_t deaths = 0;
+		int64_t assists = 0;
+		int64_t taunt_target_id = 0;
+		double taunt_remaining = 0.0;
+		std::unordered_map<int64_t, double> damage_sources;
+		std::unordered_map<int64_t, double> recent_benefactors;
+		double last_hit_time = 0.0;
+		double regen_accumulator = 0.0;
+	};
+
+	struct ProjectileState {
+		int64_t source_id = 0;
+		int64_t target_id = 0;
+		double damage = 0.0;
+		StringName damage_type;
+		double stun_duration = 0.0;
+		double radius = 0.0;
+		double speed = 0.0;
+		double x = 0.0;
+		double y = 0.0;
+		StringName action_kind;
+		String reason;
+	};
+
 	enum EffectOpcode : int64_t {
 		EFFECT_OPCODE_UNKNOWN = 0,
 		EFFECT_OPCODE_MULTI = 1,
@@ -126,9 +230,9 @@ private:
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
 
-	Array _units;
-	Array _projectiles;
-	Array _scratch_projectiles;
+	std::vector<UnitState> _units;
+	std::vector<ProjectileState> _projectiles;
+	std::vector<ProjectileState> _scratch_projectiles;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
 	std::mt19937_64 _rng;
@@ -144,8 +248,9 @@ private:
 	Dictionary _champion_catalog;
 	Dictionary _role_configs;
 	Dictionary _passive_registry;
-	Dictionary _unit_index_map;
-	Dictionary _alive_unit_indices_by_team;
+	std::unordered_map<int64_t, int64_t> _unit_index_map;
+	std::vector<int64_t> _alive_player_indices;
+	std::vector<int64_t> _alive_enemy_indices;
 	bool _catalog_loaded = false;
 
 	void _reset_runtime_state();
@@ -155,13 +260,14 @@ private:
 	void _build_role_configs();
 	void _build_passive_registry();
 	static int64_t _opcode_for_kind(const StringName &kind);
-	Dictionary _compile_effect(const Dictionary &effect) const;
-	Array _compile_effect_array(const Array &effects) const;
+	EffectRecord _compile_effect(const Dictionary &effect) const;
+	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;
 	void _populate_runtime_state(const Dictionary &match_input);
 	void _append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp);
-	Dictionary _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
-	Array _alive_indices_for_team(const StringName &team) const;
+	UnitState _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
+	std::vector<int64_t> &_alive_indices_for_team(const StringName &team);
+	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
 	void _remove_alive_index(const StringName &team, int64_t index);
 	void _refresh_target_pressure();
@@ -171,47 +277,47 @@ private:
 	void _update_cooldowns_and_status();
 	void _update_projectiles();
 	void _process_actions();
-	Dictionary _strategy_for_unit(const Dictionary &unit) const;
+	Dictionary _strategy_for_unit(const UnitState &unit) const;
 	Dictionary _scale_priority_dict(const Dictionary &source) const;
-	double _score_enemy_target(const Dictionary &attacker, const Dictionary &enemy, const Dictionary &strategy) const;
-	double _score_ally_target(const Dictionary &unit, const Dictionary &ally, const Dictionary &strategy) const;
-	bool _should_switch(const Dictionary &unit, double current_score, double new_score, const Dictionary &strategy) const;
-	bool _try_cast_ability(Dictionary &unit, Dictionary &target, double distance);
-	bool _try_cast_ultimate(Dictionary &unit, Dictionary &target, double distance);
-	bool _start_cast(Dictionary &unit, Dictionary &target, double distance, const StringName &action_kind);
-	void _resolve_cast(Dictionary &unit);
-	void _perform_auto_attack(Dictionary &unit, Dictionary &target, double distance);
-	void _move_toward_target(Dictionary &unit, Dictionary &target);
-	void _resolve_projectile(const Dictionary &projectile);
-	Dictionary _build_context(const Dictionary &source, const Variant &target, const Variant &target_ally, double damage, const StringName &action_kind);
-	Array _collect_effects(const Dictionary &unit, const StringName &kind);
-	double _apply_attack_modifiers(Dictionary &unit, Dictionary &target, double distance, double damage);
-	double _apply_damage(Dictionary &source, Dictionary &target, double damage, const StringName &damage_type, const StringName &action_kind, const Dictionary &context);
-	double _defense_multiplier(Dictionary &target, Dictionary &source, double damage, const StringName &action_kind);
-	double _damage_type_multiplier(const Dictionary &target, const StringName &damage_type);
-	double _evaluate_multiplier_effect(const Variant &effect, const Dictionary &context, double current_value);
-	Dictionary _execute_effect(const Variant &effect, const Dictionary &context);
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const Dictionary &strategy) const;
+	double _score_ally_target(const UnitState &unit, const UnitState &ally, const Dictionary &strategy) const;
+	bool _should_switch(const UnitState &unit, double current_score, double new_score, const Dictionary &strategy) const;
+	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
+	bool _try_cast_ultimate(UnitState &unit, UnitState &target, double distance);
+	bool _start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind);
+	void _resolve_cast(UnitState &unit);
+	void _perform_auto_attack(UnitState &unit, UnitState &target, double distance);
+	void _move_toward_target(UnitState &unit, UnitState &target);
+	void _resolve_projectile(const ProjectileState &projectile);
+	EffectContext _build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind);
+	const std::vector<EffectRecord> &_collect_effects(const UnitState &unit, const StringName &kind);
+	double _apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage);
+	double _apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context);
+	double _defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind);
+	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
+	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
+	void _execute_effect(const EffectRecord &effect, EffectContext &context);
 	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
-	void _run_post_attack_effects(Dictionary &source, Dictionary &target, double damage, const Dictionary &context);
-	void _apply_stun(Dictionary &source, Dictionary &target, double duration);
-	void _add_shield(Dictionary &source, Dictionary &target, double amount);
-	void _heal_unit(Dictionary &source, Dictionary &target, double amount);
-	void _restore_mana(Dictionary &source, Dictionary &target, double amount);
-	void _apply_splash_damage(Dictionary &source, Dictionary &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
-	void _apply_aoe_taunt(Dictionary &source, double radius, double duration);
-	void _apply_aoe_damage(Dictionary &source, Dictionary &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
-	Dictionary _select_enemy_target(Dictionary &unit);
-	Dictionary _select_ally_target(Dictionary &unit);
-	double _distance_between(const Dictionary &left, const Dictionary &right) const;
-	double _distance_between_dicts(const Dictionary &left, const Dictionary &right) const;
-	double _attack_range(const Dictionary &unit) const;
-	double _effective_attack_range(const Dictionary &unit) const;
-	Dictionary _unit_by_id(int64_t instance_id) const;
+	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
+	void _apply_stun(UnitState &source, UnitState &target, double duration);
+	void _add_shield(UnitState &source, UnitState &target, double amount);
+	void _heal_unit(UnitState &source, UnitState &target, double amount);
+	void _restore_mana(UnitState &source, UnitState &target, double amount);
+	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
+	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
+	void _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
+	UnitState *_select_enemy_target(UnitState &unit);
+	UnitState *_select_ally_target(UnitState &unit);
+	double _distance_between(const UnitState &left, const UnitState &right) const;
+	double _attack_range(const UnitState &unit) const;
+	double _effective_attack_range(const UnitState &unit) const;
+	UnitState *_unit_by_id(int64_t instance_id);
+	const UnitState *_unit_by_id(int64_t instance_id) const;
 	int64_t _unit_index_by_id(int64_t instance_id) const;
-	void _handle_death(Dictionary &killer, Dictionary &target);
+	void _handle_death(UnitState &killer, UnitState &target);
 	StringName _determine_winner() const;
-	void _respawn_unit(Dictionary &unit);
-	void _set_current_target(Dictionary &unit, const Dictionary &target);
+	void _respawn_unit(UnitState &unit);
+	void _set_current_target(UnitState &unit, const UnitState &target);
 	Dictionary _build_summary();
 	Dictionary _effect_to_dict(const Variant &effect) const;
 	Dictionary _champion_for(const StringName &archetype_id) const;

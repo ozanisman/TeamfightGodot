@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/variant.hpp>
 
 #include <array>
+#include <cstdint>
 #include <random>
 #include <unordered_map>
 #include <vector>
@@ -23,6 +24,34 @@ protected:
 
 private:
 	struct UnitState;
+
+	struct Pcg32 {
+		// Minimal PCG32 (XSH RR) with 64-bit state.
+		// Deterministic across platforms/compilers.
+		uint64_t state = 0u;
+		uint64_t inc = 0u;
+
+		void seed(uint64_t init_state, uint64_t init_seq = 54u) {
+			state = 0u;
+			inc = (init_seq << 1u) | 1u;
+			next_u32();
+			state += init_state;
+			next_u32();
+		}
+
+		uint32_t next_u32() {
+			uint64_t oldstate = state;
+			state = oldstate * 6364136223846793005ULL + inc;
+			uint32_t xorshifted = uint32_t(((oldstate >> 18u) ^ oldstate) >> 27u);
+			uint32_t rot = uint32_t(oldstate >> 59u);
+			return (xorshifted >> rot) | (xorshifted << ((-int32_t(rot)) & 31));
+		}
+
+		double next_unit_f64() {
+			// [0, 1)
+			return double(next_u32()) / 4294967296.0;
+		}
+	};
 
 	struct EffectRecord {
 		int64_t opcode = 0;
@@ -57,10 +86,10 @@ private:
 		EffectRecord ultimate_effect;
 		bool has_ability_effect = false;
 		bool has_ultimate_effect = false;
-		double spawn_x = 0.0;
-		double spawn_y = 0.0;
-		double x = 0.0;
-		double y = 0.0;
+		int64_t spawn_x_fp = 0;
+		int64_t spawn_y_fp = 0;
+		int64_t x_fp = 0;
+		int64_t y_fp = 0;
 		double hp = 0.0;
 		double shield = 0.0;
 		double mana = 0.0;
@@ -78,12 +107,14 @@ private:
 		int64_t current_ally_target_id = 0;
 		double retarget_timer = 0.0;
 		double target_switch_lock_timer = 0.0;
+		double last_kite_timer = 0.0;
 		double current_target_score = 0.0;
 		double stun_remaining = 0.0;
 		double respawn_timer = 0.0;
 		bool respawned_this_tick = false;
 		bool alive = true;
 		int64_t incoming_target_count = 0;
+		int64_t last_density_count = 0;
 		double perceived_threat = 0.0;
 		int64_t attack_count = 0;
 		double damage_dealt = 0.0;
@@ -103,6 +134,9 @@ private:
 		int64_t assists = 0;
 		int64_t taunt_target_id = 0;
 		double taunt_remaining = 0.0;
+		int64_t forced_target_id = 0;
+		double forced_target_remaining = 0.0;
+		StringName forced_target_kind;
 		std::unordered_map<int64_t, double> damage_sources;
 		std::unordered_map<int64_t, double> recent_benefactors;
 		double last_hit_time = 0.0;
@@ -116,9 +150,7 @@ private:
 		StringName damage_type;
 		double stun_duration = 0.0;
 		double radius = 0.0;
-		double speed = 0.0;
-		double x = 0.0;
-		double y = 0.0;
+		double time_remaining = 0.0;
 		StringName action_kind;
 		String reason;
 	};
@@ -166,7 +198,19 @@ private:
 	static constexpr double DEFAULT_PROJECTILE_STUN_DURATION = 0.0;
 	static constexpr int64_t SIMULATION_RULES_VERSION = 1;
 	static constexpr double WORLD_SIZE = 10.0;
+	static constexpr double WORLD_BOUNDARY_MIN = 0.2;
+	static constexpr double WORLD_BOUNDARY_MAX = 9.8;
+	static constexpr double BOUNDARY_DETECTION_MARGIN = 0.05;
+	static constexpr double RECOVERY_VELOCITY = 1.0;
+	static constexpr double SEPARATION_RADIUS_RANGED = 0.8;
+	static constexpr double SEPARATION_RADIUS_MELEE = 0.25;
+	static constexpr double SEPARATION_RANGE_THRESHOLD = 1.5;
+	static constexpr double NUDGE_SPEED_MODIFIER = 0.4;
+	static constexpr double KITE_SPEED_MODIFIER = 0.5;
+	static constexpr double KITE_DURATION = 1.0;
+	static constexpr double KITE_DANGER_THRESHOLD = 0.9;
 	static constexpr double DRAFT_X_BASE = 0.9;
+	static constexpr int64_t POS_SCALE = 1000000; // 1 world unit == 1,000,000 fixed units.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
@@ -174,14 +218,17 @@ private:
 	static constexpr double SCORE_DISTANCE_WEIGHT_SCALE = 3.0;
 	static constexpr double SCORE_KITING_WEIGHT_SCALE = 1.5;
 	static constexpr double DISTANCE_EXPONENT = 1.5;
+	static constexpr double SPACING_EXPONENT = 1.5;
 	static constexpr double THREAT_RESPONSE_RANGE_FALLOFF = 0.6;
 	static constexpr double THREAT_BURST_THRESHOLD = 0.1;
 	static constexpr double THREAT_BURST_MULTIPLIER = 5.0;
+	static constexpr double TAUNT_SCORE_BONUS = -100.0;
 	static constexpr double THREAT_DECAY_DEFAULT = 2.0;
 	static constexpr double THREAT_DECAY_TANK = 4.0;
 	static constexpr double THREAT_DECAY_FIGHTER = 4.5;
 	static constexpr double THREAT_DECAY_FRAGILE = 1.0;
 	static constexpr double TARGET_SWITCH_MARGIN = 0.75;
+	static constexpr double TARGET_BUCKET_MARGIN = 0.75;
 	static constexpr double STICKINESS_DEFAULT = 2.0;
 	static constexpr double STICKINESS_MARKSMAN = 5.0;
 	static constexpr double STICKINESS_SUPPORT = 1.0;
@@ -216,6 +263,20 @@ private:
 	static constexpr double PREY_INCOMING_TARGET_SCALE = 0.75;
 	static constexpr double PREY_PERCEIVED_THREAT_SCALE = 0.35;
 	static constexpr double PREY_FRONTLINE_SCALE = 0.35;
+	static constexpr double AOE_DENSITY_RADIUS = 2.0;
+	static constexpr double OBSCURANCE_WEIGHT_DEFAULT = 4.5;
+	static constexpr double OBSCURANCE_LINE_RADIUS = 0.35;
+	static constexpr double KITE_TARGET_WINDOW_MIN_FACTOR = 0.7;
+	static constexpr double KITE_TARGET_WINDOW_MAX_FACTOR = 1.3;
+	static constexpr double SWITCH_COMMIT_WINDOW_SECONDS = 0.18;
+	static constexpr double SWITCH_COMMIT_WINDOW_SWING_FRACTION = 0.25;
+	static constexpr double FLANKING_TEAM_CENTER_SCALE = 0.35;
+	static constexpr double FLANKING_WEIGHT_ASSASSIN = 2.0;
+	static constexpr double CLUSTER_WEIGHT_TANK = 1.5;
+	static constexpr double CLUSTER_WEIGHT_MAGE = 3.0;
+	static constexpr double SPACING_WEIGHT_MARKSMAN = 2.5;
+	static constexpr double SPACING_WEIGHT_MAGE = 1.5;
+	static constexpr double SPACING_WEIGHT_SUPPORT = 1.0;
 	static constexpr double SUPPORT_PEEL_BOOST = 2.2;
 	static constexpr double SUPPORT_PEEL_THREAT_THRESHOLD = 2.0;
 	static constexpr double TARGET_EXECUTE_HP_RATIO = 0.25;
@@ -235,8 +296,9 @@ private:
 	std::vector<ProjectileState> _scratch_projectiles;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
-	std::mt19937_64 _rng;
+	Pcg32 _rng;
 	double _time = 0.0;
+	int64_t _tick = 0;
 	double _tick_rate = DEFAULT_TICK_RATE;
 	int64_t _seed = 0;
 	StringName _winner_team = StringName("draw");
@@ -252,8 +314,17 @@ private:
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
 	bool _catalog_loaded = false;
+	// Debug-only trace for 1v1 fixtures when record_events=true.
+	bool _debug_duel_trace = false;
+	int64_t _debug_duel_unit_a = 0;
+	int64_t _debug_duel_unit_b = 0;
+	bool _debug_targeting = false;
+	bool _debug_combat_trace = false;
+	String _debug_fixture_name;
+	bool _compute_density_cache = false;
 
 	void _reset_runtime_state();
+	bool _is_debug_duel_unit(int64_t instance_id) const;
 	double _randf();
 	Dictionary _load_json_file(const String &path) const;
 	void _ensure_catalog_loaded();
@@ -274,9 +345,10 @@ private:
 	void _adjust_target_pressure(int64_t old_target_id, int64_t new_target_id);
 	void _simulate();
 	void _step_tick();
-	void _update_cooldowns_and_status();
+	void _update_unit(UnitState &unit);
 	void _update_projectiles();
 	void _process_actions();
+	bool _kite_from_enemies(UnitState &unit);
 	Dictionary _strategy_for_unit(const UnitState &unit) const;
 	Dictionary _scale_priority_dict(const Dictionary &source) const;
 	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const Dictionary &strategy) const;

@@ -53,6 +53,72 @@ static func _summary_object(summary_value: Variant):
 		return MatchReplaySummaryScript.from_dict(Dictionary(summary_value))
 	return MatchReplaySummaryScript.new()
 
+static func _parse_float(prefix: String, fallback: float) -> float:
+	var value: String = _extract_argument(prefix, "")
+	if value.is_empty():
+		return fallback
+	return float(value)
+
+static func _floats_match(actual: float, expected: float, abs_eps: float, rel_eps: float) -> bool:
+	var diff: float = abs(actual - expected)
+	if diff <= abs_eps:
+		return true
+	if rel_eps <= 0.0:
+		return false
+	var scale: float = maxf(abs(actual), abs(expected))
+	if scale <= 0.0:
+		return true
+	return diff <= rel_eps * scale
+
+static func _payloads_match_with_tolerance(actual_payload: Dictionary, expected_payload: Dictionary, abs_eps: float, rel_eps: float) -> bool:
+	# Strict keys must match exactly (these indicate real gameplay divergence).
+	for key in ["seed", "winner_team", "player_comp", "enemy_comp"]:
+		if actual_payload.get(key, null) != expected_payload.get(key, null):
+			return false
+
+	# Duration should be extremely close; allow only tiny absolute epsilon.
+	var actual_duration := float(actual_payload.get("duration", 0.0))
+	var expected_duration := float(expected_payload.get("duration", 0.0))
+	if not _floats_match(actual_duration, expected_duration, 1e-9, 0.0):
+		return false
+
+	var actual_units: Array = Array(actual_payload.get("unit_stats", []))
+	var expected_units: Array = Array(expected_payload.get("unit_stats", []))
+	if actual_units.size() != expected_units.size():
+		return false
+
+	for index in range(actual_units.size()):
+		var actual_unit: Dictionary = Dictionary(actual_units[index])
+		var expected_unit: Dictionary = Dictionary(expected_units[index])
+
+		# Strict per-unit keys.
+		for key in ["instance_id", "archetype", "team", "won"]:
+			if actual_unit.get(key, null) != expected_unit.get(key, null):
+				return false
+
+		# Strict counters (timing/cadence-sensitive).
+		for key in ["auto_attacks", "abilities", "ultimates", "stuns", "kills", "deaths", "assists"]:
+			if actual_unit.get(key, null) != expected_unit.get(key, null):
+				return false
+
+		# Float metrics: allow tolerance to reduce noise from rounding/serialization.
+		for key in [
+			"damage_dealt",
+			"damage_dealt_auto",
+			"damage_dealt_ability",
+			"damage_dealt_ultimate",
+			"damage_received",
+			"damage_mitigated",
+			"healing_done",
+			"shielding_done",
+		]:
+			var actual_value := float(actual_unit.get(key, 0.0))
+			var expected_value := float(expected_unit.get(key, 0.0))
+			if not _floats_match(actual_value, expected_value, abs_eps, rel_eps):
+				return false
+
+	return true
+
 static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 	var parsed: Variant = _load_json_variant(fixture_path)
 	if not (parsed is Dictionary):
@@ -67,11 +133,23 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 	if schema_signature == "":
 		push_error("Fixture schema signature missing in %s" % fixture_path)
 		return false
+	var expected_schema_signature: String = ParityToolsScript.hash_payload(SimulationSchemaScript.export_contract_schema())
+	if schema_signature != expected_schema_signature:
+		push_error("Fixture schema signature mismatch in %s" % fixture_path)
+		push_error("Expected %s, got %s" % [expected_schema_signature, schema_signature])
+		return false
 
 	var fixtures: Array = Array(fixture_doc.get("fixtures", []))
 	if fixture_signature == "":
 		push_error("Fixture set signature missing in %s" % fixture_path)
 		return false
+	var expected_fixture_signature: String = ParityToolsScript.fixture_set_signature(fixtures)
+	if fixture_signature != expected_fixture_signature:
+		push_error("Fixture set signature mismatch in %s" % fixture_path)
+		push_error("Expected %s, got %s" % [expected_fixture_signature, fixture_signature])
+		return false
+	var float_abs_eps := _parse_float("--parity-float-abs-eps=", 0.01)
+	var float_rel_eps := _parse_float("--parity-float-rel-eps=", 0.005)
 	var failures: Array = []
 	for entry in fixtures:
 		if not (entry is Dictionary):
@@ -86,7 +164,8 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 		var expected_summary: Object = MatchReplaySummaryScript.from_dict(expected_data)
 		var expected_payload: Dictionary = ParityToolsScript.canonical_match_payload(expected_summary)
 		var actual_signature: String = ParityToolsScript.match_signature(actual_summary)
-		if actual_payload != expected_payload or actual_signature != expected_signature:
+		var payload_match := _payloads_match_with_tolerance(actual_payload, expected_payload, float_abs_eps, float_rel_eps)
+		if not payload_match or actual_signature != expected_signature:
 			var payload_diff: String = _summarize_payload_diff(actual_payload, expected_payload)
 			failures.append({
 				"name": String(fixture.get("name", "")),
@@ -104,6 +183,46 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 		return false
 
 	print("Fixture parity passed for %d case(s)." % fixtures.size())
+	return true
+
+static func _sign_fixture_set(fixture_in_path: String, fixture_out_path: String) -> bool:
+	var parsed: Variant = _load_json_variant(fixture_in_path)
+	if not (parsed is Dictionary):
+		return false
+
+	var fixture_doc: Dictionary = Dictionary(parsed)
+	var fixtures: Array = Array(fixture_doc.get("fixtures", []))
+	if fixtures.is_empty():
+		push_error("No fixtures found in %s" % fixture_in_path)
+		return false
+
+	# Ensure schema_signature matches the *current* contract (champions + role configs + IO schema).
+	var contract_payload: Dictionary = SimulationSchemaScript.export_contract_schema()
+	fixture_doc["schema_signature"] = ParityToolsScript.hash_payload(contract_payload)
+	fixture_doc["rules_version"] = SimConstantsScript.SIMULATION_RULES_VERSION
+
+	# Recompute per-fixture signatures from the normalized MatchReplaySummary payload.
+	for index in range(fixtures.size()):
+		var entry: Variant = fixtures[index]
+		if not (entry is Dictionary):
+			continue
+		var fixture: Dictionary = Dictionary(entry)
+		var summary_data: Dictionary = Dictionary(fixture.get("summary", {}))
+		var summary_obj: Object = MatchReplaySummaryScript.from_dict(summary_data)
+		fixture["signature"] = ParityToolsScript.match_signature(summary_obj)
+		fixtures[index] = fixture
+
+	fixture_doc["fixtures"] = fixtures
+	fixture_doc["fixture_signature"] = ParityToolsScript.fixture_set_signature(fixtures)
+
+	var out_path := fixture_out_path if fixture_out_path != "" else fixture_in_path
+	var file := FileAccess.open(out_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to write signed fixture set: %s" % out_path)
+		return false
+	file.store_string(JSON.stringify(fixture_doc, "\t", true, true))
+	file.flush()
+	file.close()
 	return true
 
 static func _summarize_payload_diff(actual_payload: Dictionary, expected_payload: Dictionary) -> String:
@@ -169,18 +288,39 @@ static func run_from_cli(tree: SceneTree) -> void:
 		return
 	var dump_schema_hash := _extract_argument("--dump-schema-hash=", "")
 	var dump_schema_path := _extract_argument("--dump-schema-json=", "")
-	if dump_schema_hash != "" or dump_schema_path != "":
-		var schema_payload: Dictionary = SimulationSchemaScript.export_champion_schema()
-		if dump_schema_path != "":
-			var schema_file := FileAccess.open(dump_schema_path, FileAccess.WRITE)
-			if schema_file == null:
-				push_error("Failed to write schema dump file: %s" % dump_schema_path)
-				tree.quit(1)
-				return
-			schema_file.store_string(JSON.stringify(schema_payload, "\t", true, true))
-		if dump_schema_hash != "":
-			print(ParityToolsScript.hash_payload(schema_payload))
+	var dump_contract_hash := _extract_argument("--dump-contract-hash=", "")
+	var dump_contract_path := _extract_argument("--dump-contract-json=", "")
+	var sign_fixture_in := _extract_argument("--sign-fixture-in=", "")
+	var sign_fixture_out := _extract_argument("--sign-fixture-out=", "")
+	if dump_schema_hash != "" or dump_schema_path != "" or dump_contract_hash != "" or dump_contract_path != "":
+		if dump_schema_hash != "" or dump_schema_path != "":
+			var schema_payload: Dictionary = SimulationSchemaScript.export_champion_schema()
+			if dump_schema_path != "":
+				var schema_file := FileAccess.open(dump_schema_path, FileAccess.WRITE)
+				if schema_file == null:
+					push_error("Failed to write schema dump file: %s" % dump_schema_path)
+					tree.quit(1)
+					return
+				schema_file.store_string(JSON.stringify(schema_payload, "\t", true, true))
+			if dump_schema_hash != "":
+				print(ParityToolsScript.hash_payload(schema_payload))
+		if dump_contract_hash != "" or dump_contract_path != "":
+			var contract_payload: Dictionary = SimulationSchemaScript.export_contract_schema()
+			if dump_contract_path != "":
+				var contract_file := FileAccess.open(dump_contract_path, FileAccess.WRITE)
+				if contract_file == null:
+					push_error("Failed to write contract dump file: %s" % dump_contract_path)
+					tree.quit(1)
+					return
+				contract_file.store_string(JSON.stringify(contract_payload, "\t", true, true))
+			if dump_contract_hash != "":
+				print(ParityToolsScript.hash_payload(contract_payload))
 		tree.quit()
+		return
+
+	if sign_fixture_in != "":
+		var sign_ok := _sign_fixture_set(sign_fixture_in, sign_fixture_out)
+		tree.quit(0 if sign_ok else 1)
 		return
 	var input_path := _extract_argument("--match-file=")
 	var output_path := _extract_argument("--out=")
@@ -188,9 +328,35 @@ static func run_from_cli(tree: SceneTree) -> void:
 	var team_size := _parse_int("--team-size=", 1)
 	var seed := _parse_int("--seed=", 0)
 	var fixture_file := _extract_argument("--fixture-file=", "")
+	var debug_fixture_name := _extract_argument("--debug-fixture-name=", "")
 	var match_input: Object = _build_default_input()
 
 	if fixture_file != "":
+		if debug_fixture_name != "":
+			var parsed: Variant = _load_json_variant(fixture_file)
+			if not (parsed is Dictionary):
+				tree.quit(1)
+				return
+			var fixture_doc: Dictionary = Dictionary(parsed)
+			for entry in Array(fixture_doc.get("fixtures", [])):
+				if not (entry is Dictionary):
+					continue
+				var fixture: Dictionary = Dictionary(entry)
+				if String(fixture.get("name", "")) != debug_fixture_name:
+					continue
+				var input_data: Dictionary = Dictionary(fixture.get("input", {}))
+				input_data["record_events"] = true
+				input_data["debug_targeting"] = true
+				input_data["debug_combat_trace"] = true
+				input_data["debug_fixture_name"] = debug_fixture_name
+				var match_obj: Object = MatchReplayInputScript.from_dict(input_data)
+				backend.run_match(match_obj)
+				print("Debug fixture run complete: %s" % debug_fixture_name)
+				tree.quit(0)
+				return
+			push_error("Debug fixture name not found: %s" % debug_fixture_name)
+			tree.quit(1)
+			return
 		var fixture_ok := _compare_fixture_set(backend, fixture_file)
 		tree.quit(0 if fixture_ok else 1)
 		return

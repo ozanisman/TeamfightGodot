@@ -210,7 +210,7 @@ void TeamfightSimulationCore::_bind_methods() {
 }
 
 double TeamfightSimulationCore::_randf() {
-	return std::generate_canonical<double, 53>(_rng);
+	return _rng.next_unit_f64();
 }
 
 void TeamfightSimulationCore::_reset_runtime_state() {
@@ -224,6 +224,12 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_seed = 0;
 	_winner_team = StringName("draw");
 	_record_events = false;
+	_debug_duel_trace = false;
+	_debug_duel_unit_a = 0;
+	_debug_duel_unit_b = 0;
+	_debug_targeting = false;
+	_debug_combat_trace = false;
+	_debug_fixture_name = "";
 	_player_comp.clear();
 	_enemy_comp.clear();
 	_player_kills = 0;
@@ -231,6 +237,13 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_unit_index_map.clear();
 	_alive_player_indices.clear();
 	_alive_enemy_indices.clear();
+}
+
+bool TeamfightSimulationCore::_is_debug_duel_unit(int64_t instance_id) const {
+	if (!_debug_duel_trace) {
+		return false;
+	}
+	return instance_id == _debug_duel_unit_a || instance_id == _debug_duel_unit_b;
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -609,6 +622,8 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	double max_mana = double(stats.get("max_mana", 0.0));
 	double x = double(spawn_spec.get("x", 0.0));
 	double y = double(spawn_spec.get("y", 0.0));
+	int64_t x_fp = int64_t(Math::floor(x * double(POS_SCALE) + 0.5));
+	int64_t y_fp = int64_t(Math::floor(y * double(POS_SCALE) + 0.5));
 
 	unit.instance_id = instance_id;
 	unit.archetype_id = archetype_id;
@@ -624,16 +639,17 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	if (unit.has_ultimate_effect) {
 		unit.ultimate_effect = _compile_effect(Dictionary(ultimate_effect));
 	}
-	unit.spawn_x = x;
-	unit.spawn_y = y;
-	unit.x = x;
-	unit.y = y;
+	unit.spawn_x_fp = x_fp;
+	unit.spawn_y_fp = y_fp;
+	unit.x_fp = x_fp;
+	unit.y_fp = y_fp;
 	unit.hp = max_hp;
 	unit.shield = 0.0;
 	unit.mana = 0.0;
 	unit.attack_cooldown = 0.0;
 	unit.ability_cooldown = double(stats.get("ability_cd", 0.0));
-	unit.ultimate_cooldown = double(stats.get("ultimate_cd", 0.0));
+	// Match golden fixtures: ultimates start ready (mana-gated), not on their full cooldown.
+	unit.ultimate_cooldown = 0.0;
 	unit.casting_remaining = 0.0;
 	unit.casting_kind = StringName();
 	unit.casting_effect = EffectRecord();
@@ -644,6 +660,7 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.current_ally_target_id = 0;
 	unit.retarget_timer = 0.0;
 	unit.target_switch_lock_timer = 0.0;
+	unit.last_kite_timer = 0.0;
 	unit.current_target_score = 0.0;
 	unit.stun_remaining = 0.0;
 	unit.respawn_timer = 0.0;
@@ -669,6 +686,9 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.assists = 0;
 	unit.taunt_target_id = 0;
 	unit.taunt_remaining = 0.0;
+	unit.forced_target_id = 0;
+	unit.forced_target_remaining = 0.0;
+	unit.forced_target_kind = StringName();
 	unit.damage_sources.clear();
 	unit.recent_benefactors.clear();
 	unit.last_hit_time = 0.0;
@@ -689,6 +709,33 @@ Dictionary TeamfightSimulationCore::_scale_priority_dict(const Dictionary &sourc
 Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) const {
 	StringName role = StringName(String(unit.stats.get("role", "")));
 	Dictionary strategy;
+	// Python parity: always provide all strategy knobs with defaults,
+	// so future Python tuning doesn't silently fall back to different native defaults.
+	auto apply_common_defaults = [&](Dictionary &s) {
+		s["ally_distance_weight"] = s.has("ally_distance_weight") ? s["ally_distance_weight"] : Variant(1.0);
+		s["ally_hp_weight"] = s.has("ally_hp_weight") ? s["ally_hp_weight"] : Variant(0.0);
+		s["ally_threat_weight"] = s.has("ally_threat_weight") ? s["ally_threat_weight"] : Variant(0.0);
+		s["ally_role_priorities"] = s.has("ally_role_priorities") ? s["ally_role_priorities"] : Variant(Dictionary());
+		s["stickiness_bonus"] = s.has("stickiness_bonus") ? s["stickiness_bonus"] : Variant(STICKINESS_DEFAULT);
+		s["prefers_kiting"] = s.has("prefers_kiting") ? s["prefers_kiting"] : Variant(false);
+		s["bucket_margin"] = s.has("bucket_margin") ? s["bucket_margin"] : Variant(TARGET_BUCKET_MARGIN);
+		s["bucket_order"] = s.has("bucket_order") ? s["bucket_order"] : Variant(Array());
+		s["switch_margin"] = s.has("switch_margin") ? s["switch_margin"] : Variant(TARGET_SWITCH_MARGIN);
+		s["in_range_bonus"] = s.has("in_range_bonus") ? s["in_range_bonus"] : Variant(IN_RANGE_BONUS_DEFAULT);
+		s["tank_penalty"] = s.has("tank_penalty") ? s["tank_penalty"] : Variant(2.0);
+		s["threat_response_weight"] = s.has("threat_response_weight") ? s["threat_response_weight"] : Variant(0.0);
+		s["projectile_time_weight"] = s.has("projectile_time_weight") ? s["projectile_time_weight"] : Variant(0.0);
+		s["execute_bonus_weight"] = s.has("execute_bonus_weight") ? s["execute_bonus_weight"] : Variant(0.0);
+		s["carry_peel_weight"] = s.has("carry_peel_weight") ? s["carry_peel_weight"] : Variant(0.0);
+		s["prey_instinct_weight"] = s.has("prey_instinct_weight") ? s["prey_instinct_weight"] : Variant(0.0);
+		s["cluster_weight"] = s.has("cluster_weight") ? s["cluster_weight"] : Variant(0.0);
+		s["spacing_weight"] = s.has("spacing_weight") ? s["spacing_weight"] : Variant(0.0);
+		s["bodyguard_weight"] = s.has("bodyguard_weight") ? s["bodyguard_weight"] : Variant(0.0);
+		s["obscurance_weight"] = s.has("obscurance_weight") ? s["obscurance_weight"] : Variant(0.0);
+		s["flanking_weight"] = s.has("flanking_weight") ? s["flanking_weight"] : Variant(0.0);
+		s["threat_decay_rate"] = s.has("threat_decay_rate") ? s["threat_decay_rate"] : Variant(THREAT_DECAY_DEFAULT);
+		s["role_priorities"] = s.has("role_priorities") ? s["role_priorities"] : Variant(Dictionary());
+	};
 	if (role == StringName("tank")) {
 		strategy["name"] = String("Protector");
 		strategy["distance_weight"] = DISTANCE_WEIGHT_TANK;
@@ -706,15 +753,30 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["tank_penalty"] = TANK_PENALTY_TANK;
 		strategy["threat_response_weight"] = THREAT_RESPONSE_TANK;
 		strategy["execute_bonus_weight"] = 0.0;
+		strategy["prefers_kiting"] = false;
 		strategy["prey_instinct_weight"] = 0.0;
+		strategy["cluster_weight"] = CLUSTER_WEIGHT_TANK;
+		strategy["spacing_weight"] = 0.0;
 		strategy["bodyguard_weight"] = BODYGUARD_WEIGHT_TANK;
+		strategy["obscurance_weight"] = 0.0;
+		strategy["carry_peel_weight"] = 0.0;
+		strategy["flanking_weight"] = 0.0;
 		strategy["threat_decay_rate"] = THREAT_DECAY_TANK;
 		Dictionary role_priorities;
 		role_priorities[StringName("assassin")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		role_priorities[StringName("fighter")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		strategy["role_priorities"] = role_priorities;
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = 0.0;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("burst"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("kite"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	if (role == StringName("assassin")) {
@@ -727,7 +789,13 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["threat_response_weight"] = THREAT_RESPONSE_ASSASSIN;
 		strategy["execute_bonus_weight"] = EXECUTE_BONUS_WEIGHT_DEFAULT;
 		strategy["prey_instinct_weight"] = 2.0;
+		strategy["prefers_kiting"] = false;
+		strategy["cluster_weight"] = 0.0;
+		strategy["spacing_weight"] = 0.0;
 		strategy["bodyguard_weight"] = 0.0;
+		strategy["obscurance_weight"] = 0.0;
+		strategy["carry_peel_weight"] = 0.0;
+		strategy["flanking_weight"] = FLANKING_WEIGHT_ASSASSIN;
 		strategy["threat_decay_rate"] = THREAT_DECAY_FRAGILE;
 		Dictionary role_priorities;
 		role_priorities[StringName("marksman")] = -15.0 * ROLE_PRIORITY_GLOBAL_SCALE;
@@ -736,7 +804,16 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		role_priorities[StringName("fighter")] = 10.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		strategy["role_priorities"] = role_priorities;
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = 0.0;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("burst"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("kite"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	if (role == StringName("marksman")) {
@@ -749,11 +826,26 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["threat_response_weight"] = THREAT_RESPONSE_MARKSMAN;
 		strategy["execute_bonus_weight"] = EXECUTE_BONUS_WEIGHT_DEFAULT;
 		strategy["prey_instinct_weight"] = 0.0;
+		strategy["prefers_kiting"] = true;
+		strategy["cluster_weight"] = 0.0;
+		strategy["spacing_weight"] = SPACING_WEIGHT_MARKSMAN;
 		strategy["bodyguard_weight"] = 0.0;
+		strategy["obscurance_weight"] = OBSCURANCE_WEIGHT_DEFAULT;
+		strategy["carry_peel_weight"] = 60.0;
+		strategy["flanking_weight"] = 0.0;
 		strategy["threat_decay_rate"] = THREAT_DECAY_FRAGILE;
 		strategy["role_priorities"] = Dictionary();
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = PROJECTILE_TIME_WEIGHT_MARKSMAN;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("burst"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("kite"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	if (role == StringName("fighter")) {
@@ -766,14 +858,29 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["threat_response_weight"] = THREAT_RESPONSE_FIGHTER;
 		strategy["execute_bonus_weight"] = EXECUTE_BONUS_WEIGHT_DEFAULT;
 		strategy["prey_instinct_weight"] = 0.0;
+		strategy["prefers_kiting"] = false;
+		strategy["cluster_weight"] = 0.0;
+		strategy["spacing_weight"] = 0.0;
 		strategy["bodyguard_weight"] = 0.0;
+		strategy["obscurance_weight"] = 0.0;
+		strategy["carry_peel_weight"] = 0.0;
+		strategy["flanking_weight"] = 0.0;
 		strategy["threat_decay_rate"] = THREAT_DECAY_FIGHTER;
 		Dictionary role_priorities;
 		role_priorities[StringName("marksman")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		role_priorities[StringName("mage")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		strategy["role_priorities"] = role_priorities;
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = 0.0;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("burst"));
+		bucket_order.append(StringName("kite"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	if (role == StringName("mage")) {
@@ -786,14 +893,29 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["threat_response_weight"] = THREAT_RESPONSE_MAGE;
 		strategy["execute_bonus_weight"] = EXECUTE_BONUS_WEIGHT_DEFAULT;
 		strategy["prey_instinct_weight"] = 0.0;
+		strategy["prefers_kiting"] = true;
+		strategy["cluster_weight"] = CLUSTER_WEIGHT_MAGE;
+		strategy["spacing_weight"] = SPACING_WEIGHT_MAGE;
 		strategy["bodyguard_weight"] = 0.0;
+		strategy["obscurance_weight"] = OBSCURANCE_WEIGHT_DEFAULT;
+		strategy["carry_peel_weight"] = 60.0;
+		strategy["flanking_weight"] = 0.0;
 		strategy["threat_decay_rate"] = THREAT_DECAY_FRAGILE;
 		Dictionary role_priorities;
 		role_priorities[StringName("marksman")] = -4.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		role_priorities[StringName("support")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		strategy["role_priorities"] = role_priorities;
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = PROJECTILE_TIME_WEIGHT_MAGE;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("burst"));
+		bucket_order.append(StringName("kite"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	if (role == StringName("support")) {
@@ -814,14 +936,29 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 		strategy["threat_response_weight"] = THREAT_RESPONSE_SUPPORT;
 		strategy["execute_bonus_weight"] = 0.0;
 		strategy["prey_instinct_weight"] = 0.0;
+		strategy["prefers_kiting"] = true;
+		strategy["cluster_weight"] = 0.0;
+		strategy["spacing_weight"] = SPACING_WEIGHT_SUPPORT;
 		strategy["bodyguard_weight"] = BODYGUARD_WEIGHT_SUPPORT;
+		strategy["obscurance_weight"] = OBSCURANCE_WEIGHT_DEFAULT;
+		strategy["carry_peel_weight"] = 0.0;
+		strategy["flanking_weight"] = 0.0;
 		strategy["threat_decay_rate"] = THREAT_DECAY_FRAGILE;
 		Dictionary role_priorities;
 		role_priorities[StringName("assassin")] = -8.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		role_priorities[StringName("fighter")] = -4.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		strategy["role_priorities"] = role_priorities;
 		strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
+		strategy["bucket_margin"] = TARGET_BUCKET_MARGIN;
 		strategy["projectile_time_weight"] = PROJECTILE_TIME_WEIGHT_SUPPORT;
+		Array bucket_order;
+		bucket_order.append(StringName("commit"));
+		bucket_order.append(StringName("peel"));
+		bucket_order.append(StringName("objective"));
+		bucket_order.append(StringName("kite"));
+		bucket_order.append(StringName("burst"));
+		strategy["bucket_order"] = bucket_order;
+		apply_common_defaults(strategy);
 		return strategy;
 	}
 	strategy["name"] = String("Default");
@@ -842,6 +979,7 @@ Dictionary TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) co
 	strategy["role_priorities"] = Dictionary();
 	strategy["switch_margin"] = TARGET_SWITCH_MARGIN;
 	strategy["projectile_time_weight"] = 0.0;
+	apply_common_defaults(strategy);
 	return strategy;
 }
 
@@ -859,9 +997,13 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double dist = _distance_between(attacker, enemy);
 	double attack_range = _attack_range(attacker);
 	double effective_range = _effective_attack_range(attacker);
-	bool in_range = attack_range > RANGED_THRESHOLD
-		? dist <= attack_range
-		: (dist <= effective_range || Math::is_equal_approx(dist, effective_range));
+	// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
+	bool in_range = false;
+	if (attack_range > RANGED_THRESHOLD) {
+		in_range = dist <= attack_range;
+	} else {
+		in_range = (dist <= effective_range) || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+	}
 	double hp_ratio = enemy.hp / Math::max(0.0001, double(enemy.stats.get("max_hp", 1.0)));
 	double score = 0.0;
 	double range_gap = Math::max(0.0, dist - Math::max(effective_range, EPSILON));
@@ -877,10 +1019,24 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	score += double(Dictionary(strategy.get("role_priorities", Dictionary())).get(StringName(String(enemy.stats.get("role", ""))), 0.0));
 	if (StringName(String(enemy.stats.get("role", ""))) == StringName("tank")) {
 		score += double(strategy.get("tank_penalty", 0.0));
+		// Python oracle: assassins apply an extra tank penalty if there are backliners alive.
 		if (StringName(String(attacker.stats.get("role", ""))) == StringName("assassin")) {
-			Array enemies;
-			// The direct assassin context penalty in Python depends on enemy pool; this is approximated here
-			score += ASSASSIN_TANK_CONTEXT_PENALTY * 0.0;
+			const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy.team);
+			bool has_backliner = false;
+			for (int64_t idx : enemy_indices) {
+				const UnitState &other = _units[idx];
+				if (!other.alive || other.instance_id == enemy.instance_id) {
+					continue;
+				}
+				StringName other_role = StringName(String(other.stats.get("role", "")));
+				if (other_role == StringName("marksman") || other_role == StringName("mage") || other_role == StringName("support")) {
+					has_backliner = true;
+					break;
+				}
+			}
+			if (has_backliner) {
+				score += ASSASSIN_TANK_CONTEXT_PENALTY;
+			}
 		}
 	}
 	if (enemy.target_id == attacker.instance_id) {
@@ -927,12 +1083,177 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			}
 		}
 	}
-	score += dist * double(strategy.get("projectile_time_weight", 0.0));
+
+	// Cluster awareness (density).
+	double cluster_weight = double(strategy.get("cluster_weight", 0.0));
+	if (cluster_weight > 0.0) {
+		// Python parity: score_target() uses a cached density count when provided; otherwise defaults to 0.
+		// The current Python oracle does not populate this cache, so we keep it at the per-unit stored value.
+		score -= double(enemy.last_density_count) * cluster_weight;
+	}
+
+	// Spacing awareness.
+	double spacing_weight = double(strategy.get("spacing_weight", 0.0));
+	if (spacing_weight > 0.0) {
+		score += Math::pow(double(enemy.incoming_target_count), SPACING_EXPONENT) * spacing_weight;
+	}
+
+	// Carry peel (for threatened carries).
+	double carry_peel_weight = double(strategy.get("carry_peel_weight", 0.0));
+	if (carry_peel_weight > 0.0) {
+		StringName attacker_role = StringName(String(attacker.stats.get("role", "")));
+		if ((attacker_role == StringName("marksman") || attacker_role == StringName("mage")) && enemy.target_id == attacker.instance_id) {
+			double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
+			score -= carry_peel_weight * falloff;
+		}
+	}
+
+	// Projectile tempo: penalize time-to-hit for ranged attackers.
+	double projectile_time_weight = double(strategy.get("projectile_time_weight", 0.0));
+	if (projectile_time_weight > 0.0 && attack_range > RANGED_THRESHOLD) {
+		double proj_speed = double(attacker.stats.get("projectile_speed", DEFAULT_PROJECTILE_SPEED));
+		if (proj_speed > EPSILON) {
+			double t_hit = dist / proj_speed;
+			score += t_hit * projectile_time_weight;
+		}
+	}
+
+	// Kiting tempo bonus inside preferred window.
+	auto is_under_threat = [&](const UnitState &u) -> bool {
+		return double(u.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || u.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
+	};
+	// Python parity: kite tempo scoring applies whenever prefers_kiting is true.
+	// Threat gating is only used for the KITE bucket classification, not this tempo term.
+	if (bool(strategy.get("prefers_kiting", false))) {
+		double min_w = effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
+		double max_w = effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
+		if (dist >= min_w && dist <= max_w && max_w > min_w) {
+			double kite_ratio = (dist - min_w) / (max_w - min_w);
+			score -= kite_ratio * SCORE_KITING_WEIGHT_SCALE;
+		}
+	}
+
+	// Obscurance: penalize targeting past frontline blockers.
+	double obscurance_weight = double(strategy.get("obscurance_weight", 0.0));
+	if (obscurance_weight > 0.0) {
+		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy.team);
+		double ux = double(attacker.x_fp) / double(POS_SCALE);
+		double uy = double(attacker.y_fp) / double(POS_SCALE);
+		double tx = double(enemy.x_fp) / double(POS_SCALE);
+		double ty = double(enemy.y_fp) / double(POS_SCALE);
+		double segx = tx - ux;
+		double segy = ty - uy;
+		double seg_len_sq = segx * segx + segy * segy;
+		int blockers = 0;
+		for (int64_t idx : enemy_indices) {
+			const UnitState &other = _units[idx];
+			if (other.instance_id == enemy.instance_id) {
+				continue;
+			}
+			StringName other_role = StringName(String(other.stats.get("role", "")));
+			if (other_role != StringName("tank") && other_role != StringName("fighter")) {
+				continue;
+			}
+			double ox = double(other.x_fp) / double(POS_SCALE);
+			double oy = double(other.y_fp) / double(POS_SCALE);
+			double odx = ox - ux;
+			double ody = oy - uy;
+			double other_dist_sq = odx * odx + ody * ody;
+			if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
+				continue;
+			}
+			double dist_sq = 0.0;
+			if (seg_len_sq <= EPSILON) {
+				dist_sq = other_dist_sq;
+			} else {
+				double t = (odx * segx + ody * segy) / seg_len_sq;
+				t = Math::clamp(t, 0.0, 1.0);
+				double px = ux + segx * t;
+				double py = uy + segy * t;
+				double ddx = ox - px;
+				double ddy = oy - py;
+				dist_sq = ddx * ddx + ddy * ddy;
+			}
+			if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
+				blockers += 1;
+			}
+		}
+		score += double(blockers) * obscurance_weight;
+	}
+
+	// Flanking (assassin): reward isolation from enemy team center.
+	double flanking_weight = double(strategy.get("flanking_weight", 0.0));
+	if (flanking_weight > 0.0) {
+		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy.team);
+		if (!enemy_indices.empty()) {
+			double cx = 0.0;
+			double cy = 0.0;
+			int count = 0;
+			for (int64_t idx : enemy_indices) {
+				const UnitState &e = _units[idx];
+				if (!e.alive) {
+					continue;
+				}
+				cx += double(e.x_fp) / double(POS_SCALE);
+				cy += double(e.y_fp) / double(POS_SCALE);
+				count += 1;
+			}
+			if (count > 0) {
+				cx /= double(count);
+				cy /= double(count);
+				double ex = double(enemy.x_fp) / double(POS_SCALE);
+				double ey = double(enemy.y_fp) / double(POS_SCALE);
+				double to_tx = ex - cx;
+				double to_ty = ey - cy;
+				double ax = double(attacker.x_fp) / double(POS_SCALE);
+				double ay = double(attacker.y_fp) / double(POS_SCALE);
+				double to_ax = ax - ex;
+				double to_ay = ay - ey;
+				double len_t = Math::sqrt(to_tx * to_tx + to_ty * to_ty);
+				double len_a = Math::sqrt(to_ax * to_ax + to_ay * to_ay);
+				if (len_t > EPSILON && len_a > EPSILON) {
+					double align = (to_tx * to_ax + to_ty * to_ay) / (len_t * len_a);
+					align = Math::max(0.0, align);
+					double isolation = Math::min(1.0, len_t * FLANKING_TEAM_CENTER_SCALE);
+					score -= align * isolation * flanking_weight;
+				}
+			}
+		}
+	}
+	// Commit bucket: forced target is massively preferred (Python TAUNT_SCORE_BONUS).
+	if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
+		score += TAUNT_SCORE_BONUS;
+	}
 	return score;
 }
 
 bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double current_score, double new_score, const Dictionary &strategy) const {
-	(void)unit;
+	// Python oracle parity: respect post-switch lock + commit window to avoid last-moment target flip.
+	if (unit.target_switch_lock_timer > 0.0) {
+		return false;
+	}
+	// Commit window: avoid switching right before an in-range attack swing fires.
+	// We approximate "in_range" using current target distance if available.
+	const UnitState *current_target = _unit_by_id(unit.target_id);
+	if (current_target != nullptr && current_target->alive && current_target->team != unit.team) {
+		double dist = _distance_between(unit, *current_target);
+		double attack_range = _attack_range(unit);
+		double effective_range = _effective_attack_range(unit);
+		bool in_range = false;
+		if (attack_range > RANGED_THRESHOLD) {
+			in_range = dist <= attack_range;
+		} else {
+			in_range = (dist <= effective_range) || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+		}
+		if (in_range) {
+			double attack_speed = Math::max(0.0001, double(unit.stats.get("attack_speed", 1.0)));
+			double swing = 1.0 / attack_speed;
+			double commit_window = Math::min(SWITCH_COMMIT_WINDOW_SECONDS, swing * SWITCH_COMMIT_WINDOW_SWING_FRACTION);
+			if (unit.attack_cooldown <= commit_window) {
+				return false;
+			}
+		}
+	}
 	double margin = double(strategy.get("switch_margin", TARGET_SWITCH_MARGIN));
 	return new_score <= (current_score - margin);
 }
@@ -1030,6 +1351,44 @@ void TeamfightSimulationCore::_refresh_target_pressure() {
 		}
 		target->incoming_target_count += 1;
 	}
+
+	// Python parity: cache per-unit density used by cluster scoring.
+	// Python uses getattr(enemy, "_last_density_count", 0) unless explicit density is provided.
+	for (int64_t index : _alive_player_indices) {
+		_units[index].last_density_count = 0;
+	}
+	for (int64_t index : _alive_enemy_indices) {
+		_units[index].last_density_count = 0;
+	}
+	if (_compute_density_cache) {
+		auto compute_density_for_team = [&](const std::vector<int64_t> &indices) {
+			const double r2 = AOE_DENSITY_RADIUS * AOE_DENSITY_RADIUS;
+			for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
+				UnitState &u = _units[indices[i]];
+				if (!u.alive) {
+					u.last_density_count = 0;
+					continue;
+				}
+				int count = 0;
+				for (int64_t j = 0; j < int64_t(indices.size()); ++j) {
+					if (i == j) {
+						continue;
+					}
+					const UnitState &other = _units[indices[j]];
+					if (!other.alive) {
+						continue;
+					}
+					double d = _distance_between(u, other);
+					if (d * d <= r2) {
+						count += 1;
+					}
+				}
+				u.last_density_count = count;
+			}
+		};
+		compute_density_for_team(_alive_player_indices);
+		compute_density_for_team(_alive_enemy_indices);
+	}
 }
 
 bool TeamfightSimulationCore::is_ready() const {
@@ -1044,12 +1403,31 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_seed = int64_t(match_input.get("seed", 0));
 	_tick_rate = double(match_input.get("tick_rate", DEFAULT_TICK_RATE));
 	_record_events = bool(match_input.get("record_events", false));
-	_rng.seed(static_cast<uint64_t>(_seed));
+	_debug_targeting = bool(match_input.get("debug_targeting", false));
+	_debug_combat_trace = bool(match_input.get("debug_combat_trace", false));
+	_debug_fixture_name = String(match_input.get("debug_fixture_name", ""));
+	_compute_density_cache = bool(match_input.get("compute_density_cache", false));
+	_rng.seed(static_cast<uint64_t>(_seed), 54u);
 
 	int64_t next_instance_id = 1;
 	_append_team_units(Array(match_input.get("player_units", Array())), StringName("player"), next_instance_id, _player_comp);
 	_append_team_units(Array(match_input.get("enemy_units", Array())), StringName("enemy"), next_instance_id, _enemy_comp);
 	_refresh_target_pressure();
+
+	if (_record_events) {
+		_debug_duel_trace = _units.size() == 2;
+		if (_debug_duel_trace) {
+			_debug_duel_unit_a = _units[0].instance_id;
+			_debug_duel_unit_b = _units[1].instance_id;
+		}
+		UtilityFunctions::print(String("[native-debug] seed=") + String::num_int64(_seed) + " tick_rate=" + String::num(_tick_rate));
+		if (_debug_combat_trace && !_debug_fixture_name.is_empty()) {
+			UtilityFunctions::print(String("[native-debug] combat_trace=ON fixture=") + _debug_fixture_name);
+		}
+		if (_debug_duel_trace) {
+			UtilityFunctions::print(String("[native-debug] duel_trace=ON a=") + String::num_int64(_debug_duel_unit_a) + " (" + String(_units[0].archetype_id) + ") b=" + String::num_int64(_debug_duel_unit_b) + " (" + String(_units[1].archetype_id) + ")");
+		}
+	}
 }
 
 TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind) {
@@ -1060,9 +1438,13 @@ TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(U
 	context.damage = damage;
 	context.action_kind = action_kind;
 	if (target != nullptr) {
-		Vector2 source_position(source.x, source.y);
-		Vector2 target_position(target->x, target->y);
-		context.distance = source_position.distance_to(target_position);
+		double sx = double(source.x_fp) / double(POS_SCALE);
+		double sy = double(source.y_fp) / double(POS_SCALE);
+		double tx = double(target->x_fp) / double(POS_SCALE);
+		double ty = double(target->y_fp) / double(POS_SCALE);
+		double dx = tx - sx;
+		double dy = ty - sy;
+		context.distance = Math::sqrt(dx * dx + dy * dy);
 	}
 	return context;
 }
@@ -1167,6 +1549,23 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (incoming <= 0.0) {
 		return 0.0;
 	}
+	bool combat_trace_window = (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0);
+	if (_record_events && ((_is_debug_duel_unit(source.instance_id) && _is_debug_duel_unit(target.instance_id)) || combat_trace_window)) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " DMG pre src=" + String::num_int64(source.instance_id) + " (" + String(source.archetype_id) + ")"
+			+ " -> tgt=" + String::num_int64(target.instance_id) + " (" + String(target.archetype_id) + ")"
+			+ " kind=" + String(action_kind)
+			+ " type=" + String(damage_type)
+			+ " base=" + String::num(damage)
+			+ " pre_res=" + String::num(pre_res_damage)
+			+ " incoming=" + String::num(incoming)
+			+ " hp=" + String::num(target.hp)
+			+ " shield=" + String::num(target.shield)
+			+ " src_atk_cd=" + String::num(source.attack_cooldown)
+			+ " src_cast=" + String::num(source.casting_remaining)
+		);
+	}
 	double shield_before = target.shield;
 	double absorbed = Math::min(shield_before, incoming);
 	target.shield = Math::max(0.0, shield_before - absorbed);
@@ -1179,17 +1578,30 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (max_hp > 0.0 && total_damage > max_hp * THREAT_BURST_THRESHOLD) {
 		target.perceived_threat += (total_damage / max_hp) * THREAT_BURST_MULTIPLIER;
 	}
-	source.damage_dealt += total_damage;
-	if (action_kind == StringName("auto")) {
-		source.damage_dealt_auto += total_damage;
-	} else if (action_kind == StringName("ability")) {
-		source.damage_dealt_ability += total_damage;
-	} else if (action_kind == StringName("ultimate")) {
-		source.damage_dealt_ultimate += total_damage;
+	// Self-inflicted damage should not count as damage dealt.
+	if (source.instance_id != target.instance_id) {
+		source.damage_dealt += total_damage;
+		if (action_kind == StringName("auto")) {
+			source.damage_dealt_auto += total_damage;
+		} else if (action_kind == StringName("ability")) {
+			source.damage_dealt_ability += total_damage;
+		} else if (action_kind == StringName("ultimate")) {
+			source.damage_dealt_ultimate += total_damage;
+		}
 	}
 	if (hp_loss > 0.0 || absorbed > 0.0) {
 		target.damage_sources[source.instance_id] = _time;
 		target.last_hit_time = _time;
+	}
+	if (_record_events && ((_is_debug_duel_unit(source.instance_id) && _is_debug_duel_unit(target.instance_id)) || combat_trace_window)) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " DMG post total=" + String::num(total_damage)
+			+ " absorbed=" + String::num(absorbed)
+			+ " hp_loss=" + String::num(hp_loss)
+			+ " tgt_hp=" + String::num(target.hp)
+			+ " tgt_shield=" + String::num(target.shield)
+		);
 	}
 	if (target.hp <= 0.0) {
 		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
@@ -1291,6 +1703,10 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 		if (_distance_between(source, unit) <= radius) {
 			unit.taunt_target_id = source.instance_id;
 			unit.taunt_remaining = Math::max(unit.taunt_remaining, duration);
+			// Python forced-target model: taunt is a forced target.
+			unit.forced_target_id = source.instance_id;
+			unit.forced_target_remaining = Math::max(unit.forced_target_remaining, duration);
+			unit.forced_target_kind = StringName("taunt");
 		}
 	}
 }
@@ -1310,10 +1726,93 @@ void TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &ce
 }
 
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit) {
+	auto bucket_rank_for = [&](const Array &order, const StringName &bucket) -> int {
+		for (int i = 0; i < order.size(); ++i) {
+			if (StringName(String(order[i])) == bucket) {
+				return i;
+			}
+		}
+		return order.size();
+	};
+	auto is_under_threat = [&](const UnitState &u) -> bool {
+		return double(u.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || u.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
+	};
+	auto classify_bucket = [&](const UnitState &candidate, double dist, const Dictionary &strategy) -> StringName {
+		// Python forced-target model: forced target is the COMMIT bucket.
+		if (unit.forced_target_id != 0 && unit.forced_target_remaining > 0.0 && candidate.instance_id == unit.forced_target_id) {
+			return StringName("commit");
+		}
+		StringName bucket = StringName("objective");
+		double carry_peel_weight = double(strategy.get("carry_peel_weight", 0.0));
+		// Self-peel for carries: if the enemy is targeting me, bucket as peel.
+		if (carry_peel_weight > 0.0 && candidate.target_id == unit.instance_id) {
+			return StringName("peel");
+		}
+		// Ally peel: if our selected ally is under threat and being focused by this enemy.
+		// (Python: applies when unit.current_ally_target is set; tanks and supports can do this.)
+		int64_t ally_id = unit.current_ally_target_id;
+		if (ally_id != 0) {
+			const UnitState *ally = _unit_by_id(ally_id);
+			if (ally != nullptr && ally->alive && candidate.target_id == ally_id && is_under_threat(*ally)) {
+				return StringName("peel");
+			}
+		}
+		// Burst bucket (execute-ish).
+		if (double(strategy.get("execute_bonus_weight", 0.0)) > 0.0) {
+			double hp_ratio = candidate.hp / Math::max(0.0001, double(candidate.stats.get("max_hp", 1.0)));
+			double atk_dmg = double(unit.stats.get("attack_damage", 0.0));
+			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
+				return StringName("burst");
+			}
+		}
+		// Kite bucket.
+		if (bool(strategy.get("prefers_kiting", false)) && !is_under_threat(unit)) {
+			double effective_range = _effective_attack_range(unit);
+			double min_w = effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
+			double max_w = effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
+			if (dist >= min_w && dist <= max_w) {
+				return StringName("kite");
+			}
+		}
+		return bucket;
+	};
+	auto adjusted_score_for = [&](const UnitState &candidate, double raw, double dist, const Dictionary &strategy, const Array &bucket_order) -> double {
+		StringName bucket = classify_bucket(candidate, dist, strategy);
+		int rank = bucket_rank_for(bucket_order, bucket);
+		double bucket_margin = double(strategy.get("bucket_margin", TARGET_BUCKET_MARGIN));
+		return raw + double(rank) * bucket_margin;
+	};
+
+	// Python forced-target model: if a forced target is active, selection collapses to it.
+	int64_t forced_target_id = unit.forced_target_id;
+	if (forced_target_id != 0 && unit.forced_target_remaining > 0.0) {
+		UnitState *forced_target = _unit_by_id(forced_target_id);
+		if (forced_target != nullptr && forced_target->alive && forced_target->team != unit.team) {
+			if (_record_events && _debug_targeting) {
+				UtilityFunctions::print(
+					String("[native-debug] t=") + String::num(_time)
+					+ " TARGET forced(" + String(unit.forced_target_kind) + ") src=" + String::num_int64(unit.instance_id)
+					+ " -> " + String::num_int64(forced_target->instance_id)
+				);
+			}
+			unit.retarget_timer = 0.0;
+			unit.current_target_score = -1000.0;
+			_set_current_target(unit, *forced_target);
+			return forced_target;
+		}
+	}
+
 	int64_t taunt_id = unit.taunt_target_id;
 	if (taunt_id != 0 && unit.taunt_remaining > 0.0) {
 		UnitState *taunt_target = _unit_by_id(taunt_id);
 		if (taunt_target != nullptr && taunt_target->alive && taunt_target->team != unit.team) {
+			if (_record_events && _debug_targeting) {
+				UtilityFunctions::print(
+					String("[native-debug] t=") + String::num(_time)
+					+ " TARGET forced(taunt) src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
+					+ " -> " + String::num_int64(taunt_target->instance_id) + " (" + String(taunt_target->archetype_id) + ")"
+				);
+			}
 			unit.retarget_timer = 0.0;
 			unit.current_target_score = -1000.0;
 			_set_current_target(unit, *taunt_target);
@@ -1321,26 +1820,84 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 	}
 
+	// Python Unit._retarget_if_needed behavior:
+	// - "forced reasons" (no/invalid/dead target) always evaluate immediately.
+	// - retarget_timer blocks evaluation only if there is no special condition.
+	// - target_switch_lock_timer does NOT block evaluation; it only blocks switching (handled in _should_switch).
 	UnitState *current_target = _unit_by_id(unit.target_id);
+	bool forced_reason = true;
 	if (current_target != nullptr && current_target->alive && current_target->team != unit.team) {
-		if (unit.target_switch_lock_timer > 0.0 || unit.retarget_timer > 0.0) {
-			unit.current_target_score = _score_enemy_target(unit, *current_target, _strategy_for_unit(unit));
-			_set_current_target(unit, *current_target);
-			return current_target;
-		}
+		forced_reason = false;
 	}
 
 	Dictionary strategy = _strategy_for_unit(unit);
+	Array bucket_order = Array(strategy.get("bucket_order", Array()));
 	UnitState *best = nullptr;
-	double best_score = std::numeric_limits<double>::infinity();
+	double best_adjusted = std::numeric_limits<double>::infinity();
+	double best_raw = std::numeric_limits<double>::infinity();
+	int best_bucket_rank = 0;
+	double best_dist = std::numeric_limits<double>::infinity();
 	StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+
+	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
+	bool assassin_pressuring_frontline = false;
+	StringName unit_role = StringName(String(unit.stats.get("role", "")));
+	if (!forced_reason && unit_role == StringName("assassin") && current_target != nullptr) {
+		StringName cur_role = StringName(String(current_target->stats.get("role", "")));
+		if (cur_role == StringName("tank") || cur_role == StringName("fighter")) {
+			for (int64_t idx : enemy_indices) {
+				const UnitState &enemy = _units[idx];
+				if (!enemy.alive) {
+					continue;
+				}
+				StringName er = StringName(String(enemy.stats.get("role", "")));
+				if (er == StringName("marksman") || er == StringName("mage") || er == StringName("support")) {
+					assassin_pressuring_frontline = true;
+					break;
+				}
+			}
+		}
+	}
+
+	// Periodic keep path: if we are within retarget interval and no special conditions, just keep current target.
+	if (!forced_reason && unit.retarget_timer > 0.0 && !assassin_pressuring_frontline) {
+		// Match Python: skip evaluation entirely; just return current target score (no switching).
+		unit.current_target_score = _score_enemy_target(unit, *current_target, strategy);
+		if (_record_events && _debug_targeting) {
+			UtilityFunctions::print(
+				String("[native-debug] t=") + String::num(_time)
+				+ " TARGET hold src=" + String::num_int64(unit.instance_id)
+				+ " lock=" + String::num(unit.target_switch_lock_timer)
+				+ " retarget=" + String::num(unit.retarget_timer)
+				+ " target=" + String::num_int64(current_target->instance_id)
+				+ " score=" + String::num(unit.current_target_score)
+			);
+		}
+		_set_current_target(unit, *current_target);
+		return current_target;
+	}
+
+	// Python: whenever we do evaluate, we reset the retarget timer immediately (even if we end up keeping).
+	unit.retarget_timer = RETARGET_INTERVAL;
+
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &candidate = _units[enemy_index];
-		double score = _score_enemy_target(unit, candidate, strategy);
-		if (best == nullptr || score < best_score - EPSILON || (Math::is_equal_approx(score, best_score) && candidate.instance_id < best->instance_id)) {
+		double raw = _score_enemy_target(unit, candidate, strategy);
+		double dist = _distance_between(unit, candidate);
+		StringName bucket = classify_bucket(candidate, dist, strategy);
+		int rank = bucket_rank_for(bucket_order, bucket);
+		double adjusted = adjusted_score_for(candidate, raw, dist, strategy, bucket_order);
+		// Python parity: strict lexicographic ordering on key:
+		// (adjusted_score, raw_score, bucket_rank, distance, instance_id)
+		if (best == nullptr
+				|| std::make_tuple(adjusted, raw, rank, dist, candidate.instance_id) <
+						std::make_tuple(best_adjusted, best_raw, best_bucket_rank, best_dist, best->instance_id)) {
 			best = &candidate;
-			best_score = score;
+			best_adjusted = adjusted;
+			best_raw = raw;
+			best_bucket_rank = rank;
+			best_dist = dist;
 		}
 	}
 	if (best == nullptr) {
@@ -1349,24 +1906,92 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		return nullptr;
 	}
 
-	if (current_target == nullptr || !current_target->alive || current_target->team == unit.team) {
+	// Forced reasons: always pick immediately (no switch logic).
+	if (forced_reason) {
+		String reason = "no current target";
+		if (current_target != nullptr && !current_target->alive) {
+			reason = "current target dead";
+		} else if (current_target != nullptr && current_target->team == unit.team) {
+			reason = "current target invalid team";
+		}
 		_set_current_target(unit, *best);
-		unit.retarget_timer = RETARGET_INTERVAL;
-		unit.current_target_score = best_score;
+		unit.current_target_score = best_raw;
+		if (_record_events && _debug_targeting) {
+			UtilityFunctions::print(
+				String("[native-debug] t=") + String::num(_time)
+				+ " TARGET pick(" + reason + ") src=" + String::num_int64(unit.instance_id)
+				+ " -> " + String::num_int64(best->instance_id)
+				+ " score=" + String::num(best_raw)
+			);
+		}
 		return best;
 	}
 
 	double current_score = _score_enemy_target(unit, *current_target, strategy);
-	if (best->instance_id == current_target->instance_id || !_should_switch(unit, current_score, best_score, strategy)) {
+	double current_dist = _distance_between(unit, *current_target);
+	if (best->instance_id == current_target->instance_id) {
 		unit.current_target_score = current_score;
+		if (_record_events && _debug_targeting) {
+			UtilityFunctions::print(
+				String("[native-debug] t=") + String::num(_time)
+				+ " TARGET kept target src=" + String::num_int64(unit.instance_id)
+				+ " cur=" + String::num_int64(current_target->instance_id)
+				+ " cur_score=" + String::num(current_score)
+				+ " best=" + String::num_int64(best->instance_id)
+				+ " best_score=" + String::num(best_raw)
+			);
+		}
+		_set_current_target(unit, *current_target);
+		return current_target;
+	}
+
+	if (assassin_pressuring_frontline) {
+		StringName best_role = StringName(String(best->stats.get("role", "")));
+		bool best_is_backliner = (best_role == StringName("marksman") || best_role == StringName("mage") || best_role == StringName("support"));
+		if (best_is_backliner) {
+			_set_current_target(unit, *best);
+			unit.target_switch_lock_timer = 0.0;
+			unit.current_target_score = best_raw;
+			if (_record_events && _debug_targeting) {
+				UtilityFunctions::print(
+					String("[native-debug] t=") + String::num(_time)
+					+ " TARGET assassin breaks frontline lock src=" + String::num_int64(unit.instance_id)
+					+ " " + String::num_int64(current_target->instance_id) + "->" + String::num_int64(best->instance_id)
+					+ " best_score=" + String::num(best_raw)
+				);
+			}
+			return best;
+		}
+	}
+
+	if (!_should_switch(unit, current_score, best_raw, strategy)) {
+		unit.current_target_score = current_score;
+		if (_record_events && _debug_targeting) {
+			UtilityFunctions::print(
+				String("[native-debug] t=") + String::num(_time)
+				+ " TARGET kept target(src=margin) src=" + String::num_int64(unit.instance_id)
+				+ " cur=" + String::num_int64(current_target->instance_id)
+				+ " cur_score=" + String::num(current_score)
+				+ " best=" + String::num_int64(best->instance_id)
+				+ " best_score=" + String::num(best_raw)
+			);
+		}
 		_set_current_target(unit, *current_target);
 		return current_target;
 	}
 
 	_set_current_target(unit, *best);
 	unit.target_switch_lock_timer = TARGET_SWITCH_LOCK_DURATION;
-	unit.retarget_timer = RETARGET_INTERVAL;
-	unit.current_target_score = best_score;
+	unit.current_target_score = best_raw;
+	if (_record_events && _debug_targeting) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " TARGET switched src=" + String::num_int64(unit.instance_id)
+			+ " " + String::num_int64(current_target->instance_id) + "->" + String::num_int64(best->instance_id)
+			+ " cur_score=" + String::num(current_score)
+			+ " best_score=" + String::num(best_raw)
+		);
+	}
 	return best;
 }
 
@@ -1392,12 +2017,33 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 	Dictionary strategy = _strategy_for_unit(unit);
 	UnitState *best = nullptr;
 	double best_score = std::numeric_limits<double>::infinity();
+	double best_dist = std::numeric_limits<double>::infinity();
+	double best_hp_ratio = std::numeric_limits<double>::infinity();
 	for (int64_t ally_index : pool) {
 		UnitState &candidate = _units[ally_index];
 		double score = _score_ally_target(unit, candidate, strategy);
-		if (best == nullptr || score < best_score - EPSILON || (Math::is_equal_approx(score, best_score) && candidate.instance_id < best->instance_id)) {
+		double dist = _distance_between(unit, candidate);
+		double hp_ratio = candidate.hp / Math::max(0.0001, double(candidate.stats.get("max_hp", 1.0)));
+		if (critical_allies.empty()) {
+			// Python: min by (score, distance, instance_id)
+			if (best == nullptr
+					|| std::make_tuple(score, dist, candidate.instance_id) <
+							std::make_tuple(best_score, best_dist, best->instance_id)) {
+				best = &candidate;
+				best_score = score;
+				best_dist = dist;
+				best_hp_ratio = hp_ratio;
+			}
+			continue;
+		}
+		// Python critical allies: min by (hp_ratio, score, distance, instance_id)
+		if (best == nullptr
+				|| std::make_tuple(hp_ratio, score, dist, candidate.instance_id) <
+						std::make_tuple(best_hp_ratio, best_score, best_dist, best->instance_id)) {
 			best = &candidate;
 			best_score = score;
+			best_dist = dist;
+			best_hp_ratio = hp_ratio;
 		}
 	}
 	unit.current_ally_target_id = best == nullptr ? 0 : best->instance_id;
@@ -1405,9 +2051,13 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 }
 
 double TeamfightSimulationCore::_distance_between(const UnitState &left, const UnitState &right) const {
-	Vector2 left_position(left.x, left.y);
-	Vector2 right_position(right.x, right.y);
-	return left_position.distance_to(right_position);
+	double lx = double(left.x_fp) / double(POS_SCALE);
+	double ly = double(left.y_fp) / double(POS_SCALE);
+	double rx = double(right.x_fp) / double(POS_SCALE);
+	double ry = double(right.y_fp) / double(POS_SCALE);
+	double dx = rx - lx;
+	double dy = ry - ly;
+	return Math::sqrt(dx * dx + dy * dy);
 }
 
 double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
@@ -1457,6 +2107,9 @@ int64_t TeamfightSimulationCore::_unit_index_by_id(int64_t instance_id) const {
 void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target) {
 	if (!target.alive) {
 		return;
+	}
+	if (_record_events && target.archetype_id == StringName("guardian")) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " guardian DIED mana=" + String::num(target.mana) + " ult_cd=" + String::num(target.ultimate_cooldown));
 	}
 	int64_t target_id = target.instance_id;
 	int64_t target_index = _unit_index_by_id(target_id);
@@ -1533,33 +2186,41 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	if (unit.alive) {
 		return;
 	}
+	if (_record_events && unit.archetype_id == StringName("guardian")) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " guardian RESPAWN");
+	}
 	int64_t unit_index = _unit_index_by_id(unit.instance_id);
 	unit.alive = true;
 	unit.hp = double(unit.stats.get("max_hp", 0.0));
 	unit.mana = 0.0;
 	unit.shield = 0.0;
-	unit.attack_cooldown = 0.0;
+	// Match the GDScript oracle: on respawn we only reset ability cooldown; ultimate/attack cooldowns are left as-is.
 	unit.ability_cooldown = double(unit.stats.get("ability_cd", 0.0));
-	unit.ultimate_cooldown = double(unit.stats.get("ultimate_cd", 0.0));
+	// Match golden fixtures: respawns do not "lock out" ultimates behind their full cooldown.
+	unit.ultimate_cooldown = 0.0;
 	unit.stun_remaining = 0.0;
 	unit.taunt_remaining = 0.0;
-	unit.taunt_target_id = 0;
-	unit.retarget_timer = 0.0;
-	unit.target_switch_lock_timer = 0.0;
-	unit.target_id = 0;
-	unit.current_ally_target_id = 0;
+	unit.forced_target_remaining = 0.0;
 	unit.respawn_timer = 0.0;
 	unit.damage_sources.clear();
-	unit.recent_benefactors.clear();
 	unit.last_hit_time = 0.0;
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;
+	unit.casting_remaining = 0.0;
+	unit.casting_kind = StringName();
+	unit.casting_effect = EffectRecord();
+	unit.has_casting_effect = false;
+	unit.casting_target_id = 0;
+	unit.casting_ally_target_id = 0;
+	unit.taunt_target_id = 0;
+	unit.forced_target_id = 0;
+	unit.forced_target_kind = StringName();
 	if (unit.team == StringName("player")) {
-		unit.x = DRAFT_X_BASE;
-		unit.y = unit.spawn_y;
+		unit.x_fp = int64_t(Math::floor(DRAFT_X_BASE * double(POS_SCALE) + 0.5));
+		unit.y_fp = unit.spawn_y_fp;
 	} else {
-		unit.x = WORLD_SIZE - DRAFT_X_BASE;
-		unit.y = unit.spawn_y;
+		unit.x_fp = int64_t(Math::floor((WORLD_SIZE - DRAFT_X_BASE) * double(POS_SCALE) + 0.5));
+		unit.y_fp = unit.spawn_y_fp;
 	}
 	if (unit_index >= 0) {
 		_add_alive_index(unit.team, unit_index);
@@ -1567,15 +2228,23 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 }
 
 void TeamfightSimulationCore::_step_tick() {
-	_time += _tick_rate;
+	// Python World.step(): tick++ then time = tick * tick_rate
+	_tick += 1;
+	_time = double(_tick) * _tick_rate;
 	for (UnitState &unit : _units) {
 		unit.respawned_this_tick = false;
 		unit.cast_resolved_this_tick = false;
+		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
+		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
 	}
-	_update_cooldowns_and_status();
+	// Python: projectiles resolve before unit updates.
 	_update_projectiles();
+	_refresh_target_pressure(); // includes optional density cache
+	// Python: units updated in instance_id order (our _units are built in that order).
+	for (UnitState &unit : _units) {
+		_update_unit(unit);
+	}
 	_refresh_target_pressure();
-	_process_actions();
 }
 
 void TeamfightSimulationCore::_simulate() {
@@ -1587,55 +2256,187 @@ void TeamfightSimulationCore::_simulate() {
 	_winner_team = _determine_winner();
 }
 
-void TeamfightSimulationCore::_update_cooldowns_and_status() {
-	for (UnitState &unit : _units) {
-		if (!unit.alive) {
-			unit.respawn_timer = Math::max(0.0, unit.respawn_timer - _tick_rate);
-			if (unit.respawn_timer <= 0.0) {
-				_respawn_unit(unit);
-			}
-			continue;
+void TeamfightSimulationCore::_update_unit(UnitState &unit) {
+	// Lifecycle/respawn.
+	if (!unit.alive) {
+		unit.respawn_timer = Math::max(0.0, unit.respawn_timer - _tick_rate);
+		if (unit.respawn_timer <= 0.0) {
+			_respawn_unit(unit);
 		}
-		unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
-		unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
-		unit.ultimate_cooldown = Math::max(0.0, unit.ultimate_cooldown - _tick_rate);
-		Dictionary strategy = _strategy_for_unit(unit);
-		unit.perceived_threat = Math::max(0.0, unit.perceived_threat - double(strategy.get("threat_decay_rate", THREAT_DECAY_DEFAULT)) * _tick_rate);
-		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
-		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
-		unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
-		unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
-		if (unit.stun_remaining <= 0.0) {
-			unit.stun_remaining = 0.0;
-		}
-		if (unit.taunt_remaining <= 0.0) {
-			unit.taunt_remaining = 0.0;
-			unit.taunt_target_id = 0;
-		}
-		if (unit.casting_remaining > 0.0) {
-			unit.casting_remaining = Math::max(0.0, unit.casting_remaining - _tick_rate);
-			if (unit.casting_remaining <= 0.0) {
-				_resolve_cast(unit);
-				unit.cast_resolved_this_tick = true;
-			}
-		}
-		double regen_accumulator = unit.regen_accumulator + _tick_rate;
-		while (regen_accumulator >= REGEN_TICK_INTERVAL) {
-			regen_accumulator -= REGEN_TICK_INTERVAL;
-			const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
-			for (const EffectRecord &effect : effects) {
-				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("auto"));
-				_execute_effect(effect, context);
-			}
-		}
-		unit.regen_accumulator = regen_accumulator;
+		return;
 	}
+
+	Dictionary strategy = _strategy_for_unit(unit);
+
+	// Cooldowns/status (Python Unit.update begins with these decrements).
+	unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
+	unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
+	unit.ultimate_cooldown = Math::max(0.0, unit.ultimate_cooldown - _tick_rate);
+	unit.perceived_threat = Math::max(0.0, unit.perceived_threat - double(strategy.get("threat_decay_rate", THREAT_DECAY_DEFAULT)) * _tick_rate);
+	unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
+	unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
+	unit.forced_target_remaining = Math::max(0.0, unit.forced_target_remaining - _tick_rate);
+	unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - _tick_rate);
+	if (unit.taunt_remaining <= 0.0) {
+		unit.taunt_remaining = 0.0;
+		unit.taunt_target_id = 0;
+	}
+	if (unit.forced_target_remaining <= 0.0) {
+		unit.forced_target_remaining = 0.0;
+		unit.forced_target_id = 0;
+		unit.forced_target_kind = StringName();
+	}
+
+	// Regen tick effects.
+	double regen_accumulator = unit.regen_accumulator + _tick_rate;
+	while (regen_accumulator >= REGEN_TICK_INTERVAL) {
+		regen_accumulator -= REGEN_TICK_INTERVAL;
+		const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
+		for (const EffectRecord &effect : effects) {
+			EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("auto"));
+			_execute_effect(effect, context);
+		}
+	}
+	unit.regen_accumulator = regen_accumulator;
+
+	// Casting continuation/resolution.
+	if (unit.casting_remaining > 0.0) {
+		unit.casting_remaining = Math::max(0.0, unit.casting_remaining - _tick_rate);
+		if (unit.casting_remaining <= 0.0) {
+			_resolve_cast(unit);
+			unit.cast_resolved_this_tick = true;
+		}
+		return;
+	}
+
+	// Stun: no actions/movement.
+	if (unit.stun_remaining > 0.0) {
+		return;
+	}
+
+	// Separation (Python: before targeting/actions).
+	{
+		double move_speed = double(unit.stats.get("move_speed", 0.0));
+		if (move_speed > 0.0) {
+			double attack_range = double(unit.stats.get("attack_range", 0.0));
+			double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
+			double r2 = radius * radius;
+			double ux = double(unit.x_fp) / double(POS_SCALE);
+			double uy = double(unit.y_fp) / double(POS_SCALE);
+			double sep_x = 0.0;
+			double sep_y = 0.0;
+			const std::vector<int64_t> &ally_indices = _alive_indices_for_team(unit.team);
+			for (int64_t idx : ally_indices) {
+				const UnitState &ally = _units[idx];
+				if (!ally.alive || ally.instance_id == unit.instance_id) {
+					continue;
+				}
+				double ax = double(ally.x_fp) / double(POS_SCALE);
+				double ay = double(ally.y_fp) / double(POS_SCALE);
+				double dx = ux - ax;
+				double dy = uy - ay;
+				double d2 = dx * dx + dy * dy;
+				if (d2 <= EPSILON || d2 >= r2) {
+					continue;
+				}
+				double d = Math::sqrt(d2);
+				double force = (radius - d) / radius;
+				sep_x += (dx / d) * force;
+				sep_y += (dy / d) * force;
+			}
+			if (!Math::is_zero_approx(sep_x) || !Math::is_zero_approx(sep_y)) {
+				double nudge_speed = move_speed * NUDGE_SPEED_MODIFIER * _tick_rate;
+				double nx = sep_x * nudge_speed;
+				double ny = sep_y * nudge_speed;
+				double px = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+				double py = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+				unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
+				unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
+			}
+		}
+	}
+
+	// Targets.
+	UnitState *target_ally = _select_ally_target(unit);
+	unit.current_ally_target_id = target_ally == nullptr ? 0 : target_ally->instance_id;
+	UnitState *target = _select_enemy_target(unit);
+	if (target == nullptr) {
+		unit.target_id = 0;
+		return;
+	}
+
+	double distance = _distance_between(unit, *target);
+	double effective_range = _effective_attack_range(unit);
+	bool in_contact = (distance <= effective_range) || (Math::abs(distance - effective_range) <= MELEE_CONTACT_BUFFER);
+
+	// Action priority (Python: casts/autos only if in_range).
+	if (in_contact) {
+		if (_try_cast_ultimate(unit, *target, distance)) {
+			return;
+		}
+		if (_try_cast_ability(unit, *target, distance)) {
+			return;
+		}
+		if (unit.attack_cooldown <= 0.0) {
+			_perform_auto_attack(unit, *target, distance);
+			return;
+		}
+	}
+
+	// Movement: kite first if applicable, else move toward.
+	if (bool(strategy.get("prefers_kiting", false)) && unit.attack_cooldown > 0.0 && unit.taunt_remaining <= 0.0) {
+		if (_kite_from_enemies(unit)) {
+			return;
+		}
+	}
+	_move_toward_target(unit, *target);
 }
 
 void TeamfightSimulationCore::_process_actions() {
 	for (UnitState &unit : _units) {
 		if (!unit.alive || unit.respawned_this_tick || unit.cast_resolved_this_tick || unit.casting_remaining > 0.0 || unit.stun_remaining > 0.0) {
 			continue;
+		}
+		// Python parity: apply lightweight ally separation before targeting/actions.
+		{
+			double move_speed = double(unit.stats.get("move_speed", 0.0));
+			if (move_speed > 0.0) {
+				double attack_range = double(unit.stats.get("attack_range", 0.0));
+				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
+				double r2 = radius * radius;
+				double ux = double(unit.x_fp) / double(POS_SCALE);
+				double uy = double(unit.y_fp) / double(POS_SCALE);
+				double sep_x = 0.0;
+				double sep_y = 0.0;
+				const std::vector<int64_t> &ally_indices = _alive_indices_for_team(unit.team);
+				for (int64_t idx : ally_indices) {
+					const UnitState &ally = _units[idx];
+					if (!ally.alive || ally.instance_id == unit.instance_id) {
+						continue;
+					}
+					double ax = double(ally.x_fp) / double(POS_SCALE);
+					double ay = double(ally.y_fp) / double(POS_SCALE);
+					double dx = ux - ax;
+					double dy = uy - ay;
+					double d2 = dx * dx + dy * dy;
+					if (d2 <= EPSILON || d2 >= r2) {
+						continue;
+					}
+					double d = Math::sqrt(d2);
+					double force = (radius - d) / radius;
+					sep_x += (dx / d) * force;
+					sep_y += (dy / d) * force;
+				}
+				if (!Math::is_zero_approx(sep_x) || !Math::is_zero_approx(sep_y)) {
+					double nudge_speed = move_speed * NUDGE_SPEED_MODIFIER * _tick_rate;
+					double nx = sep_x * nudge_speed;
+					double ny = sep_y * nudge_speed;
+					double px = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+					double py = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+					unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
+					unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
+				}
+			}
 		}
 		UnitState *target_ally = _select_ally_target(unit);
 		unit.current_ally_target_id = target_ally == nullptr ? 0 : target_ally->instance_id;
@@ -1644,15 +2445,35 @@ void TeamfightSimulationCore::_process_actions() {
 			continue;
 		}
 		double distance = _distance_between(unit, *target);
-		if (_try_cast_ultimate(unit, *target, distance)) {
-			continue;
+		double effective_range = _effective_attack_range(unit);
+		bool in_contact = (distance <= effective_range) || (Math::abs(distance - effective_range) <= MELEE_CONTACT_BUFFER);
+		if (_debug_combat_trace && (unit.instance_id == 5 || unit.instance_id == 2) && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
+			UtilityFunctions::print(
+					String("[native-debug] t=") + String::num(_time) + " PREACT src=" + String::num_int64(unit.instance_id) + " tgt=" + String::num(target->instance_id) +
+					" dist=" + String::num(distance) + " eff=" + String::num(effective_range) + " in_contact=" + String(in_contact ? "true" : "false") +
+					" abil_cd=" + String::num(unit.ability_cooldown) + " ult_cd=" + String::num(unit.ultimate_cooldown) + " atk_cd=" + String::num(unit.attack_cooldown) +
+					" stun=" + String::num(unit.stun_remaining) + " cast=" + String::num(unit.casting_remaining) + " mana=" + String::num(unit.mana) +
+					" pos=(" + String::num(double(unit.x_fp) / double(POS_SCALE)) + "," + String::num(double(unit.y_fp) / double(POS_SCALE)) + ")" +
+					" tgt_pos=(" + String::num(double(target->x_fp) / double(POS_SCALE)) + "," + String::num(double(target->y_fp) / double(POS_SCALE)) + ")");
 		}
-		if (_try_cast_ability(unit, *target, distance)) {
-			continue;
+		if (in_contact) {
+			if (_try_cast_ultimate(unit, *target, distance)) {
+				continue;
+			}
+			if (_try_cast_ability(unit, *target, distance)) {
+				continue;
+			}
 		}
-		if (distance <= _effective_attack_range(unit)) {
+		if (in_contact && unit.attack_cooldown <= 0.0) {
 			_perform_auto_attack(unit, *target, distance);
 		} else {
+			Dictionary strategy = _strategy_for_unit(unit);
+			// Python parity: kiting movement for prefers_kiting units while on cooldown and not taunted.
+			if (bool(strategy.get("prefers_kiting", false)) && unit.attack_cooldown > 0.0 && unit.taunt_remaining <= 0.0) {
+				if (_kite_from_enemies(unit)) {
+					continue;
+				}
+			}
 			_move_toward_target(unit, *target);
 		}
 	}
@@ -1670,6 +2491,9 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 	double max_mana = double(unit.stats.get("max_mana", 0.0));
 	if (unit.ultimate_cooldown > 0.0 || max_mana <= 0.0 || unit.mana < max_mana) {
 		return false;
+	}
+	if (_record_events && unit.archetype_id == StringName("guardian")) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " guardian ULT READY mana=" + String::num(unit.mana) + " cd=" + String::num(unit.ultimate_cooldown));
 	}
 	return _start_cast(unit, target, distance, StringName("ultimate"));
 }
@@ -1695,15 +2519,41 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 	unit.has_casting_effect = true;
 	unit.casting_target_id = unit.target_id != 0 ? unit.target_id : target.instance_id;
 	unit.casting_ally_target_id = unit.current_ally_target_id != 0 ? unit.current_ally_target_id : (target_ally == nullptr ? 0 : target_ally->instance_id);
+
+	if (
+		_record_events
+		&& (
+			_is_debug_duel_unit(unit.instance_id)
+			|| (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0)
+		)
+	) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " CAST start kind=" + String(action_kind)
+			+ " src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
+			+ " tgt=" + String::num_int64(unit.casting_target_id)
+			+ " dist=" + String::num(distance)
+			+ " mana=" + String::num(unit.mana)
+			+ " abil_cd=" + String::num(unit.ability_cooldown)
+			+ " ult_cd=" + String::num(unit.ultimate_cooldown)
+			+ " atk_cd=" + String::num(unit.attack_cooldown)
+			+ " hp=" + String::num(unit.hp)
+		);
+	}
+
+	if (_record_events && unit.archetype_id == StringName("guardian") && action_kind == StringName("ultimate")) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " guardian START ultimate mana=" + String::num(unit.mana) + " cd=" + String::num(unit.ultimate_cooldown));
+	}
 	return true;
 }
 
 void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	EffectRecord effect = unit.casting_effect;
 	StringName action_kind = unit.casting_kind;
-	UnitState *target = _unit_by_id(unit.target_id);
-	UnitState *target_ally = _unit_by_id(unit.current_ally_target_id);
+	UnitState *target = _unit_by_id(unit.casting_target_id);
+	UnitState *target_ally = _unit_by_id(unit.casting_ally_target_id);
 	bool had_effect = unit.has_casting_effect;
+	int64_t debug_target_id = unit.casting_target_id;
 	unit.casting_remaining = 0.0;
 	unit.casting_kind = StringName();
 	unit.casting_effect = EffectRecord();
@@ -1714,6 +2564,22 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 		return;
 	}
 	if ((action_kind == StringName("ability") || action_kind == StringName("ultimate")) && (target == nullptr || !target->alive) && (target_ally == nullptr || !target_ally->alive)) {
+		if (
+			_record_events
+			&& (
+				_is_debug_duel_unit(unit.instance_id)
+				|| (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0)
+			)
+		) {
+			UtilityFunctions::print(
+				String("[native-debug] t=") + String::num(_time)
+				+ " CAST fail kind=" + String(action_kind)
+				+ " src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
+				+ " tgt=" + String::num_int64(debug_target_id)
+				+ " hp=" + String::num(unit.hp)
+				+ " mana=" + String::num(unit.mana)
+			);
+		}
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
@@ -1721,6 +2587,22 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 			unit.mana = Math::min(double(unit.stats.get("max_mana", 0.0)), unit.mana + double(unit.stats.get("max_mana", 0.0)));
 		}
 		return;
+	}
+	if (
+		_record_events
+		&& (
+			_is_debug_duel_unit(unit.instance_id)
+			|| (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0)
+		)
+	) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " CAST resolve kind=" + String(action_kind)
+			+ " src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
+			+ " tgt=" + String::num_int64(debug_target_id)
+			+ " hp=" + String::num(unit.hp)
+			+ " mana=" + String::num(unit.mana)
+		);
 	}
 	EffectContext context = _build_context(unit, target, target_ally, 0.0, action_kind);
 	_execute_effect(effect, context);
@@ -1731,6 +2613,25 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 	unit.attack_cooldown = 1.0 / attack_speed;
 	unit.auto_attacks += 1;
 	unit.attack_count += 1;
+	if (
+		_record_events
+		&& (
+			(_is_debug_duel_unit(unit.instance_id) && _is_debug_duel_unit(target.instance_id))
+			|| (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0)
+		)
+	) {
+		UtilityFunctions::print(
+			String("[native-debug] t=") + String::num(_time)
+			+ " AUTO src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
+			+ " -> tgt=" + String::num_int64(target.instance_id) + " (" + String(target.archetype_id) + ")"
+			+ " dist=" + String::num(distance)
+			+ " cd=" + String::num(unit.attack_cooldown)
+			+ " mana=" + String::num(unit.mana)
+			+ " src_hp=" + String::num(unit.hp)
+			+ " src_cast=" + String::num(unit.casting_remaining)
+			+ " tgt_hp=" + String::num(target.hp)
+		);
+	}
 	double mana_gain = double(unit.stats.get("mana_per_attack", 0.0));
 	if (mana_gain > 0.0) {
 		double max_mana = double(unit.stats.get("max_mana", 0.0));
@@ -1746,9 +2647,8 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		projectile.damage_type = StringName("physical");
 		projectile.stun_duration = DEFAULT_PROJECTILE_STUN_DURATION;
 		projectile.radius = double(unit.stats.get("projectile_radius", DEFAULT_PROJECTILE_RADIUS));
-		projectile.speed = Math::max(0.0001, double(unit.stats.get("projectile_speed", DEFAULT_PROJECTILE_SPEED)));
-		projectile.x = unit.x;
-		projectile.y = unit.y;
+		double projectile_speed = Math::max(0.0001, double(unit.stats.get("projectile_speed", DEFAULT_PROJECTILE_SPEED)));
+		projectile.time_remaining = distance / projectile_speed;
 		projectile.action_kind = StringName("auto");
 		projectile.reason = String("Auto Attack");
 		_projectiles.push_back(projectile);
@@ -1765,24 +2665,118 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 
 void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
 	double speed = double(unit.stats.get("move_speed", 0.0)) * _tick_rate;
+	if (unit.last_kite_timer > 0.0) {
+		speed *= KITE_SPEED_MODIFIER;
+	}
 	if (speed <= 0.0) {
 		return;
 	}
-	Vector2 origin(unit.x, unit.y);
-	Vector2 destination(target.x, target.y);
-	Vector2 direction = destination - origin;
-	double distance = direction.length();
+	int64_t dx_fp = target.x_fp - unit.x_fp;
+	int64_t dy_fp = target.y_fp - unit.y_fp;
+	if (dx_fp == 0 && dy_fp == 0) {
+		return;
+	}
+	double dx = double(dx_fp) / double(POS_SCALE);
+	double dy = double(dy_fp) / double(POS_SCALE);
+	double distance = Math::sqrt(dx * dx + dy * dy);
 	if (distance <= EPSILON) {
 		return;
 	}
 	double effective_range = _effective_attack_range(unit);
-	double max_step = Math::min(speed, Math::max(0.0, distance - effective_range));
+	double desired_step = Math::max(0.0, distance - effective_range);
+	double max_step = Math::min(speed, desired_step);
+	if (_debug_combat_trace && unit.instance_id == 5 && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " MOVE src=5 dist=" + String::num(distance) + " eff=" + String::num(effective_range) + " speed=" + String::num(speed) + " desired=" + String::num(desired_step) + " step=" + String::num(max_step));
+	}
 	if (max_step <= 0.0) {
 		return;
 	}
-	Vector2 normalized = direction.normalized();
-	unit.x = origin.x + normalized.x * max_step;
-	unit.y = origin.y + normalized.y * max_step;
+	double nx = dx / distance;
+	double ny = dy / distance;
+	auto trunc_toward_zero_fp = [&](double value_fp) -> int64_t {
+		// Match Python float movement more closely: never round up.
+		return value_fp >= 0.0 ? int64_t(Math::floor(value_fp)) : int64_t(Math::ceil(value_fp));
+	};
+	int64_t step_x_fp = trunc_toward_zero_fp((nx * max_step) * double(POS_SCALE));
+	int64_t step_y_fp = trunc_toward_zero_fp((ny * max_step) * double(POS_SCALE));
+	// If rounding wipes out the step entirely, allow no movement this tick (Python can do sub-fp steps).
+	unit.x_fp += step_x_fp;
+	unit.y_fp += step_y_fp;
+}
+
+bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
+	StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	if (enemy_indices.empty()) {
+		return false;
+	}
+	double attack_range = _attack_range(unit);
+	double danger_radius = attack_range * KITE_DANGER_THRESHOLD;
+	if (danger_radius <= 0.0) {
+		return false;
+	}
+	double danger_r2 = danger_radius * danger_radius;
+	double ux = double(unit.x_fp) / double(POS_SCALE);
+	double uy = double(unit.y_fp) / double(POS_SCALE);
+	double rep_x = 0.0;
+	double rep_y = 0.0;
+	int count = 0;
+	for (int64_t idx : enemy_indices) {
+		const UnitState &enemy = _units[idx];
+		if (!enemy.alive) {
+			continue;
+		}
+		double ex = double(enemy.x_fp) / double(POS_SCALE);
+		double ey = double(enemy.y_fp) / double(POS_SCALE);
+		double dx = ux - ex;
+		double dy = uy - ey;
+		double d2 = dx * dx + dy * dy;
+		if (d2 <= EPSILON || d2 >= danger_r2) {
+			continue;
+		}
+		double d = Math::sqrt(d2);
+		double weight = 1.0 / d;
+		rep_x += (dx / d) * weight;
+		rep_y += (dy / d) * weight;
+		count += 1;
+	}
+	if (count <= 0) {
+		return false;
+	}
+	double mag = Math::sqrt(rep_x * rep_x + rep_y * rep_y);
+	if (mag <= EPSILON) {
+		return false;
+	}
+	double vel_x = rep_x / mag;
+	double vel_y = rep_y / mag;
+	bool blocked_x = (ux <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_x < 0.0) || (ux >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_x > 0.0);
+	bool blocked_y = (uy <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_y < 0.0) || (uy >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_y > 0.0);
+	if (blocked_x) {
+		vel_x = 0.0;
+	}
+	if (blocked_y) {
+		vel_y = 0.0;
+	}
+	if (Math::is_zero_approx(vel_x) && Math::is_zero_approx(vel_y)) {
+		vel_x = ux < (WORLD_SIZE * 0.5) ? RECOVERY_VELOCITY : -RECOVERY_VELOCITY;
+		vel_y = uy < (WORLD_SIZE * 0.5) ? RECOVERY_VELOCITY : -RECOVERY_VELOCITY;
+		double new_mag = Math::sqrt(vel_x * vel_x + vel_y * vel_y);
+		if (new_mag > EPSILON) {
+			vel_x /= new_mag;
+			vel_y /= new_mag;
+		}
+	}
+	unit.last_kite_timer = KITE_DURATION;
+	double move_speed = double(unit.stats.get("move_speed", 0.0));
+	double step = move_speed * KITE_SPEED_MODIFIER * _tick_rate;
+	double px = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	double py = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
+	unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
+	if (_debug_combat_trace && unit.instance_id == 2 && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " KITE src=2 step=" + String::num(step) + " vel=(" + String::num(vel_x) + "," + String::num(vel_y) + ") pos=(" + String::num(px) + "," + String::num(py) + ")");
+	}
+	return true;
 }
 
 void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &projectile) {
@@ -1815,22 +2809,13 @@ void TeamfightSimulationCore::_update_projectiles() {
 		if (target == nullptr || !target->alive) {
 			continue;
 		}
-		Vector2 position(data.x, data.y);
-		Vector2 target_pos(target->x, target->y);
-		Vector2 direction = target_pos - position;
-		double dist = direction.length();
-		double move_dist = data.speed * _tick_rate;
-		if (dist <= move_dist + data.radius) {
-			_resolve_projectile(data);
+		ProjectileState next = data;
+		next.time_remaining = data.time_remaining - _tick_rate;
+		if (next.time_remaining > 0.0) {
+			_scratch_projectiles.push_back(next);
 			continue;
 		}
-		if (dist > EPSILON) {
-			Vector2 step = direction * (move_dist / dist);
-			ProjectileState next = data;
-			next.x = position.x + step.x;
-			next.y = position.y + step.y;
-			_scratch_projectiles.push_back(next);
-		}
+		_resolve_projectile(data);
 	}
 	using std::swap;
 	swap(_projectiles, _scratch_projectiles);
@@ -1872,9 +2857,8 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			projectile_state.damage_type = effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type;
 			projectile_state.stun_duration = effect.scalar3;
 			projectile_state.radius = effect.scalar1;
-			projectile_state.speed = effect.scalar0;
-			projectile_state.x = source.x;
-			projectile_state.y = source.y;
+			double projectile_speed = Math::max(0.0001, effect.scalar0);
+			projectile_state.time_remaining = Math::max(0.0, context.distance) / projectile_speed;
 			projectile_state.action_kind = context.action_kind;
 			projectile_state.reason = effect.reason;
 			_projectiles.push_back(projectile_state);

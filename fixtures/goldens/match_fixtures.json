@@ -1,2329 +1,2329 @@
 {
-  "fixture_signature": "3b4e84388735870240ab44ad6ffb6ff4f97790891c0ba807385130304cea4587",
-  "fixtures": [
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "swordsman",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 42,
-        "tick_rate": 0.2
-      },
-      "name": "duel_swordsman_vs_guardian",
-      "signature": "aa4471b46eaa9fc8baad50bcba90012f8d2419b79a36034e2b687a9127349b7b",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "swordsman"
-        ],
-        "seed": 42,
-        "unit_stats": [
-          {
-            "abilities": 5,
-            "archetype": "swordsman",
-            "assists": 0,
-            "auto_attacks": 29,
-            "damage_dealt": 395.5769999999998,
-            "damage_dealt_ability": 61.42500000000001,
-            "damage_dealt_auto": 285.012,
-            "damage_dealt_ultimate": 49.14000000000001,
-            "damage_mitigated": 57.5,
-            "damage_received": 172.5,
-            "deaths": 1,
-            "healing_done": 28.501200000000022,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 7,
-            "team": "player",
-            "ultimates": 2,
-            "won": false
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 21,
-            "damage_dealt": 172.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 157.5,
-            "damage_dealt_ultimate": 15.0,
-            "damage_mitigated": 213.00300000000004,
-            "damage_received": 263.57700000000006,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "archer",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 43,
-        "tick_rate": 0.2
-      },
-      "name": "duel_archer_vs_guardian",
-      "signature": "23536e5bcb1e281afaf800347a04f8ee04103ef55544a185204724082cf8cb45",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "archer"
-        ],
-        "seed": 43,
-        "unit_stats": [
-          {
-            "abilities": 4,
-            "archetype": "archer",
-            "assists": 0,
-            "auto_attacks": 30,
-            "damage_dealt": 583.5375,
-            "damage_dealt_ability": 73.71000000000001,
-            "damage_dealt_auto": 460.6874999999998,
-            "damage_dealt_ultimate": 49.14000000000001,
-            "damage_mitigated": 6.0,
-            "damage_received": 114.0,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 12,
-            "damage_dealt": 114.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 114.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 314.2125000000002,
-            "damage_received": 451.53749999999985,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "swordsman",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 44,
-        "tick_rate": 0.2
-      },
-      "name": "duel_guardian_vs_swordsman",
-      "signature": "b9384c7e592d70fc2626166b7fffcd2526ff9f15fb9dc7eadc25b249f7aada3f",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "swordsman"
-        ],
-        "player_comp": [
-          "guardian"
-        ],
-        "seed": 44,
-        "unit_stats": [
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 21,
-            "damage_dealt": 172.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 157.5,
-            "damage_dealt_ultimate": 15.0,
-            "damage_mitigated": 207.71100000000004,
-            "damage_received": 255.98000000000005,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 1,
-            "team": "player",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "swordsman",
-            "assists": 0,
-            "auto_attacks": 28,
-            "damage_dealt": 385.7489999999999,
-            "damage_dealt_ability": 61.42500000000001,
-            "damage_dealt_auto": 275.184,
-            "damage_dealt_ultimate": 49.14000000000001,
-            "damage_mitigated": 57.5,
-            "damage_received": 172.5,
-            "deaths": 1,
-            "healing_done": 27.51840000000002,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 7,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "assassin",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 45,
-        "tick_rate": 0.2
-      },
-      "name": "duel_assassin_vs_guardian",
-      "signature": "f70f7696bd6a70ec6013a399fe806c2e95a4f316b9c80abd15961f358f7bdadf",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "assassin"
-        ],
-        "seed": 45,
-        "unit_stats": [
-          {
-            "abilities": 6,
-            "archetype": "assassin",
-            "assists": 0,
-            "auto_attacks": 23,
-            "damage_dealt": 602.55,
-            "damage_dealt_ability": 105.3,
-            "damage_dealt_auto": 351.0,
-            "damage_dealt_ultimate": 146.25,
-            "damage_mitigated": 9.0,
-            "damage_received": 171.0,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 6,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 0,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 18,
-            "damage_dealt": 171.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 171.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 324.45,
-            "damage_received": 602.55,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "mage",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 46,
-        "tick_rate": 0.2
-      },
-      "name": "duel_mage_vs_guardian",
-      "signature": "80679d6ebc59ebec98b99f840d1c3fae72ab990ebeb52d961486703966b4bda5",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "mage"
-        ],
-        "seed": 46,
-        "unit_stats": [
-          {
-            "abilities": 5,
-            "archetype": "mage",
-            "assists": 0,
-            "auto_attacks": 27,
-            "damage_dealt": 582.2550000000001,
-            "damage_dealt_ability": 128.25,
-            "damage_dealt_auto": 300.1050000000002,
-            "damage_dealt_ultimate": 153.9,
-            "damage_mitigated": 5.0,
-            "damage_received": 95.0,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 10,
-            "damage_dealt": 95.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 95.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 255.6450000000002,
-            "damage_received": 450.2550000000001,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "sniper",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 47,
-        "tick_rate": 0.2
-      },
-      "name": "duel_sniper_vs_guardian",
-      "signature": "a9afa067d9d45dc312fd5ac6c8696f43f75981c51ab8054822adc1398db51a11",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "sniper"
-        ],
-        "seed": 47,
-        "unit_stats": [
-          {
-            "abilities": 3,
-            "archetype": "sniper",
-            "assists": 0,
-            "auto_attacks": 33,
-            "damage_dealt": 501.8422500000004,
-            "damage_dealt_ability": 44.226000000000006,
-            "damage_dealt_auto": 414.61875000000026,
-            "damage_dealt_ultimate": 42.9975,
-            "damage_mitigated": 7.0,
-            "damage_received": 133.0,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 2,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 14,
-            "damage_dealt": 133.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 133.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 270.22275000000013,
-            "damage_received": 413.8422500000003,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 2,
-            "shielding_done": 88.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": true
-          }
-        ],
-        "winner_team": "enemy"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "berserker",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 48,
-        "tick_rate": 0.2
-      },
-      "name": "duel_berserker_vs_guardian",
-      "signature": "4dc5297cce3cf9a9f15fcc5b1350ed79385b900213c6ecef3ad451247d68af57",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "berserker"
-        ],
-        "seed": 48,
-        "unit_stats": [
-          {
-            "abilities": 9,
-            "archetype": "berserker",
-            "assists": 0,
-            "auto_attacks": 47,
-            "damage_dealt": 427.13999999999976,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 329.94,
-            "damage_dealt_ultimate": 97.19999999999999,
-            "damage_mitigated": 51.0,
-            "damage_received": 216.5,
-            "deaths": 0,
-            "healing_done": 82.48499999999989,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 249.75,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 3,
-            "won": true
-          },
-          {
-            "abilities": 4,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 32,
-            "damage_dealt": 289.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 272.0,
-            "damage_dealt_ultimate": 17.0,
-            "damage_mitigated": 177.66000000000003,
-            "damage_received": 251.14000000000013,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 176.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "paladin",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 49,
-        "tick_rate": 0.2
-      },
-      "name": "duel_paladin_vs_guardian",
-      "signature": "c4f1b0f9fb5b024b8cca9f27e3da2e2921fd2c8b47aeafc2811d0d07cbd25a51",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "paladin"
-        ],
-        "seed": 49,
-        "unit_stats": [
-          {
-            "abilities": 5,
-            "archetype": "paladin",
-            "assists": 0,
-            "auto_attacks": 38,
-            "damage_dealt": 343.97999999999996,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 311.21999999999997,
-            "damage_dealt_ultimate": 32.76,
-            "damage_mitigated": 107.5,
-            "damage_received": 322.5,
-            "deaths": 0,
-            "healing_done": 570.0,
-            "instance_id": 1,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 39,
-            "damage_dealt": 322.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 292.5,
-            "damage_dealt_ultimate": 30.0,
-            "damage_mitigated": 185.2199999999999,
-            "damage_received": 123.97999999999992,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 220.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "rogue",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 50,
-        "tick_rate": 0.2
-      },
-      "name": "duel_rogue_vs_guardian",
-      "signature": "bd7d61c3d242d8a3d946be4fdf8c041ac911af365a25f86788ed99d2f6e6fc95",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "rogue"
-        ],
-        "seed": 50,
-        "unit_stats": [
-          {
-            "abilities": 9,
-            "archetype": "rogue",
-            "assists": 0,
-            "auto_attacks": 37,
-            "damage_dealt": 587.6549999999996,
-            "damage_dealt_ability": 87.48,
-            "damage_dealt_auto": 389.6099999999997,
-            "damage_dealt_ultimate": 110.56500000000001,
-            "damage_mitigated": 14.0,
-            "damage_received": 126.0,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 9,
-            "team": "player",
-            "ultimates": 3,
-            "won": true
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 17,
-            "damage_dealt": 126.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 108.0,
-            "damage_dealt_ultimate": 18.0,
-            "damage_mitigated": 298.4849999999999,
-            "damage_received": 455.6549999999997,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "oracle",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 51,
-        "tick_rate": 0.2
-      },
-      "name": "duel_oracle_vs_guardian",
-      "signature": "e22a944aec774be17c53cac5f2be58365b068117ae46f41c54e3d2241b9263d9",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "oracle"
-        ],
-        "seed": 51,
-        "unit_stats": [
-          {
-            "abilities": 12,
-            "archetype": "oracle",
-            "assists": 0,
-            "auto_attacks": 46,
-            "damage_dealt": 403.64999999999975,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 403.64999999999975,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 13.0,
-            "damage_received": 175.0,
-            "deaths": 0,
-            "healing_done": 216.0,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 72.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 4,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 24,
-            "damage_dealt": 247.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 228.0,
-            "damage_dealt_ultimate": 19.0,
-            "damage_mitigated": 217.34999999999982,
-            "damage_received": 227.65000000000006,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 176.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "colossus",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 52,
-        "tick_rate": 0.2
-      },
-      "name": "duel_colossus_vs_guardian",
-      "signature": "a833163e92c4eb32aff0ade5ad831f53eaab0265818d1369c4771a8dab55e922",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "colossus"
-        ],
-        "seed": 52,
-        "unit_stats": [
-          {
-            "abilities": 4,
-            "archetype": "colossus",
-            "assists": 0,
-            "auto_attacks": 29,
-            "damage_dealt": 166.14000000000016,
-            "damage_dealt_ability": 18.720000000000002,
-            "damage_dealt_auto": 135.7200000000001,
-            "damage_dealt_ultimate": 11.700000000000001,
-            "damage_mitigated": 113.40000000000008,
-            "damage_received": 264.60000000000014,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 1,
-            "team": "player",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 38,
-            "damage_dealt": 264.60000000000014,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 239.40000000000015,
-            "damage_dealt_ultimate": 25.2,
-            "damage_mitigated": 89.45999999999991,
-            "damage_received": 18.720000000000002,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 220.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "wraith",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 53,
-        "tick_rate": 0.2
-      },
-      "name": "duel_wraith_vs_guardian",
-      "signature": "bc8c88c6a83f39c68e1bb7d99969d7027392e4816c2906d4b5a3875763d95253",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "wraith"
-        ],
-        "seed": 53,
-        "unit_stats": [
-          {
-            "abilities": 5,
-            "archetype": "wraith",
-            "assists": 0,
-            "auto_attacks": 21,
-            "damage_dealt": 560.3714999999997,
-            "damage_dealt_ability": 105.3,
-            "damage_dealt_auto": 367.3214999999999,
-            "damage_dealt_ultimate": 87.75,
-            "damage_mitigated": 8.5,
-            "damage_received": 161.5,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 7,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 15,
-            "damage_dealt": 161.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 142.5,
-            "damage_dealt_ultimate": 19.0,
-            "damage_mitigated": 262.1384999999999,
-            "damage_received": 472.37149999999986,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 88.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "warlock",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 54,
-        "tick_rate": 0.2
-      },
-      "name": "duel_warlock_vs_guardian",
-      "signature": "52038d0a0f614f6e73655f71e44a77e00e8dcb29b4862ce14d593bc88a409d20",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "warlock"
-        ],
-        "seed": 54,
-        "unit_stats": [
-          {
-            "abilities": 6,
-            "archetype": "warlock",
-            "assists": 0,
-            "auto_attacks": 26,
-            "damage_dealt": 539.1225000000002,
-            "damage_dealt_ability": 106.31250000000001,
-            "damage_dealt_auto": 319.4100000000001,
-            "damage_dealt_ultimate": 113.4,
-            "damage_mitigated": 5.0,
-            "damage_received": 95.0,
-            "deaths": 0,
-            "healing_done": 99.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "player",
-            "ultimates": 3,
-            "won": true
-          },
-          {
-            "abilities": 2,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 10,
-            "damage_dealt": 95.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 95.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 245.2275000000001,
-            "damage_received": 451.12250000000023,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 88.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "monk",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 55,
-        "tick_rate": 0.2
-      },
-      "name": "duel_monk_vs_guardian",
-      "signature": "3be2310184562d3d4d1b59ccf03df4e2c792a5cb9ee1b256a4a8e7a6b7f767fb",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "monk"
-        ],
-        "seed": 55,
-        "unit_stats": [
-          {
-            "abilities": 8,
-            "archetype": "monk",
-            "assists": 0,
-            "auto_attacks": 36,
-            "damage_dealt": 532.8179999999995,
-            "damage_dealt_ability": 101.08799999999998,
-            "damage_dealt_auto": 379.0799999999997,
-            "damage_dealt_ultimate": 52.65,
-            "damage_mitigated": 22.0,
-            "damage_received": 198.0,
-            "deaths": 1,
-            "healing_done": 37.908,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 22,
-            "team": "player",
-            "ultimates": 3,
-            "won": true
-          },
-          {
-            "abilities": 2,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 20,
-            "damage_dealt": 198.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 180.0,
-            "damage_dealt_ultimate": 18.0,
-            "damage_mitigated": 286.90199999999993,
-            "damage_received": 444.8179999999997,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 88.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "artillery",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 56,
-        "tick_rate": 0.2
-      },
-      "name": "duel_artillery_vs_guardian",
-      "signature": "f303e6f3fba538fabcfb07ab135847f16f311dfdb31dc0af9b078dd8f99a7462",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "artillery"
-        ],
-        "seed": 56,
-        "unit_stats": [
-          {
-            "abilities": 2,
-            "archetype": "artillery",
-            "assists": 0,
-            "auto_attacks": 34,
-            "damage_dealt": 575.2012500000001,
-            "damage_dealt_ability": 33.345000000000006,
-            "damage_dealt_auto": 472.3875000000003,
-            "damage_dealt_ultimate": 69.46875,
-            "damage_mitigated": 5.5,
-            "damage_received": 104.5,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "player",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 11,
-            "damage_dealt": 104.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 104.5,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 309.72374999999977,
-            "damage_received": 443.20125000000024,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "cleric",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 57,
-        "tick_rate": 0.2
-      },
-      "name": "duel_cleric_vs_guardian",
-      "signature": "48bb6f92fd67d2820d841fd1634f821d6b4c090148d95e2adea4a62c0152efeb",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "cleric"
-        ],
-        "seed": 57,
-        "unit_stats": [
-          {
-            "abilities": 12,
-            "archetype": "cleric",
-            "assists": 0,
-            "auto_attacks": 46,
-            "damage_dealt": 403.64999999999975,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 403.64999999999975,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 24.0,
-            "damage_received": 216.0,
-            "deaths": 0,
-            "healing_done": 737.5,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 5,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 22,
-            "damage_dealt": 216.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 198.0,
-            "damage_dealt_ultimate": 18.0,
-            "damage_mitigated": 217.34999999999982,
-            "damage_received": 227.65000000000006,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 176.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "siren",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 58,
-        "tick_rate": 0.2
-      },
-      "name": "duel_siren_vs_guardian",
-      "signature": "ea1049b08d1c60826528bee371c487989e9654c742cc9e85f194f134e16996de",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "siren"
-        ],
-        "seed": 58,
-        "unit_stats": [
-          {
-            "abilities": 9,
-            "archetype": "siren",
-            "assists": 0,
-            "auto_attacks": 37,
-            "damage_dealt": 355.04999999999984,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 324.67499999999995,
-            "damage_dealt_ultimate": 30.375,
-            "damage_mitigated": 7.0,
-            "damage_received": 133.0,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 10,
-            "team": "player",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 14,
-            "damage_dealt": 133.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 133.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 184.94999999999987,
-            "damage_received": 223.05000000000007,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "valkyrie",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 59,
-        "tick_rate": 0.2
-      },
-      "name": "duel_valkyrie_vs_guardian",
-      "signature": "ed15f47478f61c5abc0544a3d2051350a91683bccaa36186545931f4ba13ed5b",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "guardian"
-        ],
-        "player_comp": [
-          "valkyrie"
-        ],
-        "seed": 59,
-        "unit_stats": [
-          {
-            "abilities": 6,
-            "archetype": "valkyrie",
-            "assists": 0,
-            "auto_attacks": 38,
-            "damage_dealt": 482.62499999999966,
-            "damage_dealt_ability": 78.975,
-            "damage_dealt_auto": 350.99999999999983,
-            "damage_dealt_ultimate": 52.65,
-            "damage_mitigated": 62.0,
-            "damage_received": 248.0,
-            "deaths": 1,
-            "healing_done": 35.100000000000016,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 8,
-            "team": "player",
-            "ultimates": 2,
-            "won": false
-          },
-          {
-            "abilities": 3,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 29,
-            "damage_dealt": 248.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 232.0,
-            "damage_dealt_ultimate": 16.0,
-            "damage_mitigated": 259.8749999999999,
-            "damage_received": 350.7499999999999,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 132.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "draw"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "swordsman",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "guardian",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "paladin",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 4.8
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "swordsman",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "guardian",
-            "team": "player",
-            "x": 0.9,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "paladin",
-            "team": "player",
-            "x": 0.9,
-            "y": 4.8
-          }
-        ],
-        "record_events": false,
-        "seed": 1042,
-        "tick_rate": 0.2
-      },
-      "name": "frontline_mirror",
-      "signature": "c967b4558856343ef34acebb8f1fe23e299cef56250888287616703f8d0c7f5b",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "swordsman",
-          "guardian",
-          "paladin"
-        ],
-        "player_comp": [
-          "swordsman",
-          "guardian",
-          "paladin"
-        ],
-        "seed": 1042,
-        "unit_stats": [
-          {
-            "abilities": 7,
-            "archetype": "swordsman",
-            "assists": 0,
-            "auto_attacks": 35,
-            "damage_dealt": 523.4669999999998,
-            "damage_dealt_ability": 92.92500000000001,
-            "damage_dealt_auto": 374.4719999999997,
-            "damage_dealt_ultimate": 56.07000000000001,
-            "damage_mitigated": 84.60000000000001,
-            "damage_received": 209.79999999999998,
-            "deaths": 1,
-            "healing_done": 37.44720000000001,
-            "instance_id": 1,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 9,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 5,
-            "archetype": "guardian",
-            "assists": 1,
-            "auto_attacks": 37,
-            "damage_dealt": 276.00000000000006,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 260.99999999999994,
-            "damage_dealt_ultimate": 15.0,
-            "damage_mitigated": 175.4550000000001,
-            "damage_received": 152.31000000000003,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 0,
-            "shielding_done": 220.0,
-            "stuns": 1,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 5,
-            "archetype": "paladin",
-            "assists": 0,
-            "auto_attacks": 38,
-            "damage_dealt": 441.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 399.0,
-            "damage_dealt_ultimate": 42.0,
-            "damage_mitigated": 156.0,
-            "damage_received": 468.0,
-            "deaths": 0,
-            "healing_done": 570.0,
-            "instance_id": 3,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 5,
-            "archetype": "swordsman",
-            "assists": 1,
-            "auto_attacks": 23,
-            "damage_dealt": 372.64499999999987,
-            "damage_dealt_ability": 68.355,
-            "damage_dealt_auto": 248.22000000000006,
-            "damage_dealt_ultimate": 56.07000000000001,
-            "damage_mitigated": 94.70000000000002,
-            "damage_received": 284.1,
-            "deaths": 2,
-            "healing_done": 24.822000000000013,
-            "instance_id": 4,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 7,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 35,
-            "damage_dealt": 244.4999999999999,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 229.4999999999999,
-            "damage_dealt_ultimate": 15.0,
-            "damage_mitigated": 204.8130000000001,
-            "damage_received": 160.36700000000005,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 5,
-            "kills": 1,
-            "shielding_done": 220.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "paladin",
-            "assists": 0,
-            "auto_attacks": 37,
-            "damage_dealt": 430.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 388.5,
-            "damage_dealt_ultimate": 42.0,
-            "damage_mitigated": 192.0,
-            "damage_received": 576.0,
-            "deaths": 0,
-            "healing_done": 570.0,
-            "instance_id": 6,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "rogue",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "wraith",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "assassin",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 4.8
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "archer",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "mage",
-            "team": "player",
-            "x": 0.9,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "sniper",
-            "team": "player",
-            "x": 0.9,
-            "y": 4.8
-          }
-        ],
-        "record_events": false,
-        "seed": 1043,
-        "tick_rate": 0.2
-      },
-      "name": "backline_skirmish",
-      "signature": "7004e1f638af594667343ddcf910e5031d4d46137f0965d931928986db47e022",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "rogue",
-          "wraith",
-          "assassin"
-        ],
-        "player_comp": [
-          "archer",
-          "mage",
-          "sniper"
-        ],
-        "seed": 1043,
-        "unit_stats": [
-          {
-            "abilities": 3,
-            "archetype": "archer",
-            "assists": 3,
-            "auto_attacks": 18,
-            "damage_dealt": 505.83750000000003,
-            "damage_dealt_ability": 59.849999999999994,
-            "damage_dealt_auto": 366.1875,
-            "damage_dealt_ultimate": 79.8,
-            "damage_mitigated": 10.240000000000002,
-            "damage_received": 194.56,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 1,
-            "kills": 4,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 6,
-            "archetype": "mage",
-            "assists": 4,
-            "auto_attacks": 21,
-            "damage_dealt": 759.9999999999999,
-            "damage_dealt_ability": 203.3,
-            "damage_dealt_auto": 357.2000000000001,
-            "damage_dealt_ultimate": 199.5,
-            "damage_mitigated": 14.390000000000002,
-            "damage_received": 91.00999999999999,
-            "deaths": 1,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 5,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 2,
-            "archetype": "sniper",
-            "assists": 5,
-            "auto_attacks": 20,
-            "damage_dealt": 443.52,
-            "damage_dealt_ability": 71.82000000000001,
-            "damage_dealt_auto": 371.7,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 8.72,
-            "damage_received": 165.68,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 3,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 2,
-            "archetype": "rogue",
-            "assists": 0,
-            "auto_attacks": 0,
-            "damage_dealt": 24.48,
-            "damage_dealt_ability": 24.48,
-            "damage_dealt_auto": 0.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 43.27499999999998,
-            "damage_received": 389.475,
-            "deaths": 4,
-            "healing_done": 0.0,
-            "instance_id": 4,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          },
-          {
-            "abilities": 1,
-            "archetype": "wraith",
-            "assists": 0,
-            "auto_attacks": 4,
-            "damage_dealt": 198.76999999999998,
-            "damage_dealt_ability": 23.4,
-            "damage_dealt_auto": 113.61999999999999,
-            "damage_dealt_ultimate": 61.75,
-            "damage_mitigated": 56.40500000000003,
-            "damage_received": 615.6949999999999,
-            "deaths": 3,
-            "healing_done": 0.0,
-            "instance_id": 5,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 3,
-            "archetype": "assassin",
-            "assists": 0,
-            "auto_attacks": 5,
-            "damage_dealt": 228.0,
-            "damage_dealt_ability": 85.5,
-            "damage_dealt_auto": 142.5,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 37.0625,
-            "damage_received": 704.1875,
-            "deaths": 4,
-            "healing_done": 0.0,
-            "instance_id": 6,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 3,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "oracle",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "cleric",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "siren",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 4.8
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "oracle",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "cleric",
-            "team": "player",
-            "x": 0.9,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "siren",
-            "team": "player",
-            "x": 0.9,
-            "y": 4.8
-          }
-        ],
-        "record_events": false,
-        "seed": 1044,
-        "tick_rate": 0.2
-      },
-      "name": "support_clash",
-      "signature": "0c87ae9bdab51c6348fe2075d941173b1b608b77560d8dcb5b8a583d080853be",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "oracle",
-          "cleric",
-          "siren"
-        ],
-        "player_comp": [
-          "oracle",
-          "cleric",
-          "siren"
-        ],
-        "seed": 1044,
-        "unit_stats": [
-          {
-            "abilities": 11,
-            "archetype": "oracle",
-            "assists": 0,
-            "auto_attacks": 32,
-            "damage_dealt": 446.25,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 446.25,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 29.25,
-            "damage_received": 420.75,
-            "deaths": 1,
-            "healing_done": 198.0,
-            "instance_id": 1,
-            "kills": 4,
-            "shielding_done": 72.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 10,
-            "archetype": "cleric",
-            "assists": 3,
-            "auto_attacks": 31,
-            "damage_dealt": 412.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 412.5,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 61.5,
-            "damage_received": 481.5,
-            "deaths": 1,
-            "healing_done": 652.5,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "player",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 7,
-            "archetype": "siren",
-            "assists": 1,
-            "auto_attacks": 26,
-            "damage_dealt": 400.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 364.5,
-            "damage_dealt_ultimate": 36.0,
-            "damage_mitigated": 16.5,
-            "damage_received": 313.5,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 3,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 8,
-            "team": "player",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 7,
-            "archetype": "oracle",
-            "assists": 3,
-            "auto_attacks": 33,
-            "damage_dealt": 453.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 453.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 19.5,
-            "damage_received": 370.5,
-            "deaths": 2,
-            "healing_done": 126.0,
-            "instance_id": 4,
-            "kills": 0,
-            "shielding_done": 36.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 7,
-            "archetype": "cleric",
-            "assists": 3,
-            "auto_attacks": 29,
-            "damage_dealt": 391.5,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 391.5,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 70.5,
-            "damage_received": 589.5,
-            "deaths": 2,
-            "healing_done": 421.25,
-            "instance_id": 5,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 7,
-            "archetype": "siren",
-            "assists": 1,
-            "auto_attacks": 30,
-            "damage_dealt": 443.25,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 407.25,
-            "damage_dealt_ultimate": 36.0,
-            "damage_mitigated": 15.75,
-            "damage_received": 299.25,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 6,
-            "kills": 3,
-            "shielding_done": 0.0,
-            "stuns": 8,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": false
-          }
-        ],
-        "winner_team": "player"
-      }
-    },
-    {
-      "input": {
-        "enemy_units": [
-          {
-            "archetype_id": "assassin",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "sniper",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "colossus",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 4.8
-          },
-          {
-            "archetype_id": "warlock",
-            "team": "enemy",
-            "x": 9.1,
-            "y": 6.6000000000000005
-          },
-          {
-            "archetype_id": "cleric",
-            "team": "enemy",
-            "x": 8.2,
-            "y": 1.2
-          }
-        ],
-        "player_units": [
-          {
-            "archetype_id": "swordsman",
-            "team": "player",
-            "x": 0.9,
-            "y": 1.2
-          },
-          {
-            "archetype_id": "archer",
-            "team": "player",
-            "x": 0.9,
-            "y": 3.0
-          },
-          {
-            "archetype_id": "guardian",
-            "team": "player",
-            "x": 0.9,
-            "y": 4.8
-          },
-          {
-            "archetype_id": "mage",
-            "team": "player",
-            "x": 0.9,
-            "y": 6.6000000000000005
-          },
-          {
-            "archetype_id": "oracle",
-            "team": "player",
-            "x": 1.8,
-            "y": 1.2
-          }
-        ],
-        "record_events": false,
-        "seed": 1045,
-        "tick_rate": 0.2
-      },
-      "name": "mixed_5v5",
-      "signature": "60661f29cc62f8a37f92c5731d60575125bc5e4285581dbc804a183de4ffa423",
-      "summary": {
-        "duration": 60.0,
-        "enemy_comp": [
-          "assassin",
-          "sniper",
-          "colossus",
-          "warlock",
-          "cleric"
-        ],
-        "player_comp": [
-          "swordsman",
-          "archer",
-          "guardian",
-          "mage",
-          "oracle"
-        ],
-        "seed": 1045,
-        "unit_stats": [
-          {
-            "abilities": 3,
-            "archetype": "swordsman",
-            "assists": 0,
-            "auto_attacks": 10,
-            "damage_dealt": 156.282,
-            "damage_dealt_ability": 39.69,
-            "damage_dealt_auto": 116.59200000000001,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 165.3125,
-            "damage_received": 533.7375000000001,
-            "deaths": 4,
-            "healing_done": 11.659200000000002,
-            "instance_id": 1,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 3,
-            "team": "player",
-            "ultimates": 0,
-            "won": false
-          },
-          {
-            "abilities": 1,
-            "archetype": "archer",
-            "assists": 1,
-            "auto_attacks": 20,
-            "damage_dealt": 469.875,
-            "damage_dealt_ability": 29.924999999999997,
-            "damage_dealt_auto": 439.95,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 22.902500000000003,
-            "damage_received": 399.1475,
-            "deaths": 4,
-            "healing_done": 0.0,
-            "instance_id": 2,
-            "kills": 1,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 0,
-            "won": false
-          },
-          {
-            "abilities": 1,
-            "archetype": "guardian",
-            "assists": 0,
-            "auto_attacks": 13,
-            "damage_dealt": 104.29999999999998,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 104.29999999999998,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 354.6427500000001,
-            "damage_received": 682.9222499999996,
-            "deaths": 3,
-            "healing_done": 0.0,
-            "instance_id": 3,
-            "kills": 0,
-            "shielding_done": 44.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 0,
-            "won": false
-          },
-          {
-            "abilities": 1,
-            "archetype": "mage",
-            "assists": 0,
-            "auto_attacks": 11,
-            "damage_dealt": 228.57000000000008,
-            "damage_dealt_ability": 36.1,
-            "damage_dealt_auto": 192.47000000000003,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 45.7375,
-            "damage_received": 407.0125,
-            "deaths": 4,
-            "healing_done": 0.0,
-            "instance_id": 4,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 0,
-            "won": false
-          },
-          {
-            "abilities": 5,
-            "archetype": "oracle",
-            "assists": 2,
-            "auto_attacks": 21,
-            "damage_dealt": 270.0,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 270.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 35.6125,
-            "damage_received": 380.6375,
-            "deaths": 3,
-            "healing_done": 90.0,
-            "instance_id": 5,
-            "kills": 0,
-            "shielding_done": 36.0,
-            "stuns": 0,
-            "team": "player",
-            "ultimates": 1,
-            "won": false
-          },
-          {
-            "abilities": 8,
-            "archetype": "assassin",
-            "assists": 2,
-            "auto_attacks": 6,
-            "damage_dealt": 378.6,
-            "damage_dealt_ability": 177.60000000000002,
-            "damage_dealt_auto": 201.0,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 37.08,
-            "damage_received": 704.5199999999999,
-            "deaths": 2,
-            "healing_done": 0.0,
-            "instance_id": 6,
-            "kills": 5,
-            "shielding_done": 0.0,
-            "stuns": 7,
-            "team": "enemy",
-            "ultimates": 0,
-            "won": true
-          },
-          {
-            "abilities": 4,
-            "archetype": "sniper",
-            "assists": 7,
-            "auto_attacks": 35,
-            "damage_dealt": 903.5197499999999,
-            "damage_dealt_ability": 108.48600000000002,
-            "damage_dealt_auto": 655.3837499999998,
-            "damage_dealt_ultimate": 139.65,
-            "damage_mitigated": 4.849999999999998,
-            "damage_received": 92.14999999999999,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 7,
-            "kills": 6,
-            "shielding_done": 0.0,
-            "stuns": 0,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 4,
-            "archetype": "colossus",
-            "assists": 7,
-            "auto_attacks": 12,
-            "damage_dealt": 104.68,
-            "damage_dealt_ability": 16.68,
-            "damage_dealt_auto": 68.32,
-            "damage_dealt_ultimate": 15.0,
-            "damage_mitigated": 124.24050000000005,
-            "damage_received": 289.89450000000005,
-            "deaths": 0,
-            "healing_done": 0.0,
-            "instance_id": 8,
-            "kills": 0,
-            "shielding_done": 0.0,
-            "stuns": 1,
-            "team": "enemy",
-            "ultimates": 1,
-            "won": true
-          },
-          {
-            "abilities": 9,
-            "archetype": "warlock",
-            "assists": 9,
-            "auto_attacks": 27,
-            "damage_dealt": 673.7325000000001,
-            "damage_dealt_ability": 197.6625,
-            "damage_dealt_auto": 345.87000000000006,
-            "damage_dealt_ultimate": 130.2,
-            "damage_mitigated": 6.787500000000001,
-            "damage_received": 128.96249999999998,
-            "deaths": 0,
-            "healing_done": 99.0,
-            "instance_id": 9,
-            "kills": 5,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": true
-          },
-          {
-            "abilities": 12,
-            "archetype": "cleric",
-            "assists": 12,
-            "auto_attacks": 44,
-            "damage_dealt": 422.92499999999995,
-            "damage_dealt_ability": 0.0,
-            "damage_dealt_auto": 422.92499999999995,
-            "damage_dealt_ultimate": 0.0,
-            "damage_mitigated": 1.5,
-            "damage_received": 13.5,
-            "deaths": 0,
-            "healing_done": 737.5,
-            "instance_id": 10,
-            "kills": 2,
-            "shielding_done": 0.0,
-            "stuns": 2,
-            "team": "enemy",
-            "ultimates": 2,
-            "won": true
-          }
-        ],
-        "winner_team": "enemy"
-      }
-    }
-  ],
-  "rules_version": 1,
-  "schema_signature": "07c47da698afcd72fabb7c2c6b8f4dc0614ca901e47d50b8183bf90443b902a9",
-  "schema_version": 1,
-  "tick_rate": 0.2
+	"fixture_signature": "667d6f228c7343e68b99d6d6fc3602fae463935703206d549996b2884803a486",
+	"fixtures": [
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 42.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_swordsman_vs_guardian",
+			"signature": "9d2ce07a859d4aebb3f1da1085b225b05ba9c06b1a2ad32eaccefe3ce8ddec4f",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"swordsman"
+				],
+				"seed": 42.0,
+				"unit_stats": [
+					{
+						"abilities": 5.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 29.0,
+						"damage_dealt": 395.5769999999998,
+						"damage_dealt_ability": 61.42500000000001,
+						"damage_dealt_auto": 285.012,
+						"damage_dealt_ultimate": 49.14000000000001,
+						"damage_mitigated": 57.5,
+						"damage_received": 172.5,
+						"deaths": 1.0,
+						"healing_done": 28.501200000000026,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 7.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 172.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 157.5,
+						"damage_dealt_ultimate": 15.0,
+						"damage_mitigated": 213.00300000000004,
+						"damage_received": 263.57700000000006,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "archer",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 43.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_archer_vs_guardian",
+			"signature": "23536e5bcb1e281afaf800347a04f8ee04103ef55544a185204724082cf8cb45",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"archer"
+				],
+				"seed": 43.0,
+				"unit_stats": [
+					{
+						"abilities": 4.0,
+						"archetype": "archer",
+						"assists": 0.0,
+						"auto_attacks": 30.0,
+						"damage_dealt": 583.5375,
+						"damage_dealt_ability": 73.71000000000001,
+						"damage_dealt_auto": 460.6874999999998,
+						"damage_dealt_ultimate": 49.14000000000001,
+						"damage_mitigated": 6.0,
+						"damage_received": 114.0,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 12.0,
+						"damage_dealt": 114.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 114.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 314.2125000000002,
+						"damage_received": 451.53749999999985,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 44.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_guardian_vs_swordsman",
+			"signature": "b9384c7e592d70fc2626166b7fffcd2526ff9f15fb9dc7eadc25b249f7aada3f",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"swordsman"
+				],
+				"player_comp": [
+					"guardian"
+				],
+				"seed": 44.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 172.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 157.5,
+						"damage_dealt_ultimate": 15.0,
+						"damage_mitigated": 207.71100000000004,
+						"damage_received": 255.98000000000005,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 1.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 28.0,
+						"damage_dealt": 385.7489999999999,
+						"damage_dealt_ability": 61.42500000000001,
+						"damage_dealt_auto": 275.184,
+						"damage_dealt_ultimate": 49.14000000000001,
+						"damage_mitigated": 57.5,
+						"damage_received": 172.5,
+						"deaths": 1.0,
+						"healing_done": 27.51840000000002,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 7.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "assassin",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 45.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_assassin_vs_guardian",
+			"signature": "f70f7696bd6a70ec6013a399fe806c2e95a4f316b9c80abd15961f358f7bdadf",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"assassin"
+				],
+				"seed": 45.0,
+				"unit_stats": [
+					{
+						"abilities": 6.0,
+						"archetype": "assassin",
+						"assists": 0.0,
+						"auto_attacks": 23.0,
+						"damage_dealt": 602.55,
+						"damage_dealt_ability": 105.3,
+						"damage_dealt_auto": 351.0,
+						"damage_dealt_ultimate": 146.25,
+						"damage_mitigated": 9.0,
+						"damage_received": 171.0,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 6.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 0.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 18.0,
+						"damage_dealt": 171.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 171.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 324.45,
+						"damage_received": 602.55,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "mage",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 46.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_mage_vs_guardian",
+			"signature": "80679d6ebc59ebec98b99f840d1c3fae72ab990ebeb52d961486703966b4bda5",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"mage"
+				],
+				"seed": 46.0,
+				"unit_stats": [
+					{
+						"abilities": 5.0,
+						"archetype": "mage",
+						"assists": 0.0,
+						"auto_attacks": 27.0,
+						"damage_dealt": 582.2550000000001,
+						"damage_dealt_ability": 128.25,
+						"damage_dealt_auto": 300.1050000000002,
+						"damage_dealt_ultimate": 153.9,
+						"damage_mitigated": 5.0,
+						"damage_received": 95.0,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 10.0,
+						"damage_dealt": 95.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 95.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 255.6450000000002,
+						"damage_received": 450.2550000000001,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "sniper",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 47.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_sniper_vs_guardian",
+			"signature": "a9afa067d9d45dc312fd5ac6c8696f43f75981c51ab8054822adc1398db51a11",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"sniper"
+				],
+				"seed": 47.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "sniper",
+						"assists": 0.0,
+						"auto_attacks": 33.0,
+						"damage_dealt": 501.8422500000004,
+						"damage_dealt_ability": 44.226000000000006,
+						"damage_dealt_auto": 414.61875000000026,
+						"damage_dealt_ultimate": 42.9975,
+						"damage_mitigated": 7.0,
+						"damage_received": 133.0,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 14.0,
+						"damage_dealt": 133.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 133.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 270.22275000000013,
+						"damage_received": 413.8422500000003,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 2.0,
+						"shielding_done": 88.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": true
+					}
+				],
+				"winner_team": "enemy"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "berserker",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 48.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_berserker_vs_guardian",
+			"signature": "21cb1a7879caf8303a7b23ae67150a4155d4954fcc8aed74c1b25a9ae585ae23",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"berserker"
+				],
+				"seed": 48.0,
+				"unit_stats": [
+					{
+						"abilities": 9.0,
+						"archetype": "berserker",
+						"assists": 0.0,
+						"auto_attacks": 47.0,
+						"damage_dealt": 427.13999999999976,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 329.94,
+						"damage_dealt_ultimate": 97.2,
+						"damage_mitigated": 51.0,
+						"damage_received": 216.5,
+						"deaths": 0.0,
+						"healing_done": 82.48499999999989,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 249.75,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 3.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 32.0,
+						"damage_dealt": 289.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 272.0,
+						"damage_dealt_ultimate": 17.0,
+						"damage_mitigated": 177.66000000000005,
+						"damage_received": 251.14000000000013,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 176.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "paladin",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 49.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_paladin_vs_guardian",
+			"signature": "c4f1b0f9fb5b024b8cca9f27e3da2e2921fd2c8b47aeafc2811d0d07cbd25a51",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"paladin"
+				],
+				"seed": 49.0,
+				"unit_stats": [
+					{
+						"abilities": 5.0,
+						"archetype": "paladin",
+						"assists": 0.0,
+						"auto_attacks": 38.0,
+						"damage_dealt": 343.97999999999996,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 311.21999999999997,
+						"damage_dealt_ultimate": 32.76,
+						"damage_mitigated": 107.5,
+						"damage_received": 322.5,
+						"deaths": 0.0,
+						"healing_done": 570.0,
+						"instance_id": 1.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 39.0,
+						"damage_dealt": 322.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 292.5,
+						"damage_dealt_ultimate": 30.0,
+						"damage_mitigated": 185.2199999999999,
+						"damage_received": 123.97999999999992,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 220.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "rogue",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 50.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_rogue_vs_guardian",
+			"signature": "a93a990ac485a3b2b6e9f73203489829b0f5a979aef60a015c5aa6746f28e3b2",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"rogue"
+				],
+				"seed": 50.0,
+				"unit_stats": [
+					{
+						"abilities": 9.0,
+						"archetype": "rogue",
+						"assists": 0.0,
+						"auto_attacks": 37.0,
+						"damage_dealt": 587.6549999999996,
+						"damage_dealt_ability": 87.48,
+						"damage_dealt_auto": 389.6099999999997,
+						"damage_dealt_ultimate": 110.565,
+						"damage_mitigated": 14.0,
+						"damage_received": 126.0,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 9.0,
+						"team": "player",
+						"ultimates": 3.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 17.0,
+						"damage_dealt": 126.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 108.0,
+						"damage_dealt_ultimate": 18.0,
+						"damage_mitigated": 298.4849999999999,
+						"damage_received": 455.6549999999997,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "oracle",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 51.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_oracle_vs_guardian",
+			"signature": "0c5153d97251ec9d34ac4fb1696b24578f2b274f80f05feee104b746d62ffcb9",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"oracle"
+				],
+				"seed": 51.0,
+				"unit_stats": [
+					{
+						"abilities": 12.0,
+						"archetype": "oracle",
+						"assists": 0.0,
+						"auto_attacks": 46.0,
+						"damage_dealt": 403.64999999999975,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 403.64999999999975,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 13.0,
+						"damage_received": 175.0,
+						"deaths": 0.0,
+						"healing_done": 216.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 72.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 24.0,
+						"damage_dealt": 247.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 228.0,
+						"damage_dealt_ultimate": 19.0,
+						"damage_mitigated": 217.34999999999985,
+						"damage_received": 227.6500000000001,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 176.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "colossus",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 52.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_colossus_vs_guardian",
+			"signature": "b3c9613c7a7013a206343db8e60ddc5314df72405976c888d10796cc84b882ef",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"colossus"
+				],
+				"seed": 52.0,
+				"unit_stats": [
+					{
+						"abilities": 4.0,
+						"archetype": "colossus",
+						"assists": 0.0,
+						"auto_attacks": 29.0,
+						"damage_dealt": 166.14000000000016,
+						"damage_dealt_ability": 18.72,
+						"damage_dealt_auto": 135.7200000000001,
+						"damage_dealt_ultimate": 11.7,
+						"damage_mitigated": 113.40000000000008,
+						"damage_received": 264.60000000000014,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 1.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 38.0,
+						"damage_dealt": 264.60000000000014,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 239.40000000000015,
+						"damage_dealt_ultimate": 25.2,
+						"damage_mitigated": 89.45999999999991,
+						"damage_received": 18.72,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 220.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "wraith",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 53.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_wraith_vs_guardian",
+			"signature": "bc8c88c6a83f39c68e1bb7d99969d7027392e4816c2906d4b5a3875763d95253",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"wraith"
+				],
+				"seed": 53.0,
+				"unit_stats": [
+					{
+						"abilities": 5.0,
+						"archetype": "wraith",
+						"assists": 0.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 560.3714999999997,
+						"damage_dealt_ability": 105.3,
+						"damage_dealt_auto": 367.3214999999999,
+						"damage_dealt_ultimate": 87.75,
+						"damage_mitigated": 8.5,
+						"damage_received": 161.5,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 7.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 15.0,
+						"damage_dealt": 161.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 142.5,
+						"damage_dealt_ultimate": 19.0,
+						"damage_mitigated": 262.1384999999999,
+						"damage_received": 472.37149999999986,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 88.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "warlock",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 54.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_warlock_vs_guardian",
+			"signature": "b64232bcdd9b1534ec4d2604072d13f5c2d27a50c05306679b30e3a80fae9b1a",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"warlock"
+				],
+				"seed": 54.0,
+				"unit_stats": [
+					{
+						"abilities": 6.0,
+						"archetype": "warlock",
+						"assists": 0.0,
+						"auto_attacks": 26.0,
+						"damage_dealt": 539.1225000000002,
+						"damage_dealt_ability": 106.3125,
+						"damage_dealt_auto": 319.4100000000001,
+						"damage_dealt_ultimate": 113.4,
+						"damage_mitigated": 5.0,
+						"damage_received": 95.0,
+						"deaths": 0.0,
+						"healing_done": 99.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "player",
+						"ultimates": 3.0,
+						"won": true
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 10.0,
+						"damage_dealt": 95.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 95.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 245.2275000000001,
+						"damage_received": 451.12250000000023,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 88.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "monk",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 55.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_monk_vs_guardian",
+			"signature": "3be2310184562d3d4d1b59ccf03df4e2c792a5cb9ee1b256a4a8e7a6b7f767fb",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"monk"
+				],
+				"seed": 55.0,
+				"unit_stats": [
+					{
+						"abilities": 8.0,
+						"archetype": "monk",
+						"assists": 0.0,
+						"auto_attacks": 36.0,
+						"damage_dealt": 532.8179999999995,
+						"damage_dealt_ability": 101.08799999999998,
+						"damage_dealt_auto": 379.0799999999997,
+						"damage_dealt_ultimate": 52.65,
+						"damage_mitigated": 22.0,
+						"damage_received": 198.0,
+						"deaths": 1.0,
+						"healing_done": 37.908,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 22.0,
+						"team": "player",
+						"ultimates": 3.0,
+						"won": true
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 20.0,
+						"damage_dealt": 198.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 180.0,
+						"damage_dealt_ultimate": 18.0,
+						"damage_mitigated": 286.90199999999993,
+						"damage_received": 444.8179999999997,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 88.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "artillery",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 56.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_artillery_vs_guardian",
+			"signature": "f303e6f3fba538fabcfb07ab135847f16f311dfdb31dc0af9b078dd8f99a7462",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"artillery"
+				],
+				"seed": 56.0,
+				"unit_stats": [
+					{
+						"abilities": 2.0,
+						"archetype": "artillery",
+						"assists": 0.0,
+						"auto_attacks": 34.0,
+						"damage_dealt": 575.2012500000001,
+						"damage_dealt_ability": 33.345000000000006,
+						"damage_dealt_auto": 472.3875000000003,
+						"damage_dealt_ultimate": 69.46875,
+						"damage_mitigated": 5.5,
+						"damage_received": 104.5,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 11.0,
+						"damage_dealt": 104.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 104.5,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 309.72374999999977,
+						"damage_received": 443.20125000000024,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "cleric",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 57.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_cleric_vs_guardian",
+			"signature": "31361f5095a1be21a08d3736da57de9cf558626bcdb5cf1df39794037e2c60a8",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"cleric"
+				],
+				"seed": 57.0,
+				"unit_stats": [
+					{
+						"abilities": 12.0,
+						"archetype": "cleric",
+						"assists": 0.0,
+						"auto_attacks": 46.0,
+						"damage_dealt": 403.64999999999975,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 403.64999999999975,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 24.0,
+						"damage_received": 216.0,
+						"deaths": 0.0,
+						"healing_done": 737.5,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 22.0,
+						"damage_dealt": 216.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 198.0,
+						"damage_dealt_ultimate": 18.0,
+						"damage_mitigated": 217.34999999999985,
+						"damage_received": 227.6500000000001,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 176.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "siren",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 58.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_siren_vs_guardian",
+			"signature": "ea1049b08d1c60826528bee371c487989e9654c742cc9e85f194f134e16996de",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"siren"
+				],
+				"seed": 58.0,
+				"unit_stats": [
+					{
+						"abilities": 9.0,
+						"archetype": "siren",
+						"assists": 0.0,
+						"auto_attacks": 37.0,
+						"damage_dealt": 355.04999999999984,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 324.67499999999995,
+						"damage_dealt_ultimate": 30.375,
+						"damage_mitigated": 7.0,
+						"damage_received": 133.0,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 10.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 14.0,
+						"damage_dealt": 133.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 133.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 184.94999999999987,
+						"damage_received": 223.05000000000007,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "valkyrie",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 59.0,
+				"tick_rate": 0.2
+			},
+			"name": "duel_valkyrie_vs_guardian",
+			"signature": "ed15f47478f61c5abc0544a3d2051350a91683bccaa36186545931f4ba13ed5b",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"valkyrie"
+				],
+				"seed": 59.0,
+				"unit_stats": [
+					{
+						"abilities": 6.0,
+						"archetype": "valkyrie",
+						"assists": 0.0,
+						"auto_attacks": 38.0,
+						"damage_dealt": 482.62499999999966,
+						"damage_dealt_ability": 78.975,
+						"damage_dealt_auto": 350.99999999999983,
+						"damage_dealt_ultimate": 52.65,
+						"damage_mitigated": 62.0,
+						"damage_received": 248.0,
+						"deaths": 1.0,
+						"healing_done": 35.100000000000016,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 8.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 29.0,
+						"damage_dealt": 248.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 232.0,
+						"damage_dealt_ultimate": 16.0,
+						"damage_mitigated": 259.8749999999999,
+						"damage_received": 350.7499999999999,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 132.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "draw"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "paladin",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 4.8
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "guardian",
+						"team": "player",
+						"x": 0.9,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "paladin",
+						"team": "player",
+						"x": 0.9,
+						"y": 4.8
+					}
+				],
+				"record_events": false,
+				"seed": 1042.0,
+				"tick_rate": 0.2
+			},
+			"name": "frontline_mirror",
+			"signature": "73380790fa273d831dd64e6e6bb049e263654c113066c1b9912466cbb1817ee3",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"swordsman",
+					"guardian",
+					"paladin"
+				],
+				"player_comp": [
+					"swordsman",
+					"guardian",
+					"paladin"
+				],
+				"seed": 1042.0,
+				"unit_stats": [
+					{
+						"abilities": 7.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 35.0,
+						"damage_dealt": 523.4669999999998,
+						"damage_dealt_ability": 92.925,
+						"damage_dealt_auto": 374.4719999999997,
+						"damage_dealt_ultimate": 56.07000000000001,
+						"damage_mitigated": 84.60000000000001,
+						"damage_received": 209.8,
+						"deaths": 1.0,
+						"healing_done": 37.44720000000001,
+						"instance_id": 1.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 9.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "guardian",
+						"assists": 1.0,
+						"auto_attacks": 37.0,
+						"damage_dealt": 276.00000000000006,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 260.99999999999994,
+						"damage_dealt_ultimate": 15.0,
+						"damage_mitigated": 175.4550000000001,
+						"damage_received": 152.31000000000003,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 220.0,
+						"stuns": 1.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "paladin",
+						"assists": 0.0,
+						"auto_attacks": 38.0,
+						"damage_dealt": 441.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 399.0,
+						"damage_dealt_ultimate": 42.0,
+						"damage_mitigated": 156.0,
+						"damage_received": 468.0,
+						"deaths": 0.0,
+						"healing_done": 570.0,
+						"instance_id": 3.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "swordsman",
+						"assists": 1.0,
+						"auto_attacks": 23.0,
+						"damage_dealt": 372.64499999999987,
+						"damage_dealt_ability": 68.355,
+						"damage_dealt_auto": 248.22000000000008,
+						"damage_dealt_ultimate": 56.07000000000001,
+						"damage_mitigated": 94.70000000000002,
+						"damage_received": 284.1,
+						"deaths": 2.0,
+						"healing_done": 24.822000000000013,
+						"instance_id": 4.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 7.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 35.0,
+						"damage_dealt": 244.4999999999999,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 229.4999999999999,
+						"damage_dealt_ultimate": 15.0,
+						"damage_mitigated": 204.8130000000001,
+						"damage_received": 160.36700000000005,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 5.0,
+						"kills": 1.0,
+						"shielding_done": 220.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "paladin",
+						"assists": 0.0,
+						"auto_attacks": 37.0,
+						"damage_dealt": 430.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 388.5,
+						"damage_dealt_ultimate": 42.0,
+						"damage_mitigated": 192.0,
+						"damage_received": 576.0,
+						"deaths": 0.0,
+						"healing_done": 570.0,
+						"instance_id": 6.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "rogue",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "wraith",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "assassin",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 4.8
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "archer",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "mage",
+						"team": "player",
+						"x": 0.9,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "sniper",
+						"team": "player",
+						"x": 0.9,
+						"y": 4.8
+					}
+				],
+				"record_events": false,
+				"seed": 1043.0,
+				"tick_rate": 0.2
+			},
+			"name": "backline_skirmish",
+			"signature": "6c670f9894d644f7d5a2cf2e61da9db182529b30d810dfd5618e0472a5552c06",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"rogue",
+					"wraith",
+					"assassin"
+				],
+				"player_comp": [
+					"archer",
+					"mage",
+					"sniper"
+				],
+				"seed": 1043.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "archer",
+						"assists": 3.0,
+						"auto_attacks": 18.0,
+						"damage_dealt": 505.8375,
+						"damage_dealt_ability": 59.849999999999994,
+						"damage_dealt_auto": 366.1875,
+						"damage_dealt_ultimate": 79.8,
+						"damage_mitigated": 10.240000000000002,
+						"damage_received": 194.56,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 1.0,
+						"kills": 4.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 6.0,
+						"archetype": "mage",
+						"assists": 4.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 759.9999999999999,
+						"damage_dealt_ability": 203.3,
+						"damage_dealt_auto": 357.2000000000001,
+						"damage_dealt_ultimate": 199.5,
+						"damage_mitigated": 14.390000000000002,
+						"damage_received": 91.01,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 5.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "sniper",
+						"assists": 5.0,
+						"auto_attacks": 20.0,
+						"damage_dealt": 443.52,
+						"damage_dealt_ability": 71.82000000000001,
+						"damage_dealt_auto": 371.7,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 8.72,
+						"damage_received": 165.68,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 3.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "rogue",
+						"assists": 0.0,
+						"auto_attacks": 0.0,
+						"damage_dealt": 24.48,
+						"damage_dealt_ability": 24.48,
+						"damage_dealt_auto": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 43.27499999999998,
+						"damage_received": 389.475,
+						"deaths": 4.0,
+						"healing_done": 0.0,
+						"instance_id": 4.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "wraith",
+						"assists": 0.0,
+						"auto_attacks": 4.0,
+						"damage_dealt": 198.77,
+						"damage_dealt_ability": 23.4,
+						"damage_dealt_auto": 113.62,
+						"damage_dealt_ultimate": 61.75,
+						"damage_mitigated": 56.40500000000003,
+						"damage_received": 615.6949999999999,
+						"deaths": 3.0,
+						"healing_done": 0.0,
+						"instance_id": 5.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "assassin",
+						"assists": 0.0,
+						"auto_attacks": 5.0,
+						"damage_dealt": 228.0,
+						"damage_dealt_ability": 85.5,
+						"damage_dealt_auto": 142.5,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 37.0625,
+						"damage_received": 704.1875,
+						"deaths": 4.0,
+						"healing_done": 0.0,
+						"instance_id": 6.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 3.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "oracle",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "cleric",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "siren",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 4.8
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "oracle",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "cleric",
+						"team": "player",
+						"x": 0.9,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "siren",
+						"team": "player",
+						"x": 0.9,
+						"y": 4.8
+					}
+				],
+				"record_events": false,
+				"seed": 1044.0,
+				"tick_rate": 0.2
+			},
+			"name": "support_clash",
+			"signature": "0c87ae9bdab51c6348fe2075d941173b1b608b77560d8dcb5b8a583d080853be",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"oracle",
+					"cleric",
+					"siren"
+				],
+				"player_comp": [
+					"oracle",
+					"cleric",
+					"siren"
+				],
+				"seed": 1044.0,
+				"unit_stats": [
+					{
+						"abilities": 11.0,
+						"archetype": "oracle",
+						"assists": 0.0,
+						"auto_attacks": 32.0,
+						"damage_dealt": 446.25,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 446.25,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 29.25,
+						"damage_received": 420.75,
+						"deaths": 1.0,
+						"healing_done": 198.0,
+						"instance_id": 1.0,
+						"kills": 4.0,
+						"shielding_done": 72.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 10.0,
+						"archetype": "cleric",
+						"assists": 3.0,
+						"auto_attacks": 31.0,
+						"damage_dealt": 412.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 412.5,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 61.5,
+						"damage_received": 481.5,
+						"deaths": 1.0,
+						"healing_done": 652.5,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "player",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 7.0,
+						"archetype": "siren",
+						"assists": 1.0,
+						"auto_attacks": 26.0,
+						"damage_dealt": 400.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 364.5,
+						"damage_dealt_ultimate": 36.0,
+						"damage_mitigated": 16.5,
+						"damage_received": 313.5,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 3.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 8.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 7.0,
+						"archetype": "oracle",
+						"assists": 3.0,
+						"auto_attacks": 33.0,
+						"damage_dealt": 453.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 453.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 19.5,
+						"damage_received": 370.5,
+						"deaths": 2.0,
+						"healing_done": 126.0,
+						"instance_id": 4.0,
+						"kills": 0.0,
+						"shielding_done": 36.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 7.0,
+						"archetype": "cleric",
+						"assists": 3.0,
+						"auto_attacks": 29.0,
+						"damage_dealt": 391.5,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 391.5,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 70.5,
+						"damage_received": 589.5,
+						"deaths": 2.0,
+						"healing_done": 421.25,
+						"instance_id": 5.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 7.0,
+						"archetype": "siren",
+						"assists": 1.0,
+						"auto_attacks": 30.0,
+						"damage_dealt": 443.25,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 407.25,
+						"damage_dealt_ultimate": 36.0,
+						"damage_mitigated": 15.75,
+						"damage_received": 299.25,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 6.0,
+						"kills": 3.0,
+						"shielding_done": 0.0,
+						"stuns": 8.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "assassin",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "sniper",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "colossus",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 4.8
+					},
+					{
+						"archetype_id": "warlock",
+						"team": "enemy",
+						"x": 9.1,
+						"y": 6.6000000000000005
+					},
+					{
+						"archetype_id": "cleric",
+						"team": "enemy",
+						"x": 8.2,
+						"y": 1.2
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "player",
+						"x": 0.9,
+						"y": 1.2
+					},
+					{
+						"archetype_id": "archer",
+						"team": "player",
+						"x": 0.9,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "guardian",
+						"team": "player",
+						"x": 0.9,
+						"y": 4.8
+					},
+					{
+						"archetype_id": "mage",
+						"team": "player",
+						"x": 0.9,
+						"y": 6.6000000000000005
+					},
+					{
+						"archetype_id": "oracle",
+						"team": "player",
+						"x": 1.8,
+						"y": 1.2
+					}
+				],
+				"record_events": false,
+				"seed": 1045.0,
+				"tick_rate": 0.2
+			},
+			"name": "mixed_5v5",
+			"signature": "297212c75dd0798d909269dd59c9ef7ffefa9040d9e5a4f466639a986f3afff7",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"assassin",
+					"sniper",
+					"colossus",
+					"warlock",
+					"cleric"
+				],
+				"player_comp": [
+					"swordsman",
+					"archer",
+					"guardian",
+					"mage",
+					"oracle"
+				],
+				"seed": 1045.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 10.0,
+						"damage_dealt": 156.282,
+						"damage_dealt_ability": 39.69,
+						"damage_dealt_auto": 116.592,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 165.3125,
+						"damage_received": 533.7375000000001,
+						"deaths": 4.0,
+						"healing_done": 11.659200000000002,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 3.0,
+						"team": "player",
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "archer",
+						"assists": 1.0,
+						"auto_attacks": 20.0,
+						"damage_dealt": 469.875,
+						"damage_dealt_ability": 29.924999999999997,
+						"damage_dealt_auto": 439.95,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 22.902500000000003,
+						"damage_received": 399.1475,
+						"deaths": 4.0,
+						"healing_done": 0.0,
+						"instance_id": 2.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 13.0,
+						"damage_dealt": 104.29999999999998,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 104.29999999999998,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 354.6427500000001,
+						"damage_received": 682.9222499999996,
+						"deaths": 3.0,
+						"healing_done": 0.0,
+						"instance_id": 3.0,
+						"kills": 0.0,
+						"shielding_done": 44.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "mage",
+						"assists": 0.0,
+						"auto_attacks": 11.0,
+						"damage_dealt": 228.57000000000008,
+						"damage_dealt_ability": 36.1,
+						"damage_dealt_auto": 192.47000000000003,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 45.7375,
+						"damage_received": 407.0125,
+						"deaths": 4.0,
+						"healing_done": 0.0,
+						"instance_id": 4.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "oracle",
+						"assists": 2.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 270.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 270.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 35.6125,
+						"damage_received": 380.6375,
+						"deaths": 3.0,
+						"healing_done": 90.0,
+						"instance_id": 5.0,
+						"kills": 0.0,
+						"shielding_done": 36.0,
+						"stuns": 0.0,
+						"team": "player",
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 8.0,
+						"archetype": "assassin",
+						"assists": 2.0,
+						"auto_attacks": 6.0,
+						"damage_dealt": 378.6,
+						"damage_dealt_ability": 177.60000000000002,
+						"damage_dealt_auto": 201.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 37.08,
+						"damage_received": 704.5199999999999,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"instance_id": 6.0,
+						"kills": 5.0,
+						"shielding_done": 0.0,
+						"stuns": 7.0,
+						"team": "enemy",
+						"ultimates": 0.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "sniper",
+						"assists": 7.0,
+						"auto_attacks": 35.0,
+						"damage_dealt": 903.51975,
+						"damage_dealt_ability": 108.48600000000002,
+						"damage_dealt_auto": 655.3837499999998,
+						"damage_dealt_ultimate": 139.65,
+						"damage_mitigated": 4.849999999999998,
+						"damage_received": 92.15,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 7.0,
+						"kills": 6.0,
+						"shielding_done": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "colossus",
+						"assists": 7.0,
+						"auto_attacks": 12.0,
+						"damage_dealt": 104.68,
+						"damage_dealt_ability": 16.68,
+						"damage_dealt_auto": 68.32,
+						"damage_dealt_ultimate": 15.0,
+						"damage_mitigated": 124.24050000000004,
+						"damage_received": 289.89450000000005,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"instance_id": 8.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 9.0,
+						"archetype": "warlock",
+						"assists": 9.0,
+						"auto_attacks": 27.0,
+						"damage_dealt": 673.7325000000001,
+						"damage_dealt_ability": 197.6625,
+						"damage_dealt_auto": 345.87000000000006,
+						"damage_dealt_ultimate": 130.2,
+						"damage_mitigated": 6.787500000000001,
+						"damage_received": 128.96249999999998,
+						"deaths": 0.0,
+						"healing_done": 99.0,
+						"instance_id": 9.0,
+						"kills": 5.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 12.0,
+						"archetype": "cleric",
+						"assists": 12.0,
+						"auto_attacks": 44.0,
+						"damage_dealt": 422.9249999999999,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 422.9249999999999,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 1.5,
+						"damage_received": 13.5,
+						"deaths": 0.0,
+						"healing_done": 737.5,
+						"instance_id": 10.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"ultimates": 2.0,
+						"won": true
+					}
+				],
+				"winner_team": "enemy"
+			}
+		}
+	],
+	"rules_version": 1,
+	"schema_signature": "7997cf6636e65be163fedd40d00e6c56dadd5eacb5b2e12c631f1c4e26198938",
+	"schema_version": 1.0,
+	"tick_rate": 0.2
 }

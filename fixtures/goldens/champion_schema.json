@@ -1,7 +1,7 @@
 {
   "archer": {
     "ability": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 1.5,
         "damage_type": "physical",
@@ -42,7 +42,7 @@
       "unit_id": "archer"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 4.0,
         "damage_type": "physical",
@@ -57,7 +57,7 @@
   },
   "artillery": {
     "ability": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 1.2,
         "damage_type": "physical",
@@ -98,7 +98,7 @@
       "unit_id": "artillery"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 5.0,
         "damage_type": "physical",
@@ -113,18 +113,24 @@
   },
   "assassin": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 1.2,
-            "damage_type": "physical",
-            "reason": "Shadow Dash",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 1.2,
+              "damage_type": "physical",
+              "reason": "Shadow Dash",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 0.5,
-            "reason": "Shadow Dash"
+            "kind": "stun",
+            "params": {
+              "duration": 0.5,
+              "reason": "Shadow Dash"
+            }
           }
         ],
         "reason": "Shadow Dash"
@@ -161,7 +167,7 @@
       "unit_id": "assassin"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 5.0,
         "damage_type": "physical",
@@ -176,17 +182,23 @@
   },
   "berserker": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_ratio": 0.1,
-            "damage_type": "true",
-            "reason": "Blood Price"
+            "kind": "self_damage",
+            "params": {
+              "damage_ratio": 0.1,
+              "damage_type": "true",
+              "reason": "Blood Price"
+            }
           },
           {
-            "reason": "Blood Price",
-            "shield_ratio": 0.15
+            "kind": "self_shield",
+            "params": {
+              "reason": "Blood Price",
+              "shield_ratio": 0.15
+            }
           }
         ],
         "reason": "Blood Price"
@@ -223,7 +235,7 @@
       "unit_id": "berserker"
     },
     "ultimate": {
-      "kind": "DamageEffect",
+      "kind": "damage",
       "params": {
         "damage_multiplier": 3.0,
         "damage_type": "true",
@@ -236,7 +248,7 @@
   },
   "cleric": {
     "ability": {
-      "kind": "HealEffect",
+      "kind": "heal",
       "params": {
         "current_hp_ratio": 0.0,
         "flat_amount": 0.0,
@@ -275,18 +287,24 @@
       "unit_id": "cleric"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "current_hp_ratio": 0.0,
-            "flat_amount": 0.0,
-            "max_hp_ratio": 0.55,
-            "reason": "Divine Aura"
+            "kind": "heal",
+            "params": {
+              "current_hp_ratio": 0.0,
+              "flat_amount": 0.0,
+              "max_hp_ratio": 0.55,
+              "reason": "Divine Aura"
+            }
           },
           {
-            "duration": 1.5,
-            "reason": "Divine Aura"
+            "kind": "stun",
+            "params": {
+              "duration": 1.5,
+              "reason": "Divine Aura"
+            }
           }
         ],
         "reason": "Divine Aura"
@@ -297,24 +315,30 @@
   },
   "colossus": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "duration": 2.0,
-            "radius": 1.0,
-            "reason": "Seismic Slam"
+            "kind": "self_aoe_taunt",
+            "params": {
+              "duration": 2.0,
+              "radius": 1.0,
+              "reason": "Seismic Slam"
+            }
           },
           {
-            "color": [
-              160,
-              160,
-              160
-            ],
-            "damage_multiplier": 1.0,
-            "damage_type": "physical",
-            "radius": 1.0,
-            "reason": "Seismic Slam"
+            "kind": "self_aoe_damage",
+            "params": {
+              "color": [
+                160,
+                160,
+                160
+              ],
+              "damage_multiplier": 1.0,
+              "damage_type": "physical",
+              "radius": 1.0,
+              "reason": "Seismic Slam"
+            }
           }
         ],
         "reason": "Seismic Slam"
@@ -351,18 +375,24 @@
       "unit_id": "colossus"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 2.5,
-            "damage_type": "physical",
-            "reason": "Earthshaker",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 2.5,
+              "damage_type": "physical",
+              "reason": "Earthshaker",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 3.5,
-            "reason": "Earthshaker"
+            "kind": "stun",
+            "params": {
+              "duration": 3.5,
+              "reason": "Earthshaker"
+            }
           }
         ],
         "reason": "Earthshaker"
@@ -373,7 +403,7 @@
   },
   "guardian": {
     "ability": {
-      "kind": "ShieldEffect",
+      "kind": "shield",
       "params": {
         "max_hp_ratio": 0.2,
         "reason": "Guardian Shield"
@@ -410,18 +440,24 @@
       "unit_id": "guardian"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 2.0,
-            "damage_type": "physical",
-            "reason": "Aegis Crash",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 2.0,
+              "damage_type": "physical",
+              "reason": "Aegis Crash",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 3.0,
-            "reason": "Aegis Crash"
+            "kind": "stun",
+            "params": {
+              "duration": 3.0,
+              "reason": "Aegis Crash"
+            }
           }
         ],
         "reason": "Aegis Crash"
@@ -432,7 +468,7 @@
   },
   "mage": {
     "ability": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 2.0,
         "damage_type": "magic",
@@ -473,7 +509,7 @@
       "unit_id": "mage"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 6.0,
         "damage_type": "magic",
@@ -488,18 +524,24 @@
   },
   "monk": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 1.2,
-            "damage_type": "physical",
-            "reason": "Pressure Point",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 1.2,
+              "damage_type": "physical",
+              "reason": "Pressure Point",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 0.8,
-            "reason": "Pressure Point"
+            "kind": "stun",
+            "params": {
+              "duration": 0.8,
+              "reason": "Pressure Point"
+            }
           }
         ],
         "reason": "Pressure Point"
@@ -536,18 +578,24 @@
       "unit_id": "monk"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 2.5,
-            "damage_type": "physical",
-            "reason": "Hundred-Hand Slap",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 2.5,
+              "damage_type": "physical",
+              "reason": "Hundred-Hand Slap",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 1.5,
-            "reason": "Hundred-Hand Slap"
+            "kind": "stun",
+            "params": {
+              "duration": 1.5,
+              "reason": "Hundred-Hand Slap"
+            }
           }
         ],
         "reason": "Hundred-Hand Slap"
@@ -558,7 +606,7 @@
   },
   "oracle": {
     "ability": {
-      "kind": "HealEffect",
+      "kind": "heal",
       "params": {
         "current_hp_ratio": 0.0,
         "flat_amount": 0.0,
@@ -597,7 +645,7 @@
       "unit_id": "oracle"
     },
     "ultimate": {
-      "kind": "ShieldEffect",
+      "kind": "shield",
       "params": {
         "max_hp_ratio": 0.4,
         "reason": "Divine Shield"
@@ -608,7 +656,7 @@
   },
   "paladin": {
     "ability": {
-      "kind": "HealEffect",
+      "kind": "heal",
       "params": {
         "current_hp_ratio": 0.0,
         "flat_amount": 0.0,
@@ -647,20 +695,26 @@
       "unit_id": "paladin"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "current_hp_ratio": 0.0,
-            "flat_amount": 0.0,
-            "max_hp_ratio": 0.3,
-            "reason": "Divine Judgment"
+            "kind": "heal",
+            "params": {
+              "current_hp_ratio": 0.0,
+              "flat_amount": 0.0,
+              "max_hp_ratio": 0.3,
+              "reason": "Divine Judgment"
+            }
           },
           {
-            "damage_multiplier": 2.0,
-            "damage_type": "physical",
-            "reason": "Divine Judgment",
-            "trigger_on_hit": true
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 2.0,
+              "damage_type": "physical",
+              "reason": "Divine Judgment",
+              "trigger_on_hit": true
+            }
           }
         ],
         "reason": "Divine Judgment"
@@ -671,18 +725,24 @@
   },
   "rogue": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 0.8,
-            "damage_type": "magic",
-            "reason": "Poison Vial",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 0.8,
+              "damage_type": "magic",
+              "reason": "Poison Vial",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 2.0,
-            "reason": "Poison Vial"
+            "kind": "stun",
+            "params": {
+              "duration": 2.0,
+              "reason": "Poison Vial"
+            }
           }
         ],
         "reason": "Poison Vial"
@@ -719,7 +779,7 @@
       "unit_id": "rogue"
     },
     "ultimate": {
-      "kind": "DamageEffect",
+      "kind": "damage",
       "params": {
         "damage_multiplier": 3.5,
         "damage_type": "physical",
@@ -732,7 +792,7 @@
   },
   "siren": {
     "ability": {
-      "kind": "StunEffect",
+      "kind": "stun",
       "params": {
         "duration": 0.5,
         "reason": "Enthralling Song"
@@ -769,18 +829,24 @@
       "unit_id": "siren"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 3.0,
-            "damage_type": "magic",
-            "reason": "Banshee Wail",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 3.0,
+              "damage_type": "magic",
+              "reason": "Banshee Wail",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 1.0,
-            "reason": "Banshee Wail"
+            "kind": "stun",
+            "params": {
+              "duration": 1.0,
+              "reason": "Banshee Wail"
+            }
           }
         ],
         "reason": "Banshee Wail"
@@ -791,7 +857,7 @@
   },
   "sniper": {
     "ability": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 1.8,
         "damage_type": "physical",
@@ -832,7 +898,7 @@
       "unit_id": "sniper"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 3.5,
         "damage_type": "physical",
@@ -847,18 +913,24 @@
   },
   "swordsman": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 1.5,
-            "damage_type": "physical",
-            "reason": "Concussive Blow",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 1.5,
+              "damage_type": "physical",
+              "reason": "Concussive Blow",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 1.0,
-            "reason": "Concussive Blow"
+            "kind": "stun",
+            "params": {
+              "duration": 1.0,
+              "reason": "Concussive Blow"
+            }
           }
         ],
         "reason": "Concussive Blow"
@@ -895,18 +967,24 @@
       "unit_id": "swordsman"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 3.0,
-            "damage_type": "physical",
-            "reason": "Blade Dance",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 3.0,
+              "damage_type": "physical",
+              "reason": "Blade Dance",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 2.0,
-            "reason": "Blade Dance"
+            "kind": "stun",
+            "params": {
+              "duration": 2.0,
+              "reason": "Blade Dance"
+            }
           }
         ],
         "reason": "Blade Dance"
@@ -917,18 +995,24 @@
   },
   "valkyrie": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 1.5,
-            "damage_type": "physical",
-            "reason": "Shield Slam",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 1.5,
+              "damage_type": "physical",
+              "reason": "Shield Slam",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 0.5,
-            "reason": "Shield Slam"
+            "kind": "stun",
+            "params": {
+              "duration": 0.5,
+              "reason": "Shield Slam"
+            }
           }
         ],
         "reason": "Shield Slam"
@@ -965,18 +1049,24 @@
       "unit_id": "valkyrie"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 3.0,
-            "damage_type": "physical",
-            "reason": "Valhalla Call",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 3.0,
+              "damage_type": "physical",
+              "reason": "Valhalla Call",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 1.5,
-            "reason": "Valhalla Call"
+            "kind": "stun",
+            "params": {
+              "duration": 1.5,
+              "reason": "Valhalla Call"
+            }
           }
         ],
         "reason": "Valhalla Call"
@@ -987,7 +1077,7 @@
   },
   "warlock": {
     "ability": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 1.5,
         "damage_type": "magic",
@@ -1028,7 +1118,7 @@
       "unit_id": "warlock"
     },
     "ultimate": {
-      "kind": "ProjectileEffect",
+      "kind": "projectile",
       "params": {
         "damage_multiplier": 4.0,
         "damage_type": "magic",
@@ -1043,18 +1133,24 @@
   },
   "wraith": {
     "ability": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 1.2,
-            "damage_type": "magic",
-            "reason": "Spectral Touch",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 1.2,
+              "damage_type": "magic",
+              "reason": "Spectral Touch",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 0.8,
-            "reason": "Spectral Touch"
+            "kind": "stun",
+            "params": {
+              "duration": 0.8,
+              "reason": "Spectral Touch"
+            }
           }
         ],
         "reason": "Spectral Touch"
@@ -1091,18 +1187,24 @@
       "unit_id": "wraith"
     },
     "ultimate": {
-      "kind": "MultiEffect",
+      "kind": "multi",
       "params": {
         "effects": [
           {
-            "damage_multiplier": 2.5,
-            "damage_type": "magic",
-            "reason": "Phantom Strike",
-            "trigger_on_hit": false
+            "kind": "damage",
+            "params": {
+              "damage_multiplier": 2.5,
+              "damage_type": "magic",
+              "reason": "Phantom Strike",
+              "trigger_on_hit": false
+            }
           },
           {
-            "duration": 1.5,
-            "reason": "Phantom Strike"
+            "kind": "stun",
+            "params": {
+              "duration": 1.5,
+              "reason": "Phantom Strike"
+            }
           }
         ],
         "reason": "Phantom Strike"

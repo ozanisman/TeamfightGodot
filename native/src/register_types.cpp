@@ -10,7 +10,7 @@ static void initialize_teamfight_module(ModuleInitializationLevel level) {
 		return;
 	}
 
-	ClassDB::register_class<TeamfightSimulationCore>();
+	GDREGISTER_CLASS(TeamfightSimulationCore);
 }
 
 static void uninitialize_teamfight_module(ModuleInitializationLevel level) {
@@ -22,11 +22,11 @@ static void uninitialize_teamfight_module(ModuleInitializationLevel level) {
 extern "C" {
 
 GDExtensionBool GDE_EXPORT teamfight_simulation_core_library_init(
-	const GDExtensionInterface *p_interface,
+	GDExtensionInterfaceGetProcAddress p_get_proc_address,
 	GDExtensionClassLibraryPtr p_library,
 	GDExtensionInitialization *r_initialization
 ) {
-	GDExtensionBinding::InitObject init_obj(p_interface, p_library, r_initialization);
+	GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 	init_obj.register_initializer(initialize_teamfight_module);
 	init_obj.register_terminator(uninitialize_teamfight_module);
 	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SCENE);

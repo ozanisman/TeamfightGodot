@@ -8,9 +8,6 @@ func run_match(_match_input):
 func clear() -> void:
 	pass
 
-func run_matches(match_inputs: Array):
-	var results: Array = []
-	results.resize(match_inputs.size())
-	for index in range(match_inputs.size()):
-		results[index] = run_match(match_inputs[index])
-	return results
+func run_matches(_match_inputs: Array):
+	push_error("SimulationBackend.run_matches() is abstract.")
+	return []

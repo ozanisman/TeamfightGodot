@@ -19,6 +19,27 @@ static func _normalize(value: Variant) -> Variant:
 		return items
 	return value
 
+static func _escape_string(value: String) -> String:
+	# JSON.stringify already produces valid JSON string escapes.
+	return JSON.stringify(value)
+
+static func _canonical_json(value: Variant) -> String:
+	if value is Dictionary:
+		var keys: Array = value.keys()
+		keys.sort()
+		var parts: Array[String] = []
+		for key in keys:
+			parts.append("%s:%s" % [_escape_string(String(key)), _canonical_json(value[key])])
+		return "{%s}" % ",".join(parts)
+	if value is Array:
+		var parts: Array[String] = []
+		for item in value:
+			parts.append(_canonical_json(item))
+		return "[%s]" % ",".join(parts)
+	if value is String or value is StringName:
+		return _escape_string(String(value))
+	return value
+
 static func canonical_match_payload(summary) -> Dictionary:
 	return _normalize(summary.to_dict())
 

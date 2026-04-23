@@ -123,6 +123,45 @@ const THREAT_RESPONSE_MAGE: float = 1.1
 const THREAT_RESPONSE_SUPPORT: float = 1.7
 const THREAT_RESPONSE_RANGE_FALLOFF: float = 0.6
 
+const ROLE_PRIORITIES_TANK: Dictionary = {
+	&"assassin": -5.0,
+	&"fighter": -2.0,
+}
+
+const ROLE_PRIORITIES_ASSASSIN: Dictionary = {
+	&"marksman": -15.0,
+	&"mage": -15.0,
+	&"support": -10.0,
+	&"fighter": 10.0,
+}
+
+const ROLE_PRIORITIES_FIGHTER: Dictionary = {
+	&"marksman": -1.0,
+	&"mage": -1.0,
+}
+
+const ROLE_PRIORITIES_MAGE: Dictionary = {
+	&"marksman": -4.0,
+	&"support": -2.0,
+}
+
+const ROLE_PRIORITIES_SUPPORT: Dictionary = {
+	&"assassin": -8.0,
+	&"fighter": -4.0,
+}
+
+const ALLY_ROLE_PRIORITIES_TANK: Dictionary = {
+	&"marksman": -5.0,
+	&"mage": -5.0,
+	&"support": -3.0,
+}
+
+const ALLY_ROLE_PRIORITIES_SUPPORT: Dictionary = {
+	&"marksman": -5.0,
+	&"mage": -5.0,
+	&"fighter": -2.0,
+}
+
 const SUPPORT_PEEL_BOOST: float = 2.2
 const SUPPORT_PEEL_THREAT_THRESHOLD: float = 2.0
 

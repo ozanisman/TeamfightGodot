@@ -5,14 +5,37 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const GoldenChampionSchemaPath := "res://fixtures/goldens/champion_schema.json"
 
+static func _normalize_numbers(value: Variant) -> Variant:
+	return _normalize_numbers_for_key(value, "")
+
+static func _normalize_numbers_for_key(value: Variant, key_name: String) -> Variant:
+	if value is Dictionary:
+		var normalized: Dictionary = {}
+		for key in value.keys():
+			normalized[key] = _normalize_numbers_for_key(value[key], String(key))
+		return normalized
+	if value is Array:
+		var normalized_array: Array = []
+		normalized_array.resize(value.size())
+		for index in range(value.size()):
+			normalized_array[index] = _normalize_numbers_for_key(value[index], key_name)
+		return normalized_array
+	if (key_name == "attack_range" or key_name == "move_speed" or key_name == "color") and value is float and is_equal_approx(value, round(value)):
+		return int(round(value))
+	return value
+
 static func export_champion_schema() -> Dictionary:
 	var file := FileAccess.open(GoldenChampionSchemaPath, FileAccess.READ)
-	if file != null:
-		var parsed: Variant = JSON.parse_string(file.get_as_text())
-		if parsed is Dictionary:
-			return Dictionary(parsed)
-		push_error("Failed to parse golden champion schema fixture.")
-	return ChampionCatalogScript.export_schema_dict()
+	if file == null:
+		push_error("Failed to open golden champion schema fixture.")
+		return {}
+
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is Dictionary:
+		return Dictionary(_normalize_numbers(parsed))
+
+	push_error("Failed to parse golden champion schema fixture.")
+	return {}
 
 static func export_role_config_schema() -> Dictionary:
 	var result: Dictionary = {}

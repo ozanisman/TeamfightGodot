@@ -19,6 +19,33 @@ protected:
 	static void _bind_methods();
 
 private:
+	enum EffectOpcode : int64_t {
+		EFFECT_OPCODE_UNKNOWN = 0,
+		EFFECT_OPCODE_MULTI = 1,
+		EFFECT_OPCODE_DAMAGE = 2,
+		EFFECT_OPCODE_PROJECTILE = 3,
+		EFFECT_OPCODE_STUN = 4,
+		EFFECT_OPCODE_SHIELD = 5,
+		EFFECT_OPCODE_HEAL = 6,
+		EFFECT_OPCODE_SELF_DAMAGE = 7,
+		EFFECT_OPCODE_SELF_SHIELD = 8,
+		EFFECT_OPCODE_SELF_AOE_TAUNT = 9,
+		EFFECT_OPCODE_SELF_AOE_DAMAGE = 10,
+		EFFECT_OPCODE_SPLASH_DAMAGE = 11,
+		EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE = 12,
+		EFFECT_OPCODE_MANA_REGEN = 13,
+		EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN = 14,
+		EFFECT_OPCODE_DAMAGE_BASED_HEAL = 15,
+		EFFECT_OPCODE_MANA_RESTORE_ON_HIT = 16,
+		EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT = 17,
+		EFFECT_OPCODE_EVERY_N_ATTACKS_STUN = 18,
+		EFFECT_OPCODE_DODGE = 19,
+		EFFECT_OPCODE_CONSTANT_MULTIPLIER = 20,
+		EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER = 21,
+		EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER = 22,
+		EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER = 23,
+	};
+
 	static constexpr double MATCH_DURATION = 60.0;
 	static constexpr double DEFAULT_TICK_RATE = 0.1;
 	static constexpr double EPSILON = 0.000001;
@@ -101,6 +128,9 @@ private:
 
 	Array _units;
 	Array _projectiles;
+	Array _scratch_projectiles;
+	Array _summary_unit_stats;
+	Dictionary _summary_cache;
 	std::mt19937_64 _rng;
 	double _time = 0.0;
 	double _tick_rate = DEFAULT_TICK_RATE;
@@ -124,6 +154,9 @@ private:
 	void _ensure_catalog_loaded();
 	void _build_role_configs();
 	void _build_passive_registry();
+	static int64_t _opcode_for_kind(const StringName &kind);
+	Dictionary _compile_effect(const Dictionary &effect) const;
+	Array _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;
 	void _populate_runtime_state(const Dictionary &match_input);
 	void _append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp);

@@ -6,6 +6,7 @@ const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_i
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const SimulationSchemaScript := preload("res://scripts/simulation/simulation_schema.gd")
 const ParityToolsScript := preload("res://scripts/simulation/parity_tools.gd")
 const ReplayIOScript := preload("res://scripts/simulation/replay_io.gd")
@@ -45,6 +46,13 @@ static func _load_json_variant(path: String) -> Variant:
 		push_error("Failed to parse JSON file: %s" % path)
 	return parsed
 
+static func _summary_object(summary_value: Variant):
+	if summary_value is Object:
+		return summary_value
+	if summary_value is Dictionary:
+		return MatchReplaySummaryScript.from_dict(Dictionary(summary_value))
+	return MatchReplaySummaryScript.new()
+
 static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 	var parsed: Variant = _load_json_variant(fixture_path)
 	if not (parsed is Dictionary):
@@ -73,7 +81,7 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 		var expected_data: Dictionary = Dictionary(fixture.get("summary", {}))
 		var expected_signature: String = String(fixture.get("signature", ""))
 		var match_input: Object = MatchReplayInputScript.from_dict(input_data)
-		var actual_summary: Object = backend.run_match(match_input)
+		var actual_summary: Object = _summary_object(backend.run_match(match_input))
 		var actual_payload: Dictionary = ParityToolsScript.canonical_match_payload(actual_summary)
 		var expected_summary: Object = MatchReplaySummaryScript.from_dict(expected_data)
 		var expected_payload: Dictionary = ParityToolsScript.canonical_match_payload(expected_summary)
@@ -147,35 +155,6 @@ static func _summarize_payload_diff(actual_payload: Dictionary, expected_payload
 		return "No top-level payload differences detected."
 	return "\n".join(lines)
 
-static func _build_batch_inputs(batch_count: int, base_seed: int, team_size: int):
-	var rng := RandomNumberGenerator.new()
-	rng.seed = base_seed
-	var archetypes: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var results: Array = []
-	results.resize(batch_count)
-
-	for match_index in range(batch_count):
-		var match_seed := base_seed + match_index
-		var players: Array[StringName] = []
-		var enemies: Array[StringName] = []
-
-		if archetypes.size() < team_size * 2:
-			for _i in range(team_size):
-				players.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
-			for _i in range(team_size):
-				enemies.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
-		else:
-			var pool := archetypes.duplicate()
-			pool.shuffle()
-			for i in range(team_size):
-				players.append(pool[i])
-			for i in range(team_size, team_size * 2):
-				enemies.append(pool[i])
-
-		results[match_index] = MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.SIMULATION_TICK_RATE)
-
-	return results
-
 static func run_from_cli(tree: SceneTree) -> void:
 	await tree.process_frame
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
@@ -242,16 +221,71 @@ static func run_from_cli(tree: SceneTree) -> void:
 				)
 
 	if batch_count > 1:
-		var inputs: Array = _build_batch_inputs(batch_count, seed, team_size)
-		var summaries: Array = backend.run_matches(inputs)
+		var cpu_count: int = maxi(1, OS.get_processor_count())
+		var worker_count: int = mini(batch_count, cpu_count)
+		var chunk_size: int = int(ceil(float(batch_count) / float(worker_count)))
+		var worker_runner := SimulationBatchWorkerScript.new()
+		var threads: Array[Thread] = []
+		var output_file = null
 		if output_path != "":
-			ReplayIOScript.save_summary_batch_file(output_path, summaries)
+			output_file = FileAccess.open(output_path, FileAccess.WRITE)
+			if output_file == null:
+				push_error("Failed to write replay summary batch file: %s" % output_path)
+				tree.quit(1)
+				return
+			output_file.store_string("[")
 		else:
-			print(ReplayIOScript.serialize_summary_batch(summaries))
-		if backend.has_method("clear"):
-			backend.call("clear")
+			print("[")
+		for worker_index in range(worker_count):
+			var start_index: int = worker_index * chunk_size
+			var end_index: int = mini(batch_count, start_index + chunk_size)
+			if start_index >= end_index:
+				break
+			var thread := Thread.new()
+			threads.append(thread)
+			var thread_data := {
+				"start_index": start_index,
+				"end_index": end_index,
+				"team_size": team_size,
+				"base_seed": seed,
+			}
+			var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))
+			if start_error != OK:
+				push_error("Failed to start batch worker thread.")
+				for started_thread in threads:
+					if started_thread is Thread:
+						(started_thread as Thread).wait_to_finish()
+				if output_file != null:
+					output_file.close()
+				tree.quit(1)
+				return
+		var wrote_any: bool = false
+		for thread in threads:
+			var chunk_results: Array = thread.wait_to_finish()
+			for entry in chunk_results:
+				var summary: Object = MatchReplaySummaryScript.from_dict(Dictionary(entry)) if entry is Dictionary else _summary_object(entry)
+				var summary_json: String = ReplayIOScript.serialize_summary(summary)
+				if wrote_any:
+					if output_file != null:
+						output_file.store_string(",")
+					else:
+						print(",")
+				if output_file != null:
+					output_file.store_string(summary_json)
+				else:
+					print(summary_json)
+				wrote_any = true
+		if output_file != null:
+			output_file.store_string("]")
+			output_file.flush()
+			output_file.close()
+			output_file = null
+		else:
+			print("]")
+		threads.clear()
+		worker_runner = null
 	else:
-		var summary: Object = backend.run_match(match_input)
+		var summary: Object = _summary_object(backend.run_match(match_input))
 		if output_path != "":
 			ReplayIOScript.save_summary_file(output_path, summary)
 		else:
@@ -259,4 +293,5 @@ static func run_from_cli(tree: SceneTree) -> void:
 		if backend.has_method("clear"):
 			backend.call("clear")
 
+	backend = null
 	tree.quit()

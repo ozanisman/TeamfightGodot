@@ -51,3 +51,13 @@ static func match_signature(summary) -> String:
 static func hash_payload(payload: Variant) -> String:
 	var encoded := JSON.stringify(_normalize(payload), "", true, true)
 	return encoded.sha256_text()
+
+static func fixture_set_signature(fixtures: Array) -> String:
+	# Hash the fixture list itself (order-sensitive by design).
+	# Each element is normalized before hashing to avoid key-order noise.
+	var normalized: Array = []
+	normalized.resize(fixtures.size())
+	for index in range(fixtures.size()):
+		var entry: Variant = fixtures[index]
+		normalized[index] = _normalize(entry)
+	return hash_payload(normalized)

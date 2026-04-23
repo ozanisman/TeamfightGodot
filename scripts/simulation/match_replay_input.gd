@@ -9,6 +9,9 @@ var tick_rate: float = SimConstantsScript.DEFAULT_TICK_RATE
 var player_units: Array = []
 var enemy_units: Array = []
 var record_events: bool = false
+var debug_targeting: bool = false
+var debug_combat_trace: bool = false
+var debug_fixture_name: String = ""
 var rules_version: int = SimConstantsScript.SIMULATION_RULES_VERSION
 var balance_version: StringName = &"default"
 
@@ -42,6 +45,9 @@ func to_dict() -> Dictionary:
 		"player_units": player_units.map(func(value): return value.to_dict()),
 		"enemy_units": enemy_units.map(func(value): return value.to_dict()),
 		"record_events": record_events,
+		"debug_targeting": debug_targeting,
+		"debug_combat_trace": debug_combat_trace,
+		"debug_fixture_name": debug_fixture_name,
 		"rules_version": rules_version,
 		"balance_version": String(balance_version),
 	}
@@ -59,6 +65,9 @@ static func from_dict(data: Dictionary):
 	input.player_units = players
 	input.enemy_units = enemies
 	input.record_events = bool(data.get("record_events", false))
+	input.debug_targeting = bool(data.get("debug_targeting", false))
+	input.debug_combat_trace = bool(data.get("debug_combat_trace", false))
+	input.debug_fixture_name = String(data.get("debug_fixture_name", ""))
 	input.rules_version = int(data.get("rules_version", SimConstantsScript.SIMULATION_RULES_VERSION))
 	input.balance_version = StringName(String(data.get("balance_version", "default")))
 	return input

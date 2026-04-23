@@ -5,6 +5,7 @@ const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfight_simulation_core.gd")
 const NativeClassName := "TeamfightSimulationCore"
+const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 
 var _backend: Object = null
 var _native_available: bool = false
@@ -17,6 +18,10 @@ func _init(validation_mode: bool = false) -> void:
 		_backend = TeamfightSimulationCoreScript.new()
 		_native_available = false
 	else:
+		if not ClassDB.can_instantiate(NativeClassName):
+			var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+			if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+				push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
 		if not ClassDB.can_instantiate(NativeClassName):
 			push_error("Native simulation core unavailable; native is required for production runtime.")
 			_backend = null
@@ -33,7 +38,11 @@ func _ensure_native_backend() -> bool:
 	if _validation_mode:
 		return false
 	if not ClassDB.can_instantiate(NativeClassName):
-		return false
+		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+		if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+			return false
+		if not ClassDB.can_instantiate(NativeClassName):
+			return false
 	var native_backend: Object = ClassDB.instantiate(NativeClassName)
 	if native_backend == null:
 		return false
@@ -44,7 +53,16 @@ func _ensure_native_backend() -> bool:
 	return true
 
 func is_available() -> bool:
-	return _backend != null or (not _validation_mode and ClassDB.can_instantiate(NativeClassName))
+	if _backend != null:
+		return true
+	if _validation_mode:
+		return false
+	if ClassDB.can_instantiate(NativeClassName):
+		return true
+	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+		return false
+	return ClassDB.can_instantiate(NativeClassName)
 
 func clear() -> void:
 	if not _ensure_native_backend():

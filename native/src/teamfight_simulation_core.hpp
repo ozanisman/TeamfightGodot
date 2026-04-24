@@ -86,10 +86,10 @@ private:
 		EffectRecord ultimate_effect;
 		bool has_ability_effect = false;
 		bool has_ultimate_effect = false;
-		int64_t spawn_x_fp = 0;
-		int64_t spawn_y_fp = 0;
-		int64_t x_fp = 0;
-		int64_t y_fp = 0;
+		double spawn_pos_x = 0.0;
+		double spawn_pos_y = 0.0;
+		double pos_x = 0.0;
+		double pos_y = 0.0;
 		double hp = 0.0;
 		double shield = 0.0;
 		double mana = 0.0;
@@ -210,7 +210,7 @@ private:
 	static constexpr double KITE_DURATION = 1.0;
 	static constexpr double KITE_DANGER_THRESHOLD = 0.9;
 	static constexpr double DRAFT_X_BASE = 0.9;
-	static constexpr int64_t POS_SCALE = 1000000; // 1 world unit == 1,000,000 fixed units.
+	// POS_SCALE removed: positions are now stored as IEEE 754 double to match Python oracle arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;

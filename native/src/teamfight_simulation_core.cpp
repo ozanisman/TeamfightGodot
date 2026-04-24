@@ -117,8 +117,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("projectile")) {
-		compiled.scalar0 = double(params.get("speed_override", DEFAULT_PROJECTILE_SPEED));
-		compiled.scalar1 = double(params.get("radius_override", 0.0));
+		// Use -1.0 as sentinel for "use unit's projectile_speed/radius stat" when override is null.
+		// Python parity: speed_override=None → unit.stats.projectile_speed, radius_override=None → unit.stats.projectile_radius.
+		Variant speed_v = params.get("speed_override", Variant());
+		compiled.scalar0 = (speed_v.get_type() == Variant::NIL) ? -1.0 : double(speed_v);
+		Variant radius_v = params.get("radius_override", Variant());
+		compiled.scalar1 = (radius_v.get_type() == Variant::NIL) ? -1.0 : double(radius_v);
 		compiled.scalar2 = double(params.get("damage_multiplier", 1.0));
 		compiled.scalar3 = double(params.get("stun_duration", 0.0));
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
@@ -220,6 +224,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_summary_unit_stats.clear();
 	_summary_cache.clear();
 	_time = 0.0;
+	_tick = 0;
 	_tick_rate = DEFAULT_TICK_RATE;
 	_seed = 0;
 	_winner_team = StringName("draw");
@@ -622,8 +627,6 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	double max_mana = double(stats.get("max_mana", 0.0));
 	double x = double(spawn_spec.get("x", 0.0));
 	double y = double(spawn_spec.get("y", 0.0));
-	int64_t x_fp = int64_t(Math::floor(x * double(POS_SCALE) + 0.5));
-	int64_t y_fp = int64_t(Math::floor(y * double(POS_SCALE) + 0.5));
 
 	unit.instance_id = instance_id;
 	unit.archetype_id = archetype_id;
@@ -639,10 +642,10 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	if (unit.has_ultimate_effect) {
 		unit.ultimate_effect = _compile_effect(Dictionary(ultimate_effect));
 	}
-	unit.spawn_x_fp = x_fp;
-	unit.spawn_y_fp = y_fp;
-	unit.x_fp = x_fp;
-	unit.y_fp = y_fp;
+	unit.spawn_pos_x = x;
+	unit.spawn_pos_y = y;
+	unit.pos_x = x;
+	unit.pos_y = y;
 	unit.hp = max_hp;
 	unit.shield = 0.0;
 	unit.mana = 0.0;
@@ -1137,10 +1140,10 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double obscurance_weight = double(strategy.get("obscurance_weight", 0.0));
 	if (obscurance_weight > 0.0) {
 		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy.team);
-		double ux = double(attacker.x_fp) / double(POS_SCALE);
-		double uy = double(attacker.y_fp) / double(POS_SCALE);
-		double tx = double(enemy.x_fp) / double(POS_SCALE);
-		double ty = double(enemy.y_fp) / double(POS_SCALE);
+		double ux = attacker.pos_x;
+		double uy = attacker.pos_y;
+		double tx = enemy.pos_x;
+		double ty = enemy.pos_y;
 		double segx = tx - ux;
 		double segy = ty - uy;
 		double seg_len_sq = segx * segx + segy * segy;
@@ -1154,8 +1157,8 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			if (other_role != StringName("tank") && other_role != StringName("fighter")) {
 				continue;
 			}
-			double ox = double(other.x_fp) / double(POS_SCALE);
-			double oy = double(other.y_fp) / double(POS_SCALE);
+			double ox = other.pos_x;
+			double oy = other.pos_y;
 			double odx = ox - ux;
 			double ody = oy - uy;
 			double other_dist_sq = odx * odx + ody * ody;
@@ -1194,19 +1197,19 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 				if (!e.alive) {
 					continue;
 				}
-				cx += double(e.x_fp) / double(POS_SCALE);
-				cy += double(e.y_fp) / double(POS_SCALE);
+				cx += e.pos_x;
+				cy += e.pos_y;
 				count += 1;
 			}
 			if (count > 0) {
 				cx /= double(count);
 				cy /= double(count);
-				double ex = double(enemy.x_fp) / double(POS_SCALE);
-				double ey = double(enemy.y_fp) / double(POS_SCALE);
-				double to_tx = ex - cx;
-				double to_ty = ey - cy;
-				double ax = double(attacker.x_fp) / double(POS_SCALE);
-				double ay = double(attacker.y_fp) / double(POS_SCALE);
+			double ex = enemy.pos_x;
+			double ey = enemy.pos_y;
+			double to_tx = ex - cx;
+			double to_ty = ey - cy;
+			double ax = attacker.pos_x;
+			double ay = attacker.pos_y;
 				double to_ax = ax - ex;
 				double to_ay = ay - ey;
 				double len_t = Math::sqrt(to_tx * to_tx + to_ty * to_ty);
@@ -1438,10 +1441,10 @@ TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(U
 	context.damage = damage;
 	context.action_kind = action_kind;
 	if (target != nullptr) {
-		double sx = double(source.x_fp) / double(POS_SCALE);
-		double sy = double(source.y_fp) / double(POS_SCALE);
-		double tx = double(target->x_fp) / double(POS_SCALE);
-		double ty = double(target->y_fp) / double(POS_SCALE);
+		double sx = source.pos_x;
+		double sy = source.pos_y;
+		double tx = target->pos_x;
+		double ty = target->pos_y;
 		double dx = tx - sx;
 		double dy = ty - sy;
 		context.distance = Math::sqrt(dx * dx + dy * dy);
@@ -1525,27 +1528,20 @@ double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitSta
 	return modified_damage;
 }
 
-double TeamfightSimulationCore::_damage_type_multiplier(const UnitState &target, const StringName &damage_type) {
-	if (damage_type == StringName("physical")) {
-		double armor = double(target.stats.get("armor", 0.0));
-		return Math::clamp(1.0 - armor, 0.05, 1.0);
-	}
-	if (damage_type == StringName("magic")) {
-		double mr = double(target.stats.get("magic_resist", 0.0));
-		return Math::clamp(1.0 - mr, 0.05, 1.0);
-	}
-	return 1.0;
-}
-
 double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context) {
 	if (!target.alive) {
 		return 0.0;
 	}
-	double pre_res_damage = damage * _defense_multiplier(target, source, damage, action_kind);
-	double incoming = pre_res_damage;
-	if (damage_type == StringName("physical") || damage_type == StringName("magic")) {
-		incoming *= _damage_type_multiplier(target, damage_type);
+	double pre_res = damage * _defense_multiplier(target, source, damage, action_kind);
+	double final_damage = pre_res;
+	if (damage_type == StringName("physical")) {
+		double armor = double(target.stats.get("armor", 0.0));
+		final_damage *= Math::clamp(1.0 - armor, 0.05, 1.0);
+	} else if (damage_type == StringName("magic")) {
+		double mr = double(target.stats.get("magic_resist", 0.0));
+		final_damage *= Math::clamp(1.0 - mr, 0.05, 1.0);
 	}
+	double incoming = Math::max(0.0, final_damage);
 	if (incoming <= 0.0) {
 		return 0.0;
 	}
@@ -1558,7 +1554,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 			+ " kind=" + String(action_kind)
 			+ " type=" + String(damage_type)
 			+ " base=" + String::num(damage)
-			+ " pre_res=" + String::num(pre_res_damage)
+			+ " pre_res=" + String::num(pre_res)
 			+ " incoming=" + String::num(incoming)
 			+ " hp=" + String::num(target.hp)
 			+ " shield=" + String::num(target.shield)
@@ -1572,11 +1568,12 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	double hp_loss = Math::max(0.0, incoming - absorbed);
 	target.hp = Math::max(0.0, target.hp - hp_loss);
 	target.damage_received += hp_loss;
-	target.damage_mitigated += Math::max(0.0, pre_res_damage - incoming);
+	target.damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	double total_damage = absorbed + hp_loss;
 	double max_hp = double(target.stats.get("max_hp", 0.0));
-	if (max_hp > 0.0 && total_damage > max_hp * THREAT_BURST_THRESHOLD) {
-		target.perceived_threat += (total_damage / max_hp) * THREAT_BURST_MULTIPLIER;
+	// Python parity: threat burst uses post-shield hp_loss (final_damage after absorption).
+	if (max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD) {
+		target.perceived_threat += (hp_loss / max_hp) * THREAT_BURST_MULTIPLIER;
 	}
 	// Self-inflicted damage should not count as damage dealt.
 	if (source.instance_id != target.instance_id) {
@@ -1606,6 +1603,9 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (target.hp <= 0.0) {
 		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
 		EffectContext post_context = context;
+		// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
+		post_context.source = &target;
+		post_context.target = nullptr;
 		post_context.damage = total_damage;
 		for (const EffectRecord &effect : post_take_damage_effects) {
 			_execute_effect(effect, post_context);
@@ -1615,6 +1615,9 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	}
 	const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
 	EffectContext post_context = context;
+	// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
+	post_context.source = &target;
+	post_context.target = nullptr;
 	post_context.damage = total_damage;
 	for (const EffectRecord &effect : post_take_damage_effects) {
 		_execute_effect(effect, post_context);
@@ -1626,7 +1629,13 @@ void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, 
 	if (duration <= 0.0) {
 		return;
 	}
-	target.stun_remaining = Math::max(target.stun_remaining, duration);
+	// Python parity: apply tenacity to reduce stun duration.
+	double tenacity = double(target.stats.get("tenacity", 0.0));
+	double effective_duration = duration * (1.0 - tenacity);
+	if (effective_duration <= 0.0) {
+		return;
+	}
+	target.stun_remaining = Math::max(target.stun_remaining, effective_duration);
 	target.damage_sources[source.instance_id] = _time;
 	source.stuns += 1;
 }
@@ -1637,7 +1646,9 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 	}
 	target.shield += amount;
 	source.shielding_done += amount;
-	target.recent_benefactors[source.instance_id] = _time;
+	if (source.instance_id != target.instance_id) {
+		target.recent_benefactors[source.instance_id] = _time;
+	}
 }
 
 void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount) {
@@ -1649,7 +1660,9 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 	double new_hp = Math::min(max_hp, old_hp + amount);
 	target.hp = new_hp;
 	source.healing_done += amount;
-	target.recent_benefactors[source.instance_id] = _time;
+	if (source.instance_id != target.instance_id) {
+		target.recent_benefactors[source.instance_id] = _time;
+	}
 }
 
 void TeamfightSimulationCore::_restore_mana(UnitState &source, UnitState &target, double amount) {
@@ -2051,12 +2064,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 }
 
 double TeamfightSimulationCore::_distance_between(const UnitState &left, const UnitState &right) const {
-	double lx = double(left.x_fp) / double(POS_SCALE);
-	double ly = double(left.y_fp) / double(POS_SCALE);
-	double rx = double(right.x_fp) / double(POS_SCALE);
-	double ry = double(right.y_fp) / double(POS_SCALE);
-	double dx = rx - lx;
-	double dy = ry - ly;
+	double dx = right.pos_x - left.pos_x;
+	double dy = right.pos_y - left.pos_y;
 	return Math::sqrt(dx * dx + dy * dy);
 }
 
@@ -2194,33 +2203,31 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.hp = double(unit.stats.get("max_hp", 0.0));
 	unit.mana = 0.0;
 	unit.shield = 0.0;
-	// Match the GDScript oracle: on respawn we only reset ability cooldown; ultimate/attack cooldowns are left as-is.
+	unit.perceived_threat = 0.0;
 	unit.ability_cooldown = double(unit.stats.get("ability_cd", 0.0));
-	// Match golden fixtures: respawns do not "lock out" ultimates behind their full cooldown.
-	unit.ultimate_cooldown = 0.0;
+	// Python parity: ultimate_timer is NOT reset on respawn (preserved across death like attack_cooldown).
 	unit.stun_remaining = 0.0;
 	unit.taunt_remaining = 0.0;
 	unit.forced_target_remaining = 0.0;
+	unit.last_kite_timer = 0.0;
+	unit.target_switch_lock_timer = 0.0;
 	unit.respawn_timer = 0.0;
 	unit.damage_sources.clear();
+	unit.recent_benefactors.clear();
 	unit.last_hit_time = 0.0;
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;
-	unit.casting_remaining = 0.0;
-	unit.casting_kind = StringName();
-	unit.casting_effect = EffectRecord();
-	unit.has_casting_effect = false;
-	unit.casting_target_id = 0;
-	unit.casting_ally_target_id = 0;
+	// Python parity: pending casts (casting_remaining > 0) are preserved across death/respawn.
+	// Python's respawn() does not clear any cast state, so a cast started before death continues after respawn.
 	unit.taunt_target_id = 0;
 	unit.forced_target_id = 0;
 	unit.forced_target_kind = StringName();
 	if (unit.team == StringName("player")) {
-		unit.x_fp = int64_t(Math::floor(DRAFT_X_BASE * double(POS_SCALE) + 0.5));
-		unit.y_fp = unit.spawn_y_fp;
+		unit.pos_x = DRAFT_X_BASE;
+		unit.pos_y = unit.spawn_pos_y;
 	} else {
-		unit.x_fp = int64_t(Math::floor((WORLD_SIZE - DRAFT_X_BASE) * double(POS_SCALE) + 0.5));
-		unit.y_fp = unit.spawn_y_fp;
+		unit.pos_x = WORLD_SIZE - DRAFT_X_BASE;
+		unit.pos_y = unit.spawn_pos_y;
 	}
 	if (unit_index >= 0) {
 		_add_alive_index(unit.team, unit_index);
@@ -2234,8 +2241,10 @@ void TeamfightSimulationCore::_step_tick() {
 	for (UnitState &unit : _units) {
 		unit.respawned_this_tick = false;
 		unit.cast_resolved_this_tick = false;
-		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
-		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+		if (unit.alive) {
+			unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
+			unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+		}
 	}
 	// Python: projectiles resolve before unit updates.
 	_update_projectiles();
@@ -2245,6 +2254,19 @@ void TeamfightSimulationCore::_step_tick() {
 		_update_unit(unit);
 	}
 	_refresh_target_pressure();
+	// Position trace for 2-unit duel debugging.
+	if (_units.size() == 2 && _time >= 39.8 && _time <= 58.0) {
+		String line = String("[duel-pos] t=") + String::num(_time);
+		for (const UnitState &u : _units) {
+			line += String(" ") + String(u.archetype_id) +
+					"(" + (u.alive ? "A" : "D") + ")" +
+					" pos=(" + String::num(u.pos_x, 4) + "," + String::num(u.pos_y, 4) + ")" +
+					" atk=" + String::num(u.attack_cooldown, 3) +
+					" kit=" + String::num(u.last_kite_timer, 3) +
+					" rsp=" + String::num(u.respawn_timer, 2);
+		}
+		UtilityFunctions::print(line);
+	}
 }
 
 void TeamfightSimulationCore::_simulate() {
@@ -2299,6 +2321,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 	}
 	unit.regen_accumulator = regen_accumulator;
 
+	// Stun: no actions/movement (Python parity: stun pauses cast, checked before casting).
+	if (unit.stun_remaining > 0.0) {
+		return;
+	}
+
 	// Casting continuation/resolution.
 	if (unit.casting_remaining > 0.0) {
 		unit.casting_remaining = Math::max(0.0, unit.casting_remaining - _tick_rate);
@@ -2309,11 +2336,6 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 		return;
 	}
 
-	// Stun: no actions/movement.
-	if (unit.stun_remaining > 0.0) {
-		return;
-	}
-
 	// Separation (Python: before targeting/actions).
 	{
 		double move_speed = double(unit.stats.get("move_speed", 0.0));
@@ -2321,8 +2343,8 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 			double attack_range = double(unit.stats.get("attack_range", 0.0));
 			double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
 			double r2 = radius * radius;
-			double ux = double(unit.x_fp) / double(POS_SCALE);
-			double uy = double(unit.y_fp) / double(POS_SCALE);
+			double ux = unit.pos_x;
+			double uy = unit.pos_y;
 			double sep_x = 0.0;
 			double sep_y = 0.0;
 			const std::vector<int64_t> &ally_indices = _alive_indices_for_team(unit.team);
@@ -2331,8 +2353,8 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 				if (!ally.alive || ally.instance_id == unit.instance_id) {
 					continue;
 				}
-				double ax = double(ally.x_fp) / double(POS_SCALE);
-				double ay = double(ally.y_fp) / double(POS_SCALE);
+				double ax = ally.pos_x;
+				double ay = ally.pos_y;
 				double dx = ux - ax;
 				double dy = uy - ay;
 				double d2 = dx * dx + dy * dy;
@@ -2348,10 +2370,8 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 				double nudge_speed = move_speed * NUDGE_SPEED_MODIFIER * _tick_rate;
 				double nx = sep_x * nudge_speed;
 				double ny = sep_y * nudge_speed;
-				double px = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-				double py = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-				unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
-				unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
+				unit.pos_x = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+				unit.pos_y = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 			}
 		}
 	}
@@ -2404,8 +2424,8 @@ void TeamfightSimulationCore::_process_actions() {
 				double attack_range = double(unit.stats.get("attack_range", 0.0));
 				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
 				double r2 = radius * radius;
-				double ux = double(unit.x_fp) / double(POS_SCALE);
-				double uy = double(unit.y_fp) / double(POS_SCALE);
+				double ux = unit.pos_x;
+				double uy = unit.pos_y;
 				double sep_x = 0.0;
 				double sep_y = 0.0;
 				const std::vector<int64_t> &ally_indices = _alive_indices_for_team(unit.team);
@@ -2414,8 +2434,8 @@ void TeamfightSimulationCore::_process_actions() {
 					if (!ally.alive || ally.instance_id == unit.instance_id) {
 						continue;
 					}
-					double ax = double(ally.x_fp) / double(POS_SCALE);
-					double ay = double(ally.y_fp) / double(POS_SCALE);
+					double ax = ally.pos_x;
+					double ay = ally.pos_y;
 					double dx = ux - ax;
 					double dy = uy - ay;
 					double d2 = dx * dx + dy * dy;
@@ -2431,10 +2451,8 @@ void TeamfightSimulationCore::_process_actions() {
 					double nudge_speed = move_speed * NUDGE_SPEED_MODIFIER * _tick_rate;
 					double nx = sep_x * nudge_speed;
 					double ny = sep_y * nudge_speed;
-					double px = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-					double py = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-					unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
-					unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
+					unit.pos_x = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+					unit.pos_y = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 				}
 			}
 		}
@@ -2453,8 +2471,8 @@ void TeamfightSimulationCore::_process_actions() {
 					" dist=" + String::num(distance) + " eff=" + String::num(effective_range) + " in_contact=" + String(in_contact ? "true" : "false") +
 					" abil_cd=" + String::num(unit.ability_cooldown) + " ult_cd=" + String::num(unit.ultimate_cooldown) + " atk_cd=" + String::num(unit.attack_cooldown) +
 					" stun=" + String::num(unit.stun_remaining) + " cast=" + String::num(unit.casting_remaining) + " mana=" + String::num(unit.mana) +
-					" pos=(" + String::num(double(unit.x_fp) / double(POS_SCALE)) + "," + String::num(double(unit.y_fp) / double(POS_SCALE)) + ")" +
-					" tgt_pos=(" + String::num(double(target->x_fp) / double(POS_SCALE)) + "," + String::num(double(target->y_fp) / double(POS_SCALE)) + ")");
+				" pos=(" + String::num(unit.pos_x) + "," + String::num(unit.pos_y) + ")" +
+				" tgt_pos=(" + String::num(target->pos_x) + "," + String::num(target->pos_y) + ")");
 		}
 		if (in_contact) {
 			if (_try_cast_ultimate(unit, *target, distance)) {
@@ -2503,6 +2521,9 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 	bool has_effect = action_kind == StringName("ability") ? unit.has_ability_effect : unit.has_ultimate_effect;
 	if (!has_effect) {
 		return false;
+	}
+	if (_units.size() == 2) {
+		UtilityFunctions::print(String("[duel] t=") + String::num(_time) + " CAST " + String(unit.archetype_id) + " kind=" + String(action_kind) + " abil_cd=" + String::num(unit.ability_cooldown));
 	}
 	UnitState *target_ally = _select_ally_target(unit);
 	if (action_kind == StringName("ability")) {
@@ -2563,23 +2584,19 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	if (!had_effect) {
 		return;
 	}
-	if ((action_kind == StringName("ability") || action_kind == StringName("ultimate")) && (target == nullptr || !target->alive) && (target_ally == nullptr || !target_ally->alive)) {
-		if (
-			_record_events
-			&& (
-				_is_debug_duel_unit(unit.instance_id)
-				|| (_debug_combat_trace && _debug_fixture_name == "backline_skirmish" && _time >= 5.0 && _time <= 9.0)
-			)
-		) {
-			UtilityFunctions::print(
-				String("[native-debug] t=") + String::num(_time)
-				+ " CAST fail kind=" + String(action_kind)
-				+ " src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
-				+ " tgt=" + String::num_int64(debug_target_id)
-				+ " hp=" + String::num(unit.hp)
-				+ " mana=" + String::num(unit.mana)
-			);
+	// Python parity: only fail the cast for projectile abilities when the enemy target is gone.
+	// Self-targeting abilities (shield, heal) always succeed using source as fallback.
+	// Matches Python's execute_ability which returns False only for use_projectile with dead target.
+	auto _effect_uses_projectile = [](const EffectRecord &e) -> bool {
+		if (e.opcode == EFFECT_OPCODE_PROJECTILE) return true;
+		if (e.opcode == EFFECT_OPCODE_MULTI) {
+			for (const EffectRecord &child : e.children) {
+				if (child.opcode == EFFECT_OPCODE_PROJECTILE) return true;
+			}
 		}
+		return false;
+	};
+	if (_effect_uses_projectile(effect) && (target == nullptr || !target->alive)) {
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
@@ -2609,10 +2626,11 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 }
 
 void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &target, double distance) {
-	double attack_speed = Math::max(0.0001, double(unit.stats.get("attack_speed", 1.0)));
-	unit.attack_cooldown = 1.0 / attack_speed;
 	unit.auto_attacks += 1;
 	unit.attack_count += 1;
+	if (_units.size() == 2) {
+		UtilityFunctions::print(String("[duel] t=") + String::num(_time) + " AUTO " + String(unit.archetype_id) + "->" + String(target.archetype_id) + " atk_cd=" + String::num(unit.attack_cooldown) + " dist=" + String::num(distance));
+	}
 	if (
 		_record_events
 		&& (
@@ -2625,18 +2643,13 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 			+ " AUTO src=" + String::num_int64(unit.instance_id) + " (" + String(unit.archetype_id) + ")"
 			+ " -> tgt=" + String::num_int64(target.instance_id) + " (" + String(target.archetype_id) + ")"
 			+ " dist=" + String::num(distance)
-			+ " cd=" + String::num(unit.attack_cooldown)
 			+ " mana=" + String::num(unit.mana)
 			+ " src_hp=" + String::num(unit.hp)
-			+ " src_cast=" + String::num(unit.casting_remaining)
 			+ " tgt_hp=" + String::num(target.hp)
 		);
 	}
-	double mana_gain = double(unit.stats.get("mana_per_attack", 0.0));
-	if (mana_gain > 0.0) {
-		double max_mana = double(unit.stats.get("max_mana", 0.0));
-		unit.mana = Math::min(max_mana, unit.mana + mana_gain);
-	}
+	// Python parity: damage + on_attack modifiers first, then projectile/hit,
+	// then mana gain, then attack cooldown (resolve_attack → mana → cooldown).
 	double damage = double(unit.stats.get("attack_damage", 0.0));
 	damage = _apply_attack_modifiers(unit, target, distance, damage);
 	if (double(unit.stats.get("attack_range", 0.0)) > RANGED_THRESHOLD) {
@@ -2652,15 +2665,24 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		projectile.action_kind = StringName("auto");
 		projectile.reason = String("Auto Attack");
 		_projectiles.push_back(projectile);
-		return;
+	} else {
+		EffectContext context = _build_context(unit, &target, nullptr, damage, StringName("auto"));
+		double dealt = _apply_damage(unit, target, damage, StringName("physical"), StringName("auto"), context);
+		_run_post_attack_effects(unit, target, dealt, context);
+		double life_steal = double(unit.stats.get("life_steal", 0.0));
+		if (life_steal > 0.0) {
+			_heal_unit(unit, unit, dealt * life_steal);
+		}
 	}
-	EffectContext context = _build_context(unit, &target, nullptr, damage, StringName("auto"));
-	double dealt = _apply_damage(unit, target, damage, StringName("physical"), StringName("auto"), context);
-	_run_post_attack_effects(unit, target, dealt, context);
-	double life_steal = double(unit.stats.get("life_steal", 0.0));
-	if (life_steal > 0.0) {
-		_heal_unit(unit, unit, dealt * life_steal);
+	// Python parity: mana gain happens after attack resolution.
+	double mana_gain = double(unit.stats.get("mana_per_attack", 0.0));
+	if (mana_gain > 0.0) {
+		double max_mana = double(unit.stats.get("max_mana", 0.0));
+		unit.mana = Math::min(max_mana, unit.mana + mana_gain);
 	}
+	// Python parity: attack cooldown set after mana gain.
+	double attack_speed = Math::max(0.0001, double(unit.stats.get("attack_speed", 1.0)));
+	unit.attack_cooldown = 1.0 / attack_speed;
 }
 
 void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
@@ -2671,13 +2693,8 @@ void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &ta
 	if (speed <= 0.0) {
 		return;
 	}
-	int64_t dx_fp = target.x_fp - unit.x_fp;
-	int64_t dy_fp = target.y_fp - unit.y_fp;
-	if (dx_fp == 0 && dy_fp == 0) {
-		return;
-	}
-	double dx = double(dx_fp) / double(POS_SCALE);
-	double dy = double(dy_fp) / double(POS_SCALE);
+	double dx = target.pos_x - unit.pos_x;
+	double dy = target.pos_y - unit.pos_y;
 	double distance = Math::sqrt(dx * dx + dy * dy);
 	if (distance <= EPSILON) {
 		return;
@@ -2685,23 +2702,16 @@ void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &ta
 	double effective_range = _effective_attack_range(unit);
 	double desired_step = Math::max(0.0, distance - effective_range);
 	double max_step = Math::min(speed, desired_step);
-	if (_debug_combat_trace && unit.instance_id == 5 && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
-		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " MOVE src=5 dist=" + String::num(distance) + " eff=" + String::num(effective_range) + " speed=" + String::num(speed) + " desired=" + String::num(desired_step) + " step=" + String::num(max_step));
+	if (_debug_combat_trace && (unit.instance_id == 5 || unit.instance_id == 2) && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " MOVE src=" + String::num_int64(unit.instance_id) + " dist=" + String::num(distance) + " eff=" + String::num(effective_range) + " speed=" + String::num(speed) + " desired=" + String::num(desired_step) + " step=" + String::num(max_step));
 	}
 	if (max_step <= 0.0) {
 		return;
 	}
 	double nx = dx / distance;
 	double ny = dy / distance;
-	auto trunc_toward_zero_fp = [&](double value_fp) -> int64_t {
-		// Match Python float movement more closely: never round up.
-		return value_fp >= 0.0 ? int64_t(Math::floor(value_fp)) : int64_t(Math::ceil(value_fp));
-	};
-	int64_t step_x_fp = trunc_toward_zero_fp((nx * max_step) * double(POS_SCALE));
-	int64_t step_y_fp = trunc_toward_zero_fp((ny * max_step) * double(POS_SCALE));
-	// If rounding wipes out the step entirely, allow no movement this tick (Python can do sub-fp steps).
-	unit.x_fp += step_x_fp;
-	unit.y_fp += step_y_fp;
+	unit.pos_x = Math::clamp(unit.pos_x + nx * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	unit.pos_y = Math::clamp(unit.pos_y + ny * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 }
 
 bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
@@ -2716,8 +2726,8 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 		return false;
 	}
 	double danger_r2 = danger_radius * danger_radius;
-	double ux = double(unit.x_fp) / double(POS_SCALE);
-	double uy = double(unit.y_fp) / double(POS_SCALE);
+	double ux = unit.pos_x;
+	double uy = unit.pos_y;
 	double rep_x = 0.0;
 	double rep_y = 0.0;
 	int count = 0;
@@ -2726,8 +2736,8 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 		if (!enemy.alive) {
 			continue;
 		}
-		double ex = double(enemy.x_fp) / double(POS_SCALE);
-		double ey = double(enemy.y_fp) / double(POS_SCALE);
+		double ex = enemy.pos_x;
+		double ey = enemy.pos_y;
 		double dx = ux - ex;
 		double dy = uy - ey;
 		double d2 = dx * dx + dy * dy;
@@ -2760,21 +2770,22 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	if (Math::is_zero_approx(vel_x) && Math::is_zero_approx(vel_y)) {
 		vel_x = ux < (WORLD_SIZE * 0.5) ? RECOVERY_VELOCITY : -RECOVERY_VELOCITY;
 		vel_y = uy < (WORLD_SIZE * 0.5) ? RECOVERY_VELOCITY : -RECOVERY_VELOCITY;
-		double new_mag = Math::sqrt(vel_x * vel_x + vel_y * vel_y);
-		if (new_mag > EPSILON) {
-			vel_x /= new_mag;
-			vel_y /= new_mag;
-		}
 	}
+	// Python parity: renormalize after boundary blocking so wall-hugging units
+	// still move at full kite speed (Python unit_movement.py lines 99-101).
+	double new_mag = Math::sqrt(vel_x * vel_x + vel_y * vel_y);
+	if (new_mag <= EPSILON) {
+		return false;
+	}
+	vel_x /= new_mag;
+	vel_y /= new_mag;
 	unit.last_kite_timer = KITE_DURATION;
 	double move_speed = double(unit.stats.get("move_speed", 0.0));
 	double step = move_speed * KITE_SPEED_MODIFIER * _tick_rate;
-	double px = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-	double py = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-	unit.x_fp = int64_t(Math::floor(px * double(POS_SCALE) + 0.5));
-	unit.y_fp = int64_t(Math::floor(py * double(POS_SCALE) + 0.5));
-	if (_debug_combat_trace && unit.instance_id == 2 && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
-		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " KITE src=2 step=" + String::num(step) + " vel=(" + String::num(vel_x) + "," + String::num(vel_y) + ") pos=(" + String::num(px) + "," + String::num(py) + ")");
+	unit.pos_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	unit.pos_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	if (_debug_combat_trace && (unit.instance_id == 5 || unit.instance_id == 2) && _debug_fixture_name == String("backline_skirmish") && _time >= 3.8 && _time <= 4.8) {
+		UtilityFunctions::print(String("[native-debug] t=") + String::num(_time) + " KITE src=" + String::num_int64(unit.instance_id) + " step=" + String::num(step) + " vel=(" + String::num(vel_x) + "," + String::num(vel_y) + ") pos=(" + String::num(unit.pos_x) + "," + String::num(unit.pos_y) + ")");
 	}
 	return true;
 }
@@ -2856,8 +2867,13 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			projectile_state.damage = double(source.stats.get("attack_damage", 0.0)) * effect.scalar2;
 			projectile_state.damage_type = effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type;
 			projectile_state.stun_duration = effect.scalar3;
-			projectile_state.radius = effect.scalar1;
-			double projectile_speed = Math::max(0.0001, effect.scalar0);
+			// Python parity: null speed/radius override → fall back to unit's projectile stats.
+			double projectile_speed = (effect.scalar0 < 0.0)
+				? Math::max(0.0001, double(source.stats.get("projectile_speed", DEFAULT_PROJECTILE_SPEED)))
+				: Math::max(0.0001, effect.scalar0);
+			projectile_state.radius = (effect.scalar1 < 0.0)
+				? double(source.stats.get("projectile_radius", DEFAULT_PROJECTILE_RADIUS))
+				: effect.scalar1;
 			projectile_state.time_remaining = Math::max(0.0, context.distance) / projectile_speed;
 			projectile_state.action_kind = context.action_kind;
 			projectile_state.reason = effect.reason;

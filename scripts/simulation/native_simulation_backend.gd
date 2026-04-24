@@ -5,6 +5,8 @@ const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfig
 const SimRunnerScript := preload("res://scripts/simulation/sim_runner.gd")
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
+## Must match [libraries] windows.* entry in teamfight_simulation_core.gdextension.
+const NativeWindowsDllResPath := "res://native/bin/teamfight_simulation_core.dll"
 
 var _backend: Object = null
 var _native_available: bool = false
@@ -12,13 +14,24 @@ var _validation_mode: bool = false
 static var _logged_extension_load_failure: bool = false
 
 
+## Windows-only path probe; do not use alone to decide if native sim is active — use is_native_runtime().
+static func is_windows_native_dll_file_present() -> bool:
+	if OS.get_name() != "Windows":
+		return true
+	return FileAccess.file_exists(NativeWindowsDllResPath)
+
+
 func _try_load_native_extension() -> void:
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+	# load_extension returns GDExtensionManager.LoadStatus, not Error. 2 == LOAD_STATUS_ALREADY_LOADED.
+	if (
+		load_status != GDExtensionManager.LOAD_STATUS_OK
+		and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
+	):
 		if not _logged_extension_load_failure:
 			_logged_extension_load_failure = true
 			push_warning(
-				"GDExtension load returned %s for %s (expected if native/bin DLL is missing)."
+				"GDExtension load failed (status %s) for %s (e.g. missing DLL or bad binary)."
 				% [load_status, NativeExtensionPath]
 			)
 

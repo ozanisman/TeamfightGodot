@@ -181,6 +181,12 @@ private:
 		bool needs_cluster_density = false;
 		std::vector<int64_t> player_backliner_indices;
 		std::vector<int64_t> enemy_backliner_indices;
+		/// Alive tank+fighter per team (obscurance brute / spatial grid insert).
+		std::vector<int64_t> player_frontline_indices;
+		std::vector<int64_t> enemy_frontline_indices;
+		/// Alive marksman+mage per team (bodyguard bonus loop only).
+		std::vector<int64_t> player_carry_indices;
+		std::vector<int64_t> enemy_carry_indices;
 	};
 
 	struct TraceEvent {
@@ -363,6 +369,7 @@ private:
 	std::vector<UnitState> _units;
 	std::vector<ProjectileState> _projectiles;
 	std::vector<ProjectileState> _scratch_projectiles;
+	std::vector<int64_t> _scratch_critical_allies;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
 	CPythonRandom _rng;
@@ -405,6 +412,22 @@ private:
 	uint64_t _sim_profile_ns_update_units = 0;
 	uint64_t _sim_profile_ns_refresh_pressure_post = 0;
 	int64_t _sim_profile_tick_count = 0;
+	/// Sub-timers for _update_unit (summed over all units each tick; same divisor as tick_count).
+	uint64_t _sim_profile_uu_dead_respawn = 0;
+	uint64_t _sim_profile_uu_cooldowns_cc = 0;
+	uint64_t _sim_profile_uu_separation = 0;
+	uint64_t _sim_profile_uu_threat_and_assist = 0;
+	uint64_t _sim_profile_uu_regen_on_tick = 0;
+	uint64_t _sim_profile_uu_casting = 0;
+	uint64_t _sim_profile_uu_targeting = 0;
+	uint64_t _sim_profile_uu_combat = 0;
+	uint64_t _sim_profile_uu_movement = 0;
+	/// Sub-timers inside `_score_enemy_target` (summed over calls); use with `_sim_profile_se_calls` for per-call avg.
+	uint64_t _sim_profile_se_base = 0;
+	uint64_t _sim_profile_se_bodyguard = 0;
+	uint64_t _sim_profile_se_obscurance = 0;
+	uint64_t _sim_profile_se_flanking = 0;
+	int64_t _sim_profile_se_calls = 0;
 
 	static bool _sim_profile_env_enabled();
 	void _sim_profile_reset();
@@ -445,13 +468,14 @@ private:
 	void _adjust_target_pressure(int64_t old_target_id, int64_t new_target_id);
 	void _simulate();
 	void _step_tick(bool profile_sim);
-	void _update_unit(UnitState &unit);
+	void _update_unit(UnitState &unit, bool profile_sim);
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0);
-	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy) const;
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0, bool profile_score = false);
+	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
+	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
 	bool _try_cast_ultimate(UnitState &unit, UnitState &target, double distance);
@@ -478,7 +502,7 @@ private:
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
 	void _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
-	UnitState *_select_enemy_target(UnitState &unit);
+	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim = false);
 	UnitState *_select_ally_target(UnitState &unit);
 	double _distance_between(const UnitState &left, const UnitState &right) const;
 	double _attack_range(const UnitState &unit) const;

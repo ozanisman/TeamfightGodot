@@ -1,0 +1,12 @@
+{
+  "patches": [
+    {
+      "patch_id": "season_1_artillery_adjustment",
+      "targets": ["artillery"],
+      "roles": [],
+      "stat_multipliers": { "attack_damage": 0.95 },
+      "stat_additions": {},
+      "reason": "Small tuning example for live balance overlays"
+    }
+  ]
+}

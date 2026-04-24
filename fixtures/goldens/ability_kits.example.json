@@ -1,0 +1,24 @@
+{
+  "_readme": "Copy the contents of 'kits' into ability_kits.json to enable kit_id patches. Root keys other than 'kits' are ignored by the loader.",
+  "kits": {
+    "guardian_healer_kit": {
+      "ability": {
+        "kind": "heal",
+        "params": {
+          "max_hp_ratio": 0.15,
+          "current_hp_ratio": 0.0,
+          "flat_amount": 0.0,
+          "reason": "Example preset: self/ally heal instead of shield"
+        }
+      },
+      "ultimate": {
+        "kind": "shield",
+        "params": {
+          "max_hp_ratio": 0.25,
+          "reason": "Example: keep ult as shield with different ratio"
+        }
+      },
+      "passive_ids": ["bastion", "rejuvenation"]
+    }
+  }
+}

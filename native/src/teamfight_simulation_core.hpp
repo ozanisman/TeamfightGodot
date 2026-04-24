@@ -143,6 +143,18 @@ private:
 		double regen_accumulator = 0.0;
 	};
 
+	struct BalancePatch {
+		std::vector<StringName> targets; // empty = applies to all archetypes
+		std::vector<StringName> roles;   // empty = applies to all roles
+		Dictionary stat_multipliers;
+		Dictionary stat_additions;
+		StringName kit_id; // empty = none; resolved against _ability_kits
+		// Optional subtree overrides (Variant::NIL means not specified in patch JSON).
+		Variant ability_override;
+		Variant ultimate_override;
+		Variant passive_ids_override;
+	};
+
 	struct ProjectileState {
 		int64_t source_id = 0;
 		int64_t target_id = 0;
@@ -290,6 +302,8 @@ private:
 	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
+	static constexpr const char *BALANCE_PATCHES_PATH = "res://fixtures/goldens/balance_patches.json";
+	static constexpr const char *ABILITY_KITS_PATH = "res://fixtures/goldens/ability_kits.json";
 
 	std::vector<UnitState> _units;
 	std::vector<ProjectileState> _projectiles;
@@ -309,6 +323,9 @@ private:
 	int64_t _enemy_kills = 0;
 	Dictionary _champion_catalog;
 	Dictionary _role_configs;
+	std::vector<BalancePatch> _balance_patches;
+	Dictionary _ability_kits; // "kit_id" -> kit Dictionary (ability, ultimate, passive_ids)
+	Dictionary _effective_champion_by_archetype; // key: String archetype_id, value: effective champion Dictionary
 	Dictionary _passive_registry;
 	std::unordered_map<int64_t, int64_t> _unit_index_map;
 	std::vector<int64_t> _alive_player_indices;
@@ -327,9 +344,17 @@ private:
 	bool _is_debug_duel_unit(int64_t instance_id) const;
 	double _randf();
 	Dictionary _load_json_file(const String &path) const;
+	Dictionary _load_json_file_if_exists(const String &path) const;
 	void _ensure_catalog_loaded();
 	void _build_role_configs();
 	void _build_passive_registry();
+	bool _patch_applies_to(const BalancePatch &patch, const StringName &archetype_id, const StringName &role) const;
+	void _apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) const;
+	void _merge_kit_into_champion(Dictionary &champion, const Dictionary &kit) const;
+	void _rebuild_effective_champion_cache();
+	bool _validate_effective_champion(const StringName &archetype_id, const Dictionary &champion) const;
+	Dictionary _effective_champion_for(const StringName &archetype_id) const;
+	static void _parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
 	static int64_t _opcode_for_kind(const StringName &kind);
 	EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
@@ -402,6 +427,16 @@ public:
 	void clear();
 	Dictionary run_match(const Variant &match_input);
 	Array run_matches(const Array &match_inputs);
+
+	// Balance patch API: inject patches at runtime without modifying balance_patches.json.
+	// Each element in `patches` must be a Dictionary with keys:
+	//   "targets"         Array[String]   — archetype IDs to target (empty = all)
+	//   "roles"           Array[String]   — roles to target (empty = all)
+	//   "stat_multipliers" Dictionary     — { stat_name: multiplier }
+	//   "stat_additions"  Dictionary      — { stat_name: delta }
+	// Calling this resets the catalog so patches take effect on the next run_match().
+	void set_balance_patches(const Array &patches);
+	Array get_balance_patches() const;
 };
 
 #endif

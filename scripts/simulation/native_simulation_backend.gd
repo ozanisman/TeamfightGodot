@@ -10,6 +10,33 @@ var _backend: Object = null
 var _native_available: bool = false
 var _validation_mode: bool = false
 
+
+func _try_load_native_extension() -> void:
+	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+		push_warning(
+			"GDExtension load returned %s for %s (expected if native/bin DLL is missing)."
+			% [load_status, NativeExtensionPath]
+		)
+
+
+func _attach_native_or_gdscript() -> void:
+	_try_load_native_extension()
+	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
+		_backend = ClassDB.instantiate(NativeClassName)
+		if _backend != null:
+			_native_available = true
+			return
+		push_warning("Native simulation core failed to instantiate; using GDScript backend.")
+	else:
+		push_warning(
+			"Native class %s not registered; using GDScript teamfight_simulation_core.gd (slower; build native/bin DLL for release)."
+			% NativeClassName
+		)
+	_backend = TeamfightSimulationCoreScript.new()
+	_native_available = false
+
+
 func _init(validation_mode: bool = false) -> void:
 	_validation_mode = validation_mode
 	if validation_mode:
@@ -17,38 +44,25 @@ func _init(validation_mode: bool = false) -> void:
 		_backend = TeamfightSimulationCoreScript.new()
 		_native_available = false
 	else:
-		if not ClassDB.can_instantiate(NativeClassName):
-			var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-			if load_status != OK and load_status != ERR_ALREADY_EXISTS:
-				push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
-		if not ClassDB.can_instantiate(NativeClassName):
-			push_error("Native simulation core unavailable; native is required for production runtime.")
-			_backend = null
-			_native_available = false
-		else:
-			_backend = ClassDB.instantiate(NativeClassName)
-			_native_available = _backend != null
-			if not _native_available:
-				push_error("Native simulation core failed to initialize.")
+		_attach_native_or_gdscript()
 
 func _ensure_native_backend() -> bool:
 	if _backend != null:
 		return true
 	if _validation_mode:
 		return false
-	if not ClassDB.can_instantiate(NativeClassName):
-		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-		if load_status != OK and load_status != ERR_ALREADY_EXISTS:
-			return false
-		if not ClassDB.can_instantiate(NativeClassName):
-			return false
-	var native_backend: Object = ClassDB.instantiate(NativeClassName)
-	if native_backend == null:
-		return false
-	if native_backend.has_method("is_ready") and not bool(native_backend.call("is_ready")):
-		return false
-	_backend = native_backend
-	_native_available = true
+	_try_load_native_extension()
+	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
+		var native_backend: Object = ClassDB.instantiate(NativeClassName)
+		if native_backend != null:
+			if native_backend.has_method("is_ready") and not bool(native_backend.call("is_ready")):
+				native_backend = null
+			else:
+				_backend = native_backend
+				_native_available = true
+				return true
+	_backend = TeamfightSimulationCoreScript.new()
+	_native_available = false
 	return true
 
 func is_available() -> bool:
@@ -56,12 +70,13 @@ func is_available() -> bool:
 		return true
 	if _validation_mode:
 		return false
-	if ClassDB.can_instantiate(NativeClassName):
-		return true
-	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
-		return false
-	return ClassDB.can_instantiate(NativeClassName)
+	_try_load_native_extension()
+	return ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName)
+
+
+## True when GDExtension TeamfightSimulationCore is active (not GDScript fallback).
+func is_native_runtime() -> bool:
+	return _native_available
 
 func clear() -> void:
 	if not _ensure_native_backend():
@@ -71,7 +86,7 @@ func clear() -> void:
 
 func run_match(match_input):
 	if not _ensure_native_backend():
-		push_error("Native simulation core is not available.")
+		push_error("Simulation backend is not available.")
 		return {}
 
 	var runner := SimRunnerScript.new()
@@ -79,7 +94,7 @@ func run_match(match_input):
 
 func run_matches(match_inputs: Array):
 	if not _ensure_native_backend():
-		push_error("Native simulation core is not available.")
+		push_error("Simulation backend is not available.")
 		return []
 	if _backend.has_method("run_matches"):
 		return _backend.call("run_matches", match_inputs)
@@ -93,7 +108,7 @@ func run_matches(match_inputs: Array):
 
 func run_match_simulation_only(match_input: Variant) -> void:
 	if not _ensure_native_backend():
-		push_error("Native simulation core is not available.")
+		push_error("Simulation backend is not available.")
 		return
 	if _backend.has_method("run_match_simulation_only"):
 		_backend.call("run_match_simulation_only", match_input)
@@ -105,7 +120,7 @@ func run_match_simulation_only(match_input: Variant) -> void:
 ## Runs N full simulations without building summaries. Call from one thread at a time (e.g. bench with --workers=1).
 func run_matches_simulation_only(match_inputs: Array) -> void:
 	if not _ensure_native_backend():
-		push_error("Native simulation core is not available.")
+		push_error("Simulation backend is not available.")
 		return
 	if _backend.has_method("run_matches_simulation_only"):
 		_backend.call("run_matches_simulation_only", match_inputs)

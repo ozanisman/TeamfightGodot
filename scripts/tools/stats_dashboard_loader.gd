@@ -39,7 +39,7 @@ static func parse_csv_line(line: String) -> PackedStringArray:
 	return out
 
 
-static func _rows_from_csv_file(path: String) -> Array[Dictionary]:
+static func _rows_from_csv_file(path: String, allow_empty_data: bool = false) -> Array[Dictionary]:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		push_error("StatsDashboardLoader: cannot open %s" % path)
@@ -71,7 +71,7 @@ static func _rows_from_csv_file(path: String) -> Array[Dictionary]:
 		for j in header_cells.size():
 			row[header_cells[j]] = cells[j]
 		rows.append(row)
-	if rows.is_empty():
+	if rows.is_empty() and not allow_empty_data:
 		push_error("StatsDashboardLoader: no data rows in %s" % path)
 		return []
 	return rows
@@ -186,10 +186,8 @@ func load_from_dir(dir_path: String) -> Error:
 			},
 		}
 
-	# Combinations
-	var combo_rows := _rows_from_csv_file(combo_path)
-	if combo_rows.is_empty():
-		return ERR_INVALID_DATA
+	# Combinations (optional empty body when only 1v1 data was generated)
+	var combo_rows := _rows_from_csv_file(combo_path, true)
 	for row in combo_rows:
 		var size: int = _int_cell(row, "team_size")
 		if not all_stats.has(size):

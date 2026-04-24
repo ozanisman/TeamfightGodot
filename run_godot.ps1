@@ -15,6 +15,8 @@ $checkDeterminism = $Arguments -contains "--check-determinism"
 $checkBenchmark = $Arguments -contains "--check-benchmark"
 $checkBalancePatches = $Arguments -contains "--check-balance-patches"
 $checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
+$checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
+$generateStats = $Arguments -contains "--generate-stats"
 if ($checkOnly) {
 	$timeoutSeconds = 15
 }
@@ -45,6 +47,12 @@ elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmark) {
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsDashboard) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsAggregator) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_GENERATE_STATS_TIMEOUT_SECONDS -and $generateStats) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_GENERATE_STATS_TIMEOUT_SECONDS
+}
 elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
 }
@@ -68,6 +76,12 @@ elseif ($checkBalancePatches) {
 elseif ($checkStatsDashboard) {
 	$godotArgs += @("--script", "res://scripts/tools/check_stats_dashboard_load.gd")
 }
+elseif ($checkStatsAggregator) {
+	$godotArgs += @("--script", "res://scripts/tools/check_stats_aggregator_roundtrip.gd")
+}
+elseif ($generateStats) {
+	$godotArgs += @("--script", "res://scripts/tools/generate_simulation_stats.gd")
+}
 elseif (-not $checkOnly -and -not $checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
@@ -76,13 +90,13 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if (($checkOnly -or $checkStatsDashboard) -and (Test-Path $logFile)) {
+if (($checkOnly -or $checkStatsDashboard -or $checkStatsAggregator) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
 
 try {
-	if ($checkOnly -or $checkStatsDashboard) {
+	if ($checkOnly -or $checkStatsDashboard -or $checkStatsAggregator) {
 		$deadline = (Get-Date).AddSeconds($timeoutSeconds)
 		while ((Get-Date) -lt $deadline) {
 			if ($process.HasExited) {

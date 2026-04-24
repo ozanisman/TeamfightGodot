@@ -4,25 +4,25 @@ overview: "Analysis of current repo state and ordered action plan to fulfill pro
 todos:
   - id: phase0-parity-lock
     content: Run [duel-pos] trace, identify positional divergence root cause, fix it, confirm all 22 fixtures pass
-    status: in_progress
+    status: completed
   - id: debug-cleanup
     content: Remove [duel-pos], [duel] AUTO/CAST, and [native-debug] prints; delete dead _process_actions(); delete Python/debug_mage_duel.py
-    status: pending
+    status: completed
   - id: phase1-typed-strategy
     content: Define UnitStrategy POD struct, build per-role cache at match init, replace all Dictionary.get() calls in scoring/select/should_switch
-    status: pending
+    status: completed
   - id: phase2-tick-context
     content: Define TickContext struct, remove last_density_count from UnitState, build once per tick at top of _step_tick()
-    status: pending
+    status: completed
   - id: phase3-trace-sink
     content: Define TraceEvent struct, replace all inline UtilityFunctions::print calls with _emit_trace(), remove _debug_fixture_name string guards
-    status: pending
+    status: completed
   - id: phase4-sim-runner
     content: Create sim_runner.gd adapter exposing step(delta) and get_trace_events(); update headless_runner.gd and native_simulation_backend.gd to delegate through it
-    status: pending
+    status: completed
   - id: phase5-scoring-hardening
     content: Incrementally convert float scoring terms to fixed-point/integer where safe; update golden fixtures to reflect intentional behavioral changes
-    status: pending
+    status: completed
 isProject: false
 ---
 

@@ -2,6 +2,7 @@ class_name NativeSimulationBackend
 extends RefCounted
 
 const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfight_simulation_core.gd")
+const SimRunnerScript := preload("res://scripts/simulation/sim_runner.gd")
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 
@@ -73,11 +74,8 @@ func run_match(match_input):
 		push_error("Native simulation core is not available.")
 		return {}
 
-	if _backend.has_method("run_match"):
-		return _backend.call("run_match", match_input)
-
-	push_error("Native simulation core does not expose run_match(match_input).")
-	return {}
+	var runner := SimRunnerScript.new()
+	return runner.run_to_end_with_core(_backend, match_input)
 
 func run_matches(match_inputs: Array):
 	if not _ensure_native_backend():

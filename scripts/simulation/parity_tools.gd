@@ -17,6 +17,9 @@ static func _normalize(value: Variant) -> Variant:
 		for index in range(value.size()):
 			items[index] = _normalize(value[index])
 		return items
+	# Stabilize fixture signatures when payloads match within float tolerance (binary noise in JSON hash).
+	if typeof(value) == TYPE_FLOAT:
+		return snappedf(value, 1e-9)
 	return value
 
 static func _escape_string(value: String) -> String:

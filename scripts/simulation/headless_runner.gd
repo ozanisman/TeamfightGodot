@@ -190,6 +190,38 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 	print("Fixture parity passed for %d case(s)." % fixtures.size())
 	return true
 
+static func _rewrite_fixture_summaries(backend: Object, fixture_path: String) -> bool:
+	var parsed: Variant = _load_json_variant(fixture_path)
+	if not (parsed is Dictionary):
+		return false
+	var fixture_doc: Dictionary = Dictionary(parsed)
+	if int(fixture_doc.get("rules_version", SimConstantsScript.SIMULATION_RULES_VERSION)) != SimConstantsScript.SIMULATION_RULES_VERSION:
+		push_error("Fixture rules version mismatch in %s" % fixture_path)
+		return false
+	var fixtures: Array = Array(fixture_doc.get("fixtures", []))
+	for index in range(fixtures.size()):
+		var entry: Variant = fixtures[index]
+		if not (entry is Dictionary):
+			continue
+		var fixture: Dictionary = Dictionary(entry)
+		var input_data: Dictionary = Dictionary(fixture.get("input", {}))
+		var match_input: Object = MatchReplayInputScript.from_dict(input_data)
+		var actual_summary: Object = _summary_object(backend.run_match(match_input))
+		fixture["summary"] = actual_summary.to_dict()
+		fixtures[index] = fixture
+		if backend.has_method("clear"):
+			backend.call("clear")
+	fixture_doc["fixtures"] = fixtures
+	var out_file := FileAccess.open(fixture_path, FileAccess.WRITE)
+	if out_file == null:
+		push_error("Failed to write fixture file: %s" % fixture_path)
+		return false
+	out_file.store_string(JSON.stringify(fixture_doc, "\t", true, true))
+	out_file.flush()
+	out_file.close()
+	print("Rewrote summaries for %d fixtures in %s" % [fixtures.size(), fixture_path])
+	return _sign_fixture_set(fixture_path, fixture_path)
+
 static func _sign_fixture_set(fixture_in_path: String, fixture_out_path: String) -> bool:
 	var parsed: Variant = _load_json_variant(fixture_in_path)
 	if not (parsed is Dictionary):
@@ -326,6 +358,11 @@ static func run_from_cli(tree: SceneTree) -> void:
 	if sign_fixture_in != "":
 		var sign_ok := _sign_fixture_set(sign_fixture_in, sign_fixture_out)
 		tree.quit(0 if sign_ok else 1)
+		return
+	var rewrite_fixture_path := _extract_argument("--rewrite-fixture-summaries=", "")
+	if rewrite_fixture_path != "":
+		var rewrite_ok := _rewrite_fixture_summaries(backend, rewrite_fixture_path)
+		tree.quit(0 if rewrite_ok else 1)
 		return
 	var input_path := _extract_argument("--match-file=")
 	var output_path := _extract_argument("--out=")

@@ -1,5 +1,7 @@
 class_name MatchReplaySummary
 extends RefCounted
+## End-state summary for a match (winner, duration, per-unit aggregates).
+## Structured combat traces are not stored here; use [member MatchReplayInput.debug_combat_trace] and native [code]get_trace_events()[/code].
 
 const UnitReplaySummaryScript := preload("res://scripts/simulation/unit_replay_summary.gd")
 

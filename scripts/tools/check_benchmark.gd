@@ -2,6 +2,7 @@ extends SceneTree
 
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
+const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 func _init() -> void:
 	call_deferred("_run_benchmark")
@@ -26,10 +27,11 @@ func _run_benchmark() -> void:
 	var load_status: int = GDExtensionManager.load_extension(extension_path)
 	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
 		push_error("Failed to load %s (status %d)" % [NativeExtensionPath, load_status])
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	await process_frame
+	Engine.print_to_stdout = true
 	var batch_count: int = maxi(1, _parse_int("--batch-count=", 100000))
 	var team_size: int = maxi(1, _parse_int("--team-size=", 1))
 	var bench_skip_summaries: bool = _flag_enabled("--bench-skip-summaries")
@@ -41,7 +43,8 @@ func _run_benchmark() -> void:
 		worker_count = mini(worker_count, worker_cap)
 	worker_count = maxi(1, worker_count)
 	var chunk_size: int = int(ceil(float(batch_count) / float(worker_count)))
-	var worker_runner = SimulationBatchWorkerScript.new()
+	# One RefCounted worker per thread: the same GDScript instance must not run run_chunk concurrently.
+	var worker_runners: Array = []
 	var threads: Array[Thread] = []
 
 	var start_static_memory: int = int(OS.get_static_memory_usage())
@@ -49,6 +52,8 @@ func _run_benchmark() -> void:
 	var start_usec: int = Time.get_ticks_usec()
 
 	SimulationBatchWorkerScript.reset_benchmark_progress(batch_count)
+	if _flag_enabled("--sim-profile"):
+		SimulationBatchWorkerScript.set_sim_profile_enabled(true)
 
 	for worker_index in range(worker_count):
 		var start_index: int = worker_index * chunk_size
@@ -56,6 +61,8 @@ func _run_benchmark() -> void:
 		if start_index >= end_index:
 			break
 
+		var worker_runner := SimulationBatchWorkerScript.new()
+		worker_runners.append(worker_runner)
 		var thread := Thread.new()
 		threads.append(thread)
 		var thread_data := {
@@ -64,7 +71,7 @@ func _run_benchmark() -> void:
 			"team_size": team_size,
 			"base_seed": base_seed,
 			"bench_skip_summaries": bench_skip_summaries,
-			# Batched native sim from multiple threads faults on Windows; single worker is safe and fastest for bench-skip.
+			# run_matches_simulation_only is only safe on one worker today (native shared state); otherwise use run_match_simulation_only per match.
 			"allow_native_batch": bench_skip_summaries and worker_count == 1,
 		}
 		var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))
@@ -73,11 +80,18 @@ func _run_benchmark() -> void:
 			for started_thread in threads:
 				if started_thread is Thread:
 					(started_thread as Thread).wait_to_finish()
-			quit(1)
+			threads.clear()
+			worker_runners.clear()
+			for _cleanup in range(6):
+				await process_frame
+			await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 			return
 
-	# Pump the main loop while workers run so UtilityFunctions::print from threads flushes each frame.
+	for _warmup in range(3):
+		await process_frame
+
 	while true:
+		await process_frame
 		var any_alive: bool = false
 		for thread in threads:
 			if thread.is_alive():
@@ -85,12 +99,17 @@ func _run_benchmark() -> void:
 				break
 		if not any_alive:
 			break
-		await process_frame
 
 	var completed_matches: int = 0
+	var workers_started: int = threads.size()
 	for thread in threads:
 		var chunk_results: Array = thread.wait_to_finish()
 		completed_matches += chunk_results.size()
+
+	threads.clear()
+	worker_runners.clear()
+	for _join_cleanup in range(6):
+		await process_frame
 
 	var elapsed_usec: int = max(1, Time.get_ticks_usec() - start_usec)
 	var end_static_memory: int = int(OS.get_static_memory_usage())
@@ -101,12 +120,12 @@ func _run_benchmark() -> void:
 	var peak_memory_growth: int = end_peak_memory - start_peak_memory
 	var churn_estimate: int = end_peak_memory - end_static_memory
 
-	print(JSON.stringify({
+	var json_text: String = JSON.stringify({
 		"batch_count": completed_matches,
 		"team_size": team_size,
 		"base_seed": base_seed,
 		"bench_skip_summaries": bench_skip_summaries,
-		"workers": threads.size(),
+		"workers": workers_started,
 		"duration_sec": duration_sec,
 		"matches_per_sec": matches_per_sec,
 		"static_memory_start": start_static_memory,
@@ -116,10 +135,12 @@ func _run_benchmark() -> void:
 		"peak_memory_end": end_peak_memory,
 		"peak_memory_growth": peak_memory_growth,
 		"allocation_churn_estimate": churn_estimate,
-	}, "\t", true, true))
+	}, "\t", true, true)
+	print(json_text)
+	SimulationBatchWorkerScript.flush_stdio_if_available()
+	await process_frame
+	await process_frame
 
 	threads.clear()
-	worker_runner = null
-	await process_frame
-	await process_frame
-	quit(0)
+	worker_runners.clear()
+	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

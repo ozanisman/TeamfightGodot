@@ -6,6 +6,7 @@ const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 var _failures: PackedStringArray = PackedStringArray()
 
@@ -193,7 +194,7 @@ func _run_suite() -> void:
 	print("balance_patch_suite: starting")
 	var core := _load_native()
 	if core == null:
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	test_stat_multiplier_brackets_damage(core)
@@ -204,11 +205,12 @@ func _run_suite() -> void:
 
 	if core.has_method("clear"):
 		core.clear()
+	core = null
 
 	if _failures.size() > 0:
 		print("balance_patch_suite: FAILED (%d)" % _failures.size())
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	print("balance_patch_suite: all tests passed")
-	quit(0)
+	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

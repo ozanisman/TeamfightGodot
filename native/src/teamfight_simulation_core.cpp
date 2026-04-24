@@ -7,11 +7,17 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <limits>
 #include <mutex>
 #include <utility>
+
+static std::atomic<int64_t> s_benchmark_progress_done{0};
+static std::atomic<bool> s_sim_profile_force_enabled{false};
 
 static double strategy_role_prio(const std::map<StringName, double> &m, const StringName &key) {
 	auto it = m.find(key);
@@ -238,7 +244,10 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_balance_patches", "patches"), &TeamfightSimulationCore::set_balance_patches);
 	ClassDB::bind_method(D_METHOD("get_balance_patches"), &TeamfightSimulationCore::get_balance_patches);
 	ClassDB::bind_method(D_METHOD("flush_stdio"), &TeamfightSimulationCore::flush_stdio);
-	ClassDB::bind_method(D_METHOD("benchmark_console_progress", "completed", "total", "native_batch"), &TeamfightSimulationCore::benchmark_console_progress);
+	ClassDB::bind_method(D_METHOD("benchmark_progress_reset", "total_matches"), &TeamfightSimulationCore::benchmark_progress_reset);
+	ClassDB::bind_method(D_METHOD("benchmark_progress_add", "delta_matches"), &TeamfightSimulationCore::benchmark_progress_add);
+	ClassDB::bind_method(D_METHOD("benchmark_progress_read"), &TeamfightSimulationCore::benchmark_progress_read);
+	ClassDB::bind_method(D_METHOD("sim_profile_set_enabled", "enabled"), &TeamfightSimulationCore::sim_profile_set_enabled);
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -246,15 +255,23 @@ void TeamfightSimulationCore::flush_stdio() {
 	std::fflush(stderr);
 }
 
-void TeamfightSimulationCore::benchmark_console_progress(int64_t completed, int64_t total, bool native_batch) {
-	// Use Godot print (not raw fprintf): headless Godot often does not forward libc stderr to the parent console.
-	// Live updates require the main SceneTree to run process_frame while workers run (see check_benchmark.gd).
-	if (native_batch) {
-		UtilityFunctions::print(vformat("[benchmark] completed %d / %d matches (native batch)", completed, total));
-	} else {
-		UtilityFunctions::print(vformat("[benchmark] completed %d / %d matches", completed, total));
+void TeamfightSimulationCore::benchmark_progress_reset(int64_t p_total_matches) {
+	(void)p_total_matches;
+	s_benchmark_progress_done.store(0, std::memory_order_relaxed);
+}
+
+void TeamfightSimulationCore::benchmark_progress_add(int64_t delta_matches) {
+	if (delta_matches > 0) {
+		s_benchmark_progress_done.fetch_add(delta_matches, std::memory_order_relaxed);
 	}
-	flush_stdio();
+}
+
+int64_t TeamfightSimulationCore::benchmark_progress_read() {
+	return s_benchmark_progress_done.load(std::memory_order_relaxed);
+}
+
+void TeamfightSimulationCore::sim_profile_set_enabled(bool enabled) {
+	s_sim_profile_force_enabled.store(enabled, std::memory_order_relaxed);
 }
 
 double TeamfightSimulationCore::_randf() {
@@ -287,6 +304,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_tick_ctx.enemy_backliner_indices.clear();
 	_tick_ctx.has_player_center = false;
 	_tick_ctx.has_enemy_center = false;
+	_tick_ctx.needs_cluster_density = false;
 	_trace_buffer.clear();
 	_debug_combat_trace = false;
 }
@@ -1224,9 +1242,15 @@ const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_
 }
 
 void TeamfightSimulationCore::_prepare_tick_context() {
-	_tick_ctx.density_by_unit_index.assign(_units.size(), 0);
+	// Avoid O(n) zero-fill every tick: size changes only on roster change; cluster density overwrites
+	// all live slots when any cluster_weight > 0; otherwise density is never read.
+	const size_t n = _units.size();
+	if (_tick_ctx.density_by_unit_index.size() != n) {
+		_tick_ctx.density_by_unit_index.assign(n, 0);
+	}
 	_tick_ctx.player_backliner_indices.clear();
 	_tick_ctx.enemy_backliner_indices.clear();
+	_tick_ctx.needs_cluster_density = false;
 
 	double pcx = 0.0;
 	double pcy = 0.0;
@@ -1235,6 +1259,9 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		const UnitState &u = _units[idx];
 		if (!u.alive) {
 			continue;
+		}
+		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
+			_tick_ctx.needs_cluster_density = true;
 		}
 		pcx += u.pos_x;
 		pcy += u.pos_y;
@@ -1255,6 +1282,9 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		const UnitState &u = _units[idx];
 		if (!u.alive) {
 			continue;
+		}
+		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
+			_tick_ctx.needs_cluster_density = true;
 		}
 		ecx += u.pos_x;
 		ecy += u.pos_y;
@@ -1976,29 +2006,7 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 	}
 
 	// Python parity: cache per-unit density used by cluster scoring (stored on TickContext).
-	bool needs_density = false;
-	for (int64_t index : _alive_player_indices) {
-		const UnitState &u = _units[index];
-		if (!u.alive) {
-			continue;
-		}
-		if (_strategy_for_unit(u).cluster_weight > 0.0) {
-			needs_density = true;
-			break;
-		}
-	}
-	if (!needs_density) {
-		for (int64_t index : _alive_enemy_indices) {
-			const UnitState &u = _units[index];
-			if (!u.alive) {
-				continue;
-			}
-			if (_strategy_for_unit(u).cluster_weight > 0.0) {
-				needs_density = true;
-				break;
-			}
-		}
-	}
+	const bool needs_density = _tick_ctx.needs_cluster_density;
 	if (needs_density) {
 		auto compute_density_for_team = [&](const std::vector<int64_t> &indices) {
 			if (int64_t(indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD) {
@@ -2811,31 +2819,120 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	}
 }
 
-void TeamfightSimulationCore::_step_tick() {
+namespace {
+uint64_t sim_profile_elapsed_ns(std::chrono::steady_clock::time_point t0) {
+	using namespace std::chrono;
+	return duration_cast<nanoseconds>(steady_clock::now() - t0).count();
+}
+} // namespace
+
+bool TeamfightSimulationCore::_sim_profile_env_enabled() {
+	if (s_sim_profile_force_enabled.load(std::memory_order_relaxed)) {
+		return true;
+	}
+	const char *v = std::getenv("TEAMFIGHT_SIM_PROFILE");
+	if (v == nullptr || v[0] == '\0') {
+		return false;
+	}
+	return !(v[0] == '0' && v[1] == '\0');
+}
+
+void TeamfightSimulationCore::_sim_profile_reset() {
+	_sim_profile_ns_projectiles = 0;
+	_sim_profile_ns_prepare_tick_ctx = 0;
+	_sim_profile_ns_refresh_pressure_pre = 0;
+	_sim_profile_ns_update_units = 0;
+	_sim_profile_ns_refresh_pressure_post = 0;
+	_sim_profile_tick_count = 0;
+}
+
+void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
+	if (_sim_profile_tick_count <= 0) {
+		return;
+	}
+	const double inv = 1.0 / double(_sim_profile_tick_count);
+	auto avg = [&](uint64_t ns) { return double(ns) * inv; };
+	const uint64_t sum = _sim_profile_ns_projectiles + _sim_profile_ns_prepare_tick_ctx +
+			_sim_profile_ns_refresh_pressure_pre + _sim_profile_ns_update_units + _sim_profile_ns_refresh_pressure_post;
+	std::fprintf(stderr,
+			"{\"sim_profile\":{\"ticks\":%lld,\"ns_per_tick_avg\":{\"projectiles\":%.0f,\"prepare_tick_ctx\":%.0f,\"refresh_pressure_pre\":%.0f,\"update_units\":%.0f,\"refresh_pressure_post\":%.0f},\"sum_ns_per_tick_avg\":%.0f}}\n",
+			static_cast<long long>(_sim_profile_tick_count),
+			avg(_sim_profile_ns_projectiles),
+			avg(_sim_profile_ns_prepare_tick_ctx),
+			avg(_sim_profile_ns_refresh_pressure_pre),
+			avg(_sim_profile_ns_update_units),
+			avg(_sim_profile_ns_refresh_pressure_post),
+			double(sum) * inv);
+	std::fflush(stderr);
+}
+
+void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	// Python World.step(): tick++ then time = tick * tick_rate
 	_tick += 1;
 	_time = double(_tick) * _tick_rate;
+	if (profile_sim) {
+		_sim_profile_tick_count += 1;
+	}
 	for (UnitState &unit : _units) {
 		unit.respawned_this_tick = false;
 		unit.cast_resolved_this_tick = false;
 	}
 	// Python: projectiles resolve before unit updates.
-	_update_projectiles();
-	_prepare_tick_context();
-	_refresh_target_pressure();
-	for (UnitState &unit : _units) {
-		_update_unit(unit);
+	if (profile_sim) {
+		auto t0 = std::chrono::steady_clock::now();
+		_update_projectiles();
+		_sim_profile_ns_projectiles += sim_profile_elapsed_ns(t0);
+	} else {
+		_update_projectiles();
 	}
-	_refresh_target_pressure(false);
+	if (profile_sim) {
+		auto t0 = std::chrono::steady_clock::now();
+		_prepare_tick_context();
+		_sim_profile_ns_prepare_tick_ctx += sim_profile_elapsed_ns(t0);
+	} else {
+		_prepare_tick_context();
+	}
+	if (profile_sim) {
+		auto t0 = std::chrono::steady_clock::now();
+		_refresh_target_pressure();
+		_sim_profile_ns_refresh_pressure_pre += sim_profile_elapsed_ns(t0);
+	} else {
+		_refresh_target_pressure();
+	}
+	if (profile_sim) {
+		auto t0 = std::chrono::steady_clock::now();
+		for (UnitState &unit : _units) {
+			_update_unit(unit);
+		}
+		_sim_profile_ns_update_units += sim_profile_elapsed_ns(t0);
+	} else {
+		for (UnitState &unit : _units) {
+			_update_unit(unit);
+		}
+	}
+	if (profile_sim) {
+		auto t0 = std::chrono::steady_clock::now();
+		_refresh_target_pressure(false);
+		_sim_profile_ns_refresh_pressure_post += sim_profile_elapsed_ns(t0);
+	} else {
+		_refresh_target_pressure(false);
+	}
 }
 
 void TeamfightSimulationCore::_simulate() {
+	const bool profile = _sim_profile_env_enabled();
+	if (profile) {
+		_sim_profile_reset();
+	}
 	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
 	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
 	for (int64_t tick_index = 0; tick_index < max_ticks; ++tick_index) {
-		_step_tick();
+		_step_tick(profile);
 	}
 	_winner_team = _determine_winner();
+	if (profile) {
+		_sim_profile_emit_json_stderr();
+	}
 }
 
 void TeamfightSimulationCore::_prune_assist_window(UnitState &unit) {
@@ -3527,8 +3624,12 @@ void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inp
 		clear();
 		const int64_t done = index + 1;
 		if (done % 1000 == 0) {
-			benchmark_console_progress(done, total, true);
+			benchmark_progress_add(1000);
 		}
+	}
+	const int64_t tail = total % 1000;
+	if (tail != 0) {
+		benchmark_progress_add(tail);
 	}
 }
 
@@ -3547,7 +3648,7 @@ void TeamfightSimulationCore::advance_one_tick() {
 	if (match_ticks_exhausted()) {
 		return;
 	}
-	_step_tick();
+	_step_tick(false);
 }
 
 bool TeamfightSimulationCore::match_ticks_exhausted() const {

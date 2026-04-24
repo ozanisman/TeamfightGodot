@@ -1,11 +1,19 @@
 class_name SimulationBatchWorker
 extends RefCounted
 
-static var _bench_mutex: Mutex = Mutex.new()
-static var _bench_done: int = 0
-static var _bench_target: int = 0
-static var _bench_next_milestone: int = 1000
 static var _bench_flush_core: Object = null
+
+static func set_sim_profile_enabled(on: bool) -> void:
+	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):
+		_bench_flush_core = ClassDB.instantiate(&"TeamfightSimulationCore")
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"sim_profile_set_enabled"):
+		_bench_flush_core.call(&"sim_profile_set_enabled", on)
+
+
+static func release_benchmark_handles() -> void:
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"flush_stdio"):
+		_bench_flush_core.call(&"flush_stdio")
+	_bench_flush_core = null
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
@@ -43,27 +51,32 @@ static func _build_batch_input_for_seed(match_seed: int, team_size: int):
 static func reset_benchmark_progress(total_matches: int) -> void:
 	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):
 		_bench_flush_core = ClassDB.instantiate(&"TeamfightSimulationCore")
-	_bench_mutex.lock()
-	_bench_done = 0
-	_bench_target = maxi(0, total_matches)
-	_bench_next_milestone = 1000
-	_bench_mutex.unlock()
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"benchmark_progress_reset"):
+		_bench_flush_core.call(&"benchmark_progress_reset", maxi(0, total_matches))
 
 static func record_benchmark_progress(delta_matches: int) -> void:
 	if delta_matches <= 0:
 		return
-	var milestones: Array = []
-	var target_snapshot: int = 0
-	_bench_mutex.lock()
-	_bench_done += delta_matches
-	target_snapshot = _bench_target
-	while _bench_next_milestone <= _bench_done and _bench_next_milestone <= _bench_target:
-		milestones.append(_bench_next_milestone)
-		_bench_next_milestone += 1000
-	_bench_mutex.unlock()
-	for m in milestones:
-		if _bench_flush_core != null and _bench_flush_core.has_method(&"benchmark_console_progress"):
-			_bench_flush_core.call(&"benchmark_console_progress", m, target_snapshot, false)
+	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):
+		_bench_flush_core = ClassDB.instantiate(&"TeamfightSimulationCore")
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"benchmark_progress_add"):
+		_bench_flush_core.call(&"benchmark_progress_add", delta_matches)
+
+static func benchmark_progress_read_value() -> int:
+	# Same lazy init as record_benchmark_progress: read must hit the process-wide native counter
+	# even if reset_benchmark_progress failed to create the handle (workers still update the atomic).
+	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):
+		_bench_flush_core = ClassDB.instantiate(&"TeamfightSimulationCore")
+	if _bench_flush_core == null:
+		return 0
+	if _bench_flush_core.has_method(&"benchmark_progress_read"):
+		return int(_bench_flush_core.call(&"benchmark_progress_read"))
+	return 0
+
+
+static func flush_stdio_if_available() -> void:
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"flush_stdio"):
+		_bench_flush_core.call(&"flush_stdio")
 
 func run_chunk(data: Dictionary) -> Array:
 	var start_index: int = int(data.get("start_index", 0))

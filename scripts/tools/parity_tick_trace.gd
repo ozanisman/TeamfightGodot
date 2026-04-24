@@ -4,6 +4,7 @@ extends SceneTree
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 
 func _init() -> void:
@@ -35,18 +36,19 @@ func _run() -> void:
 			fixture_name = arg.substr("--parity-trace=".length())
 	if fixture_name.is_empty():
 		push_error("missing --parity-trace=name")
-		quit(2)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 2)
 		return
 	var load_status: int = GDExtensionManager.load_extension(ProjectSettings.globalize_path(NativeExtensionPath))
 	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
 		push_error("extension load %d" % load_status)
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 	var core: Object = ClassDB.instantiate(NativeClassName)
 	var input_data: Dictionary = _fixture_input_by_name("res://fixtures/goldens/match_fixtures.json", fixture_name)
 	if input_data.is_empty():
 		push_error("fixture not found: %s" % fixture_name)
-		quit(1)
+		core = null
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 	core.begin_match(input_data)
 	while not bool(core.match_ticks_exhausted()):
@@ -68,4 +70,5 @@ func _run() -> void:
 		snap["units"] = units
 		snap["time"] = snappedf(float(snap.get("time", 0.0)), 1e-6)
 		print(JSON.stringify(snap, "", false))
-	quit(0)
+	core = null
+	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

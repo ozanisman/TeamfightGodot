@@ -23,4 +23,5 @@ const UnitReplaySummaryScript := preload("res://scripts/simulation/unit_replay_s
 const GameRootScene := preload("res://scenes/game_root.tscn")
 
 func _init() -> void:
-	quit()
+	# quit() from _init runs before the main loop is ready and can leave a headless process stuck.
+	call_deferred("quit", 0)

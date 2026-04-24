@@ -51,7 +51,7 @@ This document tracks patterns inherited from an external **Python oracle** (not 
   - `TickContext` already caches team centers, backliners, and density.
 - **Open**
   - SoA layouts and stripping rare stats from the dictionary entirely if batch scale demands it.
-  - **Spatial grids:** implemented in native for **5v5-scale** fights (≥ 5 alive on either team for broad-phase; smaller rosters use the original brute scans for parity and less fixed cost).
+  - **Spatial grids:** native broad-phase for targeting/density/kite/obscurance only when either team has **≥ 6** alive (standard 5v5 at full roster uses brute). Separation uses a grid only at the same **≥ 6** alive-per-team threshold for custom large teams.
 
 ## Safe refactor sequence (status)
 

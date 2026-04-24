@@ -13,6 +13,7 @@ $checkOnly = $Arguments -contains "--check-only"
 $checkNativeLoad = $Arguments -contains "--check-native-load"
 $checkDeterminism = $Arguments -contains "--check-determinism"
 $checkBenchmark = $Arguments -contains "--check-benchmark"
+$checkBalancePatches = $Arguments -contains "--check-balance-patches"
 if ($checkOnly) {
 	$timeoutSeconds = 15
 }
@@ -53,6 +54,9 @@ elseif ($checkDeterminism) {
 }
 elseif ($checkBenchmark) {
 	$godotArgs += @("--script", "res://scripts/tools/check_benchmark.gd")
+}
+elseif ($checkBalancePatches) {
+	$godotArgs += @("--script", "res://scripts/tools/check_balance_patches.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

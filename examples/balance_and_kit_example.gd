@@ -1,4 +1,5 @@
 # balance_and_kit_example.gd
+# Automated checks: run `.\run_godot.ps1 --check-balance-patches` (see scripts/tools/check_balance_patches.gd).
 # Reference-only: not autoloaded. Shows how native balance patches, ability kits, and inline
 # overrides interact. See TeamfightSimulationCore.set_balance_patches() in the GDExtension.
 #

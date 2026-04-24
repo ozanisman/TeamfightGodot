@@ -1,3 +1,17 @@
 {
-  "kits": {}
+  "kits": {
+    "balance_suite_weak_artillery_ability": {
+      "ability": {
+        "kind": "projectile",
+        "params": {
+          "damage_multiplier": 0.05,
+          "damage_type": "physical",
+          "radius_override": null,
+          "reason": "Balance suite kit_id test (weak ability)",
+          "speed_override": null,
+          "stun_duration": 0.8
+        }
+      }
+    }
+  }
 }

@@ -24,12 +24,22 @@ const GameRootScene := preload("res://scenes/game_root.tscn")
 const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
 const StatsDashboardScript := preload("res://scripts/app/stats_dashboard.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
+const StatsChartAxisGuidesScript := preload("res://scripts/app/stats_chart_axis_guides.gd")
 const StatsDoughnutScript := preload("res://scripts/app/stats_doughnut.gd")
+const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
+const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
+const GenerateSimulationStatsScript := preload("res://scripts/tools/generate_simulation_stats.gd")
+const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_stats_aggregator_roundtrip.gd")
 
 func _init() -> void:
 	var _compile_bar := StatsBarControlScript
+	var _compile_axis_guides := StatsChartAxisGuidesScript
 	var _compile_doughnut := StatsDoughnutScript
 	var _compile_stats_dashboard := StatsDashboardScript
+	var _compile_agg := StatsCsvAggregatorScript
+	var _compile_gen := StatsSimulationCsvGeneratorScript
+	var _compile_export := GenerateSimulationStatsScript
+	var _compile_agg_rt := CheckStatsAggregatorRoundtripScript
 	var loader := StatsDashboardLoaderScript.new()
 	if loader.load_from_dir("res://fixtures/stats_dashboard") != OK:
 		push_error("StatsDashboardLoader fixture load failed")

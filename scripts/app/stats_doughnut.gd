@@ -28,12 +28,12 @@ func _draw() -> void:
 	var start: float = -PI * 0.5
 	if _p1_ratio > 0.0:
 		var end1: float = start + _p1_ratio * TAU
-		draw_arc(c, rad, start, end1, 48, COLOR_PLAYER, 8.0, true)
+		draw_arc(c, rad, start, end1, 48, COLOR_PLAYER, 12.0, true)
 		start = end1
 	if _p2_ratio > 0.0:
 		var end2: float = start + _p2_ratio * TAU
-		draw_arc(c, rad, start, end2, 48, COLOR_ENEMY, 8.0, true)
+		draw_arc(c, rad, start, end2, 48, COLOR_ENEMY, 12.0, true)
 		start = end2
 	if _draw_ratio > 0.0:
 		var end3: float = start + _draw_ratio * TAU
-		draw_arc(c, rad, start, end3, 48, COLOR_DRAW, 8.0, true)
+		draw_arc(c, rad, start, end3, 48, COLOR_DRAW, 12.0, true)

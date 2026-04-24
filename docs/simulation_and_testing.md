@@ -25,6 +25,9 @@ Special **first-flag** modes (select a different `--script` and shorter timeouts
 | `--check-determinism` | [`scripts/tools/check_determinism.gd`](../scripts/tools/check_determinism.gd) | Runs a **subset** of golden inputs twice per case; fails if canonical payloads/signatures differ. |
 | `--check-benchmark` | [`scripts/tools/check_benchmark.gd`](../scripts/tools/check_benchmark.gd) | Throughput benchmark (prints JSON to stdout). |
 | `--check-balance-patches` | [`scripts/tools/check_balance_patches.gd`](../scripts/tools/check_balance_patches.gd) | Native balance-patch API and overlay behavior smoke suite. |
+| `--check-stats-dashboard` | [`scripts/tools/check_stats_dashboard_load.gd`](../scripts/tools/check_stats_dashboard_load.gd) | Loads fixture CSVs and instantiates the stats dashboard scene. |
+| `--check-stats-aggregator` | [`scripts/tools/check_stats_aggregator_roundtrip.gd`](../scripts/tools/check_stats_aggregator_roundtrip.gd) | Writes synthetic summaries through [`stats_csv_aggregator.gd`](../scripts/tools/stats_csv_aggregator.gd) and reloads with [`stats_dashboard_loader.gd`](../scripts/tools/stats_dashboard_loader.gd). |
+| `--generate-stats` | [`scripts/tools/generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats.gd) | Headless native batch → CSV bundle under `res://stats_output` (or override with flags below). Default timeout 600s; override with `RUN_GODOT_GENERATE_STATS_TIMEOUT_SECONDS`. |
 
 If **none** of the above are present, the default headless path is [`scripts/tools/headless_bootstrap.gd`](../scripts/tools/headless_bootstrap.gd) → [`scripts/simulation/headless_runner.gd`](../scripts/simulation/headless_runner.gd).
 
@@ -108,6 +111,25 @@ Single-match summary prints to stdout if `--out` is omitted.
 
 ---
 
+## Stats CSV export (`--generate-stats`)
+
+Runs [`generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats.gd) (native extension required). Forwards user args after `--` to Godot:
+
+| Flag | Default | Meaning |
+|------|---------|--------|
+| `--out-dir=` | `res://stats_output` | Output folder for the four CSVs. |
+| `--team-sizes=` | `1,2,3,4,5` | Comma-separated team sizes to simulate. |
+| `--matches-per-size=` | `100` | Match count **per** listed team size. |
+| `--base-seed=` | `0` | Base seed offset (per-size seeds derived internally). |
+
+Example:
+
+```powershell
+.\run_godot.ps1 --generate-stats -- --matches-per-size=20 --team-sizes=1,2 --out-dir=res://stats_output
+```
+
+---
+
 ## Other checks
 
 | Command | Use |
@@ -116,6 +138,8 @@ Single-match summary prints to stdout if `--out` is omitted.
 | `.\run_godot.ps1 -- --check-native-load` | CI/smoke: extension loads and class registers. |
 | `.\run_godot.ps1 -- --check-determinism` | Regression: same seed → same outcome on repeated backend instances (subset of goldens). |
 | `.\run_godot.ps1 -- --check-balance-patches` | Balance patch overlays and `get_balance_patches` round-trip. |
+| `.\run_godot.ps1 --check-stats-aggregator` | Aggregator CSV shape + loader round-trip (no heavy sim). |
+| `.\run_godot.ps1 --generate-stats` | Full native CSV generation (long-running; see table above). |
 
 ---
 

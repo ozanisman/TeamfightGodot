@@ -3,7 +3,7 @@ extends Control
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
-const StatsDoughnutScript := preload("res://scripts/app/stats_doughnut.gd")
+const StatsBalanceBarScript := preload("res://scripts/app/stats_balance_bar.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
 const StatsChartAxisGuidesScript := preload("res://scripts/app/stats_chart_axis_guides.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
@@ -32,7 +32,7 @@ const UI_TOOLTIP_MOUSE_OFF := Vector2(14, 18)
 const UI_TOOLTIP_TEXT_W := 400
 const UI_HEADER_SUB_FONT := 16
 ## Left pane ~stats_gui.py sidebar: narrow controls column, chart gets the rest.
-const UI_DOUGHNUT_MIN := Vector2(236, 148)
+const UI_BALANCE_BAR_MIN := Vector2(236, 56)
 const UI_SIDEBAR_MIN_W := 258
 const UI_TOP_BAR_H := 52
 const UI_WINDOW_MIN := Vector2(960, 640)
@@ -116,7 +116,7 @@ var _search_text: String = ""
 var _active_role_filters: Dictionary = {}
 var _chart_uses_ci: bool = false
 
-var _doughnut: Control
+var _balance_bar: Control
 var _metric_option: OptionButton
 var _view_option: OptionButton
 var _sort_option: OptionButton
@@ -161,6 +161,7 @@ var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
 var _native_fallback_notice: Label
+var _regen_native_confirm: ConfirmationDialog
 var _regen_thread: Thread
 var _regen_runner: RefCounted
 var _regen_poll_timer: Timer
@@ -203,6 +204,7 @@ func _ready() -> void:
 	_clamp_current_size_to_loaded()
 	_build_ui()
 	_wire_controls()
+	_setup_regen_native_confirm_dialog()
 	_setup_regen_timer()
 	_refresh_all()
 
@@ -305,9 +307,10 @@ func _build_ui() -> void:
 	_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	filter_vb.add_child(_error_label)
 
-	_doughnut = StatsDoughnutScript.new()
-	_doughnut.custom_minimum_size = UI_DOUGHNUT_MIN
-	filter_vb.add_child(_doughnut)
+	_balance_bar = StatsBalanceBarScript.new()
+	_balance_bar.custom_minimum_size = UI_BALANCE_BAR_MIN
+	_balance_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	filter_vb.add_child(_balance_bar)
 
 	filter_vb.add_child(_section_label("VIEW MODE"))
 	_view_option = OptionButton.new()
@@ -765,6 +768,23 @@ func _wire_controls() -> void:
 	_regen_button.pressed.connect(_on_regenerate_pressed)
 
 
+func _setup_regen_native_confirm_dialog() -> void:
+	_regen_native_confirm = ConfirmationDialog.new()
+	_regen_native_confirm.title = "Native DLL not loaded"
+	_regen_native_confirm.ok_button_text = "Run anyway"
+	_regen_native_confirm.cancel_button_text = "Cancel"
+	_regen_native_confirm.dialog_text = (
+		"teamfight_simulation_core.dll is not loaded. "
+		+ "Export will use the GDScript simulator (slower, more CPU).\n\n"
+		+ "Run export anyway?"
+	)
+	var dlg_lbl: Label = _regen_native_confirm.get_label()
+	dlg_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dlg_lbl.add_theme_color_override("font_color", COLOR_RED)
+	_regen_native_confirm.confirmed.connect(_on_regen_native_export_confirmed)
+	add_child(_regen_native_confirm)
+
+
 func _setup_regen_timer() -> void:
 	_regen_poll_timer = Timer.new()
 	_regen_poll_timer.wait_time = 0.1
@@ -801,12 +821,12 @@ func _dir_probe_write(dir: String) -> bool:
 	return true
 
 
-func _on_regenerate_pressed() -> void:
+func _read_regen_export_params() -> Variant:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
-		_regen_status.text = "Native simulation not available."
+		_regen_status.text = "Simulation backend is not available."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
+		return null
 	var selected_sizes: Array = []
 	for sz in SimConstantsScript.SIMULATION_TEAM_SIZES:
 		var cb: CheckBox = _regen_checks.get(int(sz)) as CheckBox
@@ -815,19 +835,29 @@ func _on_regenerate_pressed() -> void:
 	if selected_sizes.is_empty():
 		_regen_status.text = "Select at least one mode (1v1 … 5v5)."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
+		return null
 	var n_text := _regen_sample_edit.text.strip_edges()
 	if n_text.is_empty() or not n_text.is_valid_int():
 		_regen_status.text = "Invalid sample size."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
+		return null
 	var n: int = int(n_text)
 	if n < 1:
 		_regen_status.text = "Sample size must be >= 1."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
-	var out_dir := _resolve_writable_stats_dir()
-	_regen_target_dir = out_dir
+		return null
+	return {
+		"output_dir": _resolve_writable_stats_dir(),
+		"team_sizes": selected_sizes,
+		"matches_per_size": n,
+		"base_seed": int(Time.get_ticks_msec() & 0x7FFFFFFF),
+	}
+
+
+func _run_regen_export_thread(params: Dictionary) -> void:
+	var selected_sizes: Array = params["team_sizes"]
+	var n: int = int(params["matches_per_size"])
+	_regen_target_dir = str(params["output_dir"])
 	_regen_total_matches = selected_sizes.size() * n
 	_regen_status.text = "Generating…"
 	_regen_status.remove_theme_color_override("font_color")
@@ -835,12 +865,6 @@ func _on_regenerate_pressed() -> void:
 	_regen_progress.value = 0.0
 	_regen_progress.visible = true
 	_set_regen_busy(true)
-	var params := {
-		"output_dir": out_dir,
-		"team_sizes": selected_sizes,
-		"matches_per_size": n,
-		"base_seed": int(Time.get_ticks_msec() & 0x7FFFFFFF),
-	}
 	_regen_runner = StatsSimulationCsvGeneratorScript.new()
 	_regen_thread = Thread.new()
 	var start_err: Error = _regen_thread.start(Callable(_regen_runner, "run_packed").bind(params))
@@ -853,6 +877,23 @@ func _on_regenerate_pressed() -> void:
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return
 	_regen_poll_timer.start()
+
+
+func _on_regenerate_pressed() -> void:
+	var params: Variant = _read_regen_export_params()
+	if params == null:
+		return
+	if not NativeSimulationBackendScript.new().is_native_runtime():
+		_regen_native_confirm.popup_centered()
+		return
+	_run_regen_export_thread(params)
+
+
+func _on_regen_native_export_confirmed() -> void:
+	var params: Variant = _read_regen_export_params()
+	if params == null:
+		return
+	_run_regen_export_thread(params)
 
 
 func _on_regen_poll_tick() -> void:
@@ -1076,7 +1117,7 @@ func _refresh_chart() -> void:
 			_current_size,
 			" (CI)" if use_ci else "",
 		]
-		_update_doughnut()
+		_update_balance_bar()
 		_chart_vbox.custom_minimum_size.x = _chart_scroll_min_x(label_width)
 		return
 
@@ -1132,7 +1173,7 @@ func _refresh_chart() -> void:
 		" (CI)" if use_ci else "",
 	]
 
-	_update_doughnut()
+	_update_balance_bar()
 
 	_chart_vbox.custom_minimum_size.x = _chart_scroll_min_x(label_width)
 	var row_idx := 0
@@ -1342,9 +1383,9 @@ func _sort_less(
 	return a.to_lower() > b.to_lower() if rev else a.to_lower() < b.to_lower()
 
 
-func _update_doughnut() -> void:
+func _update_balance_bar() -> void:
 	var s: Dictionary = _loader.summary_stats.get(_current_size, {})
-	_doughnut.set_balance(
+	_balance_bar.set_balance(
 		int(s.get("p1", 0)),
 		int(s.get("p2", 0)),
 		int(s.get("draws", 0)),

@@ -9,15 +9,18 @@ const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 var _backend: Object = null
 var _native_available: bool = false
 var _validation_mode: bool = false
+static var _logged_extension_load_failure: bool = false
 
 
 func _try_load_native_extension() -> void:
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
 	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
-		push_warning(
-			"GDExtension load returned %s for %s (expected if native/bin DLL is missing)."
-			% [load_status, NativeExtensionPath]
-		)
+		if not _logged_extension_load_failure:
+			_logged_extension_load_failure = true
+			push_warning(
+				"GDExtension load returned %s for %s (expected if native/bin DLL is missing)."
+				% [load_status, NativeExtensionPath]
+			)
 
 
 func _attach_native_or_gdscript() -> void:

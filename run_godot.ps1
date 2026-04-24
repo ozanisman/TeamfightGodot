@@ -14,8 +14,12 @@ $checkNativeLoad = $Arguments -contains "--check-native-load"
 $checkDeterminism = $Arguments -contains "--check-determinism"
 $checkBenchmark = $Arguments -contains "--check-benchmark"
 $checkBalancePatches = $Arguments -contains "--check-balance-patches"
+$checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
 if ($checkOnly) {
 	$timeoutSeconds = 15
+}
+elseif ($checkStatsDashboard) {
+	$timeoutSeconds = 30
 }
 elseif ($checkNativeLoad) {
 	$timeoutSeconds = 15
@@ -38,6 +42,9 @@ elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkDeterminism) {
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmark) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsDashboard) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
 elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
 }
@@ -58,6 +65,9 @@ elseif ($checkBenchmark) {
 elseif ($checkBalancePatches) {
 	$godotArgs += @("--script", "res://scripts/tools/check_balance_patches.gd")
 }
+elseif ($checkStatsDashboard) {
+	$godotArgs += @("--script", "res://scripts/tools/check_stats_dashboard_load.gd")
+}
 elseif (-not $checkOnly -and -not $checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
@@ -66,13 +76,13 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if ($checkOnly -and (Test-Path $logFile)) {
+if (($checkOnly -or $checkStatsDashboard) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
 
 try {
-	if ($checkOnly) {
+	if ($checkOnly -or $checkStatsDashboard) {
 		$deadline = (Get-Date).AddSeconds($timeoutSeconds)
 		while ((Get-Date) -lt $deadline) {
 			if ($process.HasExited) {

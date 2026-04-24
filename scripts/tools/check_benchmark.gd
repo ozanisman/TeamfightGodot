@@ -12,6 +12,15 @@ func _parse_int(prefix: String, fallback: int) -> int:
 			return int(arg.substr(prefix.length()))
 	return fallback
 
+func _flag_enabled(prefix: String) -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == prefix:
+			return true
+		if arg.begins_with(prefix + "="):
+			var tail: String = arg.substr(prefix.length() + 1)
+			return tail != "0" and tail.to_lower() != "false"
+	return false
+
 func _run_benchmark() -> void:
 	var extension_path: String = ProjectSettings.globalize_path(NativeExtensionPath)
 	var load_status: int = GDExtensionManager.load_extension(extension_path)
@@ -23,8 +32,13 @@ func _run_benchmark() -> void:
 	await process_frame
 	var batch_count: int = maxi(1, _parse_int("--batch-count=", 100000))
 	var team_size: int = maxi(1, _parse_int("--team-size=", 1))
+	var bench_skip_summaries: bool = _flag_enabled("--bench-skip-summaries")
 	var cpu_count: int = maxi(1, OS.get_processor_count())
+	var worker_cap: int = _parse_int("--workers=", _parse_int("--max-workers=", 0))
 	var worker_count: int = mini(batch_count, cpu_count)
+	if worker_cap > 0:
+		worker_count = mini(worker_count, worker_cap)
+	worker_count = maxi(1, worker_count)
 	var chunk_size: int = int(ceil(float(batch_count) / float(worker_count)))
 	var worker_runner = SimulationBatchWorkerScript.new()
 	var threads: Array[Thread] = []
@@ -46,6 +60,9 @@ func _run_benchmark() -> void:
 			"end_index": end_index,
 			"team_size": team_size,
 			"base_seed": 0,
+			"bench_skip_summaries": bench_skip_summaries,
+			# Batched native sim from multiple threads faults on Windows; single worker is safe and fastest for bench-skip.
+			"allow_native_batch": bench_skip_summaries and worker_count == 1,
 		}
 		var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))
 		if start_error != OK:
@@ -73,6 +90,7 @@ func _run_benchmark() -> void:
 	print(JSON.stringify({
 		"batch_count": completed_matches,
 		"team_size": team_size,
+		"bench_skip_summaries": bench_skip_summaries,
 		"workers": threads.size(),
 		"duration_sec": duration_sec,
 		"matches_per_sec": matches_per_sec,
@@ -87,4 +105,6 @@ func _run_benchmark() -> void:
 
 	threads.clear()
 	worker_runner = null
+	await process_frame
+	await process_frame
 	quit(0)

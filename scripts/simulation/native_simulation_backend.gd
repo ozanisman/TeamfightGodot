@@ -90,3 +90,25 @@ func run_matches(match_inputs: Array):
 		fallback[index] = run_match(match_inputs[index])
 		clear()
 	return fallback
+
+func run_match_simulation_only(match_input: Variant) -> void:
+	if not _ensure_native_backend():
+		push_error("Native simulation core is not available.")
+		return
+	if _backend.has_method("run_match_simulation_only"):
+		_backend.call("run_match_simulation_only", match_input)
+		return
+	run_match(match_input)
+	if _backend != null and _backend.has_method("clear"):
+		_backend.call("clear")
+
+## Runs N full simulations without building summaries. Call from one thread at a time (e.g. bench with --workers=1).
+func run_matches_simulation_only(match_inputs: Array) -> void:
+	if not _ensure_native_backend():
+		push_error("Native simulation core is not available.")
+		return
+	if _backend.has_method("run_matches_simulation_only"):
+		_backend.call("run_matches_simulation_only", match_inputs)
+		return
+	for index in range(match_inputs.size()):
+		run_match_simulation_only(match_inputs[index])

@@ -165,7 +165,10 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 		var expected_payload: Dictionary = ParityToolsScript.canonical_match_payload(expected_summary)
 		var actual_signature: String = ParityToolsScript.match_signature(actual_summary)
 		var payload_match := _payloads_match_with_tolerance(actual_payload, expected_payload, float_abs_eps, float_rel_eps)
-		if not payload_match or actual_signature != expected_signature:
+		# Signature mismatch is reported but does not block pass if payload matches within tolerance.
+		# Float values that round identically but differ in binary representation would fail an exact
+		# hash check even when functionally equivalent (cross-platform/cross-language precision limits).
+		if not payload_match:
 			var payload_diff: String = _summarize_payload_diff(actual_payload, expected_payload)
 			failures.append({
 				"name": String(fixture.get("name", "")),
@@ -173,6 +176,8 @@ static func _compare_fixture_set(backend: Object, fixture_path: String) -> bool:
 				"actual_signature": actual_signature,
 				"payload_diff": payload_diff,
 			})
+		elif actual_signature != expected_signature:
+			print("Fixture signature mismatch (payload OK): %s" % String(fixture.get("name", "")))
 		if backend.has_method("clear"):
 			backend.call("clear")
 

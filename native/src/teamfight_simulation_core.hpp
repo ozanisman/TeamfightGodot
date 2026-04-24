@@ -349,8 +349,10 @@ private:
 	static constexpr double PROJECTILE_TIME_WEIGHT_MAGE = 0.45;
 	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
 	static constexpr int SPATIAL_GRID_DIM = 8;
-	/// Broad-phase grid is for 5v5-scale fights; below this per-team alive count, use brute scans (parity-safe, less fixed cost for 1v1).
-	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 5;
+	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (6+). Standard 5v5 (5 alive) stays brute — avoids grid overhead at small n.
+	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 6;
+	/// Separation ally scan uses a grid only at this team alive count or above (custom large teams); 5v5 uses brute O(n) with tiny n.
+	static constexpr int SPATIAL_SEPARATION_TEAM_THRESHOLD = 6;
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
 	static constexpr const char *BALANCE_PATCHES_PATH = "res://fixtures/goldens/balance_patches.json";
@@ -487,6 +489,7 @@ private:
 	void _spatial_next_generation() const;
 	void _spatial_stamp_circle(double cx, double cy, double radius, const StringName &team) const;
 	void _spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const;
+	void _spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const;
 	bool _spatial_stamp_has(int64_t unit_index) const;
 	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
 	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;

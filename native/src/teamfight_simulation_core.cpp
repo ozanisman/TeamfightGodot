@@ -1364,6 +1364,41 @@ void TeamfightSimulationCore::_spatial_stamp_circle(double cx, double cy, double
 	}
 }
 
+void TeamfightSimulationCore::_spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const {
+	_spatial_next_generation();
+	if (radius <= 0.0) {
+		return;
+	}
+	double r2 = radius * radius;
+	double cs = _spatial_cell_size();
+	int icx = int(Math::floor((cx - WORLD_BOUNDARY_MIN) / cs));
+	int icy = int(Math::floor((cy - WORLD_BOUNDARY_MIN) / cs));
+	int span = int(Math::ceil(radius / cs)) + 1;
+	for (int dy = -span; dy <= span; ++dy) {
+		for (int dx = -span; dx <= span; ++dx) {
+			int ix = icx + dx;
+			int iy = icy + dy;
+			if (ix < 0 || iy < 0 || ix >= SPATIAL_GRID_DIM || iy >= SPATIAL_GRID_DIM) {
+				continue;
+			}
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets[static_cast<size_t>(fi)]) {
+				const UnitState &u = _units[idx];
+				if (!u.alive || u.team != team || u.instance_id == self_instance_id) {
+					continue;
+				}
+				double ox = u.pos_x - cx;
+				double oy = u.pos_y - cy;
+				double d2 = ox * ox + oy * oy;
+				if (d2 <= EPSILON || d2 >= r2) {
+					continue;
+				}
+				_spatial_stamp[static_cast<size_t>(idx)] = _spatial_generation;
+			}
+		}
+	}
+}
+
 void TeamfightSimulationCore::_spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const {
 	_spatial_next_generation();
 	if (danger_radius <= 0.0) {
@@ -2839,10 +2874,10 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 			double sep_x = 0.0;
 			double sep_y = 0.0;
 			const std::vector<int64_t> &ally_indices = _alive_indices_for_team(unit.team);
-			for (int64_t idx : ally_indices) {
+			auto accumulate_separation_from_ally = [&](int64_t idx) {
 				const UnitState &ally = _units[idx];
 				if (!ally.alive || ally.instance_id == unit.instance_id) {
-					continue;
+					return;
 				}
 				double ax = ally.pos_x;
 				double ay = ally.pos_y;
@@ -2850,12 +2885,26 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit) {
 				double dy = uy - ay;
 				double d2 = dx * dx + dy * dy;
 				if (d2 <= EPSILON || d2 >= r2) {
-					continue;
+					return;
 				}
 				double d = Math::sqrt(d2);
 				double force = (radius - d) / radius;
 				sep_x += (dx / d) * force;
 				sep_y += (dy / d) * force;
+			};
+			if (int64_t(ally_indices.size()) >= SPATIAL_SEPARATION_TEAM_THRESHOLD) {
+				_spatial_fill_buckets_for_indices(ally_indices);
+				_spatial_stamp_separation_candidates(ux, uy, radius, unit.team, unit.instance_id);
+				for (int64_t idx : ally_indices) {
+					if (!_spatial_stamp_has(idx)) {
+						continue;
+					}
+					accumulate_separation_from_ally(idx);
+				}
+			} else {
+				for (int64_t idx : ally_indices) {
+					accumulate_separation_from_ally(idx);
+				}
 			}
 			if (!Math::is_zero_approx(sep_x) || !Math::is_zero_approx(sep_y)) {
 				double nudge_speed = move_speed * NUDGE_SPEED_MODIFIER * _tick_rate;

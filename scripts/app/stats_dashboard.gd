@@ -1306,6 +1306,13 @@ func _refresh_chart() -> void:
 		bar_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bar_holder.custom_minimum_size = Vector2(chart_bar_holder_min_w, chart_row_bar_h)
 		var fill_ratio: float = clampf(val / bar_scale_max, 0.0, 1.0)
+		var draw_segment_ratio: float = -1.0
+		if (_current_metric == &"winRate" or is_synergy) and not use_ci:
+			var tg: int = StatsDashboardLoaderScript.get_count(u_data)
+			if tg > 0:
+				fill_ratio = clampf(float(u_data.get("wins", 0)) / float(tg), 0.0, 1.0)
+				draw_segment_ratio = clampf(float(u_data.get("draws", 0)) / float(tg), 0.0, 1.0)
+				draw_segment_ratio = minf(draw_segment_ratio, 1.0 - fill_ratio)
 		var ratio_color: float
 		if _absolute_colors and (_current_metric == &"winRate" or is_synergy):
 			ratio_color = val
@@ -1321,7 +1328,7 @@ func _refresh_chart() -> void:
 				var hi: float = maxf(lo, float(ci_bounds[1]))
 				ci_lo_r = clampf(lo / bar_scale_max, 0.0, 1.0)
 				ci_hi_r = clampf(hi / bar_scale_max, 0.0, 1.0)
-		bar_holder.set_visual(fill_ratio, bar_col, ci_lo_r, ci_hi_r, show_pct_axis)
+		bar_holder.set_visual(fill_ratio, bar_col, ci_lo_r, ci_hi_r, show_pct_axis, draw_segment_ratio)
 		hb.add_child(bar_holder)
 
 		var count: int = (

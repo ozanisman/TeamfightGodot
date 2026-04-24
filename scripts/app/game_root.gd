@@ -16,7 +16,6 @@ func _ready() -> void:
 		return
 
 	# Presentation layer will attach here once the compiled simulation core exists.
-	print("Teamfight Godot scaffold loaded.")
 
 func _start_headless_run() -> void:
 	HeadlessRunnerScript.run_from_cli(get_tree())

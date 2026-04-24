@@ -4,13 +4,16 @@
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include "python_random.hpp"
+
 #include <array>
 #include <cstdint>
-#include <random>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -24,34 +27,6 @@ protected:
 
 private:
 	struct UnitState;
-
-	struct Pcg32 {
-		// Minimal PCG32 (XSH RR) with 64-bit state.
-		// Deterministic across platforms/compilers.
-		uint64_t state = 0u;
-		uint64_t inc = 0u;
-
-		void seed(uint64_t init_state, uint64_t init_seq = 54u) {
-			state = 0u;
-			inc = (init_seq << 1u) | 1u;
-			next_u32();
-			state += init_state;
-			next_u32();
-		}
-
-		uint32_t next_u32() {
-			uint64_t oldstate = state;
-			state = oldstate * 6364136223846793005ULL + inc;
-			uint32_t xorshifted = uint32_t(((oldstate >> 18u) ^ oldstate) >> 27u);
-			uint32_t rot = uint32_t(oldstate >> 59u);
-			return (xorshifted >> rot) | (xorshifted << ((-int32_t(rot)) & 31));
-		}
-
-		double next_unit_f64() {
-			// [0, 1)
-			return double(next_u32()) / 4294967296.0;
-		}
-	};
 
 	struct EffectRecord {
 		int64_t opcode = 0;
@@ -80,6 +55,26 @@ private:
 		int64_t instance_id = 0;
 		StringName archetype_id;
 		StringName team;
+		StringName role_id;
+		/// Numeric combat fields copied from `stats` at spawn; use in hot paths instead of Dictionary::get.
+		struct CombatStats {
+			double max_hp = 0.0;
+			double max_mana = 0.0;
+			double ability_cd = 0.0;
+			double ultimate_cd = 0.0;
+			double attack_range = 0.0;
+			double move_speed = 0.0;
+			double attack_speed = 1.0;
+			double attack_damage = 0.0;
+			double projectile_speed = 0.0;
+			double projectile_radius = 0.0;
+			double life_steal = 0.0;
+			double mana_per_attack = 0.0;
+			double respawn_time = 0.0;
+			double armor = 0.0;
+			double magic_resist = 0.0;
+			double tenacity = 0.0;
+		} combat;
 		Dictionary stats;
 		std::array<std::vector<EffectRecord>, 5> passive_effects;
 		EffectRecord ability_effect;
@@ -114,7 +109,6 @@ private:
 		bool respawned_this_tick = false;
 		bool alive = true;
 		int64_t incoming_target_count = 0;
-		int64_t last_density_count = 0;
 		double perceived_threat = 0.0;
 		int64_t attack_count = 0;
 		double damage_dealt = 0.0;
@@ -137,10 +131,62 @@ private:
 		int64_t forced_target_id = 0;
 		double forced_target_remaining = 0.0;
 		StringName forced_target_kind;
-		std::unordered_map<int64_t, double> damage_sources;
+		struct DamageSourceEntry {
+			double damage = 0.0;
+			double last_time = 0.0;
+		};
+		std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
 		std::unordered_map<int64_t, double> recent_benefactors;
 		double last_hit_time = 0.0;
 		double regen_accumulator = 0.0;
+	};
+
+	struct UnitStrategy {
+		String display_name;
+		double distance_weight = 1.0;
+		double hp_weight = 0.0;
+		double ally_distance_weight = 1.0;
+		double ally_hp_weight = 0.0;
+		double ally_threat_weight = 0.0;
+		std::map<StringName, double> ally_role_priorities;
+		double stickiness_bonus = 2.0;
+		bool prefers_kiting = false;
+		double bucket_margin = 0.75;
+		std::array<StringName, 8> bucket_order{};
+		int bucket_order_len = 0;
+		double switch_margin = 0.75;
+		double in_range_bonus = 0.6;
+		double tank_penalty = 2.0;
+		double threat_response_weight = 0.0;
+		double projectile_time_weight = 0.0;
+		double execute_bonus_weight = 0.0;
+		double carry_peel_weight = 0.0;
+		double prey_instinct_weight = 0.0;
+		double cluster_weight = 0.0;
+		double spacing_weight = 0.0;
+		double bodyguard_weight = 0.0;
+		double obscurance_weight = 0.0;
+		double flanking_weight = 0.0;
+		double threat_decay_rate = 2.0;
+		std::map<StringName, double> role_priorities;
+	};
+
+	struct TickContext {
+		std::vector<int64_t> density_by_unit_index;
+		Vector2 player_team_center;
+		Vector2 enemy_team_center;
+		bool has_player_center = false;
+		bool has_enemy_center = false;
+		std::vector<int64_t> player_backliner_indices;
+		std::vector<int64_t> enemy_backliner_indices;
+	};
+
+	struct TraceEvent {
+		double t = 0.0;
+		StringName kind;
+		int64_t src = 0;
+		int64_t tgt = 0;
+		double val = 0.0;
 	};
 
 	struct BalancePatch {
@@ -158,11 +204,13 @@ private:
 	struct ProjectileState {
 		int64_t source_id = 0;
 		int64_t target_id = 0;
+		double pos_x = 0.0;
+		double pos_y = 0.0;
+		double speed = 0.0;
 		double damage = 0.0;
 		StringName damage_type;
 		double stun_duration = 0.0;
 		double radius = 0.0;
-		double time_remaining = 0.0;
 		StringName action_kind;
 		String reason;
 	};
@@ -310,7 +358,7 @@ private:
 	std::vector<ProjectileState> _scratch_projectiles;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
-	Pcg32 _rng;
+	CPythonRandom _rng;
 	double _time = 0.0;
 	int64_t _tick = 0;
 	double _tick_rate = DEFAULT_TICK_RATE;
@@ -331,17 +379,14 @@ private:
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
 	bool _catalog_loaded = false;
-	// Debug-only trace for 1v1 fixtures when record_events=true.
-	bool _debug_duel_trace = false;
-	int64_t _debug_duel_unit_a = 0;
-	int64_t _debug_duel_unit_b = 0;
-	bool _debug_targeting = false;
+	std::map<StringName, UnitStrategy> _role_strategy_cache;
+	UnitStrategy _default_strategy;
+	TickContext _tick_ctx;
+	std::vector<TraceEvent> _trace_buffer;
+	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
-	String _debug_fixture_name;
-	bool _compute_density_cache = false;
 
 	void _reset_runtime_state();
-	bool _is_debug_duel_unit(int64_t instance_id) const;
 	double _randf();
 	Dictionary _load_json_file(const String &path) const;
 	Dictionary _load_json_file_if_exists(const String &path) const;
@@ -366,19 +411,23 @@ private:
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
 	void _remove_alive_index(const StringName &team, int64_t index);
-	void _refresh_target_pressure();
+	/// When update_cluster_density is false, only refresh incoming_target_count (Python: end-of-tick
+	/// refresh_target_pressure does not recompute density cache).
+	void _refresh_target_pressure(bool update_cluster_density = true);
+	void _prepare_tick_context();
+	void _build_role_strategy_cache();
+	const UnitStrategy &_strategy_for_unit(const UnitState &unit) const;
+	void _emit_trace(const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
 	void _adjust_target_pressure(int64_t old_target_id, int64_t new_target_id);
 	void _simulate();
 	void _step_tick();
 	void _update_unit(UnitState &unit);
+	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
-	void _process_actions();
 	bool _kite_from_enemies(UnitState &unit);
-	Dictionary _strategy_for_unit(const UnitState &unit) const;
-	Dictionary _scale_priority_dict(const Dictionary &source) const;
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const Dictionary &strategy) const;
-	double _score_ally_target(const UnitState &unit, const UnitState &ally, const Dictionary &strategy) const;
-	bool _should_switch(const UnitState &unit, double current_score, double new_score, const Dictionary &strategy) const;
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx) const;
+	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy) const;
+	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
 	bool _try_cast_ultimate(UnitState &unit, UnitState &target, double distance);
 	bool _start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind);
@@ -397,6 +446,7 @@ private:
 	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
+	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
 	void _add_shield(UnitState &source, UnitState &target, double amount);
 	void _heal_unit(UnitState &source, UnitState &target, double amount);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
@@ -427,6 +477,15 @@ public:
 	void clear();
 	Dictionary run_match(const Variant &match_input);
 	Array run_matches(const Array &match_inputs);
+
+	/// Incremental match API (used by SimRunner / gameplay loops). Does not replace run_match for batch parity runs.
+	void begin_match(const Variant &match_input);
+	void advance_one_tick();
+	bool match_ticks_exhausted() const;
+	Dictionary finish_and_summarize();
+	/// Debug: compact per-unit state after the last completed tick (parity tooling).
+	Dictionary get_tick_snapshot() const;
+	Array get_trace_events() const;
 
 	// Balance patch API: inject patches at runtime without modifying balance_patches.json.
 	// Each element in `patches` must be a Dictionary with keys:

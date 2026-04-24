@@ -65,6 +65,10 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += "--"
 	$godotArgs += $Arguments
 }
+# Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
+if ($checkOnly -and (Test-Path $logFile)) {
+	Clear-Content -Path $logFile
+}
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
 
 try {

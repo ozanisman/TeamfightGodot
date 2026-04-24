@@ -177,6 +177,8 @@ private:
 		Vector2 enemy_team_center;
 		bool has_player_center = false;
 		bool has_enemy_center = false;
+		/// Any alive unit on roster this tick needs cluster density (folded from _prepare_tick_context scans).
+		bool needs_cluster_density = false;
 		std::vector<int64_t> player_backliner_indices;
 		std::vector<int64_t> enemy_backliner_indices;
 	};
@@ -396,6 +398,18 @@ private:
 	mutable std::vector<uint32_t> _spatial_stamp;
 	mutable uint32_t _spatial_generation = 1;
 
+	/// TEAMFIGHT_SIM_PROFILE env: per-_simulate() wall time (nanoseconds) by _step_tick section.
+	uint64_t _sim_profile_ns_projectiles = 0;
+	uint64_t _sim_profile_ns_prepare_tick_ctx = 0;
+	uint64_t _sim_profile_ns_refresh_pressure_pre = 0;
+	uint64_t _sim_profile_ns_update_units = 0;
+	uint64_t _sim_profile_ns_refresh_pressure_post = 0;
+	int64_t _sim_profile_tick_count = 0;
+
+	static bool _sim_profile_env_enabled();
+	void _sim_profile_reset();
+	void _sim_profile_emit_json_stderr() const;
+
 	void _reset_runtime_state();
 	double _randf();
 	Dictionary _load_json_file(const String &path) const;
@@ -430,7 +444,7 @@ private:
 	void _emit_trace(const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
 	void _adjust_target_pressure(int64_t old_target_id, int64_t new_target_id);
 	void _simulate();
-	void _step_tick();
+	void _step_tick(bool profile_sim);
 	void _update_unit(UnitState &unit);
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
@@ -530,8 +544,13 @@ public:
 	/// Force libc stdio flush (headless / PowerShell often fully-buffers stdout).
 	void flush_stdio();
 
-	/// Progress line to **stderr** immediately (Godot `print` from worker threads queues until main thread runs).
-	void benchmark_console_progress(int64_t completed, int64_t total, bool native_batch);
+	/// Thread-safe batch progress (workers call add; main thread reads + prints — never print from worker threads).
+	void benchmark_progress_reset(int64_t total_matches);
+	void benchmark_progress_add(int64_t delta_matches);
+	int64_t benchmark_progress_read();
+
+	/// When true (or env TEAMFIGHT_SIM_PROFILE), _simulate emits one stderr JSON line per match with per-section tick timings.
+	void sim_profile_set_enabled(bool enabled);
 };
 
 #endif

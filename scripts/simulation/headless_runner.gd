@@ -11,6 +11,7 @@ const SimulationSchemaScript := preload("res://scripts/simulation/simulation_sch
 const ParityToolsScript := preload("res://scripts/simulation/parity_tools.gd")
 const ReplayIOScript := preload("res://scripts/simulation/replay_io.gd")
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
+const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 static func _build_backend():
 	var backend: Object = NativeSimulationBackendScript.new()
@@ -321,7 +322,7 @@ static func run_from_cli(tree: SceneTree) -> void:
 	await tree.process_frame
 	if not backend.is_available():
 		push_error("Headless simulation requires a simulation backend.")
-		tree.quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 		return
 	var dump_schema_hash := _extract_argument("--dump-schema-hash=", "")
 	var dump_schema_path := _extract_argument("--dump-schema-json=", "")
@@ -336,7 +337,7 @@ static func run_from_cli(tree: SceneTree) -> void:
 				var schema_file := FileAccess.open(dump_schema_path, FileAccess.WRITE)
 				if schema_file == null:
 					push_error("Failed to write schema dump file: %s" % dump_schema_path)
-					tree.quit(1)
+					await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 					return
 				schema_file.store_string(JSON.stringify(schema_payload, "\t", true, true))
 			if dump_schema_hash != "":
@@ -347,22 +348,22 @@ static func run_from_cli(tree: SceneTree) -> void:
 				var contract_file := FileAccess.open(dump_contract_path, FileAccess.WRITE)
 				if contract_file == null:
 					push_error("Failed to write contract dump file: %s" % dump_contract_path)
-					tree.quit(1)
+					await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 					return
 				contract_file.store_string(JSON.stringify(contract_payload, "\t", true, true))
 			if dump_contract_hash != "":
 				print(ParityToolsScript.hash_payload(contract_payload))
-		tree.quit()
+		await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0)
 		return
 
 	if sign_fixture_in != "":
 		var sign_ok := _sign_fixture_set(sign_fixture_in, sign_fixture_out)
-		tree.quit(0 if sign_ok else 1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0 if sign_ok else 1)
 		return
 	var rewrite_fixture_path := _extract_argument("--rewrite-fixture-summaries=", "")
 	if rewrite_fixture_path != "":
 		var rewrite_ok := _rewrite_fixture_summaries(backend, rewrite_fixture_path)
-		tree.quit(0 if rewrite_ok else 1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0 if rewrite_ok else 1)
 		return
 	var input_path := _extract_argument("--match-file=")
 	var output_path := _extract_argument("--out=")
@@ -377,7 +378,7 @@ static func run_from_cli(tree: SceneTree) -> void:
 		if debug_fixture_name != "":
 			var parsed: Variant = _load_json_variant(fixture_file)
 			if not (parsed is Dictionary):
-				tree.quit(1)
+				await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 				return
 			var fixture_doc: Dictionary = Dictionary(parsed)
 			for entry in Array(fixture_doc.get("fixtures", [])):
@@ -394,13 +395,13 @@ static func run_from_cli(tree: SceneTree) -> void:
 				var match_obj: Object = MatchReplayInputScript.from_dict(input_data)
 				backend.run_match(match_obj)
 				print("Debug fixture run complete: %s" % debug_fixture_name)
-				tree.quit(0)
+				await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0)
 				return
 			push_error("Debug fixture name not found: %s" % debug_fixture_name)
-			tree.quit(1)
+			await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 			return
 		var fixture_ok := _compare_fixture_set(backend, fixture_file)
-		tree.quit(0 if fixture_ok else 1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0 if fixture_ok else 1)
 		return
 	elif input_path != "":
 		match_input = ReplayIOScript.load_input_file(input_path)
@@ -432,14 +433,14 @@ static func run_from_cli(tree: SceneTree) -> void:
 		var cpu_count: int = maxi(1, OS.get_processor_count())
 		var worker_count: int = mini(batch_count, cpu_count)
 		var chunk_size: int = int(ceil(float(batch_count) / float(worker_count)))
-		var worker_runner := SimulationBatchWorkerScript.new()
+		var worker_runners: Array = []
 		var threads: Array[Thread] = []
 		var output_file = null
 		if output_path != "":
 			output_file = FileAccess.open(output_path, FileAccess.WRITE)
 			if output_file == null:
 				push_error("Failed to write replay summary batch file: %s" % output_path)
-				tree.quit(1)
+				await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 				return
 			output_file.store_string("[")
 		else:
@@ -449,6 +450,8 @@ static func run_from_cli(tree: SceneTree) -> void:
 			var end_index: int = mini(batch_count, start_index + chunk_size)
 			if start_index >= end_index:
 				break
+			var worker_runner := SimulationBatchWorkerScript.new()
+			worker_runners.append(worker_runner)
 			var thread := Thread.new()
 			threads.append(thread)
 			var thread_data := {
@@ -465,7 +468,7 @@ static func run_from_cli(tree: SceneTree) -> void:
 						(started_thread as Thread).wait_to_finish()
 				if output_file != null:
 					output_file.close()
-				tree.quit(1)
+				await HeadlessShutdownScript.teardown_extension_then_quit(tree, 1)
 				return
 		var wrote_any: bool = false
 		for thread in threads:
@@ -491,7 +494,7 @@ static func run_from_cli(tree: SceneTree) -> void:
 		else:
 			print("]")
 		threads.clear()
-		worker_runner = null
+		worker_runners.clear()
 	else:
 		var summary: Object = _summary_object(backend.run_match(match_input))
 		if output_path != "":
@@ -502,4 +505,4 @@ static func run_from_cli(tree: SceneTree) -> void:
 			backend.call("clear")
 
 	backend = null
-	tree.quit()
+	await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0)

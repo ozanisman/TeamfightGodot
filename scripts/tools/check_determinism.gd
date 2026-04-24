@@ -6,6 +6,7 @@ const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_i
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const ParityToolsScript := preload("res://scripts/simulation/parity_tools.gd")
+const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 func _init() -> void:
 	call_deferred("_probe_determinism")
@@ -51,14 +52,14 @@ func _probe_determinism() -> void:
 	var load_status: int = GDExtensionManager.load_extension(extension_path)
 	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
 		push_error("Failed to load %s (status %d)" % [NativeExtensionPath, load_status])
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	await process_frame
 	var failures: Array = []
 	var fixture_inputs: Array = _load_fixture_inputs()
 	if fixture_inputs.is_empty():
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	for fixture_input_value in fixture_inputs:
@@ -83,8 +84,8 @@ func _probe_determinism() -> void:
 		push_error("Replay determinism failed for %d case(s)." % failures.size())
 		for failure in failures:
 			push_error(JSON.stringify(failure, "\t"))
-		quit(1)
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
 	print("Replay determinism passed for %d case(s)." % fixture_inputs.size())
-	quit(0)
+	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

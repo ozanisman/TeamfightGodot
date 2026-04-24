@@ -33,6 +33,7 @@ func _run_benchmark() -> void:
 	var batch_count: int = maxi(1, _parse_int("--batch-count=", 100000))
 	var team_size: int = maxi(1, _parse_int("--team-size=", 1))
 	var bench_skip_summaries: bool = _flag_enabled("--bench-skip-summaries")
+	var base_seed: int = _parse_int("--base-seed=", 0)
 	var cpu_count: int = maxi(1, OS.get_processor_count())
 	var worker_cap: int = _parse_int("--workers=", _parse_int("--max-workers=", 0))
 	var worker_count: int = mini(batch_count, cpu_count)
@@ -47,6 +48,8 @@ func _run_benchmark() -> void:
 	var start_peak_memory: int = int(OS.get_static_memory_peak_usage())
 	var start_usec: int = Time.get_ticks_usec()
 
+	SimulationBatchWorkerScript.reset_benchmark_progress(batch_count)
+
 	for worker_index in range(worker_count):
 		var start_index: int = worker_index * chunk_size
 		var end_index: int = mini(batch_count, start_index + chunk_size)
@@ -59,7 +62,7 @@ func _run_benchmark() -> void:
 			"start_index": start_index,
 			"end_index": end_index,
 			"team_size": team_size,
-			"base_seed": 0,
+			"base_seed": base_seed,
 			"bench_skip_summaries": bench_skip_summaries,
 			# Batched native sim from multiple threads faults on Windows; single worker is safe and fastest for bench-skip.
 			"allow_native_batch": bench_skip_summaries and worker_count == 1,
@@ -72,6 +75,17 @@ func _run_benchmark() -> void:
 					(started_thread as Thread).wait_to_finish()
 			quit(1)
 			return
+
+	# Pump the main loop while workers run so UtilityFunctions::print from threads flushes each frame.
+	while true:
+		var any_alive: bool = false
+		for thread in threads:
+			if thread.is_alive():
+				any_alive = true
+				break
+		if not any_alive:
+			break
+		await process_frame
 
 	var completed_matches: int = 0
 	for thread in threads:
@@ -90,6 +104,7 @@ func _run_benchmark() -> void:
 	print(JSON.stringify({
 		"batch_count": completed_matches,
 		"team_size": team_size,
+		"base_seed": base_seed,
 		"bench_skip_summaries": bench_skip_summaries,
 		"workers": threads.size(),
 		"duration_sec": duration_sec,

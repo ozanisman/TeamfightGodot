@@ -25,7 +25,7 @@ const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard
 const StatsDashboardScript := preload("res://scripts/app/stats_dashboard.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
 const StatsChartAxisGuidesScript := preload("res://scripts/app/stats_chart_axis_guides.gd")
-const StatsDoughnutScript := preload("res://scripts/app/stats_doughnut.gd")
+const StatsBalanceBarScript := preload("res://scripts/app/stats_balance_bar.gd")
 const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const GenerateSimulationStatsScript := preload("res://scripts/tools/generate_simulation_stats.gd")
@@ -34,7 +34,7 @@ const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_
 func _init() -> void:
 	var _compile_bar := StatsBarControlScript
 	var _compile_axis_guides := StatsChartAxisGuidesScript
-	var _compile_doughnut := StatsDoughnutScript
+	var _compile_balance_bar := StatsBalanceBarScript
 	var _compile_stats_dashboard := StatsDashboardScript
 	var _compile_agg := StatsCsvAggregatorScript
 	var _compile_gen := StatsSimulationCsvGeneratorScript

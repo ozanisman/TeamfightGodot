@@ -6,11 +6,11 @@ extends SceneTree
 const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
 const StatsDashboardScript := preload("res://scripts/app/stats_dashboard.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
-const StatsDoughnutScript := preload("res://scripts/app/stats_doughnut.gd")
+const StatsBalanceBarScript := preload("res://scripts/app/stats_balance_bar.gd")
 
 func _init() -> void:
 	var _compile_bar := StatsBarControlScript
-	var _compile_doughnut := StatsDoughnutScript
+	var _compile_balance_bar := StatsBalanceBarScript
 	var _compile_panel := StatsDashboardScript
 	var loader := StatsDashboardLoaderScript.new()
 	if loader.load_from_dir("res://fixtures/stats_dashboard") != OK:

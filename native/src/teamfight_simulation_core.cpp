@@ -7,6 +7,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <cstdio>
 #include <cmath>
 #include <limits>
 #include <mutex>
@@ -236,6 +237,24 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_trace_events"), &TeamfightSimulationCore::get_trace_events);
 	ClassDB::bind_method(D_METHOD("set_balance_patches", "patches"), &TeamfightSimulationCore::set_balance_patches);
 	ClassDB::bind_method(D_METHOD("get_balance_patches"), &TeamfightSimulationCore::get_balance_patches);
+	ClassDB::bind_method(D_METHOD("flush_stdio"), &TeamfightSimulationCore::flush_stdio);
+	ClassDB::bind_method(D_METHOD("benchmark_console_progress", "completed", "total", "native_batch"), &TeamfightSimulationCore::benchmark_console_progress);
+}
+
+void TeamfightSimulationCore::flush_stdio() {
+	std::fflush(stdout);
+	std::fflush(stderr);
+}
+
+void TeamfightSimulationCore::benchmark_console_progress(int64_t completed, int64_t total, bool native_batch) {
+	// Use Godot print (not raw fprintf): headless Godot often does not forward libc stderr to the parent console.
+	// Live updates require the main SceneTree to run process_frame while workers run (see check_benchmark.gd).
+	if (native_batch) {
+		UtilityFunctions::print(vformat("[benchmark] completed %d / %d matches (native batch)", completed, total));
+	} else {
+		UtilityFunctions::print(vformat("[benchmark] completed %d / %d matches", completed, total));
+	}
+	flush_stdio();
 }
 
 double TeamfightSimulationCore::_randf() {
@@ -1472,8 +1491,9 @@ int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index
 				if (!other.alive) {
 					continue;
 				}
-				double d = _distance_between(self, other);
-				if (d * d <= r2) {
+				double odx = other.pos_x - self.pos_x;
+				double ody = other.pos_y - self.pos_y;
+				if (odx * odx + ody * ody <= r2) {
 					count += 1;
 				}
 			}
@@ -1565,8 +1585,8 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx) {
-	double dist = _distance_between(attacker, enemy);
+double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, double attacker_enemy_distance) {
+	double dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : _distance_between(attacker, enemy);
 	double attack_range = _attack_range(attacker);
 	double effective_range = _effective_attack_range(attacker);
 	// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
@@ -1645,6 +1665,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		const std::vector<int64_t> &ally_indices = _alive_indices_for_team(attacker.team);
 		if (_use_spatial_broad_phase()) {
 			_spatial_stamp_circle(enemy.pos_x, enemy.pos_y, BODYGUARD_RADIUS, attacker.team);
+			const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
 			for (int64_t ally_index : ally_indices) {
 				if (!_spatial_stamp_has(ally_index)) {
 					continue;
@@ -1653,20 +1674,27 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 				if (ally.role_id != StringName("marksman") && ally.role_id != StringName("mage")) {
 					continue;
 				}
-				double ally_dist = _distance_between(enemy, ally);
-				if (ally_dist < BODYGUARD_RADIUS) {
+				double adx = ally.pos_x - enemy.pos_x;
+				double ady = ally.pos_y - enemy.pos_y;
+				double ally_dist_sq = adx * adx + ady * ady;
+				if (ally_dist_sq < bodyguard_r2) {
+					double ally_dist = Math::sqrt(ally_dist_sq);
 					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
 					score -= guard_bonus;
 				}
 			}
 		} else {
+			const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
 			for (int64_t ally_index : ally_indices) {
 				const UnitState &ally = _units[ally_index];
 				if (ally.role_id != StringName("marksman") && ally.role_id != StringName("mage")) {
 					continue;
 				}
-				double ally_dist = _distance_between(enemy, ally);
-				if (ally_dist < BODYGUARD_RADIUS) {
+				double adx = ally.pos_x - enemy.pos_x;
+				double ady = ally.pos_y - enemy.pos_y;
+				double ally_dist_sq = adx * adx + ady * ady;
+				if (ally_dist_sq < bodyguard_r2) {
+					double ally_dist = Math::sqrt(ally_dist_sq);
 					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
 					score -= guard_bonus;
 				}
@@ -2009,8 +2037,9 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 						if (!other.alive) {
 							continue;
 						}
-						double d = _distance_between(u, other);
-						if (d * d <= r2) {
+						double dx = u.pos_x - other.pos_x;
+						double dy = u.pos_y - other.pos_y;
+						if (dx * dx + dy * dy <= r2) {
 							count += 1;
 						}
 					}
@@ -2460,7 +2489,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	// Periodic keep path: if we are within retarget interval and no special conditions, just keep current target.
 	if (!forced_reason && unit.retarget_timer > 0.0 && !assassin_pressuring_frontline) {
 		// Match Python: skip evaluation entirely; just return current target score (no switching).
-		unit.current_target_score = _score_enemy_target(unit, *current_target, strategy, ctx);
+		double keep_dist = _distance_between(unit, *current_target);
+		unit.current_target_score = _score_enemy_target(unit, *current_target, strategy, ctx, keep_dist);
 		_set_current_target(unit, *current_target);
 		return current_target;
 	}
@@ -2470,8 +2500,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &candidate = _units[enemy_index];
-		double raw = _score_enemy_target(unit, candidate, strategy, ctx);
 		double dist = _distance_between(unit, candidate);
+		double raw = _score_enemy_target(unit, candidate, strategy, ctx, dist);
 		StringName bucket = classify_bucket(candidate, dist, strategy);
 		int rank = bucket_rank_for(strategy, bucket);
 		double adjusted = adjusted_score_for(candidate, raw, dist, strategy);
@@ -2506,8 +2536,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		return best;
 	}
 
-	double current_score = _score_enemy_target(unit, *current_target, strategy, ctx);
 	double current_dist = _distance_between(unit, *current_target);
+	double current_score = _score_enemy_target(unit, *current_target, strategy, ctx, current_dist);
 	if (best->instance_id == current_target->instance_id) {
 		unit.current_target_score = current_score;
 		_set_current_target(unit, *current_target);
@@ -3491,9 +3521,14 @@ void TeamfightSimulationCore::run_match_simulation_only(const Variant &match_inp
 }
 
 void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inputs) {
-	for (int64_t index = 0; index < match_inputs.size(); ++index) {
+	const int64_t total = match_inputs.size();
+	for (int64_t index = 0; index < total; ++index) {
 		run_match_simulation_only(match_inputs[index]);
 		clear();
+		const int64_t done = index + 1;
+		if (done % 1000 == 0) {
+			benchmark_console_progress(done, total, true);
+		}
 	}
 }
 

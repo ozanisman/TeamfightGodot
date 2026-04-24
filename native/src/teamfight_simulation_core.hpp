@@ -435,7 +435,8 @@ private:
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx);
+	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0);
 	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy) const;
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
@@ -525,6 +526,12 @@ public:
 	// Calling this resets the catalog so patches take effect on the next run_match().
 	void set_balance_patches(const Array &patches);
 	Array get_balance_patches() const;
+
+	/// Force libc stdio flush (headless / PowerShell often fully-buffers stdout).
+	void flush_stdio();
+
+	/// Progress line to **stderr** immediately (Godot `print` from worker threads queues until main thread runs).
+	void benchmark_console_progress(int64_t completed, int64_t total, bool native_batch);
 };
 
 #endif

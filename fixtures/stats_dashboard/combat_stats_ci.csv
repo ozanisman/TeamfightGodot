@@ -1,0 +1,2 @@
+team_size,hero,samples,win_rate,avg_damage_dealt,avg_damage_received,avg_healing_done,avg_damage_mitigated,win_rate_ci_low,win_rate_ci_high,avg_damage_dealt_ci_low,avg_damage_dealt_ci_high,avg_damage_received_ci_low,avg_damage_received_ci_high,avg_healing_done_ci_low,avg_healing_done_ci_high,avg_damage_mitigated_ci_low,avg_damage_mitigated_ci_high
+1,archer,10,0.5,100.0,80.0,2.0,5.0,0.3,0.7,80.0,120.0,60.0,100.0,0.0,5.0,2.0,8.0

@@ -315,7 +315,10 @@ static func _summarize_payload_diff(actual_payload: Dictionary, expected_payload
 static func run_from_cli(tree: SceneTree) -> void:
 	await tree.process_frame
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-	if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+	if (
+		load_status != GDExtensionManager.LOAD_STATUS_OK
+		and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
+	):
 		push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
 	await tree.process_frame
 	var backend: Object = _build_backend()

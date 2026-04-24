@@ -31,10 +31,10 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 
-func _pct_label(total: int, part: int) -> String:
+func _pct_label(total: int, part: int, team: String) -> String:
 	if total < 1:
 		return "—"
-	return "%.1f%%" % (100.0 * float(part) / float(total))
+	return team + ": " + ("%.1f%%" % (100.0 * float(part) / float(total)))
 
 
 func _draw() -> void:
@@ -47,9 +47,9 @@ func _draw() -> void:
 	var rd: float = float(_draws) / float(_total) if _total > 0 else 0.0
 	var rp2: float = float(_p2) / float(_total) if _total > 0 else 0.0
 
-	_draw_segment_label(font, 0.0, third, _pct_label(_total, _p1), COLOR_P1)
-	_draw_segment_label(font, third, third, _pct_label(_total, _draws), COLOR_DRAW)
-	_draw_segment_label(font, 2.0 * third, third, _pct_label(_total, _p2), COLOR_P2)
+	_draw_segment_label(font, 0.0, third, _pct_label(_total, _p1, "P1"), COLOR_P1)
+	_draw_segment_label(font, third, third, _pct_label(_total, _draws, "Draws"), COLOR_DRAW)
+	_draw_segment_label(font, 2.0 * third, third, _pct_label(_total, _p2, "P2"), COLOR_P2)
 
 	draw_rect(Rect2(0.0, y_bar, bw, BAR_HEIGHT), COLOR_TRACK)
 	if _total < 1:

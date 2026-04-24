@@ -25,7 +25,10 @@ func _ready() -> void:
 		return
 	if _argv_has_flag("--headless-run"):
 		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-		if load_status != OK and load_status != ERR_ALREADY_EXISTS:
+		if (
+			load_status != GDExtensionManager.LOAD_STATUS_OK
+			and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
+		):
 			push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
 		await get_tree().process_frame
 		_start_headless_run()

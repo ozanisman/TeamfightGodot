@@ -28,14 +28,20 @@ const UI_MIN_CONTROL_H := 46
 const UI_ROW_MARGIN := 3
 const UI_NAME_H_SEP := 2
 const UI_ROLE_MARKER_S := 10
-const UI_TOOLTIP_MOUSE_OFF := Vector2(14, 18)
-const UI_TOOLTIP_TEXT_W := 400
+const UI_TOOLTIP_MOUSE_OFF := Vector2(16, 20)
 const UI_HEADER_SUB_FONT := 16
+## Chart hover tooltip (custom overlay, not Theme tooltip).
+const UI_TOOLTIP_FONT_SIZE := 22
+const UI_TOOLTIP_MIN_WIDTH := 520
+const UI_TOOLTIP_CONTENT_MARGIN := 10
+const DASHBOARD_MAX_FPS := 60
 ## Left pane ~stats_gui.py sidebar: narrow controls column, chart gets the rest.
 const UI_BALANCE_BAR_MIN := Vector2(236, 56)
-const UI_SIDEBAR_MIN_W := 258
+const UI_SIDEBAR_MIN_W := 320
 const UI_TOP_BAR_H := 52
 const UI_WINDOW_MIN := Vector2(960, 640)
+## When true, export always opens the confirm dialog first (for UI testing only).
+const DEBUG_FORCE_REGEN_CONFIRM_POPUP := false
 
 const CI_SUPPORTED: Dictionary = {
 	&"winRate": true,
@@ -162,12 +168,16 @@ var _regen_progress: ProgressBar
 var _regen_status: Label
 var _native_fallback_notice: Label
 var _regen_native_confirm: ConfirmationDialog
+var _regen_stashed_export_params: Variant = null
 var _regen_thread: Thread
 var _regen_runner: RefCounted
 var _regen_poll_timer: Timer
 var _regen_total_matches: int = 0
+var _regen_wall_start_msec: int = 0
 var _regen_target_dir: String = ""
 var _main_split: HSplitContainer
+var _saved_max_fps_before_cap: int = 0
+var _fps_cap_applied: bool = false
 
 @onready var _root_vb: VBoxContainer = $RootVBox
 
@@ -195,6 +205,7 @@ func _stretch_control_to_parent_full_rect(c: Control) -> void:
 
 
 func _ready() -> void:
+	_apply_dashboard_fps_cap()
 	_apply_dashboard_window_settings()
 	_team_button_group = ButtonGroup.new()
 	_build_unit_roles()
@@ -207,6 +218,20 @@ func _ready() -> void:
 	_setup_regen_native_confirm_dialog()
 	_setup_regen_timer()
 	_refresh_all()
+
+
+func _apply_dashboard_fps_cap() -> void:
+	if _fps_cap_applied:
+		return
+	_saved_max_fps_before_cap = Engine.max_fps
+	Engine.max_fps = DASHBOARD_MAX_FPS
+	_fps_cap_applied = true
+
+
+func _exit_tree() -> void:
+	if _fps_cap_applied:
+		Engine.max_fps = _saved_max_fps_before_cap
+		_fps_cap_applied = false
 
 
 func _apply_dashboard_window_settings() -> void:
@@ -301,7 +326,7 @@ func _build_ui() -> void:
 	regen_scroll.add_child(regen_vb)
 	tabs.add_child(regen_scroll)
 	tabs.set_tab_title(0, "Filters")
-	tabs.set_tab_title(1, "Export")
+	tabs.set_tab_title(1, "New Data")
 
 	_error_label = Label.new()
 	_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -406,8 +431,8 @@ func _build_ui() -> void:
 		"Not using native simulation: running GDScript backend (slower). "
 		+ "Build and place teamfight_simulation_core.dll in native/bin/ to use the native core."
 	)
-	var native_probe := NativeSimulationBackendScript.new()
-	_native_fallback_notice.visible = not native_probe.is_native_runtime()
+	# File-only check skips non-Windows and any Windows path that exists without a working GDExtension.
+	_native_fallback_notice.visible = not NativeSimulationBackendScript.new().is_native_runtime()
 	export_inner.add_child(_native_fallback_notice)
 
 	var regen_hint := Label.new()
@@ -640,7 +665,7 @@ func _build_chart_tooltip_overlay() -> void:
 	_tt_style.set_border_width_all(2)
 	_tt_style.border_color = COLOR_SUBTLE
 	_tt_style.set_corner_radius_all(4)
-	_tt_style.set_content_margin_all(6)
+	_tt_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)
 	_tt_panel = PanelContainer.new()
 	_tt_panel.visible = false
 	_tt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -652,8 +677,12 @@ func _build_chart_tooltip_overlay() -> void:
 	_tt_label.fit_content = true
 	_tt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_tt_label.add_theme_color_override("default_color", COLOR_TEXT)
-	_tt_label.add_theme_font_size_override("default_font_size", UI_HEADER_SUB_FONT)
-	_tt_label.custom_minimum_size.x = UI_TOOLTIP_TEXT_W
+	_tt_label.add_theme_font_size_override("normal_font_size", UI_TOOLTIP_FONT_SIZE)
+	_tt_label.add_theme_font_size_override("bold_font_size", UI_TOOLTIP_FONT_SIZE)
+	_tt_label.add_theme_font_size_override("italics_font_size", UI_TOOLTIP_FONT_SIZE)
+	_tt_label.add_theme_font_size_override("bold_italics_font_size", UI_TOOLTIP_FONT_SIZE)
+	_tt_label.add_theme_font_size_override("mono_font_size", UI_TOOLTIP_FONT_SIZE)
+	_tt_label.custom_minimum_size.x = UI_TOOLTIP_MIN_WIDTH
 	_tt_panel.add_child(_tt_label)
 	add_child(_tt_panel)
 
@@ -770,19 +799,29 @@ func _wire_controls() -> void:
 
 func _setup_regen_native_confirm_dialog() -> void:
 	_regen_native_confirm = ConfirmationDialog.new()
-	_regen_native_confirm.title = "Native DLL not loaded"
+	_regen_native_confirm.title = "Native DLL not found"
 	_regen_native_confirm.ok_button_text = "Run anyway"
 	_regen_native_confirm.cancel_button_text = "Cancel"
 	_regen_native_confirm.dialog_text = (
-		"teamfight_simulation_core.dll is not loaded. "
+		"native/bin/teamfight_simulation_core.dll was not found. "
 		+ "Export will use the GDScript simulator (slower, more CPU).\n\n"
 		+ "Run export anyway?"
 	)
+	_regen_native_confirm.min_size = Vector2i(420, 180)
+	_regen_native_confirm.exclusive = true
+	_regen_native_confirm.always_on_top = true
+	_regen_native_confirm.unresizable = true
 	var dlg_lbl: Label = _regen_native_confirm.get_label()
 	dlg_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dlg_lbl.add_theme_color_override("font_color", COLOR_RED)
 	_regen_native_confirm.confirmed.connect(_on_regen_native_export_confirmed)
-	add_child(_regen_native_confirm)
+	_regen_native_confirm.canceled.connect(_on_regen_native_export_canceled)
+	var win: Window = get_viewport().get_window()
+	if win == null:
+		add_child(_regen_native_confirm)
+		return
+	# Sub-Window must be a direct child of the main Window (not CanvasLayer) to show reliably.
+	win.add_child(_regen_native_confirm)
 
 
 func _setup_regen_timer() -> void:
@@ -876,24 +915,50 @@ func _run_regen_export_thread(params: Dictionary) -> void:
 		_regen_status.text = "Could not start background thread."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return
+	_regen_wall_start_msec = Time.get_ticks_msec()
 	_regen_poll_timer.start()
 
 
 func _on_regenerate_pressed() -> void:
+	if DEBUG_FORCE_REGEN_CONFIRM_POPUP:
+		_regen_stashed_export_params = _read_regen_export_params()
+		call_deferred("_deferred_show_regen_native_confirm")
+		return
 	var params: Variant = _read_regen_export_params()
 	if params == null:
 		return
+	# Use runtime (GDExtension actually loaded), not FileAccess: non-Windows always skipped file check;
+	# a present DLL path can still fail to register TeamfightSimulationCore.
 	if not NativeSimulationBackendScript.new().is_native_runtime():
-		_regen_native_confirm.popup_centered()
+		_regen_stashed_export_params = params
+		call_deferred("_deferred_show_regen_native_confirm")
 		return
-	_run_regen_export_thread(params)
+	_regen_stashed_export_params = null
+	_run_regen_export_thread(params as Dictionary)
+
+
+func _deferred_show_regen_native_confirm() -> void:
+	if _regen_native_confirm == null:
+		push_error("StatsDashboard: regen confirmation dialog is null.")
+		return
+	_regen_native_confirm.reset_size()
+	_regen_native_confirm.popup_centered()
 
 
 func _on_regen_native_export_confirmed() -> void:
-	var params: Variant = _read_regen_export_params()
-	if params == null:
+	var params: Variant = _regen_stashed_export_params
+	_regen_stashed_export_params = null
+	if params == null or not params is Dictionary:
+		params = _read_regen_export_params()
+	if params == null or not params is Dictionary:
+		_regen_status.text = "Export settings invalid. Fix errors above, then try again."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return
-	_run_regen_export_thread(params)
+	_run_regen_export_thread(params as Dictionary)
+
+
+func _on_regen_native_export_canceled() -> void:
+	_regen_stashed_export_params = null
 
 
 func _on_regen_poll_tick() -> void:
@@ -926,7 +991,12 @@ func _finish_regen_completed(err: int) -> void:
 		return
 	_clamp_current_size_to_loaded()
 	_sync_team_size_buttons()
-	_regen_status.text = "Reloaded data from %s" % _stats_path
+	var elapsed_s: float = (Time.get_ticks_msec() - _regen_wall_start_msec) / 1000.0
+	var mps: float = float(_regen_total_matches) / maxf(elapsed_s, 0.0001)
+	_regen_status.text = (
+		"Reloaded data from %s — %d matches in %.2f s (%.0f matches/s)"
+		% [_stats_path, _regen_total_matches, elapsed_s, mps]
+	)
 	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_refresh_all()
 
@@ -1397,17 +1467,17 @@ func _escape_bbcode_plain(s: String) -> String:
 	return str(s).replace("[", "[lb]").replace("]", "[rb]")
 
 
-func _tooltip_entity_line_bbcode(key: String, display_name: String, entity_caps: String, is_synergy: bool) -> String:
+func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: bool) -> String:
 	var safe_name: String = _escape_bbcode_plain(display_name)
 	if is_synergy:
-		return "%s: %s" % [entity_caps, safe_name]
+		return "%s" % [safe_name]
 	var c: Color = COLOR_TEXT
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key, ""))
 		c = ROLE_COLORS.get(rk, COLOR_TEXT) as Color
 	elif _view_mode == &"roles":
 		c = ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
-	return "[color=%s]%s: %s[/color]" % [c.to_html(false), entity_caps, safe_name]
+	return "[color=%s]%s[/color]" % [c.to_html(false), safe_name]
 
 
 func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: bool) -> String:
@@ -1426,7 +1496,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		var dr: Array = ci.get("damage_received", [u_data.get("damage_received", 0.0), u_data.get("damage_received", 0.0)])
 		var dm: Array = ci.get("damage_mitigated", [u_data.get("damage_mitigated", 0.0), u_data.get("damage_mitigated", 0.0)])
 		var hd: Array = ci.get("healing_done", [u_data.get("healing_done", 0.0), u_data.get("healing_done", 0.0)])
-		lines.append(_tooltip_entity_line_bbcode(key, display_name, entity_caps, is_synergy))
+		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
 		lines.append("Samples: %d" % int(count))
 		lines.append("Win Rate: %.1f%% [%.1f%%, %.1f%%]" % [
 			float(u_data.get("winRate", 0.0)) * 100.0,
@@ -1454,12 +1524,16 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			float(hd[1]),
 		])
 	else:
-		lines.append(_tooltip_entity_line_bbcode(key, display_name, entity_caps, is_synergy))
+		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
 		lines.append("Games Played: %d" % int(count))
+		lines.append(
+			"Win Rate: %.1f%%" % (float(u_data.get("winRate", 0.0)) * 100.0)
+		)
 		lines.append(
 			"Record: %d-%d-%d (W-L-D)"
 			% [int(u_data.get("wins", 0)), int(u_data.get("losses", 0)), int(u_data.get("draws", 0))]
 		)
+		lines.append("")
 		var kills: float = float(u_data.get("kills", 0.0))
 		var deaths: float = float(u_data.get("deaths", 0.0))
 		var assists: float = float(u_data.get("assists", 0.0))
@@ -1467,9 +1541,6 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		lines.append(
 			"K/D/A: %.1f/%.1f/%.1f (%.2f)"
 			% [kills / cf, deaths / cf, assists / cf, float(u_data.get("kda", 0.0))]
-		)
-		lines.append(
-			"Win Rate: %.1f%%" % (float(u_data.get("winRate", 0.0)) * 100.0)
 		)
 		lines.append(
 			"Average damage: %.0f (Received: %.0f)"
@@ -1480,15 +1551,18 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		)
 		lines.append("Average mitigated: %.0f" % (float(u_data.get("damage_mitigated", 0.0)) / cf))
 		lines.append(
-			"Average healing: %.0f | Shield: %.0f"
-			% [
-				float(u_data.get("healing_done", 0.0)) / cf,
-				float(u_data.get("shielding_done", 0.0)) / cf,
-			]
+			"Average healing: %.0f"
+			% (float(u_data.get("healing_done", 0.0)) / cf)
+		)
+		lines.append(
+			"Average shielding: %.0f"
+			% (float(u_data.get("shielding_done", 0.0)) / cf)
 		)
 		lines.append("Stuns: %.1f" % (float(u_data.get("stuns", 0.0)) / cf))
 		if u_data.has("breakdown"):
 			var b: Dictionary = u_data["breakdown"]
+			lines.append("")
+			lines.append("Damage Dealt Breakdown:")
 			lines.append(
 				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
 				% [

@@ -22,6 +22,7 @@ func _run() -> void:
 	var sizes_raw := _extract_argument("--team-sizes=", "1,2,3,4,5")
 	var matches := int(_extract_argument("--matches-per-size=", "100"))
 	var seed := int(_extract_argument("--base-seed=", "0"))
+	var export_workers := int(_extract_argument("--export-workers=", "0"))
 	var arr: Array[int] = []
 	for part in sizes_raw.split(","):
 		var t: String = part.strip_edges()
@@ -33,7 +34,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
-	var err: Error = gen.run(out_dir, arr, matches, seed)
+	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers)
 	if err != OK:
 		push_error("generate_simulation_stats failed: %s" % error_string(err))
 		quit(1)

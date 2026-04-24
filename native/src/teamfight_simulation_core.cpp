@@ -211,6 +211,8 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear"), &TeamfightSimulationCore::clear);
 	ClassDB::bind_method(D_METHOD("run_match", "match_input"), &TeamfightSimulationCore::run_match);
 	ClassDB::bind_method(D_METHOD("run_matches", "match_inputs"), &TeamfightSimulationCore::run_matches);
+	ClassDB::bind_method(D_METHOD("set_balance_patches", "patches"), &TeamfightSimulationCore::set_balance_patches);
+	ClassDB::bind_method(D_METHOD("get_balance_patches"), &TeamfightSimulationCore::get_balance_patches);
 }
 
 double TeamfightSimulationCore::_randf() {
@@ -266,6 +268,20 @@ Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
 	return Dictionary(parsed);
 }
 
+Dictionary TeamfightSimulationCore::_load_json_file_if_exists(const String &path) const {
+	Dictionary empty;
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		return empty;
+	}
+	Variant parsed = JSON::parse_string(file->get_as_text());
+	if (parsed.get_type() != Variant::DICTIONARY) {
+		UtilityFunctions::push_error(vformat("Failed to parse JSON file: %s", path));
+		return empty;
+	}
+	return Dictionary(parsed);
+}
+
 Dictionary TeamfightSimulationCore::_effect_to_dict(const Variant &effect) const {
 	if (effect.get_type() == Variant::DICTIONARY) {
 		return Dictionary(effect);
@@ -289,7 +305,237 @@ void TeamfightSimulationCore::_ensure_catalog_loaded() {
 	_champion_catalog = _load_json_file(String(CHAMPION_SCHEMA_PATH));
 	_build_role_configs();
 	_build_passive_registry();
+
+	// Load balance patches (file is optional; silently skip if absent or empty).
+	_balance_patches.clear();
+	Dictionary bp_root = _load_json_file(String(BALANCE_PATCHES_PATH));
+	if (!bp_root.is_empty()) {
+		Array patches = Array(bp_root.get("patches", Array()));
+		for (int64_t i = 0; i < patches.size(); ++i) {
+			Dictionary pd = Dictionary(patches[i]);
+			BalancePatch patch;
+			_parse_balance_patch_from_dict(pd, patch);
+			_balance_patches.push_back(patch);
+		}
+	}
+
+	// Optional ability kits (preset ability/ultimate/passive swaps).
+	_ability_kits = Dictionary();
+	Dictionary kits_root = _load_json_file_if_exists(String(ABILITY_KITS_PATH));
+	if (!kits_root.is_empty()) {
+		_ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
+	}
+
+	_rebuild_effective_champion_cache();
+
 	_catalog_loaded = true;
+}
+
+void TeamfightSimulationCore::_parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch) {
+	Array targets = Array(pd.get("targets", Array()));
+	for (int64_t t = 0; t < targets.size(); ++t) {
+		patch.targets.push_back(StringName(String(targets[t])));
+	}
+	Array roles = Array(pd.get("roles", Array()));
+	for (int64_t r = 0; r < roles.size(); ++r) {
+		patch.roles.push_back(StringName(String(roles[r])));
+	}
+	patch.stat_multipliers = Dictionary(pd.get("stat_multipliers", Dictionary()));
+	patch.stat_additions = Dictionary(pd.get("stat_additions", Dictionary()));
+	if (pd.has("kit_id")) {
+		patch.kit_id = StringName(String(pd["kit_id"]));
+	}
+	if (pd.has("ability")) {
+		patch.ability_override = pd["ability"];
+	}
+	if (pd.has("ultimate")) {
+		patch.ultimate_override = pd["ultimate"];
+	}
+	if (pd.has("passive_ids")) {
+		patch.passive_ids_override = pd["passive_ids"];
+	}
+}
+
+bool TeamfightSimulationCore::_patch_applies_to(const BalancePatch &patch, const StringName &archetype_id, const StringName &role) const {
+	if (!patch.targets.empty()) {
+		bool matched = false;
+		for (const StringName &t : patch.targets) {
+			if (t == archetype_id) {
+				matched = true;
+				break;
+			}
+		}
+		if (!matched) {
+			return false;
+		}
+	}
+	if (!patch.roles.empty()) {
+		bool matched = false;
+		for (const StringName &r : patch.roles) {
+			if (r == role) {
+				matched = true;
+				break;
+			}
+		}
+		if (!matched) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void TeamfightSimulationCore::_apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) const {
+	Array mul_keys = patch.stat_multipliers.keys();
+	for (int64_t i = 0; i < mul_keys.size(); ++i) {
+		Variant key = mul_keys[i];
+		if (stats.has(key)) {
+			double current = double(stats[key]);
+			double multiplier = double(patch.stat_multipliers[key]);
+			stats[key] = current * multiplier;
+		}
+	}
+	Array add_keys = patch.stat_additions.keys();
+	for (int64_t i = 0; i < add_keys.size(); ++i) {
+		Variant key = add_keys[i];
+		if (stats.has(key)) {
+			double current = double(stats[key]);
+			double delta = double(patch.stat_additions[key]);
+			stats[key] = current + delta;
+		}
+	}
+}
+
+void TeamfightSimulationCore::_merge_kit_into_champion(Dictionary &champion, const Dictionary &kit) const {
+	if (kit.has("ability")) {
+		Variant v = kit["ability"];
+		if (v.get_type() == Variant::DICTIONARY) {
+			champion["ability"] = Dictionary(v).duplicate(true);
+		}
+	}
+	if (kit.has("ultimate")) {
+		Variant v = kit["ultimate"];
+		if (v.get_type() == Variant::DICTIONARY) {
+			champion["ultimate"] = Dictionary(v).duplicate(true);
+		}
+	}
+	if (kit.has("passive_ids")) {
+		Variant v = kit["passive_ids"];
+		if (v.get_type() == Variant::ARRAY) {
+			champion["passive_ids"] = Array(v).duplicate();
+		}
+	}
+}
+
+void TeamfightSimulationCore::_rebuild_effective_champion_cache() {
+	_effective_champion_by_archetype.clear();
+	Array archetype_keys = _champion_catalog.keys();
+	for (int64_t ki = 0; ki < archetype_keys.size(); ++ki) {
+		Variant key_var = archetype_keys[ki];
+		String key_str = String(key_var);
+		StringName archetype_id = StringName(key_str);
+		Dictionary base = Dictionary(_champion_catalog[key_var]);
+		if (base.is_empty()) {
+			continue;
+		}
+		Dictionary eff = base.duplicate(true);
+		Dictionary stats = Dictionary(eff["stats"]);
+		Dictionary role_config = Dictionary(_role_configs.get(stats.get("role", StringName()), Dictionary()));
+		Dictionary stat_mods = Dictionary(role_config.get("stat_mods", Dictionary()));
+		Array stat_keys = stat_mods.keys();
+		for (int64_t key_index = 0; key_index < stat_keys.size(); ++key_index) {
+			Variant key_value = stat_keys[key_index];
+			stats[key_value] = stat_mods[key_value];
+		}
+		StringName role_name = StringName(stats.get("role", StringName()));
+
+		for (const BalancePatch &patch : _balance_patches) {
+			if (!_patch_applies_to(patch, archetype_id, role_name)) {
+				continue;
+			}
+			_apply_stat_patch_to_stats(patch, stats);
+
+			if (!patch.kit_id.is_empty()) {
+				Variant kit_v = _ability_kits.get(patch.kit_id, Variant());
+				if (kit_v.get_type() == Variant::DICTIONARY) {
+					_merge_kit_into_champion(eff, Dictionary(kit_v));
+				} else {
+					UtilityFunctions::push_error(vformat("Balance patch references unknown kit_id '%s' (archetype '%s')", String(patch.kit_id), key_str));
+				}
+			}
+			if (patch.ability_override.get_type() == Variant::DICTIONARY) {
+				eff["ability"] = Dictionary(patch.ability_override).duplicate(true);
+			}
+			if (patch.ultimate_override.get_type() == Variant::DICTIONARY) {
+				eff["ultimate"] = Dictionary(patch.ultimate_override).duplicate(true);
+			}
+			if (patch.passive_ids_override.get_type() == Variant::ARRAY) {
+				eff["passive_ids"] = Array(patch.passive_ids_override).duplicate();
+			}
+		}
+
+		eff["stats"] = stats;
+
+		if (!_validate_effective_champion(archetype_id, eff)) {
+			UtilityFunctions::push_error(vformat("Effective champion validation failed for '%s'; using vanilla catalog entry.", key_str));
+			Dictionary vanilla = base.duplicate(true);
+			Dictionary vstats = Dictionary(vanilla["stats"]);
+			Dictionary vrole_config = Dictionary(_role_configs.get(vstats.get("role", StringName()), Dictionary()));
+			Dictionary vstat_mods = Dictionary(vrole_config.get("stat_mods", Dictionary()));
+			Array vk = vstat_mods.keys();
+			for (int64_t i = 0; i < vk.size(); ++i) {
+				Variant kv = vk[i];
+				vstats[kv] = vstat_mods[kv];
+			}
+			vanilla["stats"] = vstats;
+			_effective_champion_by_archetype[key_str] = vanilla;
+		} else {
+			_effective_champion_by_archetype[key_str] = eff;
+		}
+	}
+}
+
+bool TeamfightSimulationCore::_validate_effective_champion(const StringName &archetype_id, const Dictionary &champion) const {
+	bool ok = true;
+	Variant ab = champion.get("ability", Variant());
+	if (ab.get_type() == Variant::DICTIONARY) {
+		Dictionary abd = Dictionary(ab);
+		StringName kind = StringName(String(abd.get("kind", "")));
+		EffectRecord compiled = _compile_effect(abd);
+		if (!kind.is_empty() && compiled.opcode == EFFECT_OPCODE_UNKNOWN) {
+			UtilityFunctions::push_error(vformat("Unknown or unsupported ability kind '%s' for archetype '%s'", String(kind), String(archetype_id)));
+			ok = false;
+		}
+	}
+	Variant ult = champion.get("ultimate", Variant());
+	if (ult.get_type() == Variant::DICTIONARY) {
+		Dictionary ultd = Dictionary(ult);
+		StringName kind = StringName(String(ultd.get("kind", "")));
+		EffectRecord compiled = _compile_effect(ultd);
+		if (!kind.is_empty() && compiled.opcode == EFFECT_OPCODE_UNKNOWN) {
+			UtilityFunctions::push_error(vformat("Unknown or unsupported ultimate kind '%s' for archetype '%s'", String(kind), String(archetype_id)));
+			ok = false;
+		}
+	}
+	Array passive_ids = Array(champion.get("passive_ids", Array()));
+	for (int64_t i = 0; i < passive_ids.size(); ++i) {
+		StringName pid = StringName(String(passive_ids[i]));
+		if (pid.is_empty()) {
+			continue;
+		}
+		if (Dictionary(_passive_registry.get(pid, Dictionary())).is_empty()) {
+			UtilityFunctions::push_error(vformat("Unknown passive_id '%s' for archetype '%s'", String(pid), String(archetype_id)));
+			ok = false;
+		}
+	}
+	return ok;
+}
+
+Dictionary TeamfightSimulationCore::_effective_champion_for(const StringName &archetype_id) const {
+	String key = String(archetype_id);
+	if (_effective_champion_by_archetype.has(key)) {
+		return Dictionary(_effective_champion_by_archetype[key]);
+	}
+	return _champion_for(archetype_id);
 }
 
 void TeamfightSimulationCore::_build_role_configs() {
@@ -562,20 +808,16 @@ void TeamfightSimulationCore::_append_team_units(const Array &spawn_specs, const
 TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id) {
 	UnitState unit;
 	StringName archetype_id = StringName(String(spawn_spec.get("archetype_id", "")));
-	Dictionary champion = _champion_for(archetype_id);
+	Dictionary champion = _effective_champion_for(archetype_id);
 	if (champion.is_empty()) {
 		UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(archetype_id)));
 		return unit;
 	}
 
-	Dictionary stats = Dictionary(champion["stats"]);
-	Dictionary role_config = Dictionary(_role_configs.get(stats.get("role", StringName()), Dictionary()));
-	Dictionary stat_mods = Dictionary(role_config.get("stat_mods", Dictionary()));
-	Array stat_keys = stat_mods.keys();
-	for (int64_t key_index = 0; key_index < stat_keys.size(); ++key_index) {
-		Variant key_value = stat_keys[key_index];
-		stats[key_value] = stat_mods[key_value];
-	}
+	// Stats, kits, and balance overlays are resolved in _rebuild_effective_champion_cache().
+	Dictionary stats = Dictionary(champion["stats"]).duplicate(true);
+	StringName role_name = StringName(stats.get("role", StringName()));
+	Dictionary role_config = Dictionary(_role_configs.get(role_name, Dictionary()));
 
 	auto passive_bucket_index = [](const StringName &kind) -> int {
 		if (kind == StringName("on_attack")) {
@@ -2255,7 +2497,7 @@ void TeamfightSimulationCore::_step_tick() {
 	}
 	_refresh_target_pressure();
 	// Position trace for 2-unit duel debugging.
-	if (_units.size() == 2 && _time >= 39.8 && _time <= 58.0) {
+	if (_units.size() == 2 && (_time >= 39.8 && _time <= 58.0)) {
 		String line = String("[duel-pos] t=") + String::num(_time);
 		for (const UnitState &u : _units) {
 			line += String(" ") + String(u.archetype_id) +
@@ -2266,6 +2508,20 @@ void TeamfightSimulationCore::_step_tick() {
 					" rsp=" + String::num(u.respawn_timer, 2);
 		}
 		UtilityFunctions::print(line);
+	}
+	// Early-phase artillery trace for divergence debugging.
+	if (_units.size() == 2 && _time >= 7.0 && _time <= 16.0) {
+		String line2 = String("[duel-early] t=") + String::num(_time);
+		for (const UnitState &u : _units) {
+			line2 += String(" ") + String(u.archetype_id) +
+					"(" + (u.alive ? "A" : "D") + ")" +
+					" hp=" + String::num(u.hp, 3) +
+					" shld=" + String::num(u.shield, 3) +
+					" atk=" + String::num(u.attack_cooldown, 3) +
+					" cast=" + String::num(u.casting_remaining, 3) +
+					" abil_cd=" + String::num(u.ability_cooldown, 3);
+		}
+		UtilityFunctions::print(line2);
 	}
 }
 
@@ -2793,7 +3049,9 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &projectile) {
 	UnitState *source = _unit_by_id(projectile.source_id);
 	UnitState *target = _unit_by_id(projectile.target_id);
-	if (source == nullptr || target == nullptr || !source->alive || !target->alive) {
+	// Python parity: projectiles resolve even if the source has since died.
+	// Only cancel if the target is gone (no unit to hit) or source record is missing.
+	if (source == nullptr || target == nullptr || !target->alive) {
 		return;
 	}
 	double damage = projectile.damage;
@@ -3028,4 +3286,51 @@ Array TeamfightSimulationCore::run_matches(const Array &match_inputs) {
 		clear();
 	}
 	return summaries;
+}
+
+void TeamfightSimulationCore::set_balance_patches(const Array &patches) {
+	// Ensure the champion catalog (champion data, role configs, passives) is loaded
+	// before we replace the patch list, so _champion_catalog stays valid.
+	_ensure_catalog_loaded();
+	_balance_patches.clear();
+	for (int64_t i = 0; i < patches.size(); ++i) {
+		Dictionary pd = Dictionary(patches[i]);
+		BalancePatch patch;
+		_parse_balance_patch_from_dict(pd, patch);
+		_balance_patches.push_back(patch);
+	}
+	_rebuild_effective_champion_cache();
+}
+
+Array TeamfightSimulationCore::get_balance_patches() const {
+	Array result;
+	for (const BalancePatch &patch : _balance_patches) {
+		Dictionary pd;
+		Array targets;
+		for (const StringName &t : patch.targets) {
+			targets.append(String(t));
+		}
+		pd["targets"] = targets;
+		Array roles;
+		for (const StringName &r : patch.roles) {
+			roles.append(String(r));
+		}
+		pd["roles"] = roles;
+		pd["stat_multipliers"] = patch.stat_multipliers;
+		pd["stat_additions"] = patch.stat_additions;
+		if (!patch.kit_id.is_empty()) {
+			pd["kit_id"] = String(patch.kit_id);
+		}
+		if (patch.ability_override.get_type() != Variant::NIL) {
+			pd["ability"] = patch.ability_override;
+		}
+		if (patch.ultimate_override.get_type() != Variant::NIL) {
+			pd["ultimate"] = patch.ultimate_override;
+		}
+		if (patch.passive_ids_override.get_type() != Variant::NIL) {
+			pd["passive_ids"] = patch.passive_ids_override;
+		}
+		result.append(pd);
+	}
+	return result;
 }

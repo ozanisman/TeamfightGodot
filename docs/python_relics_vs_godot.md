@@ -7,7 +7,7 @@ This document lists implementation patterns that were intentionally copied from 
 - **Where**
   - `native/src/teamfight_simulation_core.cpp`: `_strategy_for_unit()`, `_score_enemy_target()`, `_select_enemy_target()`, `_score_ally_target()`, `_select_ally_target()`
   - `native/src/teamfight_simulation_core.hpp`: strategy-related constants + `Dictionary`/`Variant` use in interfaces
-- **Why it exists (Python parity)**
+- **Why it exists (Python parity)**j
   - Python uses a dataclass (`TargetingStrategy`) with many knobs and defaults; porting as a `Dictionary` preserved flexibility while behavior was in flux.
 - **Why it’s a poor fit in Godot/native**
   - Repeated `Dictionary.get(...)` and `Variant` conversions are slower and harder to profile.

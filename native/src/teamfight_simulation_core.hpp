@@ -348,6 +348,9 @@ private:
 	static constexpr double PROJECTILE_TIME_WEIGHT_MARKSMAN = 0.35;
 	static constexpr double PROJECTILE_TIME_WEIGHT_MAGE = 0.45;
 	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
+	static constexpr int SPATIAL_GRID_DIM = 8;
+	/// Broad-phase grid is for 5v5-scale fights; below this per-team alive count, use brute scans (parity-safe, less fixed cost for 1v1).
+	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 5;
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
 	static constexpr const char *BALANCE_PATCHES_PATH = "res://fixtures/goldens/balance_patches.json";
@@ -385,6 +388,11 @@ private:
 	std::vector<TraceEvent> _trace_buffer;
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
+
+	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;
+	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets_aux;
+	mutable std::vector<uint32_t> _spatial_stamp;
+	mutable uint32_t _spatial_generation = 1;
 
 	void _reset_runtime_state();
 	double _randf();
@@ -425,7 +433,7 @@ private:
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx) const;
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx);
 	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy) const;
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
@@ -469,6 +477,22 @@ private:
 	Dictionary _effect_to_dict(const Variant &effect) const;
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
+	void _spatial_ensure_stamp_size() const;
+	void _spatial_clear_buckets() const;
+	void _spatial_clear_buckets_aux() const;
+	double _spatial_cell_size() const;
+	int _spatial_flat_index(double x, double y) const;
+	void _spatial_add_alive_team(const StringName &team) const;
+	void _spatial_rebuild_all_alive() const;
+	void _spatial_next_generation() const;
+	void _spatial_stamp_circle(double cx, double cy, double radius, const StringName &team) const;
+	void _spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const;
+	bool _spatial_stamp_has(int64_t unit_index) const;
+	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
+	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;
+	int _spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &enemy_indices, int64_t target_instance_id) const;
+	bool _use_spatial_broad_phase() const;
+
 public:
 	TeamfightSimulationCore();
 	~TeamfightSimulationCore() override;
@@ -477,6 +501,8 @@ public:
 	void clear();
 	Dictionary run_match(const Variant &match_input);
 	Array run_matches(const Array &match_inputs);
+	void run_match_simulation_only(const Variant &match_input);
+	void run_matches_simulation_only(const Array &match_inputs);
 
 	/// Incremental match API (used by SimRunner / gameplay loops). Does not replace run_match for batch parity runs.
 	void begin_match(const Variant &match_input);

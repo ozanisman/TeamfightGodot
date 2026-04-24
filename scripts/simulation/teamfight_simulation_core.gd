@@ -57,6 +57,14 @@ func run_matches(match_inputs: Array) -> Array:
 		clear()
 	return results
 
+func run_match_simulation_only(match_input: Variant) -> void:
+	run_match(match_input)
+
+func run_matches_simulation_only(match_inputs: Array) -> void:
+	for index in range(match_inputs.size()):
+		run_match_simulation_only(match_inputs[index])
+		clear()
+
 func run_match(match_input: Variant):
 	clear()
 

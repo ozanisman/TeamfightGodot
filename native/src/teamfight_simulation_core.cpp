@@ -6,8 +6,10 @@
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <mutex>
 #include <utility>
 
 static double strategy_role_prio(const std::map<StringName, double> &m, const StringName &key) {
@@ -207,6 +209,13 @@ std::vector<TeamfightSimulationCore::EffectRecord> TeamfightSimulationCore::_com
 }
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
+	_scratch_projectiles.reserve(32);
+	for (auto &bucket : _spatial_buckets) {
+		bucket.reserve(4);
+	}
+	for (auto &bucket : _spatial_buckets_aux) {
+		bucket.reserve(4);
+	}
 }
 
 TeamfightSimulationCore::~TeamfightSimulationCore() {
@@ -217,6 +226,8 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear"), &TeamfightSimulationCore::clear);
 	ClassDB::bind_method(D_METHOD("run_match", "match_input"), &TeamfightSimulationCore::run_match);
 	ClassDB::bind_method(D_METHOD("run_matches", "match_inputs"), &TeamfightSimulationCore::run_matches);
+	ClassDB::bind_method(D_METHOD("run_match_simulation_only", "match_input"), &TeamfightSimulationCore::run_match_simulation_only);
+	ClassDB::bind_method(D_METHOD("run_matches_simulation_only", "match_inputs"), &TeamfightSimulationCore::run_matches_simulation_only);
 	ClassDB::bind_method(D_METHOD("begin_match", "match_input"), &TeamfightSimulationCore::begin_match);
 	ClassDB::bind_method(D_METHOD("advance_one_tick"), &TeamfightSimulationCore::advance_one_tick);
 	ClassDB::bind_method(D_METHOD("match_ticks_exhausted"), &TeamfightSimulationCore::match_ticks_exhausted);
@@ -307,6 +318,13 @@ Dictionary TeamfightSimulationCore::_effect_to_dict(const Variant &effect) const
 }
 
 void TeamfightSimulationCore::_ensure_catalog_loaded() {
+	if (_catalog_loaded) {
+		return;
+	}
+	// Godot FileAccess / JSON from multiple threads during first load has faulted on Windows;
+	// serialize so each core instance still gets its own catalog copy, but not concurrently.
+	static std::mutex s_catalog_load_mutex;
+	std::lock_guard<std::mutex> lock(s_catalog_load_mutex);
 	if (_catalog_loaded) {
 		return;
 	}
@@ -1248,6 +1266,260 @@ void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id
 	_trace_buffer.push_back(ev);
 }
 
+void TeamfightSimulationCore::_spatial_ensure_stamp_size() const {
+	if (_spatial_stamp.size() < _units.size()) {
+		_spatial_stamp.resize(_units.size(), 0);
+	}
+}
+
+void TeamfightSimulationCore::_spatial_clear_buckets() const {
+	for (auto &bucket : _spatial_buckets) {
+		bucket.clear();
+	}
+}
+
+void TeamfightSimulationCore::_spatial_clear_buckets_aux() const {
+	for (auto &bucket : _spatial_buckets_aux) {
+		bucket.clear();
+	}
+}
+
+double TeamfightSimulationCore::_spatial_cell_size() const {
+	return (WORLD_BOUNDARY_MAX - WORLD_BOUNDARY_MIN) / double(SPATIAL_GRID_DIM);
+}
+
+int TeamfightSimulationCore::_spatial_flat_index(double x, double y) const {
+	double cs = _spatial_cell_size();
+	int ix = int(Math::floor((x - WORLD_BOUNDARY_MIN) / cs));
+	int iy = int(Math::floor((y - WORLD_BOUNDARY_MIN) / cs));
+	ix = CLAMP(ix, 0, SPATIAL_GRID_DIM - 1);
+	iy = CLAMP(iy, 0, SPATIAL_GRID_DIM - 1);
+	return iy * SPATIAL_GRID_DIM + ix;
+}
+
+void TeamfightSimulationCore::_spatial_add_alive_team(const StringName &team) const {
+	const std::vector<int64_t> &indices = _alive_indices_for_team(team);
+	for (int64_t idx : indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive) {
+			continue;
+		}
+		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
+		_spatial_buckets[static_cast<size_t>(fi)].push_back(idx);
+	}
+}
+
+void TeamfightSimulationCore::_spatial_rebuild_all_alive() const {
+	_spatial_clear_buckets();
+	_spatial_add_alive_team(StringName("player"));
+	_spatial_add_alive_team(StringName("enemy"));
+}
+
+void TeamfightSimulationCore::_spatial_next_generation() const {
+	_spatial_ensure_stamp_size();
+	_spatial_generation += 1;
+	if (_spatial_generation == 0) {
+		std::fill(_spatial_stamp.begin(), _spatial_stamp.end(), 0);
+		_spatial_generation = 1;
+	}
+}
+
+bool TeamfightSimulationCore::_spatial_stamp_has(int64_t unit_index) const {
+	if (unit_index < 0 || unit_index >= int64_t(_spatial_stamp.size())) {
+		return false;
+	}
+	return _spatial_stamp[static_cast<size_t>(unit_index)] == _spatial_generation;
+}
+
+void TeamfightSimulationCore::_spatial_stamp_circle(double cx, double cy, double radius, const StringName &team) const {
+	_spatial_next_generation();
+	if (radius <= 0.0) {
+		return;
+	}
+	double cs = _spatial_cell_size();
+	int icx = int(Math::floor((cx - WORLD_BOUNDARY_MIN) / cs));
+	int icy = int(Math::floor((cy - WORLD_BOUNDARY_MIN) / cs));
+	int span = int(Math::ceil(radius / cs)) + 1;
+	for (int dy = -span; dy <= span; ++dy) {
+		for (int dx = -span; dx <= span; ++dx) {
+			int ix = icx + dx;
+			int iy = icy + dy;
+			if (ix < 0 || iy < 0 || ix >= SPATIAL_GRID_DIM || iy >= SPATIAL_GRID_DIM) {
+				continue;
+			}
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets[static_cast<size_t>(fi)]) {
+				const UnitState &u = _units[idx];
+				if (!u.alive || u.team != team) {
+					continue;
+				}
+				double ox = u.pos_x - cx;
+				double oy = u.pos_y - cy;
+				double ally_dist = Math::sqrt(ox * ox + oy * oy);
+				if (ally_dist < radius) {
+					_spatial_stamp[static_cast<size_t>(idx)] = _spatial_generation;
+				}
+			}
+		}
+	}
+}
+
+void TeamfightSimulationCore::_spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const {
+	_spatial_next_generation();
+	if (danger_radius <= 0.0) {
+		return;
+	}
+	double danger_r2 = danger_radius * danger_radius;
+	double cs = _spatial_cell_size();
+	int icx = int(Math::floor((cx - WORLD_BOUNDARY_MIN) / cs));
+	int icy = int(Math::floor((cy - WORLD_BOUNDARY_MIN) / cs));
+	int span = int(Math::ceil(danger_radius / cs)) + 1;
+	for (int dy = -span; dy <= span; ++dy) {
+		for (int dx = -span; dx <= span; ++dx) {
+			int ix = icx + dx;
+			int iy = icy + dy;
+			if (ix < 0 || iy < 0 || ix >= SPATIAL_GRID_DIM || iy >= SPATIAL_GRID_DIM) {
+				continue;
+			}
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets[static_cast<size_t>(fi)]) {
+				const UnitState &enemy = _units[idx];
+				if (!enemy.alive) {
+					continue;
+				}
+				double ex = enemy.pos_x;
+				double ey = enemy.pos_y;
+				double ddx = cx - ex;
+				double ddy = cy - ey;
+				double d2 = ddx * ddx + ddy * ddy;
+				if (d2 <= EPSILON || d2 >= danger_r2) {
+					continue;
+				}
+				_spatial_stamp[static_cast<size_t>(idx)] = _spatial_generation;
+			}
+		}
+	}
+}
+
+void TeamfightSimulationCore::_spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const {
+	_spatial_clear_buckets();
+	for (int64_t idx : indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive) {
+			continue;
+		}
+		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
+		_spatial_buckets[static_cast<size_t>(fi)].push_back(idx);
+	}
+}
+
+int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const {
+	const UnitState &self = _units[self_index];
+	double r2 = radius * radius;
+	double cs = _spatial_cell_size();
+	int icx = int(Math::floor((cx - WORLD_BOUNDARY_MIN) / cs));
+	int icy = int(Math::floor((cy - WORLD_BOUNDARY_MIN) / cs));
+	int span = int(Math::ceil(radius / cs)) + 1;
+	int count = 0;
+	for (int dy = -span; dy <= span; ++dy) {
+		for (int dx = -span; dx <= span; ++dx) {
+			int ix = icx + dx;
+			int iy = icy + dy;
+			if (ix < 0 || iy < 0 || ix >= SPATIAL_GRID_DIM || iy >= SPATIAL_GRID_DIM) {
+				continue;
+			}
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets[static_cast<size_t>(fi)]) {
+				if (idx == self_index) {
+					continue;
+				}
+				const UnitState &other = _units[idx];
+				if (!other.alive) {
+					continue;
+				}
+				double d = _distance_between(self, other);
+				if (d * d <= r2) {
+					count += 1;
+				}
+			}
+		}
+	}
+	return count;
+}
+
+int TeamfightSimulationCore::_spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &enemy_indices, int64_t target_instance_id) const {
+	_spatial_clear_buckets_aux();
+	for (int64_t idx : enemy_indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive) {
+			continue;
+		}
+		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
+		_spatial_buckets_aux[static_cast<size_t>(fi)].push_back(idx);
+	}
+	double pad = OBSCURANCE_LINE_RADIUS;
+	double minx = Math::min(ux, tx) - pad;
+	double maxx = Math::max(ux, tx) + pad;
+	double miny = Math::min(uy, ty) - pad;
+	double maxy = Math::max(uy, ty) + pad;
+	double cs = _spatial_cell_size();
+	int ix0 = int(Math::floor((minx - WORLD_BOUNDARY_MIN) / cs));
+	int ix1 = int(Math::floor((maxx - WORLD_BOUNDARY_MIN) / cs));
+	int iy0 = int(Math::floor((miny - WORLD_BOUNDARY_MIN) / cs));
+	int iy1 = int(Math::floor((maxy - WORLD_BOUNDARY_MIN) / cs));
+	ix0 = CLAMP(ix0, 0, SPATIAL_GRID_DIM - 1);
+	ix1 = CLAMP(ix1, 0, SPATIAL_GRID_DIM - 1);
+	iy0 = CLAMP(iy0, 0, SPATIAL_GRID_DIM - 1);
+	iy1 = CLAMP(iy1, 0, SPATIAL_GRID_DIM - 1);
+	double segx = tx - ux;
+	double segy = ty - uy;
+	double seg_len_sq = segx * segx + segy * segy;
+	int blockers = 0;
+	for (int iy = iy0; iy <= iy1; ++iy) {
+		for (int ix = ix0; ix <= ix1; ++ix) {
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets_aux[static_cast<size_t>(fi)]) {
+				const UnitState &other = _units[idx];
+				if (other.instance_id == target_instance_id) {
+					continue;
+				}
+				if (other.role_id != StringName("tank") && other.role_id != StringName("fighter")) {
+					continue;
+				}
+				double ox = other.pos_x;
+				double oy = other.pos_y;
+				double odx = ox - ux;
+				double ody = oy - uy;
+				double other_dist_sq = odx * odx + ody * ody;
+				if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
+					continue;
+				}
+				double dist_sq = 0.0;
+				if (seg_len_sq <= EPSILON) {
+					dist_sq = other_dist_sq;
+				} else {
+					double t = (odx * segx + ody * segy) / seg_len_sq;
+					t = Math::clamp(t, 0.0, 1.0);
+					double px = ux + segx * t;
+					double py = uy + segy * t;
+					double ddx = ox - px;
+					double ddy = oy - py;
+					dist_sq = ddx * ddx + ddy * ddy;
+				}
+				if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
+					blockers += 1;
+				}
+			}
+		}
+	}
+	return blockers;
+}
+
+bool TeamfightSimulationCore::_use_spatial_broad_phase() const {
+	return int64_t(_alive_player_indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD
+			|| int64_t(_alive_enemy_indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD;
+}
+
 double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const UnitState &ally, const TeamfightSimulationCore::UnitStrategy &strategy) const {
 	double dist = _distance_between(unit, ally);
 	double hp_ratio = ally.hp / Math::max(0.0001, ally.combat.max_hp);
@@ -1258,7 +1530,7 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx) const {
+double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx) {
 	double dist = _distance_between(attacker, enemy);
 	double attack_range = _attack_range(attacker);
 	double effective_range = _effective_attack_range(attacker);
@@ -1336,15 +1608,33 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double bodyguard_weight = strategy.bodyguard_weight;
 	if (bodyguard_weight > 0.0) {
 		const std::vector<int64_t> &ally_indices = _alive_indices_for_team(attacker.team);
-		for (int64_t ally_index : ally_indices) {
-			const UnitState &ally = _units[ally_index];
-			if (ally.role_id != StringName("marksman") && ally.role_id != StringName("mage")) {
-				continue;
+		if (_use_spatial_broad_phase()) {
+			_spatial_stamp_circle(enemy.pos_x, enemy.pos_y, BODYGUARD_RADIUS, attacker.team);
+			for (int64_t ally_index : ally_indices) {
+				if (!_spatial_stamp_has(ally_index)) {
+					continue;
+				}
+				const UnitState &ally = _units[ally_index];
+				if (ally.role_id != StringName("marksman") && ally.role_id != StringName("mage")) {
+					continue;
+				}
+				double ally_dist = _distance_between(enemy, ally);
+				if (ally_dist < BODYGUARD_RADIUS) {
+					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
+					score -= guard_bonus;
+				}
 			}
-			double ally_dist = _distance_between(enemy, ally);
-			if (ally_dist < BODYGUARD_RADIUS) {
-				double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
-				score -= guard_bonus;
+		} else {
+			for (int64_t ally_index : ally_indices) {
+				const UnitState &ally = _units[ally_index];
+				if (ally.role_id != StringName("marksman") && ally.role_id != StringName("mage")) {
+					continue;
+				}
+				double ally_dist = _distance_between(enemy, ally);
+				if (ally_dist < BODYGUARD_RADIUS) {
+					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
+					score -= guard_bonus;
+				}
 			}
 		}
 	}
@@ -1404,44 +1694,48 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double obscurance_weight = strategy.obscurance_weight;
 	if (obscurance_weight > 0.0) {
 		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy.team);
-		double ux = attacker.pos_x;
-		double uy = attacker.pos_y;
-		double tx = enemy.pos_x;
-		double ty = enemy.pos_y;
-		double segx = tx - ux;
-		double segy = ty - uy;
-		double seg_len_sq = segx * segx + segy * segy;
 		int blockers = 0;
-		for (int64_t idx : enemy_indices) {
-			const UnitState &other = _units[idx];
-			if (other.instance_id == enemy.instance_id) {
-				continue;
-			}
-			if (other.role_id != StringName("tank") && other.role_id != StringName("fighter")) {
-				continue;
-			}
-			double ox = other.pos_x;
-			double oy = other.pos_y;
-			double odx = ox - ux;
-			double ody = oy - uy;
-			double other_dist_sq = odx * odx + ody * ody;
-			if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
-				continue;
-			}
-			double dist_sq = 0.0;
-			if (seg_len_sq <= EPSILON) {
-				dist_sq = other_dist_sq;
-			} else {
-				double t = (odx * segx + ody * segy) / seg_len_sq;
-				t = Math::clamp(t, 0.0, 1.0);
-				double px = ux + segx * t;
-				double py = uy + segy * t;
-				double ddx = ox - px;
-				double ddy = oy - py;
-				dist_sq = ddx * ddx + ddy * ddy;
-			}
-			if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
-				blockers += 1;
+		if (_use_spatial_broad_phase()) {
+			blockers = _spatial_count_obscurance_blockers(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, enemy_indices, enemy.instance_id);
+		} else {
+			double ux = attacker.pos_x;
+			double uy = attacker.pos_y;
+			double tx = enemy.pos_x;
+			double ty = enemy.pos_y;
+			double segx = tx - ux;
+			double segy = ty - uy;
+			double seg_len_sq = segx * segx + segy * segy;
+			for (int64_t idx : enemy_indices) {
+				const UnitState &other = _units[idx];
+				if (other.instance_id == enemy.instance_id) {
+					continue;
+				}
+				if (other.role_id != StringName("tank") && other.role_id != StringName("fighter")) {
+					continue;
+				}
+				double ox = other.pos_x;
+				double oy = other.pos_y;
+				double odx = ox - ux;
+				double ody = oy - uy;
+				double other_dist_sq = odx * odx + ody * ody;
+				if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
+					continue;
+				}
+				double dist_sq = 0.0;
+				if (seg_len_sq <= EPSILON) {
+					dist_sq = other_dist_sq;
+				} else {
+					double t = (odx * segx + ody * segy) / seg_len_sq;
+					t = Math::clamp(t, 0.0, 1.0);
+					double px = ux + segx * t;
+					double py = uy + segy * t;
+					double ddx = ox - px;
+					double ddy = oy - py;
+					dist_sq = ddx * ddx + ddy * ddy;
+				}
+				if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
+					blockers += 1;
+				}
 			}
 		}
 		score += double(blockers) * obscurance_weight;
@@ -1644,32 +1938,50 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 	}
 	if (needs_density) {
 		auto compute_density_for_team = [&](const std::vector<int64_t> &indices) {
-			const double r2 = AOE_DENSITY_RADIUS * AOE_DENSITY_RADIUS;
-			for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
-				int64_t ui = indices[i];
-				UnitState &u = _units[ui];
-				if (!u.alive) {
+			if (int64_t(indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD) {
+				_spatial_fill_buckets_for_indices(indices);
+				for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
+					int64_t ui = indices[i];
+					UnitState &u = _units[ui];
+					if (!u.alive) {
+						if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
+							_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = 0;
+						}
+						continue;
+					}
+					int count = _spatial_count_neighbors_in_grid(ui, u.pos_x, u.pos_y, AOE_DENSITY_RADIUS);
 					if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-						_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = 0;
-					}
-					continue;
-				}
-				int count = 0;
-				for (int64_t j = 0; j < int64_t(indices.size()); ++j) {
-					if (i == j) {
-						continue;
-					}
-					const UnitState &other = _units[indices[j]];
-					if (!other.alive) {
-						continue;
-					}
-					double d = _distance_between(u, other);
-					if (d * d <= r2) {
-						count += 1;
+						_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = count;
 					}
 				}
-				if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-					_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = count;
+			} else {
+				const double r2 = AOE_DENSITY_RADIUS * AOE_DENSITY_RADIUS;
+				for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
+					int64_t ui = indices[i];
+					UnitState &u = _units[ui];
+					if (!u.alive) {
+						if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
+							_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = 0;
+						}
+						continue;
+					}
+					int count = 0;
+					for (int64_t j = 0; j < int64_t(indices.size()); ++j) {
+						if (i == j) {
+							continue;
+						}
+						const UnitState &other = _units[indices[j]];
+						if (!other.alive) {
+							continue;
+						}
+						double d = _distance_between(u, other);
+						if (d * d <= r2) {
+							count += 1;
+						}
+					}
+					if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
+						_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = count;
+					}
 				}
 			}
 		};
@@ -2090,6 +2402,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double best_dist = std::numeric_limits<double>::infinity();
 	StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	if (_use_spatial_broad_phase()) {
+		_spatial_rebuild_all_alive();
+	}
 
 	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
 	bool assassin_pressuring_frontline = false;
@@ -2785,24 +3100,51 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	double rep_x = 0.0;
 	double rep_y = 0.0;
 	int count = 0;
-	for (int64_t idx : enemy_indices) {
-		const UnitState &enemy = _units[idx];
-		if (!enemy.alive) {
-			continue;
+	if (_use_spatial_broad_phase()) {
+		_spatial_fill_buckets_for_indices(enemy_indices);
+		_spatial_stamp_kite_threat(ux, uy, danger_radius);
+		for (int64_t idx : enemy_indices) {
+			if (!_spatial_stamp_has(idx)) {
+				continue;
+			}
+			const UnitState &enemy = _units[idx];
+			if (!enemy.alive) {
+				continue;
+			}
+			double ex = enemy.pos_x;
+			double ey = enemy.pos_y;
+			double dx = ux - ex;
+			double dy = uy - ey;
+			double d2 = dx * dx + dy * dy;
+			if (d2 <= EPSILON || d2 >= danger_r2) {
+				continue;
+			}
+			double d = Math::sqrt(d2);
+			double weight = 1.0 / d;
+			rep_x += (dx / d) * weight;
+			rep_y += (dy / d) * weight;
+			count += 1;
 		}
-		double ex = enemy.pos_x;
-		double ey = enemy.pos_y;
-		double dx = ux - ex;
-		double dy = uy - ey;
-		double d2 = dx * dx + dy * dy;
-		if (d2 <= EPSILON || d2 >= danger_r2) {
-			continue;
+	} else {
+		for (int64_t idx : enemy_indices) {
+			const UnitState &enemy = _units[idx];
+			if (!enemy.alive) {
+				continue;
+			}
+			double ex = enemy.pos_x;
+			double ey = enemy.pos_y;
+			double dx = ux - ex;
+			double dy = uy - ey;
+			double d2 = dx * dx + dy * dy;
+			if (d2 <= EPSILON || d2 >= danger_r2) {
+				continue;
+			}
+			double d = Math::sqrt(d2);
+			double weight = 1.0 / d;
+			rep_x += (dx / d) * weight;
+			rep_y += (dy / d) * weight;
+			count += 1;
 		}
-		double d = Math::sqrt(d2);
-		double weight = 1.0 / d;
-		rep_x += (dx / d) * weight;
-		rep_y += (dy / d) * weight;
-		count += 1;
 	}
 	if (count <= 0) {
 		return false;
@@ -3085,6 +3427,25 @@ Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {
 	_populate_runtime_state(input);
 	_simulate();
 	return _build_summary();
+}
+
+void TeamfightSimulationCore::run_match_simulation_only(const Variant &match_input) {
+	_ensure_catalog_loaded();
+	Dictionary input = _coerce_match_input(match_input);
+	if (input.is_empty()) {
+		UtilityFunctions::push_error("TeamfightSimulationCore.run_match_simulation_only() expected MatchReplayInput or Dictionary.");
+		return;
+	}
+	_reset_runtime_state();
+	_populate_runtime_state(input);
+	_simulate();
+}
+
+void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inputs) {
+	for (int64_t index = 0; index < match_inputs.size(); ++index) {
+		run_match_simulation_only(match_inputs[index]);
+		clear();
+	}
 }
 
 void TeamfightSimulationCore::begin_match(const Variant &match_input) {

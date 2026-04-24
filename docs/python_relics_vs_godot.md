@@ -50,7 +50,8 @@ This document tracks patterns inherited from an external **Python oracle** (not 
   - `UnitState` still owns `Dictionary stats` for champion JSON and tooling, but a **`CombatStats` snapshot** (numeric fields read in combat/movement/targeting) is populated in `_build_unit_state()` so inner loops avoid repeated `stats.get` for those keys.
   - `TickContext` already caches team centers, backliners, and density.
 - **Open**
-  - SoA layouts, spatial grids, and stripping rare stats from the dictionary entirely if batch scale demands it.
+  - SoA layouts and stripping rare stats from the dictionary entirely if batch scale demands it.
+  - **Spatial grids:** implemented in native for **5v5-scale** fights (≥ 5 alive on either team for broad-phase; smaller rosters use the original brute scans for parity and less fixed cost).
 
 ## Safe refactor sequence (status)
 
@@ -59,7 +60,7 @@ This document tracks patterns inherited from an external **Python oracle** (not 
 3. ~~`TickContext` + density off `UnitState`~~ — done.
 4. ~~Structured trace sink + SimRunner adapter~~ — done; trace call sites can grow over time.
 5. ~~Combat stat snapshot for hot paths~~ — done (extend fields if new stats enter the hot loop).
-6. Optional: SoA, spatial indexing, richer `record_events` / summary events.
+6. Optional: SoA, richer `record_events` / summary events; spatial indexing is partial (see Open above).
 
 ## Typo note
 

@@ -331,6 +331,29 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 	var square_margin := screen_size.x * square_margin_ratio
 	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
 
+	print("Updating champion buttons in place with filters: ", _active_role_filters, " screen_size: ", screen_size)
+
+	# Hide existing champion buttons before clearing to prevent visual artifacts
+	for child in _header_panel.get_children():
+		if child is Button and child.name.begins_with("Champion"):
+			child.visible = false
+	
+	# Force redraw to ensure hiding takes effect
+	_header_panel.queue_redraw()
+	await get_tree().process_frame
+	
+	# Clear existing champion buttons
+	for child in _header_panel.get_children():
+		if child is Button and child.name.begins_with("Champion"):
+			child.queue_free()
+	
+	# Wait for frame to ensure clearing completes
+	await get_tree().process_frame
+	
+	# Force redraw again to ensure clearing is visible
+	_header_panel.queue_redraw()
+	await get_tree().process_frame
+
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var visible_heroes: Array[StringName] = []
 
@@ -347,21 +370,14 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 				if _active_role_filters.has(role):
 					visible_heroes.append(champion_id)
 
+	print("Visible heroes: ", visible_heroes.size(), " out of ", champion_ids.size())
+
 	# Sort by name
 	visible_heroes.sort_custom(func(a, b): return String(a) < String(b))
 
-	# Update existing buttons or create new ones
-	var existing_buttons: Dictionary = {}
-	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("Champion"):
-			existing_buttons[child.name] = child
-
-	# Update or create buttons
+	# Create buttons with proportional sizing (manual positioning)
 	for i in range(visible_heroes.size()):
 		var champion_id: StringName = visible_heroes[i]
-		var button_name := "Champion_" + String(champion_id)
-		var button: Button = existing_buttons.get(button_name)
-		
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 		if champion == null:
 			continue
@@ -373,29 +389,22 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 
 		var row := i / cols
 		var col := i % cols
-		var new_size := Vector2(square_size, square_size)
-		var new_position := Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
+		var button_size := Vector2(square_size, square_size)
+		var button_position := Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 
-		if button != null:
-			# Update existing button
-			button.size = new_size
-			button.position = new_position
-			existing_buttons.erase(button_name)
-		else:
-			# Create new button
-			button = Button.new()
-			button.name = button_name
-			button.text = String(champion_id)
-			button.size = new_size
-			button.position = new_position
-			var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
-			_style_champion_button(button, role_color, champion_id, is_taken)
-			button.pressed.connect(_on_champion_clicked.bind(champion_id))
-			_header_panel.add_child(button)
+		var button := Button.new()
+		button.name = "Champion_" + String(champion_id)
+		button.text = String(champion_id)
+		button.size = button_size
+		button.position = button_position
+		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
+		_style_champion_button(button, role_color, champion_id, is_taken)
+		button.pressed.connect(_on_champion_clicked.bind(champion_id))
+		_header_panel.add_child(button)
+		print("Created button: ", button.name, " size: ", button_size, " position: ", button_position)
 
-	# Remove buttons that are no longer needed
-	for button_name in existing_buttons:
-		existing_buttons[button_name].queue_free()
+	# Force redraw after creating new buttons
+	_header_panel.queue_redraw()
 
 
 func _update_action_buttons(screen_size: Vector2) -> void:
@@ -776,6 +785,18 @@ func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 		# Add the role to the filter (additive)
 		_active_role_filters.append(role)
 		print("Added role to filter: ", role, " New filters: ", _active_role_filters)
+	
+	# If all 6 roles are manually selected, reset to "see all"
+	var all_roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
+	if _active_role_filters.size() == all_roles.size():
+		var all_selected := true
+		for r in all_roles:
+			if not _active_role_filters.has(r):
+				all_selected = false
+				break
+		if all_selected:
+			_active_role_filters.clear()
+			print("All roles selected, resetting to 'see all'")
 	
 	# Update all role filter button styles
 	for child in _header_panel.get_children():

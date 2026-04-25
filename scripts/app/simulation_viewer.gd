@@ -78,8 +78,8 @@ var _active_role_filters: Array[StringName] = []
 var _banned_heroes: Array[StringName] = []
 
 # UI references
-@onready var _world_layer: Node2D = $WorldLayer
-@onready var _ui_layer: Control = $UILayer
+var _world_layer: Node2D
+var _ui_layer: Control
 var _header_panel: Panel
 var _grid_panel: Panel
 var _title_label: Label
@@ -120,6 +120,21 @@ func _ready() -> void:
 
 func _create_ui_structure() -> void:
 	var screen_size := get_viewport_rect().size
+
+	# Create WorldLayer for combat visualization (behind UI)
+	_world_layer = Node2D.new()
+	_world_layer.name = "WorldLayer"
+	_world_layer.position = Vector2(0.0, 0.0)
+	_world_layer.visible = false
+	add_child(_world_layer)
+
+	# Create UILayer for UI elements (in front of world)
+	_ui_layer = Control.new()
+	_ui_layer.name = "UILayer"
+	_ui_layer.anchors_preset = Control.PRESET_FULL_RECT
+	_ui_layer.size = screen_size
+	_ui_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_ui_layer)
 
 	# Create DraftPanel (full screen for drafting)
 	_header_panel = Panel.new()
@@ -487,8 +502,12 @@ func _update_unit_node(instance_id: int, pos_x: float, pos_y: float, hp: float, 
 		_unit_nodes[instance_id] = unit_node
 		_world_layer.add_child(unit_node)
 
-	# Update position
-	unit_node.position = Vector2(pos_x * 100, pos_y * 100)  # Scale world to screen
+	# Update position (scale world to screen, centered on screen)
+	var screen_size := get_viewport_rect().size
+	var screen_center := screen_size / 2.0
+	unit_node.position = screen_center + Vector2(pos_x * 50, pos_y * 50)  # Reduced scale from 100 to 50
+
+	print("Updated unit node instance_id: ", instance_id, " pos: ", unit_node.position, " hp: ", hp)
 
 	# Update HP bar
 	var hp_bar: ProgressBar = unit_node.get_node("HPBar")
@@ -518,8 +537,8 @@ func _create_unit_node(instance_id: int, team: StringName) -> Node2D:
 	# Unit sprite with click area
 	var sprite := ColorRect.new()
 	sprite.name = "Sprite"
-	sprite.size = Vector2(20, 20)
-	sprite.position = Vector2(-10, -10)
+	sprite.size = Vector2(40, 40)  # Increased from 20x20 for better visibility
+	sprite.position = Vector2(-20, -20)
 	sprite.color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
 	sprite.mouse_filter = Control.MOUSE_FILTER_STOP
 	sprite.gui_input.connect(_on_unit_sprite_input.bind(instance_id, team))
@@ -528,18 +547,19 @@ func _create_unit_node(instance_id: int, team: StringName) -> Node2D:
 	# HP bar
 	var hp_bar := ProgressBar.new()
 	hp_bar.name = "HPBar"
-	hp_bar.size = Vector2(30, 5)
-	hp_bar.position = Vector2(-15, -25)
+	hp_bar.size = Vector2(40, 5)
+	hp_bar.position = Vector2(-20, 25)
 	hp_bar.value = 100.0
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = 100.0
 	unit_node.add_child(hp_bar)
 
-	# State text
+	# State label
 	var state_label := Label.new()
 	state_label.name = "StateLabel"
-	state_label.position = Vector2(-15, 12)
-	state_label.add_theme_font_size_override("font_size", 8)
+	state_label.text = "IDLE"
+	state_label.position = Vector2(-20, -30)
+	state_label.add_theme_font_size_override("font_size", 10)
 	state_label.add_theme_color_override("font_color", COLOR_TEXT)
 	unit_node.add_child(state_label)
 
@@ -548,8 +568,10 @@ func _create_unit_node(instance_id: int, team: StringName) -> Node2D:
 	target_line.name = "TargetLine"
 	target_line.width = 2.0
 	target_line.default_color = COLOR_TARGET_LINE
+	target_line.visible = false
 	unit_node.add_child(target_line)
 
+	print("Created unit node for instance_id: ", instance_id, " team: ", team)
 	return unit_node
 
 
@@ -748,10 +770,19 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 
 
 func _style_champion_button(button: Button, role_color: Color, champion_id: StringName, is_taken: bool) -> void:
+	# Reset modulate to white first to prevent compounding
+	button.modulate = Color.WHITE
+	
 	if is_taken:
-		button.modulate = COLOR_BUTTON_DISABLED
+		# Dim the button when champion is picked
+		button.modulate = Color(
+			max(0.0, role_color.r * 0.5),
+			max(0.0, role_color.g * 0.5),
+			max(0.0, role_color.b * 0.5)
+		)
 		button.disabled = true
 	else:
+		# Apply role color for available champions
 		button.modulate = role_color
 		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
 
@@ -933,13 +964,47 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 	_draft_step_index += 1
 	_update_turn_display()
 	_update_team_rosters()
-	_populate_champion_grid()
+	_update_champion_button_style(champion_id)
 
 	if _draft_step_index >= DRAFT_SEQUENCE.size():
 		_game_state = PREPARATION
 		print("Draft complete, state changed to PREPARATION")
 
 
+
+
+func _update_champion_button_style(champion_id: StringName) -> void:
+	var button_name := "Champion_" + String(champion_id)
+	var button: Button = _header_panel.get_node_or_null(button_name)
+	if button == null:
+		return
+	
+	# Get champion info for role color
+	var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+	if champion == null:
+		return
+	
+	var champion_dict: Dictionary = champion.to_dict()
+	var stats_dict: Dictionary = champion_dict.get("stats", {})
+	var role: StringName = StringName(stats_dict.get("role", ""))
+	var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
+	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+	
+	# Reset modulate to white first to prevent compounding
+	button.modulate = Color.WHITE
+	
+	if is_taken:
+		# Dim the button when champion is picked
+		button.modulate = Color(
+			max(0.0, role_color.r * 0.5),
+			max(0.0, role_color.g * 0.5),
+			max(0.0, role_color.b * 0.5)
+		)
+		button.disabled = true
+	else:
+		# Apply role color for available champions
+		button.modulate = role_color
+		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
 
 
 func _toggle_pause() -> void:
@@ -973,7 +1038,7 @@ func _start_combat() -> void:
 	_show_combat_ui()
 	print("Starting combat with teams - Player: ", _player_picks, ", Enemy: ", _enemy_picks)
 
-	var match_input: Dictionary = MatchReplayInputScript.build_match_input(
+	var match_input: Object = MatchReplayInputScript.build_match_input(
 		0,
 		_player_picks,
 		_enemy_picks,
@@ -987,6 +1052,8 @@ func _start_combat() -> void:
 
 
 func _show_combat_ui() -> void:
+	var screen_size := get_viewport_rect().size
+
 	# Hide drafting UI
 	if _header_panel != null:
 		_header_panel.visible = false
@@ -999,9 +1066,15 @@ func _show_combat_ui() -> void:
 	if _start_match_button != null:
 		_start_match_button.visible = false
 
-	# Show combat HUD
+	# Show world layer for combat visualization
+	if _world_layer != null:
+		_world_layer.visible = true
+
+	# Show combat HUD with full screen
 	if _control_panel != null:
 		_control_panel.visible = true
+		_control_panel.size = screen_size
+		_control_panel.position = Vector2(0.0, 0.0)
 
 
 func _end_match() -> void:

@@ -772,31 +772,15 @@ func _populate_champion_grid() -> void:
 func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 	print("Role filter toggled: ", role, " Current filters: ", _active_role_filters)
 	
-	# If all roles are enabled (empty filter list), focus on only the clicked role
-	if _active_role_filters.is_empty():
+	# If the clicked role is already selected, deselect it (go back to see all)
+	if _active_role_filters.has(role):
+		_active_role_filters.clear()
+		print("Deselected role, going back to see all")
+	else:
+		# Clear any existing filter and set only the clicked role
 		_active_role_filters.clear()
 		_active_role_filters.append(role)
-		print("Filter was empty, now focusing on: ", role)
-	elif _active_role_filters.has(role):
-		# If role is already selected, remove it
-		_active_role_filters.erase(role)
-		print("Removed role from filter: ", role, " New filters: ", _active_role_filters)
-	else:
-		# Add the role to the filter (additive)
-		_active_role_filters.append(role)
-		print("Added role to filter: ", role, " New filters: ", _active_role_filters)
-	
-	# If all 6 roles are manually selected, reset to "see all"
-	var all_roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
-	if _active_role_filters.size() == all_roles.size():
-		var all_selected := true
-		for r in all_roles:
-			if not _active_role_filters.has(r):
-				all_selected = false
-				break
-		if all_selected:
-			_active_role_filters.clear()
-			print("All roles selected, resetting to 'see all'")
+		print("Switched to role: ", role)
 	
 	# Update all role filter button styles
 	for child in _header_panel.get_children():

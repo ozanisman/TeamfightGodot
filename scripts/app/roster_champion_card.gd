@@ -43,13 +43,23 @@ func setup(
 	custom_minimum_size = Vector2(square_px, square_px)
 	size = custom_minimum_size
 
+	# Single child of Panel: stack overlay (PanelContainer = one child only).
+	var stack := Control.new()
+	stack.set_anchors_preset(Control.PRESET_FULL_RECT)
+	stack.offset_left = 0.0
+	stack.offset_top = 0.0
+	stack.offset_right = 0.0
+	stack.offset_bottom = 0.0
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stack)
+
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 6)
 	margin.add_theme_constant_override("margin_top", 5)
 	margin.add_theme_constant_override("margin_right", 6)
 	margin.add_theme_constant_override("margin_bottom", 5)
-	add_child(margin)
+	stack.add_child(margin)
 
 	_inner = VBoxContainer.new()
 	_inner.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -57,6 +67,8 @@ func setup(
 	_inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_child(_inner)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_name_label = Label.new()
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -81,6 +93,21 @@ func setup(
 	_mana_bar = _make_bar(COLOR_MN_BG, COLOR_MN_FILL)
 	_mana_bar.visible = false
 	_inner.add_child(_mana_bar)
+	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_kda_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var _tt_catch := Control.new()
+	_tt_catch.name = "RosterChampionTooltipCatcher"
+	_tt_catch.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tt_catch.offset_left = 0.0
+	_tt_catch.offset_top = 0.0
+	_tt_catch.offset_right = 0.0
+	_tt_catch.offset_bottom = 0.0
+	_tt_catch.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tt_catch.z_index = 20
+	stack.add_child(_tt_catch)
 	apply_unit_data(ud, square_px, true)
 	if p_align_right:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

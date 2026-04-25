@@ -6,6 +6,7 @@ const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_i
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ViewerUnitNodeScript := preload("res://scripts/app/viewer_unit_node.gd")
 const SimulationViewerArenaScript := preload("res://scripts/app/simulation_viewer_arena.gd")
+const AoeRingNodeScript := preload("res://scripts/app/aoe_ring_node.gd")
 
 # Colors from Python pygame_viewer.py
 const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
@@ -85,6 +86,8 @@ var _banned_heroes: Array[StringName] = []
 
 # UI references
 var _world_layer: Node2D
+## Layer 1: AoE / impact rings (above world; helps when native tick_fx is missing aoe_ entries or Line2D glitches)
+var _aoe_fx_layer: CanvasLayer
 var _ui_layer: Control
 var _header_panel: Panel
 var _grid_panel: Panel
@@ -167,6 +170,12 @@ func _create_ui_structure() -> void:
 	_arena_layer = SimulationViewerArenaScript.new()
 	_arena_layer.name = "ArenaGrid"
 	_world_layer.add_child(_arena_layer)
+
+	_aoe_fx_layer = CanvasLayer.new()
+	_aoe_fx_layer.name = "AoeFxLayer"
+	_aoe_fx_layer.layer = 1
+	_aoe_fx_layer.visible = false
+	add_child(_aoe_fx_layer)
 
 	# Create UILayer for UI elements (in front of world)
 	_ui_layer = Control.new()
@@ -497,7 +506,8 @@ func _on_window_resized() -> void:
 	if _ui_layer != null:
 		_ui_layer.queue_redraw()
 	if (_game_state == COMBAT or _game_state == PREPARATION) and _backend != null:
-		_update_visualization_from_snapshot()
+		# Do not re-apply tick_fx (floaters / melee VFX) — same snapshot, layout-only.
+		_update_visualization_from_snapshot(false)
 
 
 func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
@@ -653,7 +663,7 @@ func _step_simulation(delta: float) -> void:
 			break
 
 
-func _update_visualization_from_snapshot() -> void:
+func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:
 	var snapshot: Dictionary = _backend.get_tick_snapshot()
 	if snapshot.is_empty():
 		return
@@ -672,7 +682,8 @@ func _update_visualization_from_snapshot() -> void:
 			n.set_selected(int(uid) == _selected_unit_id)
 	var projectiles: Array = snapshot.get("projectiles", [])
 	_update_projectiles(projectiles)
-	_apply_tick_fx(snapshot)
+	if apply_tick_fx:
+		_apply_tick_fx(snapshot)
 	_refresh_side_rosters_from_snapshot(units)
 
 
@@ -877,6 +888,18 @@ func _refresh_side_rosters_from_snapshot(units: Array) -> void:
 
 func _apply_tick_fx(snapshot: Dictionary) -> void:
 	var evs: Array = Array(snapshot.get("tick_fx", []))
+	var aoe_world_centers: Array = []  # Vector2, world (x,y) for dedupe; only "real" radii (else infer is blocked with no draw)
+	for e0 in evs:
+		if e0 is not Dictionary:
+			continue
+		var d0: Dictionary = e0
+		var k0: String = str(d0.get("kind", ""))
+		if k0.begins_with("aoe_"):
+			var r0: float = float(d0.get("r", d0.get("radius", 0.0)))
+			if r0 <= 0.0 and k0 == "aoe_splash":
+				r0 = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
+			if r0 > 0.0:
+				aoe_world_centers.append(Vector2(float(d0.get("x", 0.0)), float(d0.get("y", 0.0))))
 	for e in evs:
 		if e is not Dictionary:
 			continue
@@ -888,6 +911,19 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		if k == "damage" or k == "dmg":
 			var amt: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, Color(0.9, 0.45, 0.45))
+			# Infer splash/impact ring for ranged autos if native aoe_ events are absent (e.g. older DLL) or r missing.
+			var src_id: int = int(d.get("src_id", 0))
+			if src_id > 0 and not _aoe_world_position_has_fx(aoe_world_centers, wx, wy):
+				var u_src: Dictionary = _find_unit_in_snapshot_by_id(snapshot, src_id)
+				if not u_src.is_empty() and float(u_src.get("attack_range", 0.0)) > SimConstantsScript.RANGED_THRESHOLD:
+					_spawn_aoe_ring_fx(
+						wx,
+						wy,
+						SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD,
+						"aoe_splash",
+						src_id,
+						snapshot
+					)
 		elif k == "heal":
 			var h: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("+%d" % int(ceil(h)), sp, COLOR_SUCCESS)
@@ -896,6 +932,78 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 			_spawn_floating_text_screen("[%d]" % int(ceil(sh)), sp, Color(0.55, 0.75, 1.0))
 		elif k == "melee_slash":
 			_spawn_melee_slash_fx(sp)
+		elif k.begins_with("aoe_"):
+			var r_w: float = float(d.get("r", d.get("radius", 0.0)))
+			if r_w <= 0.0 and k == "aoe_splash":
+				r_w = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
+			if r_w > 0.0:
+				_spawn_aoe_ring_fx(wx, wy, r_w, k, int(d.get("src_id", 0)), snapshot)
+
+
+func _find_unit_in_snapshot_by_id(snapshot: Dictionary, instance_id: int) -> Dictionary:
+	if instance_id == 0:
+		return {}
+	for u in snapshot.get("units", []):
+		if u is Dictionary and int((u as Dictionary).get("instance_id", 0)) == instance_id:
+			return u
+	return {}
+
+
+func _aoe_world_position_has_fx(centers: Array, wx: float, wy: float) -> bool:
+	## Same tick may emit damage and aoe at the same (x,y); avoid double ring.
+	var e_w: float = 0.12
+	for p in centers:
+		if p is Vector2 and absf(p.x - wx) < e_w and absf(p.y - wy) < e_w:
+			return true
+	return false
+
+
+func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Color:
+	var team_s: String = ""
+	if src_id != 0:
+		for u in snapshot.get("units", []):
+			if u is Dictionary and int((u as Dictionary).get("instance_id", 0)) == src_id:
+				team_s = str((u as Dictionary).get("team", ""))
+				break
+	if kind == "aoe_taunt":
+		return Color(0.72, 0.42, 0.95, 0.62)
+	if kind == "aoe_splash":
+		return Color(1.0, 0.78, 0.2, 0.75)
+	# aoe_damage: tint by team
+	if team_s == "player":
+		return Color(0.35, 0.55, 1.0, 0.58)
+	if team_s == "enemy":
+		return Color(1.0, 0.4, 0.35, 0.58)
+	return Color(0.95, 0.5, 0.35, 0.5)
+
+
+## World-space [wx,wy], radius in world units; center matches sim AoE center.
+func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:
+	if world_r <= 0.0:
+		return
+	var sp: Vector2 = world_to_screen(wx, wy)
+	var vp: Vector2 = get_viewport_rect().size
+	var rpx: float = world_r * (vp.x / SimConstantsScript.WORLD_SIZE)
+	if rpx < 1.5:
+		return
+	var col: Color = _aoe_ring_color_for(kind, src_id, snapshot)
+	# Slight screen-space oval so the ring matches non-square viewports the same as world_to_screen.
+	var rpx_y: float = world_r * (vp.y / SimConstantsScript.WORLD_SIZE)
+	var n: Node2D = AoeRingNodeScript.new()
+	n.name = "AoeRing"
+	n.position = sp
+	var fill_c := Color(col.r, col.g, col.b, 0.22 * col.a)
+	n.setup(rpx, rpx_y, fill_c, col, 3.0)
+	if _aoe_fx_layer != null and is_instance_valid(_aoe_fx_layer):
+		_aoe_fx_layer.add_child(n)
+	else:
+		n.z_index = 20
+		_world_layer.add_child(n)
+	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
+	n.modulate = Color(1, 1, 1, 0.92)
+	var tw := create_tween()
+	tw.tween_property(n, "modulate:a", 0.0, dur)
+	tw.tween_callback(n.queue_free)
 
 
 func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
@@ -1539,6 +1647,8 @@ func _show_world_and_hud_for_battle() -> void:
 		_start_match_button.visible = false
 	if _world_layer != null:
 		_world_layer.visible = true
+	if _aoe_fx_layer != null:
+		_aoe_fx_layer.visible = true
 	if _control_panel != null:
 		_control_panel.visible = true
 		_control_panel.size = Vector2(screen_size.x, 56.0)
@@ -1661,6 +1771,8 @@ func _reset_to_draft() -> void:
 		_start_match_button.visible = true
 	if _world_layer != null:
 		_world_layer.visible = false
+	if _aoe_fx_layer != null:
+		_aoe_fx_layer.visible = false
 	if _control_panel != null:
 		_control_panel.visible = false
 	var ch2: Control = _ui_layer.get_node_or_null("CombatHUD") as Control
@@ -1683,6 +1795,10 @@ func _reset_to_draft() -> void:
 
 
 func _clear_units() -> void:
+	if _aoe_fx_layer != null:
+		for c in _aoe_fx_layer.get_children():
+			if is_instance_valid(c):
+				c.queue_free()
 	for unit_id in _unit_nodes:
 		var unit_node: Node2D = _unit_nodes[unit_id]
 		if unit_node != null and is_instance_valid(unit_node):

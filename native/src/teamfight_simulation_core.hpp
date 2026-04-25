@@ -408,6 +408,8 @@ private:
 		double pos_x = 0.0;
 		double pos_y = 0.0;
 		double val = 0.0;
+		/// World-space radius (aoe_ring / aoe_taunt / aoe_splash); 0 if unused.
+		double radius = 0.0;
 	};
 	static constexpr size_t VIEWER_FX_CAP = 256;
 	std::vector<ViewerFxEvent> _viewer_fx_events;
@@ -416,6 +418,7 @@ private:
 	void _viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind);
 	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
+	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);
 	String _viewer_state_string(const UnitState &p_u) const;
 
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;

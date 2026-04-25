@@ -370,6 +370,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_tick_ctx.needs_cluster_density = false;
 	_trace_buffer.clear();
 	_debug_combat_trace = false;
+	_viewer_fx_events.clear();
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -2327,6 +2328,9 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		_touch_damage_source(target, source.instance_id, total_damage);
 		target.last_hit_time = _time;
 	}
+	if (total_damage > 1e-9) {
+		_viewer_record_damage_fx(source, target, total_damage, action_kind);
+	}
 	if (target.hp <= 0.0) {
 		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
 		EffectContext post_context = context;
@@ -2380,6 +2384,9 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 		return;
 	}
 	target.shield += amount;
+	if (amount > 1e-9) {
+		_viewer_record_shield_fx(target, amount);
+	}
 	source.shielding_done += amount;
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
@@ -2394,6 +2401,10 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 	double old_hp = target.hp;
 	double new_hp = Math::min(max_hp, old_hp + amount);
 	target.hp = new_hp;
+	double gained = new_hp - old_hp;
+	if (gained > 1e-9) {
+		_viewer_record_heal_fx(target, gained);
+	}
 	source.healing_done += amount;
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
@@ -2986,6 +2997,7 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	// Python World.step(): tick++ then time = tick * tick_rate
 	_tick += 1;
 	_time = double(_tick) * _tick_rate;
+	_viewer_fx_events.clear();
 	if (profile_sim) {
 		_sim_profile_tick_count += 1;
 	}
@@ -3701,6 +3713,8 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 	_summary_cache["seed"] = _seed;
 	_summary_cache["winner_team"] = String(_winner_team);
 	_summary_cache["duration"] = _time;
+	_summary_cache["player_kills"] = int64_t(_player_kills);
+	_summary_cache["enemy_kills"] = int64_t(_enemy_kills);
 	_summary_cache["player_comp"] = _player_comp;
 	_summary_cache["enemy_comp"] = _enemy_comp;
 	_summary_unit_stats.clear();
@@ -3801,27 +3815,148 @@ Dictionary TeamfightSimulationCore::finish_and_summarize() {
 	return _build_summary();
 }
 
+void TeamfightSimulationCore::_viewer_fx_push(const ViewerFxEvent &p_ev) {
+	if (_viewer_fx_events.size() >= VIEWER_FX_CAP) {
+		return;
+	}
+	_viewer_fx_events.push_back(p_ev);
+}
+
+void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("damage");
+	ev.target_id = p_target.instance_id;
+	ev.src_id = p_source.instance_id;
+	ev.pos_x = p_target.pos_x;
+	ev.pos_y = p_target.pos_y;
+	ev.val = p_total_damage;
+	_viewer_fx_push(ev);
+	if (p_action_kind == StringName("auto") && p_source.combat.attack_range <= RANGED_THRESHOLD) {
+		ViewerFxEvent slash;
+		slash.kind = StringName("melee_slash");
+		slash.pos_x = p_target.pos_x;
+		slash.pos_y = p_target.pos_y;
+		_viewer_fx_push(slash);
+	}
+}
+
+void TeamfightSimulationCore::_viewer_record_heal_fx(const UnitState &p_target, double p_amount) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("heal");
+	ev.target_id = p_target.instance_id;
+	ev.pos_x = p_target.pos_x;
+	ev.pos_y = p_target.pos_y;
+	ev.val = p_amount;
+	_viewer_fx_push(ev);
+}
+
+void TeamfightSimulationCore::_viewer_record_shield_fx(const UnitState &p_target, double p_amount) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("shield");
+	ev.target_id = p_target.instance_id;
+	ev.pos_x = p_target.pos_x;
+	ev.pos_y = p_target.pos_y;
+	ev.val = p_amount;
+	_viewer_fx_push(ev);
+}
+
+String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const {
+	if (!p_u.alive) {
+		return String("DEAD");
+	}
+	if (p_u.stun_remaining > 0.0) {
+		return String("STUNNED");
+	}
+	if (p_u.casting_remaining > 0.0) {
+		return String("CASTING");
+	}
+	if (p_u.last_kite_timer > 0.0) {
+		return String("KITING");
+	}
+	return String("ALIVE");
+}
+
 Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 	Dictionary root;
 	root["tick"] = _tick;
 	root["time"] = _time;
+	root["match_duration"] = MATCH_DURATION;
+	root["time_remaining"] = Math::max(0.0, MATCH_DURATION - _time);
+	root["player_kills"] = _player_kills;
+	root["enemy_kills"] = _enemy_kills;
+	root["live_winner"] = String(_determine_winner());
 	Array units;
 	for (const UnitState &u : _units) {
 		Dictionary d;
 		d["id"] = u.instance_id;
-		d["team"] = String(u.team);
+		d["instance_id"] = u.instance_id;
 		d["x"] = u.pos_x;
 		d["y"] = u.pos_y;
+		d["pos_x"] = u.pos_x;
+		d["pos_y"] = u.pos_y;
+		d["team"] = String(u.team);
+		d["archetype_id"] = String(u.archetype_id);
 		d["hp"] = u.hp;
+		d["max_hp"] = u.combat.max_hp;
+		d["shield"] = u.shield;
+		d["mana"] = u.mana;
+		d["max_mana"] = u.combat.max_mana;
 		d["target"] = u.target_id;
+		d["target_id"] = u.target_id;
 		d["stun"] = u.stun_remaining;
+		d["stun_remaining"] = u.stun_remaining;
 		d["alive"] = u.alive;
+		d["state"] = _viewer_state_string(u);
 		d["acd"] = u.attack_cooldown;
 		d["abi"] = u.ability_cooldown;
 		d["ult"] = u.ultimate_cooldown;
+		d["attack_cooldown"] = u.attack_cooldown;
+		d["attack_range"] = u.combat.attack_range;
+		d["attack_speed"] = u.combat.attack_speed;
+		d["casting_remaining"] = u.casting_remaining;
+		d["casting_kind"] = String(u.casting_kind);
+		d["kills"] = u.kills;
+		d["deaths"] = u.deaths;
+		d["assists"] = u.assists;
+		d["respawn_timer"] = u.respawn_timer;
+		d["taunt_remaining"] = u.taunt_remaining;
+		d["damage_dealt"] = u.damage_dealt;
+		d["healing_done"] = u.healing_done;
+		d["damage_mitigated"] = u.damage_mitigated;
 		units.append(d);
 	}
 	root["units"] = units;
+	Array projs;
+	for (int64_t i = 0; i < int64_t(_projectiles.size()); ++i) {
+		const ProjectileState &p = _projectiles[static_cast<size_t>(i)];
+		Dictionary pd;
+		pd["id"] = i;
+		pd["pos_x"] = p.pos_x;
+		pd["pos_y"] = p.pos_y;
+		pd["radius"] = p.radius;
+		pd["source_id"] = p.source_id;
+		pd["target_id"] = p.target_id;
+		const UnitState *src = _unit_by_id(p.source_id);
+		if (src != nullptr) {
+			pd["team"] = String(src->team);
+		} else {
+			pd["team"] = String("player");
+		}
+		projs.append(pd);
+	}
+	root["projectiles"] = projs;
+	Array fx;
+	for (const ViewerFxEvent &ve : _viewer_fx_events) {
+		Dictionary e;
+		e["kind"] = String(ve.kind);
+		e["target_id"] = ve.target_id;
+		e["src_id"] = ve.src_id;
+		e["x"] = ve.pos_x;
+		e["y"] = ve.pos_y;
+		e["val"] = ve.val;
+		fx.append(e);
+	}
+	root["tick_fx"] = fx;
 	return root;
 }
 

@@ -770,20 +770,40 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 
 
 func _style_champion_button(button: Button, role_color: Color, champion_id: StringName, is_taken: bool) -> void:
-	# Reset modulate to white first to prevent compounding
+	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
 	
 	if is_taken:
-		# Dim the button when champion is picked
-		button.modulate = Color(
+		# Dim the role color for the fill
+		var dimmed_color := Color(
 			max(0.0, role_color.r * 0.5),
 			max(0.0, role_color.g * 0.5),
 			max(0.0, role_color.b * 0.5)
 		)
+		
+		# Add border highlight based on team (independent of role color)
+		var border_color := COLOR_PLAYER if champion_id in _player_picks else COLOR_ENEMY
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = dimmed_color  # Use dimmed role color as fill
+		style_box.border_width_left = 3
+		style_box.border_width_top = 3
+		style_box.border_width_right = 3
+		style_box.border_width_bottom = 3
+		style_box.border_color = border_color  # Team color for border
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_stylebox_override("disabled", style_box)
 		button.disabled = true
 	else:
-		# Apply role color for available champions
-		button.modulate = role_color
+		# Apply full role color for available champions (bright default)
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = role_color
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_stylebox_override("disabled", style_box)
+		button.modulate = Color.WHITE
 		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
 
 
@@ -990,20 +1010,40 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 	var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
 	
-	# Reset modulate to white first to prevent compounding
+	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
 	
 	if is_taken:
-		# Dim the button when champion is picked
-		button.modulate = Color(
+		# Dim the role color for the fill
+		var dimmed_color := Color(
 			max(0.0, role_color.r * 0.5),
 			max(0.0, role_color.g * 0.5),
 			max(0.0, role_color.b * 0.5)
 		)
+		
+		# Add border highlight based on team (independent of role color)
+		var border_color := COLOR_PLAYER if champion_id in _player_picks else COLOR_ENEMY
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = dimmed_color  # Use dimmed role color as fill
+		style_box.border_width_left = 3
+		style_box.border_width_top = 3
+		style_box.border_width_right = 3
+		style_box.border_width_bottom = 3
+		style_box.border_color = border_color  # Team color for border
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_stylebox_override("disabled", style_box)
 		button.disabled = true
 	else:
-		# Apply role color for available champions
-		button.modulate = role_color
+		# Apply role color for available champions using StyleBoxFlat
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = role_color
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_stylebox_override("disabled", style_box)
+		button.modulate = Color.WHITE
 		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
 
 

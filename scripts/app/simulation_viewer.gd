@@ -116,6 +116,8 @@ var _banned_list_ref: VBoxContainer
 var _role_filter_container: HBoxContainer
 var _champion_grid: GridContainer
 var _champion_grid_ref: GridContainer
+## Catalog overlay tooltips in draft / combat; null until [method _init_champion_catalog_tooltip] runs.
+var _champ_catalog_tt: Node = null
 var _random_draft_button: Button
 var _start_match_button: Button
 var _control_panel: Panel
@@ -223,6 +225,7 @@ func _create_ui_structure() -> void:
 	_ui_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_ui_layer)
 	_ui_layer.size = get_viewport_rect().size
+	_init_champion_catalog_tooltip()
 
 	# Create DraftPanel (full screen for drafting)
 	_header_panel = Panel.new()
@@ -662,12 +665,47 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		button.position = new_position
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
-		button.tooltip_text = _champion_tooltip_lines(champion_id)
+		button.tooltip_text = ""
+		_register_champ_tooltip(button, champion_id)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
 		_header_panel.add_child(button)
 
 	# Force redraw after creating new buttons
 	_header_panel.queue_redraw()
+
+
+func _init_champion_catalog_tooltip() -> void:
+	if _ui_layer == null or _champ_catalog_tt != null:
+		return
+	var path: String = "res://scripts/app/champion_catalog_tooltip.gd"
+	if not ResourceLoader.exists(path):
+		push_error("Champion catalog tooltip: missing " + path)
+		return
+	var res: Resource = load(path)
+	if res == null or not (res is Script):
+		push_error("Champion catalog tooltip: load failed (parse error or missing) " + path)
+		return
+	_champ_catalog_tt = (res as Script).new() as Node
+	if _champ_catalog_tt == null:
+		return
+	_champ_catalog_tt.name = "ChampionCatalogTooltip"
+	_ui_layer.add_child(_champ_catalog_tt)
+	_champ_catalog_tt.call("setup", _ui_layer)
+
+
+func _register_champ_tooltip(ctl: Control, hero_id: StringName) -> void:
+	if _champ_catalog_tt == null or not is_instance_valid(ctl):
+		return
+	_champ_catalog_tt.call("register_source", ctl, hero_id)
+
+
+func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
+	var catch: Node = null
+	if card is Node:
+		catch = (card as Node).find_child("RosterChampionTooltipCatcher", true, false)
+	if catch is Control:
+		var hid: StringName = StringName(str(ud.get("archetype_id", "")))
+		_register_champ_tooltip(catch as Control, hid)
 
 
 func _remove_champion_buttons_from_header() -> void:
@@ -953,6 +991,7 @@ func _refresh_side_rosters_from_snapshot(units: Array) -> void:
 				continue
 			card1.call("setup", ud3, false, true, start_s)
 			_p1_roster_labels.add_child(card1)
+			_register_roster_card_tooltip(card1, ud3)
 	var in_p2: bool = _try_update_roster_column_in_place(_p2_roster_labels, p2)
 	if not in_p2:
 		for c2 in _p2_roster_labels.get_children():
@@ -963,6 +1002,7 @@ func _refresh_side_rosters_from_snapshot(units: Array) -> void:
 				continue
 			card2.call("setup", ud4, true, false, start_s)
 			_p2_roster_labels.add_child(card2)
+			_register_roster_card_tooltip(card2, ud4)
 	call_deferred("_roster_reflow_squares")
 
 
@@ -985,6 +1025,7 @@ func _try_update_roster_column_in_place(vb: VBoxContainer, team_units: Array) ->
 		var c2: Node = vb.get_child(j)
 		if c2.has_method("apply_unit_data"):
 			c2.call("apply_unit_data", team_units[j] as Dictionary, 0, false)
+		_register_roster_card_tooltip(c2, team_units[j] as Dictionary)
 	return true
 
 
@@ -1273,7 +1314,8 @@ func _populate_champion_grid() -> void:
 		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
-		button.tooltip_text = _champion_tooltip_lines(champion_id)
+		button.tooltip_text = ""
+		_register_champ_tooltip(button, champion_id)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
 		_header_panel.add_child(button)
 
@@ -1526,32 +1568,6 @@ func _pick_p2_hero(available: Array[StringName]) -> StringName:
 			top_s = sc
 			top = h
 	return top
-
-
-func _champion_tooltip_lines(hero_id: StringName) -> String:
-	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
-	if ch == null:
-		return ""
-	var d: Dictionary = ch.to_dict()
-	var st: Dictionary = d.get("stats", {})
-	var name: String = str(st.get("name", hero_id))
-	var role: String = str(st.get("role", "")).to_upper()
-	var lines: PackedStringArray = PackedStringArray()
-	lines.append("%s (%s)" % [name, role])
-	lines.append(str(d.get("description", "")))
-	lines.append(
-		"HP %.0f | AD %.1f | AS %.2f | Range %.1f"
-		% [
-			float(st.get("max_hp", 0.0)),
-			float(st.get("attack_damage", 0.0)),
-			float(st.get("attack_speed", 0.0)),
-			float(st.get("attack_range", 0.0)),
-		]
-	)
-	lines.append("Passive: %s" % str(d.get("passive_desc", "")))
-	lines.append("Ability (%ss): %s" % [str(st.get("ability_cd", 0.0)), str(d.get("ability_desc", ""))])
-	lines.append("Ultimate (%ss): %s" % [str(st.get("ultimate_cd", 0.0)), str(d.get("ultimate_desc", ""))])
-	return "\n".join(lines)
 
 
 func _on_random_draft_clicked() -> void:

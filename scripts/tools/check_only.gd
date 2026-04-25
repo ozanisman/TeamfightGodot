@@ -32,6 +32,12 @@ const GenerateSimulationStatsScript := preload("res://scripts/tools/generate_sim
 const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_stats_aggregator_roundtrip.gd")
 
 func _init() -> void:
+	# Preload in this file can fail for this script; runtime load is enough for CI.
+	var champion_tooltip: Script = load("res://scripts/app/champion_catalog_tooltip.gd") as Script
+	if champion_tooltip == null:
+		push_error("champion_catalog_tooltip: load failed (parse or missing res://scripts/app/champion_catalog_tooltip.gd)")
+		call_deferred("quit", 1)
+		return
 	var _compile_bar := StatsBarControlScript
 	var _compile_axis_guides := StatsChartAxisGuidesScript
 	var _compile_balance_bar := StatsBalanceBarScript

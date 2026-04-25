@@ -181,9 +181,45 @@ func finish_and_summarize() -> Dictionary:
 func get_tick_snapshot() -> Dictionary:
 	if not _ensure_native_backend():
 		return {}
-	if _backend.has_method("get_tick_snapshot"):
-		return _backend.call("get_tick_snapshot")
-	return {}
+	if not _backend.has_method("get_tick_snapshot"):
+		return {}
+	var snap: Variant = _backend.call("get_tick_snapshot")
+	if not snap is Dictionary:
+		return {}
+	var s: Dictionary = snap
+	# Backward compat: older native only exposed id, x, y, target; normalize for viewer.
+	var units: Array = Array(s.get("units", []))
+	for i in range(units.size()):
+		if units[i] is Dictionary:
+			var u: Dictionary = units[i]
+			if not u.has("instance_id"):
+				u["instance_id"] = int(u.get("id", 0))
+			if not u.has("pos_x"):
+				u["pos_x"] = float(u.get("x", 0.0))
+			if not u.has("pos_y"):
+				u["pos_y"] = float(u.get("y", 0.0))
+			if not u.has("target_id"):
+				u["target_id"] = int(u.get("target", 0))
+			if not u.has("max_hp"):
+				u["max_hp"] = float(u.get("hp", 0.0))
+			if not u.has("state"):
+				u["state"] = "ALIVE" if bool(u.get("alive", true)) else "DEAD"
+	s["units"] = units
+	if not s.has("tick_fx"):
+		s["tick_fx"] = []
+	if not s.has("projectiles"):
+		s["projectiles"] = []
+	if not s.has("time_remaining"):
+		s["time_remaining"] = 0.0
+	if not s.has("player_kills"):
+		s["player_kills"] = 0
+	if not s.has("enemy_kills"):
+		s["enemy_kills"] = 0
+	if not s.has("live_winner"):
+		s["live_winner"] = "draw"
+	if not s.has("match_duration"):
+		s["match_duration"] = 60.0
+	return s
 
 func get_trace_events() -> Array:
 	if not _ensure_native_backend():

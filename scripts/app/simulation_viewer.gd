@@ -4,6 +4,8 @@ const NativeSimulationBackendScript := preload("res://scripts/simulation/native_
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const ViewerUnitNodeScript := preload("res://scripts/app/viewer_unit_node.gd")
+const SimulationViewerArenaScript := preload("res://scripts/app/simulation_viewer_arena.gd")
 
 # Colors from Python pygame_viewer.py
 const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
@@ -26,6 +28,10 @@ const COLOR_SUCCESS := Color(0.196, 0.902, 0.196, 1.0)
 const COLOR_HIGHLIGHT := Color(0.471, 0.863, 0.549, 1.0)
 const COLOR_SECTION_BG := Color(0.133, 0.133, 0.18, 1.0)
 const COLOR_SECTION_BORDER := Color(0.275, 0.275, 0.353, 1.0)
+## World units map to this fraction of min(viewport) for a consistent projectile read.
+const VIEWER_BASE_MIN_AXIS: float = 720.0
+## Screen-space radius for projectiles (scales slightly with window).
+const PROJECTILE_BASE_RADIUS_PX: float = 4.0
 
 const ROLE_COLORS: Dictionary = {
 	"tank": Color(0.8, 0.2, 0.2),
@@ -97,6 +103,18 @@ var _random_draft_button: Button
 var _start_match_button: Button
 var _control_panel: Panel
 var _inspection_panel: Panel
+var _arena_layer: Node2D
+var _commence_button: Button
+var _match_overlay: ColorRect
+var _match_title: Label
+var _match_stats_container: VBoxContainer
+var _lbl_timer: Label
+var _lbl_score: Label
+var _lbl_combat_state: Label
+var _hud_pause: Label
+var _speed_button: Button
+var _p1_roster_labels: VBoxContainer
+var _p2_roster_labels: VBoxContainer
 
 
 func _ready() -> void:
@@ -114,8 +132,26 @@ func _ready() -> void:
 	_setup_inspection_panel()
 	_update_turn_display()
 	_update_team_rosters()
+	_update_start_match_enabled()
 
-	print("Simulation Viewer ready. Game state: ", _game_state)
+	if _debug_mode:
+		print("Simulation Viewer ready. Game state: ", _game_state)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE and (_game_state == COMBAT or _game_state == PREPARATION):
+			_toggle_pause()
+			get_viewport().set_input_as_handled()
+		if event.keycode == KEY_K and (_game_state == COMBAT or _game_state == PREPARATION):
+			_on_speed_toggle()
+			get_viewport().set_input_as_handled()
+
+
+func _on_speed_toggle() -> void:
+	_sim_speed = 0.5 if is_equal_approx(_sim_speed, 1.0) else 1.0
+	if _speed_button != null:
+		_speed_button.text = "Speed: 0.5x" if _sim_speed < 0.75 else "Speed: 1x"
 
 
 func _create_ui_structure() -> void:
@@ -127,6 +163,10 @@ func _create_ui_structure() -> void:
 	_world_layer.position = Vector2(0.0, 0.0)
 	_world_layer.visible = false
 	add_child(_world_layer)
+
+	_arena_layer = SimulationViewerArenaScript.new()
+	_arena_layer.name = "ArenaGrid"
+	_world_layer.add_child(_arena_layer)
 
 	# Create UILayer for UI elements (in front of world)
 	_ui_layer = Control.new()
@@ -249,10 +289,11 @@ func _create_ui_structure() -> void:
 	# Combat HUD elements (hidden initially)
 	_control_panel = Panel.new()
 	_control_panel.name = "ControlPanel"
-	_control_panel.position = Vector2(0.0, screen_size.y - 60.0)
-	_control_panel.custom_minimum_size = Vector2(800.0, 60.0)
+	_control_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_control_panel.offset_top = -60.0
+	_control_panel.custom_minimum_size = Vector2(0.0, 60.0)
 	_control_panel.visible = false
-	_header_panel.add_child(_control_panel)
+	_ui_layer.add_child(_control_panel)
 
 	# InspectionPanel
 	_inspection_panel = Panel.new()
@@ -260,7 +301,143 @@ func _create_ui_structure() -> void:
 	_inspection_panel.position = Vector2(10.0, 10.0)
 	_inspection_panel.custom_minimum_size = Vector2(240.0, 290.0)
 	_inspection_panel.visible = false
-	_header_panel.add_child(_inspection_panel)
+	_ui_layer.add_child(_inspection_panel)
+
+	_build_combat_overlay_hud()
+	_build_match_over_overlay()
+	_build_preparation_controls()
+
+
+func world_to_screen(wx: float, wy: float) -> Vector2:
+	var vp: Vector2 = get_viewport_rect().size
+	var wxc: float = clampf(wx, 0.0, SimConstantsScript.WORLD_SIZE)
+	var wyc: float = clampf(wy, 0.0, SimConstantsScript.WORLD_SIZE)
+	return Vector2((wxc / SimConstantsScript.WORLD_SIZE) * vp.x, (wyc / SimConstantsScript.WORLD_SIZE) * vp.y)
+
+
+func screen_to_world(screen: Vector2) -> Vector2:
+	var vp: Vector2 = get_viewport_rect().size
+	if vp.x < 0.001 or vp.y < 0.001:
+		return Vector2.ZERO
+	return Vector2(
+		(screen.x / vp.x) * SimConstantsScript.WORLD_SIZE,
+		(screen.y / vp.y) * SimConstantsScript.WORLD_SIZE
+	)
+
+
+func _build_combat_overlay_hud() -> void:
+	var top := HBoxContainer.new()
+	top.name = "CombatHUD"
+	top.visible = false
+	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top.offset_top = 8.0
+	top.offset_bottom = 52.0
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_theme_constant_override("separation", 24)
+	_ui_layer.add_child(top)
+
+	_lbl_timer = Label.new()
+	_lbl_timer.add_theme_color_override("font_color", COLOR_TEXT)
+	_lbl_timer.add_theme_font_size_override("font_size", 20)
+	top.add_child(_lbl_timer)
+
+	_lbl_score = Label.new()
+	_lbl_score.add_theme_color_override("font_color", COLOR_WARNING)
+	_lbl_score.add_theme_font_size_override("font_size", 20)
+	top.add_child(_lbl_score)
+
+	_lbl_combat_state = Label.new()
+	_lbl_combat_state.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_lbl_combat_state.add_theme_font_size_override("font_size", 16)
+	top.add_child(_lbl_combat_state)
+
+	_hud_pause = Label.new()
+	_hud_pause.visible = false
+	_hud_pause.add_theme_color_override("font_color", COLOR_WARNING)
+	top.add_child(_hud_pause)
+
+	_speed_button = Button.new()
+	_speed_button.text = "Speed: 1x"
+	_speed_button.tooltip_text = "Toggle 0.5x / 1x (keyboard: K)"
+	_speed_button.flat = true
+	_speed_button.add_theme_color_override("font_color", COLOR_TEXT)
+	_speed_button.pressed.connect(_on_speed_toggle)
+	top.add_child(_speed_button)
+
+	var side_l := VBoxContainer.new()
+	side_l.name = "P1RosterHUD"
+	side_l.visible = false
+	side_l.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	side_l.offset_left = 12.0
+	side_l.offset_top = 64.0
+	side_l.offset_right = 240.0
+	side_l.offset_bottom = 400.0
+	_ui_layer.add_child(side_l)
+	_p1_roster_labels = VBoxContainer.new()
+	side_l.add_child(_p1_roster_labels)
+
+	var side_r := VBoxContainer.new()
+	side_r.name = "P2RosterHUD"
+	side_r.visible = false
+	side_r.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	side_r.offset_right = -12.0
+	side_r.offset_top = 64.0
+	side_r.offset_left = -260.0
+	side_r.offset_bottom = 400.0
+	_ui_layer.add_child(side_r)
+	_p2_roster_labels = VBoxContainer.new()
+	# Top-align labels in the right strip (END stacks from bottom).
+	side_r.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_p2_roster_labels.add_theme_constant_override("separation", 4)
+	_p1_roster_labels.add_theme_constant_override("separation", 4)
+	side_r.add_child(_p2_roster_labels)
+
+
+func _build_match_over_overlay() -> void:
+	_match_overlay = ColorRect.new()
+	_match_overlay.name = "MatchOver"
+	_match_overlay.color = Color(0.08, 0.08, 0.1, 0.86)
+	_match_overlay.visible = false
+	_match_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_match_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_match_overlay.z_index = 50
+	_ui_layer.add_child(_match_overlay)
+
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_CENTER)
+	vb.offset_left = -400.0
+	vb.offset_right = 400.0
+	vb.offset_top = -280.0
+	vb.offset_bottom = 280.0
+	_match_overlay.add_child(vb)
+
+	_match_title = Label.new()
+	_match_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_match_title.add_theme_font_size_override("font_size", 28)
+	vb.add_child(_match_title)
+
+	_match_stats_container = VBoxContainer.new()
+	vb.add_child(_match_stats_container)
+
+	var new_draft := Button.new()
+	new_draft.text = "NEW DRAFT"
+	new_draft.custom_minimum_size = Vector2(220, 44)
+	new_draft.pressed.connect(_on_new_draft_from_match)
+	vb.add_child(new_draft)
+
+
+func _build_preparation_controls() -> void:
+	_commence_button = Button.new()
+	_commence_button.name = "CommenceBattle"
+	_commence_button.text = "COMMENCE BATTLE"
+	_commence_button.visible = false
+	_commence_button.custom_minimum_size = Vector2(240, 44)
+	_commence_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_commence_button.offset_bottom = -24.0
+	_commence_button.offset_top = -68.0
+	_commence_button.pressed.connect(_on_commence_battle)
+	_style_button(_commence_button)
+	_ui_layer.add_child(_commence_button)
 
 
 func _on_window_resized() -> void:
@@ -319,6 +496,8 @@ func _on_window_resized() -> void:
 		_header_panel.queue_redraw()
 	if _ui_layer != null:
 		_ui_layer.queue_redraw()
+	if (_game_state == COMBAT or _game_state == PREPARATION) and _backend != null:
+		_update_visualization_from_snapshot()
 
 
 func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
@@ -331,28 +510,7 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 	var square_margin := screen_size.x * square_margin_ratio
 	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
 
-	print("Updating champion buttons in place with filters: ", _active_role_filters, " screen_size: ", screen_size)
-
-	# Hide existing champion buttons before clearing to prevent visual artifacts
-	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("Champion"):
-			child.visible = false
-	
-	# Force redraw to ensure hiding takes effect
-	_header_panel.queue_redraw()
-	await get_tree().process_frame
-	
-	# Clear existing champion buttons
-	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("Champion"):
-			child.queue_free()
-	
-	# Wait for frame to ensure clearing completes
-	await get_tree().process_frame
-	
-	# Force redraw again to ensure clearing is visible
-	_header_panel.queue_redraw()
-	await get_tree().process_frame
+	_remove_champion_buttons_from_header()
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var visible_heroes: Array[StringName] = []
@@ -370,7 +528,6 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 				if _active_role_filters.has(role):
 					visible_heroes.append(champion_id)
 
-	print("Visible heroes: ", visible_heroes.size(), " out of ", champion_ids.size())
 
 	# Sort by name
 	visible_heroes.sort_custom(func(a, b): return String(a) < String(b))
@@ -403,12 +560,23 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		button.position = new_position
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
+		button.tooltip_text = _champion_tooltip_lines(champion_id)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
 		_header_panel.add_child(button)
-		print("Created button: ", button.name, " size: ", button_size, " position: ", button_position)
 
 	# Force redraw after creating new buttons
 	_header_panel.queue_redraw()
+
+
+func _remove_champion_buttons_from_header() -> void:
+	var to_clear: Array[Node] = []
+	for child in _header_panel.get_children():
+		if child is Button and (child as Button).name.begins_with("Champion"):
+			to_clear.append(child)
+	for n: Node in to_clear:
+		if is_instance_valid(n) and n.get_parent() == _header_panel:
+			_header_panel.remove_child(n)
+			n.free()
 
 
 func _update_action_buttons(screen_size: Vector2) -> void:
@@ -464,6 +632,8 @@ func _apply_color_scheme() -> void:
 func _process(delta: float) -> void:
 	if _game_state == COMBAT and not _combat_paused:
 		_step_simulation(delta)
+	if _arena_layer != null and (_game_state == COMBAT or _game_state == PREPARATION):
+		_arena_layer.refresh()
 
 
 func _step_simulation(delta: float) -> void:
@@ -487,111 +657,102 @@ func _update_visualization_from_snapshot() -> void:
 	var snapshot: Dictionary = _backend.get_tick_snapshot()
 	if snapshot.is_empty():
 		return
-
+	_refresh_combat_hud(snapshot)
 	var units: Array = snapshot.get("units", [])
 	for unit_data in units:
+		if unit_data is not Dictionary:
+			continue
 		var unit_dict: Dictionary = Dictionary(unit_data)
-		var instance_id: int = int(unit_dict.get("instance_id", 0))
-		var pos_x: float = float(unit_dict.get("pos_x", 0.0))
-		var pos_y: float = float(unit_dict.get("pos_y", 0.0))
-		var hp: float = float(unit_dict.get("hp", 0.0))
-		var max_hp: float = float(unit_dict.get("max_hp", 0.0))
-		var state: StringName = StringName(unit_dict.get("state", ""))
-		var target_id: int = int(unit_dict.get("target_id", 0))
-		var team: StringName = StringName(unit_dict.get("team", ""))
-
-		_update_unit_node(instance_id, pos_x, pos_y, hp, max_hp, state, target_id, team)
-
-	# Update projectiles
+		_update_unit_node(unit_dict)
+	_sync_target_lines_from_snapshot(units)
+	# Selection rings
+	for uid in _unit_nodes.keys():
+		var n: Node2D = _unit_nodes[uid] as Node2D
+		if n != null and n.has_method("set_selected"):
+			n.set_selected(int(uid) == _selected_unit_id)
 	var projectiles: Array = snapshot.get("projectiles", [])
 	_update_projectiles(projectiles)
+	_apply_tick_fx(snapshot)
+	_refresh_side_rosters_from_snapshot(units)
 
 
-func _update_unit_node(instance_id: int, pos_x: float, pos_y: float, hp: float, max_hp: float, state: StringName, target_id: int, team: StringName) -> void:
+func _update_unit_node(unit_dict: Dictionary) -> void:
+	var instance_id: int = int(unit_dict.get("instance_id", 0))
+	if instance_id == 0:
+		return
+	var team: StringName = StringName(unit_dict.get("team", ""))
 	var unit_node: Node2D = _unit_nodes.get(instance_id)
-
 	if unit_node == null:
 		unit_node = _create_unit_node(instance_id, team)
 		_unit_nodes[instance_id] = unit_node
 		_world_layer.add_child(unit_node)
+	var px: float = float(unit_dict.get("pos_x", 0.0))
+	var py: float = float(unit_dict.get("pos_y", 0.0))
+	unit_node.position = world_to_screen(px, py)
+	if unit_node.has_method("set_snapshot_data"):
+		unit_node.set_snapshot_data(unit_dict)
+	unit_node.visible = _is_unit_on_battlefield(unit_dict)
 
-	# Update position (scale world to screen, centered on screen)
-	var screen_size := get_viewport_rect().size
-	var screen_center := screen_size / 2.0
-	unit_node.position = screen_center + Vector2(pos_x * 50, pos_y * 50)  # Reduced scale from 100 to 50
 
-	print("Updated unit node instance_id: ", instance_id, " pos: ", unit_node.position, " hp: ", hp)
+func _is_unit_on_battlefield(u: Dictionary) -> bool:
+	if _game_state != COMBAT and _game_state != PREPARATION:
+		return true
+	if str(u.get("state", "")) == "DEAD":
+		return false
+	if not bool(u.get("alive", true)):
+		return false
+	return true
 
-	# Update HP bar
-	var hp_bar: ProgressBar = unit_node.get_node("HPBar")
-	if hp_bar != null:
-		hp_bar.value = (hp / max_hp) * 100.0 if max_hp > 0 else 0.0
 
-	# Update state text
-	var state_label: Label = unit_node.get_node("StateLabel")
-	if state_label != null:
-		state_label.text = String(state)
-
-	# Update target line
-	var target_line: Line2D = unit_node.get_node("TargetLine")
-	if target_line != null:
-		var target_node: Node2D = _unit_nodes.get(target_id)
-		if target_node != null and target_id != 0:
-			target_line.points = PackedVector2Array([Vector2.ZERO, target_node.position - unit_node.position])
-			target_line.visible = true
+func _sync_target_lines_from_snapshot(units: Array) -> void:
+	var by_id: Dictionary = {}
+	for unit_data in units:
+		if unit_data is not Dictionary:
+			continue
+		var ud: Dictionary = Dictionary(unit_data)
+		var iid: int = int(ud.get("instance_id", 0))
+		if iid != 0:
+			by_id[iid] = ud
+	for unit_id in _unit_nodes:
+		var unit_node: Node2D = _unit_nodes[unit_id] as Node2D
+		if unit_node == null or not is_instance_valid(unit_node):
+			continue
+		var line: Line2D = unit_node.get_node_or_null("TargetLine") as Line2D
+		if line == null:
+			continue
+		if not unit_node.visible:
+			line.visible = false
+			continue
+		var ud2: Dictionary = by_id.get(int(unit_id), {})
+		var tid: int = int(ud2.get("target_id", 0))
+		if tid != 0 and _game_state == COMBAT:
+			var tnode: Node2D = _unit_nodes.get(tid) as Node2D
+			if tnode != null and is_instance_valid(tnode) and tnode.visible:
+				line.points = PackedVector2Array([Vector2.ZERO, tnode.position - unit_node.position])
+				line.visible = true
+			else:
+				line.visible = false
 		else:
-			target_line.visible = false
+			line.visible = false
 
 
 func _create_unit_node(instance_id: int, team: StringName) -> Node2D:
-	var unit_node := Node2D.new()
+	var unit_node: Node2D = ViewerUnitNodeScript.new()
 	unit_node.name = "Unit_%d" % instance_id
-
-	# Unit sprite with click area
-	var sprite := ColorRect.new()
-	sprite.name = "Sprite"
-	sprite.size = Vector2(40, 40)  # Increased from 20x20 for better visibility
-	sprite.position = Vector2(-20, -20)
-	sprite.color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
-	sprite.mouse_filter = Control.MOUSE_FILTER_STOP
-	sprite.gui_input.connect(_on_unit_sprite_input.bind(instance_id, team))
-	unit_node.add_child(sprite)
-
-	# HP bar
-	var hp_bar := ProgressBar.new()
-	hp_bar.name = "HPBar"
-	hp_bar.size = Vector2(40, 5)
-	hp_bar.position = Vector2(-20, 25)
-	hp_bar.value = 100.0
-	hp_bar.min_value = 0.0
-	hp_bar.max_value = 100.0
-	unit_node.add_child(hp_bar)
-
-	# State label
-	var state_label := Label.new()
-	state_label.name = "StateLabel"
-	state_label.text = "IDLE"
-	state_label.position = Vector2(-20, -30)
-	state_label.add_theme_font_size_override("font_size", 10)
-	state_label.add_theme_color_override("font_color", COLOR_TEXT)
-	unit_node.add_child(state_label)
-
-	# Target line
+	unit_node.setup(instance_id, team)
+	unit_node.unit_clicked.connect(_on_viewer_unit_clicked)
 	var target_line := Line2D.new()
 	target_line.name = "TargetLine"
 	target_line.width = 2.0
 	target_line.default_color = COLOR_TARGET_LINE
 	target_line.visible = false
 	unit_node.add_child(target_line)
-
-	print("Created unit node for instance_id: ", instance_id, " team: ", team)
 	return unit_node
 
 
-func _on_unit_sprite_input(instance_id: int, team: StringName, event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_selected_unit_id = instance_id
-		_update_inspection_panel(instance_id, team)
+func _on_viewer_unit_clicked(p_instance_id: int, p_team: StringName) -> void:
+	_selected_unit_id = p_instance_id
+	_update_inspection_panel(p_instance_id)
 
 
 func _update_projectiles(projectiles: Array) -> void:
@@ -608,45 +769,164 @@ func _update_projectiles(projectiles: Array) -> void:
 		var proj_id: int = int(proj_dict.get("id", 0))
 		var pos_x: float = float(proj_dict.get("pos_x", 0.0))
 		var pos_y: float = float(proj_dict.get("pos_y", 0.0))
-		var source_id: int = int(proj_dict.get("source_id", 0))
-		var target_id: int = int(proj_dict.get("target_id", 0))
-
-		var proj_node := _create_projectile_node(proj_id, pos_x, pos_y, source_id, target_id)
+		var team_s: StringName = StringName(proj_dict.get("team", "player"))
+		var proj_node := _create_projectile_node(proj_id, pos_x, pos_y, team_s)
 		_projectile_nodes[proj_id] = proj_node
 		_world_layer.add_child(proj_node)
 
 
-func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, source_id: int, target_id: int) -> Node2D:
+func _projectile_screen_radius_px() -> float:
+	var vp: Vector2 = get_viewport_rect().size
+	return clampf(
+		PROJECTILE_BASE_RADIUS_PX * minf(vp.x, vp.y) / VIEWER_BASE_MIN_AXIS,
+		2.0,
+		7.0
+	)
+
+
+func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: StringName) -> Node2D:
 	var proj_node := Node2D.new()
 	proj_node.name = "Projectile_%d" % proj_id
-	proj_node.position = Vector2(pos_x * 100, pos_y * 100)
-
-	# Projectile sprite
-	var sprite := ColorRect.new()
-	sprite.name = "Sprite"
-	sprite.size = Vector2(8, 8)
-	sprite.position = Vector2(-4, -4)
-	sprite.color = Color.YELLOW
-	proj_node.add_child(sprite)
-
+	proj_node.position = world_to_screen(pos_x, pos_y)
+	var col: Color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
+	var r: float = _projectile_screen_radius_px()
+	var disc := Polygon2D.new()
+	disc.name = "Disc"
+	var ring := PackedVector2Array()
+	var n: int = 12
+	for i in range(n):
+		var a: float = TAU * float(i) / float(n)
+		ring.append(Vector2(cos(a), sin(a)) * r)
+	disc.polygon = ring
+	disc.color = col
+	proj_node.add_child(disc)
+	var core := Polygon2D.new()
+	var r2: float = maxf(1.0, r * 0.35)
+	var inner := PackedVector2Array()
+	for j in range(n):
+		var a2: float = TAU * float(j) / float(n)
+		inner.append(Vector2(cos(a2), sin(a2)) * r2)
+	core.polygon = inner
+	core.color = Color(0.95, 0.9, 0.45, 0.95)
+	proj_node.add_child(core)
 	return proj_node
 
 
-func _spawn_floating_text(text: String, pos: Vector2, color: Color = COLOR_TEXT) -> void:
+func _refresh_combat_hud(snapshot: Dictionary) -> void:
+	if _lbl_timer != null:
+		_lbl_timer.text = "TIME: %.1fs" % float(snapshot.get("time_remaining", 0.0))
+	if _lbl_score != null:
+		_lbl_score.text = "SCORE: %d - %d" % [int(snapshot.get("player_kills", 0)), int(snapshot.get("enemy_kills", 0))]
+	if _lbl_combat_state != null and _game_state != PREPARATION:
+		_lbl_combat_state.text = "COMBAT" if _game_state == COMBAT else String(_game_state)
+	if _hud_pause != null:
+		_hud_pause.visible = _combat_paused and _game_state == COMBAT
+		if _hud_pause.visible:
+			_hud_pause.text = "PAUSED (Space)  |  K: speed"
+
+
+func _refresh_side_rosters_from_snapshot(units: Array) -> void:
+	if _p1_roster_labels == null or _p2_roster_labels == null:
+		return
+	for c in _p1_roster_labels.get_children():
+		c.queue_free()
+	for c in _p2_roster_labels.get_children():
+		c.queue_free()
+	var p1: Array = []
+	var p2: Array = []
+	for u in units:
+		if u is Dictionary:
+			var ud: Dictionary = u
+			if String(ud.get("team", "")) == "player":
+				p1.append(ud)
+			elif String(ud.get("team", "")) == "enemy":
+				p2.append(ud)
+	p1.sort_custom(func(a, b): return int(a.get("instance_id", 0)) < int(b.get("instance_id", 0)))
+	p2.sort_custom(func(a, b): return int(a.get("instance_id", 0)) < int(b.get("instance_id", 0)))
+	for ud in p1:
+		var lb := Label.new()
+		var nm: String = str(ud.get("archetype_id", "?"))
+		var k: int = int(ud.get("kills", 0))
+		var d: int = int(ud.get("deaths", 0))
+		var a: int = int(ud.get("assists", 0))
+		var st: String = str(ud.get("state", "ALIVE"))
+		var s: String = "%s  (%d/%d/%d)" % [nm, k, d, a]
+		if st == "DEAD" or not bool(ud.get("alive", true)):
+			s += "  %.1fs" % float(ud.get("respawn_timer", 0.0))
+			lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+		else:
+			lb.add_theme_color_override("font_color", COLOR_PLAYER)
+		lb.text = s
+		_p1_roster_labels.add_child(lb)
+	for ud in p2:
+		var lb2 := Label.new()
+		var nm2: String = str(ud.get("archetype_id", "?"))
+		var k2: int = int(ud.get("kills", 0))
+		var d2: int = int(ud.get("deaths", 0))
+		var a2: int = int(ud.get("assists", 0))
+		var st2: String = str(ud.get("state", "ALIVE"))
+		var s2: String = "(%d/%d/%d)  %s" % [k2, d2, a2, nm2]
+		if st2 == "DEAD" or not bool(ud.get("alive", true)):
+			s2 = "%.1fs  " % float(ud.get("respawn_timer", 0.0)) + s2
+			lb2.add_theme_color_override("font_color", COLOR_SUBTLE)
+		else:
+			lb2.add_theme_color_override("font_color", COLOR_ENEMY)
+		lb2.text = s2
+		_p2_roster_labels.add_child(lb2)
+
+
+func _apply_tick_fx(snapshot: Dictionary) -> void:
+	var evs: Array = Array(snapshot.get("tick_fx", []))
+	for e in evs:
+		if e is not Dictionary:
+			continue
+		var d: Dictionary = e
+		var k: String = str(d.get("kind", ""))
+		var wx: float = float(d.get("x", 0.0))
+		var wy: float = float(d.get("y", 0.0))
+		var sp: Vector2 = world_to_screen(wx, wy)
+		if k == "damage" or k == "dmg":
+			var amt: float = float(d.get("val", 0.0))
+			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, Color(0.9, 0.45, 0.45))
+		elif k == "heal":
+			var h: float = float(d.get("val", 0.0))
+			_spawn_floating_text_screen("+%d" % int(ceil(h)), sp, COLOR_SUCCESS)
+		elif k == "shield":
+			var sh: float = float(d.get("val", 0.0))
+			_spawn_floating_text_screen("[%d]" % int(ceil(sh)), sp, Color(0.55, 0.75, 1.0))
+		elif k == "melee_slash":
+			_spawn_melee_slash_fx(sp)
+
+
+func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
+	var s := Node2D.new()
+	s.position = screen_pos
+	s.z_index = 5
+	var line := Line2D.new()
+	line.add_point(Vector2(-10, -10))
+	line.add_point(Vector2(10, 10))
+	line.width = 2.0
+	line.default_color = Color(1.0, 0.9, 0.45, 0.85)
+	s.add_child(line)
+	_world_layer.add_child(s)
+	var tw := create_tween()
+	tw.tween_property(line, "modulate:a", 0.0, 0.1)
+	tw.tween_callback(s.queue_free)
+
+
+func _spawn_floating_text_screen(text: String, screen_pos: Vector2, color: Color) -> void:
 	var label := Label.new()
 	label.text = text
-	label.position = pos
 	label.add_theme_font_size_override("font_size", 16)
 	label.add_theme_color_override("font_color", color)
-	label.z_index = 100
-	_world_layer.add_child(label)
+	label.z_index = 200
+	label.position = screen_pos
+	_ui_layer.add_child(label)
 	_floating_texts.append(label)
-
-	# Animate floating text upward and fade out
 	var tween := create_tween()
-	tween.parallel().tween_property(label, "position", pos + Vector2(0, -50), 1.0)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
-	tween.tween_callback(func(): _remove_floating_text(label))
+	tween.parallel().tween_property(label, "position", screen_pos + Vector2(0, -40), 0.8)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(label.queue_free)
 
 
 func _remove_floating_text(label: Label) -> void:
@@ -656,11 +936,14 @@ func _remove_floating_text(label: Label) -> void:
 func _setup_draft_ui() -> void:
 	var screen_size := get_viewport_rect().size
 
-	# Clear existing role filter buttons
+	var rf: Array[Node] = []
 	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("RoleFilter"):
-			child.queue_free()
-	await get_tree().process_frame
+		if child is Button and (child as Button).name.begins_with("RoleFilter"):
+			rf.append(child)
+	for n: Node in rf:
+		if is_instance_valid(n) and n.get_parent() == _header_panel:
+			_header_panel.remove_child(n)
+			n.free()
 
 	# Set up role filter buttons with proportional sizing (manual positioning)
 	var roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
@@ -704,26 +987,7 @@ func _populate_champion_grid() -> void:
 	var square_margin := screen_size.x * square_margin_ratio
 	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
 
-	# Hide existing champion buttons before clearing to prevent visual artifacts
-	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("Champion"):
-			child.visible = false
-	
-	# Force redraw to ensure hiding takes effect
-	_header_panel.queue_redraw()
-	await get_tree().process_frame
-	
-	# Clear existing champion buttons
-	for child in _header_panel.get_children():
-		if child is Button and child.name.begins_with("Champion"):
-			child.queue_free()
-	
-	# Wait for frame to ensure clearing completes
-	await get_tree().process_frame
-	
-	# Force redraw again to ensure clearing is visible
-	_header_panel.queue_redraw()
-	await get_tree().process_frame
+	_remove_champion_buttons_from_header()
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var visible_heroes: Array[StringName] = []
@@ -766,6 +1030,7 @@ func _populate_champion_grid() -> void:
 		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
+		button.tooltip_text = _champion_tooltip_lines(champion_id)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
 		_header_panel.add_child(button)
 
@@ -774,17 +1039,13 @@ func _populate_champion_grid() -> void:
 
 
 func _on_role_filter_toggled(role: StringName, button: Button) -> void:
-	print("Role filter toggled: ", role, " Current filters: ", _active_role_filters)
-	
 	# If the clicked role is already selected, deselect it (go back to see all)
 	if _active_role_filters.has(role):
 		_active_role_filters.clear()
-		print("Deselected role, going back to see all")
 	else:
 		# Clear any existing filter and set only the clicked role
 		_active_role_filters.clear()
 		_active_role_filters.append(role)
-		print("Switched to role: ", role)
 	
 	# Update all role filter button styles
 	for child in _header_panel.get_children():
@@ -793,7 +1054,6 @@ func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 			var is_active := StringName(button_role) in _active_role_filters
 			_update_role_filter_button_style(child, StringName(button_role), is_active)
 
-	print("About to repopulate champion grid with filters: ", _active_role_filters)
 	# Fresh pull and redraw of champion UI buttons
 	_populate_champion_grid()
 
@@ -882,48 +1142,173 @@ func _update_turn_display() -> void:
 
 
 func _update_team_rosters() -> void:
-	var screen_size := get_viewport_rect().size
-	var center_x := screen_size.x / 2.0
-
-	# Clear existing labels
 	for child in _player_team_list.get_children():
-		child.queue_free()
+		_player_team_list.remove_child(child)
+		child.free()
 	for child in _enemy_team_list.get_children():
-		child.queue_free()
+		_enemy_team_list.remove_child(child)
+		child.free()
 	if _banned_list != null:
 		for child in _banned_list.get_children():
-			child.queue_free()
-	await get_tree().process_frame
+			_banned_list.remove_child(child)
+			child.free()
 
-	# Add player team labels with exact Python spacing (22px vertical)
+	_player_team_list.add_theme_constant_override("separation", 2)
+	_enemy_team_list.add_theme_constant_override("separation", 2)
+	if _banned_list != null:
+		_banned_list.add_theme_constant_override("separation", 2)
+
+	# VBoxContainer lays out; do not set per-label y (was stacking with flow + races from await).
 	for i in range(_player_picks.size()):
 		var champion_id: StringName = _player_picks[i]
 		var label := Label.new()
 		label.text = "- %s" % String(champion_id).capitalize()
 		label.add_theme_color_override("font_color", COLOR_TEXT)
-		label.position = Vector2(0.0, float(i) * 22.0)
 		_player_team_list.add_child(label)
 
-	# Add enemy team labels with exact Python spacing (22px vertical)
 	for i in range(_enemy_picks.size()):
 		var champion_id: StringName = _enemy_picks[i]
-		var label := Label.new()
-		label.text = "- %s" % String(champion_id).capitalize()
-		label.add_theme_color_override("font_color", COLOR_TEXT)
-		label.position = Vector2(0.0, float(i) * 22.0)
-		_enemy_team_list.add_child(label)
+		var label2 := Label.new()
+		label2.text = "- %s" % String(champion_id).capitalize()
+		label2.add_theme_color_override("font_color", COLOR_TEXT)
+		_enemy_team_list.add_child(label2)
 
-	# Add banned heroes with exact Python spacing (20px vertical)
 	if _banned_list != null:
 		var sorted_banned: Array[StringName] = _banned_heroes.duplicate()
 		sorted_banned.sort_custom(func(a, b): return String(a) < String(b))
-		for i in range(sorted_banned.size()):
-			var champion_id: StringName = sorted_banned[i]
-			var label := Label.new()
-			label.text = String(champion_id)
-			label.add_theme_color_override("font_color", COLOR_SUBTLE)
-			label.position = Vector2(0.0, float(i) * 20.0)
-			_banned_list.add_child(label)
+		for j in range(sorted_banned.size()):
+			var b_id: StringName = sorted_banned[j]
+			var bl := Label.new()
+			bl.text = String(b_id)
+			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
+			_banned_list.add_child(bl)
+
+
+func _update_start_match_enabled() -> void:
+	if _start_match_button == null:
+		return
+	var can: bool = _draft_step_index >= DRAFT_SEQUENCE.size() or _debug_mode
+	_start_match_button.disabled = not can
+
+
+func _power_score_for_pick(hero_id: StringName) -> float:
+	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
+	if ch == null:
+		return 0.0
+	var d: Dictionary = ch.to_dict()
+	var st: Dictionary = d.get("stats", {})
+	var max_hp: float = float(st.get("max_hp", 1.0))
+	var ad: float = float(st.get("attack_damage", 0.0))
+	var as_sp: float = maxf(0.01, float(st.get("attack_speed", 0.5)))
+	return max_hp * ad * as_sp
+
+
+func _try_enemy_draft_ai() -> void:
+	while _draft_step_index < DRAFT_SEQUENCE.size():
+		var step: String = DRAFT_SEQUENCE[_draft_step_index]
+		if not step.begins_with("P2"):
+			break
+		if step.contains("BAN"):
+			break
+		var taken: Array[StringName] = _player_picks + _enemy_picks + _banned_heroes
+		var ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+		var available: Array[StringName] = []
+		for cid in ids:
+			if cid not in taken:
+				available.append(cid)
+		if available.is_empty():
+			break
+		var chosen: StringName = _pick_p2_hero(available)
+		if chosen == StringName():
+			break
+		if _enemy_picks.size() < MAX_TEAM_SIZE:
+			_enemy_picks.append(chosen)
+		_draft_step_index += 1
+		_update_turn_display()
+		_update_team_rosters()
+		_update_champion_button_style(chosen)
+	_update_start_match_enabled()
+
+
+func _pick_p2_hero(available: Array[StringName]) -> StringName:
+	if available.is_empty():
+		return StringName()
+	var enemy_roles: Array[StringName] = []
+	for h in _enemy_picks:
+		var c: Variant = ChampionCatalogScript.get_champion(h)
+		if c != null:
+			var r: StringName = StringName(c.to_dict().get("stats", {}).get("role", &""))
+			enemy_roles.append(r)
+	if not enemy_roles.has(&"tank"):
+		var tanks: Array[StringName] = []
+		for h in available:
+			var c2: Variant = ChampionCatalogScript.get_champion(h)
+			if c2 != null and StringName(c2.to_dict().get("stats", {}).get("role", &"")) == &"tank":
+				tanks.append(h)
+		if not tanks.is_empty():
+			var best: StringName = tanks[0]
+			var best_hp: float = -1.0
+			for t in tanks:
+				var c3: Variant = ChampionCatalogScript.get_champion(t)
+				if c3 == null:
+					continue
+				var mhp: float = float(c3.to_dict().get("stats", {}).get("max_hp", 0.0))
+				if mhp > best_hp:
+					best_hp = mhp
+					best = t
+			return best
+	if not enemy_roles.has(&"marksman") and not enemy_roles.has(&"mage"):
+		var ranged: Array[StringName] = []
+		for h in available:
+			var c4: Variant = ChampionCatalogScript.get_champion(h)
+			if c4 == null:
+				continue
+			var role: StringName = StringName(c4.to_dict().get("stats", {}).get("role", &""))
+			if role == &"marksman" or role == &"mage":
+				ranged.append(h)
+		if not ranged.is_empty():
+			var pick: StringName = ranged[0]
+			var best_p: float = -1.0
+			for r in ranged:
+				var s: float = _power_score_for_pick(r)
+				if s > best_p:
+					best_p = s
+					pick = r
+			return pick
+	var top: StringName = available[0]
+	var top_s: float = _power_score_for_pick(top)
+	for h in available:
+		var sc: float = _power_score_for_pick(h)
+		if sc > top_s:
+			top_s = sc
+			top = h
+	return top
+
+
+func _champion_tooltip_lines(hero_id: StringName) -> String:
+	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
+	if ch == null:
+		return ""
+	var d: Dictionary = ch.to_dict()
+	var st: Dictionary = d.get("stats", {})
+	var name: String = str(st.get("name", hero_id))
+	var role: String = str(st.get("role", "")).to_upper()
+	var lines: PackedStringArray = PackedStringArray()
+	lines.append("%s (%s)" % [name, role])
+	lines.append(str(d.get("description", "")))
+	lines.append(
+		"HP %.0f | AD %.1f | AS %.2f | Range %.1f"
+		% [
+			float(st.get("max_hp", 0.0)),
+			float(st.get("attack_damage", 0.0)),
+			float(st.get("attack_speed", 0.0)),
+			float(st.get("attack_range", 0.0)),
+		]
+	)
+	lines.append("Passive: %s" % str(d.get("passive_desc", "")))
+	lines.append("Ability (%ss): %s" % [str(st.get("ability_cd", 0.0)), str(d.get("ability_desc", ""))])
+	lines.append("Ultimate (%ss): %s" % [str(st.get("ultimate_cd", 0.0)), str(d.get("ultimate_desc", ""))])
+	return "\n".join(lines)
 
 
 func _on_random_draft_clicked() -> void:
@@ -943,7 +1328,7 @@ func _on_random_draft_clicked() -> void:
 
 
 func _on_start_match_clicked() -> void:
-	_start_combat()
+	_enter_preparation()
 
 
 func _setup_control_panel() -> void:
@@ -985,7 +1370,7 @@ func _setup_inspection_panel() -> void:
 	_inspection_panel.add_child(label)
 
 
-func _update_inspection_panel(instance_id: int, team: StringName) -> void:
+func _update_inspection_panel(instance_id: int) -> void:
 	if _inspection_panel == null:
 		return
 
@@ -1003,49 +1388,40 @@ func _update_inspection_panel(instance_id: int, team: StringName) -> void:
 		var uid: int = int(unit_dict.get("instance_id", 0))
 		if uid == instance_id:
 			var archetype_id: StringName = StringName(unit_dict.get("archetype_id", ""))
+			var ut: String = String(unit_dict.get("team", ""))
 			var hp: float = float(unit_dict.get("hp", 0.0))
 			var max_hp: float = float(unit_dict.get("max_hp", 0.0))
 			var state: StringName = StringName(unit_dict.get("state", ""))
 			var target_id: int = int(unit_dict.get("target_id", 0))
 
-			label.text = "Unit: %s\nTeam: %s\nHP: %.1f/%.1f\nState: %s\nTarget: %d" % [archetype_id, team, hp, max_hp, state, target_id]
+			label.text = "Unit: %s\nTeam: %s\nHP: %.1f/%.1f\nState: %s\nTarget: %d" % [archetype_id, ut, hp, max_hp, state, target_id]
 			return
 
 	label.text = "Unit %d not found in snapshot" % instance_id
 
 
 func _on_champion_clicked(champion_id: StringName) -> void:
-	print("Champion clicked: ", champion_id, ", Game state: ", _game_state, ", Draft step: ", _draft_step_index)
-
 	if _game_state != DRAFTING:
-		print("Not in drafting state, ignoring click")
 		return
 
 	if _draft_step_index >= DRAFT_SEQUENCE.size():
-		print("Draft sequence complete, ignoring click")
 		return
 
 	var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
-	print("Current turn: ", current_turn)
 
 	if current_turn == "P1_PICK":
 		if _player_picks.size() < MAX_TEAM_SIZE:
 			_player_picks.append(champion_id)
-			print("Added to player team: ", champion_id)
 	elif current_turn == "P2_PICK":
 		if _enemy_picks.size() < MAX_TEAM_SIZE:
 			_enemy_picks.append(champion_id)
-			print("Added to enemy team: ", champion_id)
 
 	_draft_step_index += 1
 	_update_turn_display()
 	_update_team_rosters()
 	_update_champion_button_style(champion_id)
-
-	if _draft_step_index >= DRAFT_SEQUENCE.size():
-		_game_state = PREPARATION
-		print("Draft complete, state changed to PREPARATION")
-
+	_update_start_match_enabled()
+	_try_enemy_draft_ai()
 
 
 
@@ -1105,52 +1481,52 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 
 func _toggle_pause() -> void:
 	_combat_paused = not _combat_paused
+	if _hud_pause != null:
+		_hud_pause.visible = _combat_paused and _game_state == COMBAT
+		if _hud_pause.visible:
+			_hud_pause.text = "PAUSED (Space)  |  K: speed"
 
 
 func _restart_match() -> void:
-	_clear_units()
-	_player_picks.clear()
-	_enemy_picks.clear()
-	_banned_heroes.clear()
-	_draft_step_index = 0
-	_game_state = DRAFTING
-	_sim_time_accumulator = 0.0
-	_update_turn_display()
-	_update_team_rosters()
-	_populate_champion_grid()
+	if _match_overlay != null:
+		_match_overlay.visible = false
+	_reset_to_draft()
 
 
-func _start_combat() -> void:
-	print("Start combat clicked. Game state: ", _game_state, ", Player picks: ", _player_picks, ", Enemy picks: ", _enemy_picks)
-
-	if _game_state != PREPARATION:
-		print("Not in PREPARATION state")
+func _enter_preparation() -> void:
+	if _backend == null:
 		return
-
-	if _player_picks.is_empty() or _enemy_picks.is_empty():
-		print("Teams are empty")
+	if not _can_start_match():
 		return
-
-	_show_combat_ui()
-	print("Starting combat with teams - Player: ", _player_picks, ", Enemy: ", _enemy_picks)
-
 	var match_input: Object = MatchReplayInputScript.build_match_input(
 		0,
 		_player_picks,
 		_enemy_picks,
 		SimConstantsScript.DEFAULT_TICK_RATE
 	)
-
 	_backend.begin_match(match_input)
-	_game_state = COMBAT
+	_game_state = PREPARATION
 	_sim_time_accumulator = 0.0
-	print("Combat started, game state changed to COMBAT")
+	_show_world_and_hud_for_battle()
+	if _arena_layer != null:
+		_arena_layer.show_preparation_zones = true
+	if _commence_button != null:
+		_commence_button.visible = true
+	_lbl_combat_state.text = "PREPARATION"
+	_hud_pause.visible = false
+	_update_visualization_from_snapshot()
 
 
-func _show_combat_ui() -> void:
+func _can_start_match() -> bool:
+	if _player_picks.is_empty() or _enemy_picks.is_empty():
+		return false
+	if _draft_step_index < DRAFT_SEQUENCE.size() and not _debug_mode:
+		return false
+	return true
+
+
+func _show_world_and_hud_for_battle() -> void:
 	var screen_size := get_viewport_rect().size
-
-	# Hide drafting UI
 	if _header_panel != null:
 		_header_panel.visible = false
 	if _role_filter_container != null:
@@ -1161,22 +1537,149 @@ func _show_combat_ui() -> void:
 		_random_draft_button.visible = false
 	if _start_match_button != null:
 		_start_match_button.visible = false
-
-	# Show world layer for combat visualization
 	if _world_layer != null:
 		_world_layer.visible = true
-
-	# Show combat HUD with full screen
 	if _control_panel != null:
 		_control_panel.visible = true
-		_control_panel.size = screen_size
-		_control_panel.position = Vector2(0.0, 0.0)
+		_control_panel.size = Vector2(screen_size.x, 56.0)
+		_control_panel.position = Vector2(0.0, screen_size.y - 56.0)
+	var top_hud: Control = _ui_layer.get_node_or_null("CombatHUD")
+	if top_hud != null:
+		top_hud.visible = true
+	if _p1_roster_labels != null:
+		_p1_roster_labels.get_parent().visible = true
+	if _p2_roster_labels != null:
+		_p2_roster_labels.get_parent().visible = true
+
+
+func _on_commence_battle() -> void:
+	if _game_state != PREPARATION:
+		return
+	if _commence_button != null:
+		_commence_button.visible = false
+	if _arena_layer != null:
+		_arena_layer.show_preparation_zones = false
+	_game_state = COMBAT
+	_sim_time_accumulator = 0.0
+	_lbl_combat_state.text = "COMBAT"
 
 
 func _end_match() -> void:
 	_game_state = MATCH_OVER
 	var summary: Dictionary = _backend.finish_and_summarize()
-	print("Match ended. Winner: ", summary.get("winner_team", "draw"))
+	_combat_paused = false
+	_show_match_results(summary)
+
+
+func _show_match_results(summary: Dictionary) -> void:
+	if _match_overlay == null or _match_title == null or _match_stats_container == null:
+		return
+	_match_overlay.visible = true
+	var w: String = str(summary.get("winner_team", "draw"))
+	_match_title.remove_theme_color_override("font_color")
+	if w == "player":
+		_match_title.text = "PLAYER 1 VICTORY"
+		_match_title.add_theme_color_override("font_color", COLOR_PLAYER)
+	elif w == "enemy":
+		_match_title.text = "PLAYER 2 VICTORY"
+		_match_title.add_theme_color_override("font_color", COLOR_ENEMY)
+	else:
+		_match_title.text = "MATCH DRAW"
+		_match_title.add_theme_color_override("font_color", COLOR_TEXT)
+	for c in _match_stats_container.get_children():
+		c.queue_free()
+	var pi: int = int(summary.get("player_kills", 0))
+	var ei: int = int(summary.get("enemy_kills", 0))
+	# If summary has no kills at root, 0-0
+	var sc_line := Label.new()
+	sc_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sc_line.text = "Final score (kills): %d - %d" % [pi, ei]
+	_match_stats_container.add_child(sc_line)
+	var us: Array = Array(summary.get("unit_stats", []))
+	us.sort_custom(
+		func(a, b):
+			return float((a as Dictionary).get("damage_dealt", 0.0)) > float((b as Dictionary).get("damage_dealt", 0.0))
+	)
+	for item in us:
+		if item is not Dictionary:
+			continue
+		var u: Dictionary = item
+		var row := Label.new()
+		row.text = "%s  |  %s  |  K/D/A %d/%d/%d  |  Dmg %.0f  |  Heal %.0f  |  Mitig %.0f" % [
+			String(u.get("archetype", u.get("archetype_id", "?"))),
+			String(u.get("team", "?")),
+			int(u.get("kills", 0)),
+			int(u.get("deaths", 0)),
+			int(u.get("assists", 0)),
+			float(u.get("damage_dealt", 0.0)),
+			float(u.get("healing_done", 0.0)),
+			float(u.get("damage_mitigated", 0.0)),
+		]
+		_match_stats_container.add_child(row)
+	var ch := _ui_layer.get_node_or_null("CombatHUD")
+	if ch != null:
+		ch.visible = false
+	if _p1_roster_labels != null:
+		var p1p = _p1_roster_labels.get_parent()
+		if p1p != null:
+			p1p.visible = false
+	if _p2_roster_labels != null:
+		var p2p = _p2_roster_labels.get_parent()
+		if p2p != null:
+			p2p.visible = false
+
+
+func _on_new_draft_from_match() -> void:
+	if _match_overlay != null:
+		_match_overlay.visible = false
+	_reset_to_draft()
+
+
+func _reset_to_draft() -> void:
+	_clear_units()
+	_game_state = DRAFTING
+	_combat_paused = false
+	_draft_step_index = 0
+	_player_picks.clear()
+	_enemy_picks.clear()
+	_banned_heroes.clear()
+	_sim_time_accumulator = 0.0
+	_selected_unit_id = 0
+	if _commence_button != null:
+		_commence_button.visible = false
+	if _arena_layer != null:
+		_arena_layer.show_preparation_zones = false
+	if _header_panel != null:
+		_header_panel.visible = true
+	if _role_filter_container != null:
+		_role_filter_container.visible = true
+	if _champion_grid != null:
+		_champion_grid.visible = true
+	if _random_draft_button != null:
+		_random_draft_button.visible = true
+	if _start_match_button != null:
+		_start_match_button.visible = true
+	if _world_layer != null:
+		_world_layer.visible = false
+	if _control_panel != null:
+		_control_panel.visible = false
+	var ch2: Control = _ui_layer.get_node_or_null("CombatHUD") as Control
+	if ch2 != null:
+		ch2.visible = false
+	if _p1_roster_labels != null:
+		var p1a = _p1_roster_labels.get_parent()
+		if p1a != null:
+			p1a.visible = false
+	if _p2_roster_labels != null:
+		var p2a = _p2_roster_labels.get_parent()
+		if p2a != null:
+			p2a.visible = false
+	_update_turn_display()
+	_update_team_rosters()
+	_populate_champion_grid()
+	_update_start_match_enabled()
+	if _inspection_panel != null:
+		_inspection_panel.visible = false
 
 
 func _clear_units() -> void:

@@ -400,6 +400,24 @@ private:
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
 
+	/// Compact HUD/floating labels for the Godot simulation viewer (cleared each tick, filled during sim).
+	struct ViewerFxEvent {
+		StringName kind;
+		int64_t target_id = 0;
+		int64_t src_id = 0;
+		double pos_x = 0.0;
+		double pos_y = 0.0;
+		double val = 0.0;
+	};
+	static constexpr size_t VIEWER_FX_CAP = 256;
+	std::vector<ViewerFxEvent> _viewer_fx_events;
+
+	void _viewer_fx_push(const ViewerFxEvent &p_ev);
+	void _viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind);
+	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
+	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
+	String _viewer_state_string(const UnitState &p_u) const;
+
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets_aux;
 	mutable std::vector<uint32_t> _spatial_stamp;

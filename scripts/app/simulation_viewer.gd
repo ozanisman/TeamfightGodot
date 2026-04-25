@@ -667,8 +667,8 @@ func _setup_draft_ui() -> void:
 		filter_button.position = Vector2(screen_size.x * (filter_start_x_ratio + float(i) * (filter_w_ratio + filter_spacing_ratio)), screen_size.y * filter_start_y_ratio)
 		filter_button.pressed.connect(_on_role_filter_toggled.bind(role, filter_button))
 		_header_panel.add_child(filter_button)
-		_active_role_filters.append(role)
-		_update_role_filter_button_style(filter_button, role, true)
+		# Don't add to active filters initially - all roles should be visible (see all)
+		_update_role_filter_button_style(filter_button, role, false)
 
 	# Connect action buttons
 	if _random_draft_button != null:
@@ -696,10 +696,20 @@ func _populate_champion_grid() -> void:
 		if child is Button and child.name.begins_with("Champion"):
 			child.visible = false
 	
+	# Force redraw to ensure hiding takes effect
+	_header_panel.queue_redraw()
+	await get_tree().process_frame
+	
 	# Clear existing champion buttons
 	for child in _header_panel.get_children():
 		if child is Button and child.name.begins_with("Champion"):
 			child.queue_free()
+	
+	# Wait for frame to ensure clearing completes
+	await get_tree().process_frame
+	
+	# Force redraw again to ensure clearing is visible
+	_header_panel.queue_redraw()
 	await get_tree().process_frame
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
@@ -725,48 +735,85 @@ func _populate_champion_grid() -> void:
 	for i in range(visible_heroes.size()):
 		var champion_id: StringName = visible_heroes[i]
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
-		if champion != null:
-			var champion_dict: Dictionary = champion.to_dict()
-			var stats_dict: Dictionary = champion_dict.get("stats", {})
-			var role: StringName = StringName(stats_dict.get("role", ""))
+		if champion == null:
+			continue
+		
+		var champion_dict: Dictionary = champion.to_dict()
+		var stats_dict: Dictionary = champion_dict.get("stats", {})
+		var role: StringName = StringName(stats_dict.get("role", ""))
 
-			var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
 
-			var row := i / cols
-			var col := i % cols
-			var button := Button.new()
-			button.name = "Champion_" + String(champion_id)
-			button.text = String(champion_id)
-			button.custom_minimum_size = Vector2(square_size, square_size)
-			button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
-			var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
-			_style_champion_button(button, role_color, champion_id, is_taken)
-			button.pressed.connect(_on_champion_clicked.bind(champion_id))
-			_header_panel.add_child(button)
+		var row := i / cols
+		var col := i % cols
+		var button := Button.new()
+		button.name = "Champion_" + String(champion_id)
+		button.text = String(champion_id)
+		button.custom_minimum_size = Vector2(square_size, square_size)
+		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
+		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
+		_style_champion_button(button, role_color, champion_id, is_taken)
+		button.pressed.connect(_on_champion_clicked.bind(champion_id))
+		_header_panel.add_child(button)
+
+	# Force redraw after creating new buttons
+	_header_panel.queue_redraw()
 
 
 func _on_role_filter_toggled(role: StringName, button: Button) -> void:
-	if _active_role_filters.has(role):
-		_active_role_filters.erase(role)
-		_update_role_filter_button_style(button, role, false)
-	else:
+	print("Role filter toggled: ", role, " Current filters: ", _active_role_filters)
+	
+	# If all roles are enabled (empty filter list), focus on only the clicked role
+	if _active_role_filters.is_empty():
+		_active_role_filters.clear()
 		_active_role_filters.append(role)
-		_update_role_filter_button_style(button, role, true)
+		print("Filter was empty, now focusing on: ", role)
+	elif _active_role_filters.has(role):
+		# If role is already selected, remove it
+		_active_role_filters.erase(role)
+		print("Removed role from filter: ", role, " New filters: ", _active_role_filters)
+	else:
+		# Add the role to the filter (additive)
+		_active_role_filters.append(role)
+		print("Added role to filter: ", role, " New filters: ", _active_role_filters)
+	
+	# Update all role filter button styles
+	for child in _header_panel.get_children():
+		if child is Button and child.name.begins_with("RoleFilter"):
+			var button_role := String(child.name.replace("RoleFilter_", ""))
+			var is_active := StringName(button_role) in _active_role_filters
+			_update_role_filter_button_style(child, StringName(button_role), is_active)
 
+	print("About to repopulate champion grid with filters: ", _active_role_filters)
+	# Fresh pull and redraw of champion UI buttons
 	_populate_champion_grid()
 
 
 func _update_role_filter_button_style(button: Button, role: StringName, is_active: bool) -> void:
 	var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
-	if is_active or _active_role_filters.is_empty():
-		button.modulate = role_color
+	
+	# Reset modulate to white to avoid affecting StyleBoxFlat
+	button.modulate = Color.WHITE
+	
+	if is_active:
+		# Bright when this specific filter is active
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = role_color
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
 	else:
-		# Python dims by 60 RGB (not 60%)
-		button.modulate = Color(
-			max(0.0, role_color.r - 60.0 / 255.0),
-			max(0.0, role_color.g - 60.0 / 255.0),
-			max(0.0, role_color.b - 60.0 / 255.0)
+		# Dimmed when this specific filter is inactive
+		var dimmed_color := Color(
+			max(0.0, role_color.r * 0.5),
+			max(0.0, role_color.g * 0.5),
+			max(0.0, role_color.b * 0.5)
 		)
+		var style_box := StyleBoxFlat.new()
+		style_box.bg_color = dimmed_color
+		button.add_theme_stylebox_override("normal", style_box)
+		button.add_theme_stylebox_override("hover", style_box)
+		button.add_theme_stylebox_override("pressed", style_box)
 
 
 func _style_champion_button(button: Button, role_color: Color, champion_id: StringName, is_taken: bool) -> void:

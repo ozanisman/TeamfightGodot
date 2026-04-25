@@ -3,6 +3,12 @@ extends Node2D
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
+## Match outer edge of square battle map (world space), not the thin grid.
+const BATTLE_OUTLINE_WIDTH_PX: float = 2.5
+const BATTLE_INNER_INSET_PX: float = 0.5
+const BATTLE_OUTLINE_COLOR := Color(0.42, 0.46, 0.6, 1.0)
+const BATTLE_OUTLINE_INNER_GLOW := Color(0.55, 0.6, 0.72, 0.5)
+
 var show_preparation_zones: bool = false
 var _grid_divisions: int = SimConstantsScript.VIEWER_WORLD_GRID_DIVISIONS
 var _world_size: float = SimConstantsScript.WORLD_SIZE
@@ -12,14 +18,16 @@ var _zone_p2_x_ratio: float = 0.55
 
 
 func _ready() -> void:
-	z_index = -100
+	# Slightly under units (0); avoid very negative z — global sort with parent Control can hide grid.
+	z_index = -1
 	set_process(false)
 
 
 func _draw() -> void:
-	var r: Rect2 = get_viewport_rect() if is_inside_tree() else Rect2(0, 0, 800, 600)
-	var w: float = r.size.x
-	var h: float = r.size.y
+	var vp: Vector2 = get_viewport_rect().size if is_inside_tree() else Vector2(800, 600)
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
+	var w: float = s
+	var h: float = s
 	if w < 1.0 or h < 1.0:
 		return
 	if show_preparation_zones:
@@ -33,6 +41,16 @@ func _draw() -> void:
 		var y: float = h * (float(i) / float(_grid_divisions))
 		draw_line(Vector2(x, 0), Vector2(x, h), Color(0.157, 0.157, 0.204, 0.6), 1.0)
 		draw_line(Vector2(0, y), Vector2(w, y), Color(0.157, 0.157, 0.204, 0.6), 1.0)
+	# Framing border: inner soft line, then main outline (on top of grid).
+	var b: Rect2 = Rect2(0, 0, w, h)
+	draw_rect(
+		Rect2(b.position + Vector2.ONE * BATTLE_INNER_INSET_PX, b.size - Vector2.ONE * (BATTLE_INNER_INSET_PX * 2.0)),
+		BATTLE_OUTLINE_INNER_GLOW,
+		false,
+		1.0,
+		true
+	)
+	draw_rect(b, BATTLE_OUTLINE_COLOR, false, BATTLE_OUTLINE_WIDTH_PX, true)
 
 
 func refresh() -> void:

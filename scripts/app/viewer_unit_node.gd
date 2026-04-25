@@ -84,7 +84,9 @@ func _draw() -> void:
 	if _selected:
 		var ar: float = float(_u.get("attack_range", 0.0))
 		if ar > 0.0:
-			var r_px: float = ar * (get_viewport_rect().size.x / SimConstantsScript.WORLD_SIZE)
+			var vp2: Vector2 = get_viewport_rect().size
+			var s_b: float = SimConstantsScript.viewer_battle_square_side(vp2)
+			var r_px: float = ar * (s_b / SimConstantsScript.WORLD_SIZE)
 			draw_arc(o, r_px, 0.0, TAU, 64, Color(0.8, 0.8, 0.4, 0.55), 1.0, true)
 	if float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
 		draw_circle(o, UNIT_RADIUS + 3.0, Color(0.9, 0.65, 0.2, 0.9), false, 2.0)

@@ -209,16 +209,16 @@ func _create_ui_structure() -> void:
 	_random_draft_button = Button.new()
 	_random_draft_button.name = "RandomDraftButton"
 	_random_draft_button.text = "RANDOM DRAFT"
-	_random_draft_button.custom_minimum_size = Vector2(260, 50)
-	_random_draft_button.position = Vector2(screen_size.x / 2.0 - 130.0, 120.0)
+	_random_draft_button.size = Vector2(screen_size.x * 0.26, screen_size.y * 0.07)
+	_random_draft_button.position = Vector2(screen_size.x / 2.0 - (screen_size.x * 0.26) / 2.0, screen_size.y * 0.17)
 	_header_panel.add_child(_random_draft_button)
 
 	# StartMatchButton (centered, increased size)
 	_start_match_button = Button.new()
 	_start_match_button.name = "StartMatchButton"
 	_start_match_button.text = "START MATCH"
-	_start_match_button.custom_minimum_size = Vector2(260, 50)
-	_start_match_button.position = Vector2(screen_size.x / 2.0 - 130.0, 180.0)
+	_start_match_button.size = Vector2(screen_size.x * 0.26, screen_size.y * 0.07)
+	_start_match_button.position = Vector2(screen_size.x / 2.0 - (screen_size.x * 0.26) / 2.0, screen_size.y * 0.24)
 	_header_panel.add_child(_start_match_button)
 
 	# ChampionGrid (will be populated manually)
@@ -285,19 +285,58 @@ func _on_window_resized() -> void:
 	if _banned_list != null:
 		_banned_list.position = Vector2(screen_size.x / 2.0 - 100.0, 250.0)
 	
-	# Update action buttons
-	if _random_draft_button != null:
-		_random_draft_button.position = Vector2(screen_size.x / 2.0 - 130.0, 120.0)
-	if _start_match_button != null:
-		_start_match_button.position = Vector2(screen_size.x / 2.0 - 130.0, 180.0)
+	# Update action buttons with proportional sizing
+	_update_action_buttons(screen_size)
 	
 	# Update champion grid position
 	if _champion_grid != null:
 		_champion_grid.position = Vector2(20.0, 310.0)
 	
+	# Update role filter buttons with new sizes
+	_update_role_filter_buttons(screen_size)
+	
 	# Re-populate champion grid with new sizes
 	if _game_state == DRAFTING:
 		_populate_champion_grid()
+	
+	# Force redraw to clear visual artifacts
+	if _header_panel != null:
+		_header_panel.queue_redraw()
+	if _ui_layer != null:
+		_ui_layer.queue_redraw()
+
+
+func _update_action_buttons(screen_size: Vector2) -> void:
+	var button_w_ratio := 0.26  # 26% of screen width
+	var button_h_ratio := 0.07  # 7% of screen height
+	var button_y1_ratio := 0.17  # 17% of screen height
+	var button_y2_ratio := 0.24  # 24% of screen height
+
+	if _random_draft_button != null:
+		var button_size := Vector2(screen_size.x * button_w_ratio, screen_size.y * button_h_ratio)
+		_random_draft_button.size = button_size
+		_random_draft_button.position = Vector2(screen_size.x / 2.0 - button_size.x / 2.0, screen_size.y * button_y1_ratio)
+	if _start_match_button != null:
+		var button_size := Vector2(screen_size.x * button_w_ratio, screen_size.y * button_h_ratio)
+		_start_match_button.size = button_size
+		_start_match_button.position = Vector2(screen_size.x / 2.0 - button_size.x / 2.0, screen_size.y * button_y2_ratio)
+
+
+func _update_role_filter_buttons(screen_size: Vector2) -> void:
+	var roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
+	var filter_w_ratio := 0.15  # 15% of screen width
+	var filter_h_ratio := 0.06  # 6% of screen height
+	var filter_spacing_ratio := 0.02  # 2% of screen width
+	var filter_start_x_ratio := 0.02  # 2% of screen width
+	var filter_start_y_ratio := 0.33  # 33% of screen height
+
+	for i in range(roles.size()):
+		var role: StringName = roles[i]
+		var filter_button := _header_panel.get_node_or_null("RoleFilter_" + String(role))
+		if filter_button != null:
+			var new_size := Vector2(screen_size.x * filter_w_ratio, screen_size.y * filter_h_ratio)
+			filter_button.size = new_size
+			filter_button.position = Vector2(screen_size.x * (filter_start_x_ratio + float(i) * (filter_w_ratio + filter_spacing_ratio)), screen_size.y * filter_start_y_ratio)
 
 
 func _apply_color_scheme() -> void:
@@ -513,10 +552,10 @@ func _setup_draft_ui() -> void:
 
 	# Set up role filter buttons with proportional sizing (manual positioning)
 	var roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
-	var filter_w_ratio := 0.13  # 13% of screen width
-	var filter_h_ratio := 0.05  # 5% of screen height
-	var filter_spacing_ratio := 0.015  # 1.5% of screen width
-	var filter_start_x_ratio := 0.025  # 2.5% of screen width
+	var filter_w_ratio := 0.15  # 15% of screen width
+	var filter_h_ratio := 0.06  # 6% of screen height
+	var filter_spacing_ratio := 0.02  # 2% of screen width
+	var filter_start_x_ratio := 0.02  # 2% of screen width
 	var filter_start_y_ratio := 0.33  # 33% of screen height
 
 	for i in range(roles.size()):
@@ -524,7 +563,8 @@ func _setup_draft_ui() -> void:
 		var filter_button := Button.new()
 		filter_button.name = "RoleFilter_" + String(role)
 		filter_button.text = String(role).to_upper()
-		filter_button.custom_minimum_size = Vector2(screen_size.x * filter_w_ratio, screen_size.y * filter_h_ratio)
+		var button_size := Vector2(screen_size.x * filter_w_ratio, screen_size.y * filter_h_ratio)
+		filter_button.size = button_size
 		filter_button.position = Vector2(screen_size.x * (filter_start_x_ratio + float(i) * (filter_w_ratio + filter_spacing_ratio)), screen_size.y * filter_start_y_ratio)
 		filter_button.pressed.connect(_on_role_filter_toggled.bind(role, filter_button))
 		_header_panel.add_child(filter_button)

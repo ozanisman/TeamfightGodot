@@ -7,6 +7,7 @@ const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ViewerUnitNodeScript := preload("res://scripts/app/viewer_unit_node.gd")
 const SimulationViewerArenaScript := preload("res://scripts/app/simulation_viewer_arena.gd")
 const AoeRingNodeScript := preload("res://scripts/app/aoe_ring_node.gd")
+const RosterChampionCardScript := preload("res://scripts/app/roster_champion_card.gd")
 
 # Colors from Python pygame_viewer.py
 const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
@@ -33,6 +34,19 @@ const COLOR_SECTION_BORDER := Color(0.275, 0.275, 0.353, 1.0)
 const VIEWER_BASE_MIN_AXIS: float = 720.0
 ## Screen-space radius for projectiles (scales slightly with window).
 const PROJECTILE_BASE_RADIUS_PX: float = 4.0
+
+const ROSTER_EDGE_MARGIN_PX: float = 12.0
+const ROSTER_COLUMN_WIDTH_PX: float = 240.0
+const ROSTER_TOP_BELOW_HUD_PX: float = 64.0
+const ROSTER_BOTTOM_MARGIN_PX: float = 16.0
+const BOTTOM_BAR_HEIGHT_PX: float = 60.0
+const COMMENCE_BATTLE_MIN_WIDTH_PX: float = 240.0
+const BOTTOM_HBOX_MARGIN_H_PX: float = 10.0
+const BOTTOM_HBOX_MARGIN_V_PX: float = 8.0
+const ROSTER_CARD_GAP_PX: int = 6
+const ROSTER_TILE_START_PX: int = 96
+## Keep in sync with roster_champion_card.gd MIN_SQUARE_PX (no class_name in viewer types; parse-safe).
+const ROSTER_TILE_MIN_SQUARE_PX: int = 40
 
 const ROLE_COLORS: Dictionary = {
 	"tank": Color(0.8, 0.2, 0.2),
@@ -107,6 +121,8 @@ var _start_match_button: Button
 var _control_panel: Panel
 var _inspection_panel: Panel
 var _arena_layer: Node2D
+## Full-viewport under world; do not use root Control _draw (sorts over child Node2D with low z, hides grid).
+var _battle_letterbox: ColorRect
 var _commence_button: Button
 var _match_overlay: ColorRect
 var _match_title: Label
@@ -141,6 +157,13 @@ func _ready() -> void:
 		print("Simulation Viewer ready. Game state: ", _game_state)
 
 
+func _notification(what: int) -> void:
+	# When this Control is resized (layout or embedded viewport), keep UILayer matching our rect;
+	# root size_changed can miss some cases.
+	if what == NOTIFICATION_RESIZED and _ui_layer != null and is_instance_valid(_ui_layer):
+		_ui_layer.size = size
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE and (_game_state == COMBAT or _game_state == PREPARATION):
@@ -159,6 +182,18 @@ func _on_speed_toggle() -> void:
 
 func _create_ui_structure() -> void:
 	var screen_size := get_viewport_rect().size
+
+	_battle_letterbox = ColorRect.new()
+	_battle_letterbox.name = "BattleLetterbox"
+	_battle_letterbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_battle_letterbox.offset_left = 0.0
+	_battle_letterbox.offset_top = 0.0
+	_battle_letterbox.offset_right = 0.0
+	_battle_letterbox.offset_bottom = 0.0
+	_battle_letterbox.color = COLOR_BG
+	_battle_letterbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_battle_letterbox.z_index = -1
+	add_child(_battle_letterbox)
 
 	# Create WorldLayer for combat visualization (behind UI)
 	_world_layer = Node2D.new()
@@ -181,9 +216,13 @@ func _create_ui_structure() -> void:
 	_ui_layer = Control.new()
 	_ui_layer.name = "UILayer"
 	_ui_layer.anchors_preset = Control.PRESET_FULL_RECT
-	_ui_layer.size = screen_size
+	_ui_layer.offset_left = 0.0
+	_ui_layer.offset_top = 0.0
+	_ui_layer.offset_right = 0.0
+	_ui_layer.offset_bottom = 0.0
 	_ui_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_ui_layer)
+	_ui_layer.size = get_viewport_rect().size
 
 	# Create DraftPanel (full screen for drafting)
 	_header_panel = Panel.new()
@@ -195,6 +234,7 @@ func _create_ui_structure() -> void:
 
 	# Connect to window resize signal
 	get_tree().root.connect("size_changed", _on_window_resized)
+	_update_battle_layer_layout()
 
 	# Create TitleLabel (centered at top)
 	_title_label = Label.new()
@@ -299,8 +339,11 @@ func _create_ui_structure() -> void:
 	_control_panel = Panel.new()
 	_control_panel.name = "ControlPanel"
 	_control_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_control_panel.offset_top = -60.0
-	_control_panel.custom_minimum_size = Vector2(0.0, 60.0)
+	_control_panel.offset_left = 0.0
+	_control_panel.offset_top = -BOTTOM_BAR_HEIGHT_PX
+	_control_panel.offset_right = 0.0
+	_control_panel.offset_bottom = 0.0
+	_control_panel.custom_minimum_size = Vector2(0.0, BOTTOM_BAR_HEIGHT_PX)
 	_control_panel.visible = false
 	_ui_layer.add_child(_control_panel)
 
@@ -315,90 +358,131 @@ func _create_ui_structure() -> void:
 	_build_combat_overlay_hud()
 	_build_match_over_overlay()
 	_build_preparation_controls()
+	if _battle_letterbox != null and is_instance_valid(_battle_letterbox) and is_instance_valid(self):
+		move_child(_battle_letterbox, 0)
 
 
+## Viewer Control space (same as get_viewport); centered square, letterbox outside.
 func world_to_screen(wx: float, wy: float) -> Vector2:
+	return world_to_battle_local(wx, wy) + _viewer_battle_offset()
+
+
+## Local 0..s in world layer; parent places layer at _viewer_battle_offset().
+func world_to_battle_local(wx: float, wy: float) -> Vector2:
 	var vp: Vector2 = get_viewport_rect().size
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
 	var wxc: float = clampf(wx, 0.0, SimConstantsScript.WORLD_SIZE)
 	var wyc: float = clampf(wy, 0.0, SimConstantsScript.WORLD_SIZE)
-	return Vector2((wxc / SimConstantsScript.WORLD_SIZE) * vp.x, (wyc / SimConstantsScript.WORLD_SIZE) * vp.y)
+	return Vector2((wxc / SimConstantsScript.WORLD_SIZE) * s, (wyc / SimConstantsScript.WORLD_SIZE) * s)
+
+
+func _viewer_battle_offset() -> Vector2:
+	return SimConstantsScript.viewer_battle_square_offset(get_viewport_rect().size)
+
+
+## Keeps _WorldLayer top-left on the square; re-draws arena in local s×s.
+func _update_battle_layer_layout() -> void:
+	if _world_layer == null or not is_instance_valid(_world_layer):
+		return
+	_world_layer.position = _viewer_battle_offset()
+	if _arena_layer != null and is_instance_valid(_arena_layer) and _arena_layer.has_method("refresh"):
+		_arena_layer.refresh()
 
 
 func screen_to_world(screen: Vector2) -> Vector2:
 	var vp: Vector2 = get_viewport_rect().size
-	if vp.x < 0.001 or vp.y < 0.001:
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
+	if s < 0.001:
 		return Vector2.ZERO
+	var off: Vector2 = SimConstantsScript.viewer_battle_square_offset(vp)
+	var w: float = SimConstantsScript.WORLD_SIZE
 	return Vector2(
-		(screen.x / vp.x) * SimConstantsScript.WORLD_SIZE,
-		(screen.y / vp.y) * SimConstantsScript.WORLD_SIZE
+		clampf((screen.x - off.x) / s, 0.0, 1.0) * w,
+		clampf((screen.y - off.y) / s, 0.0, 1.0) * w
 	)
 
 
 func _build_combat_overlay_hud() -> void:
-	var top := HBoxContainer.new()
+	# One centered strip: time, score, combat state, pause, speed. CenterContainer recenters on resize.
+	const HUD_TOP_OFFSET_PX: int = 8
+	const HUD_STRIP_MIN_HEIGHT_PX: int = 48
+	const HUD_ROW_SEP_PX: int = 16
+	var top := Control.new()
 	top.name = "CombatHUD"
 	top.visible = false
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_top = 8.0
-	top.offset_bottom = 52.0
-	top.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_theme_constant_override("separation", 24)
+	top.offset_top = float(HUD_TOP_OFFSET_PX)
+	top.offset_bottom = float(HUD_TOP_OFFSET_PX + HUD_STRIP_MIN_HEIGHT_PX)
 	_ui_layer.add_child(top)
 
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	top.add_child(center)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", HUD_ROW_SEP_PX)
 	_lbl_timer = Label.new()
 	_lbl_timer.add_theme_color_override("font_color", COLOR_TEXT)
 	_lbl_timer.add_theme_font_size_override("font_size", 20)
-	top.add_child(_lbl_timer)
-
+	row.add_child(_lbl_timer)
 	_lbl_score = Label.new()
 	_lbl_score.add_theme_color_override("font_color", COLOR_WARNING)
 	_lbl_score.add_theme_font_size_override("font_size", 20)
-	top.add_child(_lbl_score)
-
+	row.add_child(_lbl_score)
 	_lbl_combat_state = Label.new()
 	_lbl_combat_state.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_lbl_combat_state.add_theme_font_size_override("font_size", 16)
-	top.add_child(_lbl_combat_state)
-
+	row.add_child(_lbl_combat_state)
 	_hud_pause = Label.new()
 	_hud_pause.visible = false
 	_hud_pause.add_theme_color_override("font_color", COLOR_WARNING)
-	top.add_child(_hud_pause)
-
+	row.add_child(_hud_pause)
 	_speed_button = Button.new()
 	_speed_button.text = "Speed: 1x"
 	_speed_button.tooltip_text = "Toggle 0.5x / 1x (keyboard: K)"
 	_speed_button.flat = true
 	_speed_button.add_theme_color_override("font_color", COLOR_TEXT)
 	_speed_button.pressed.connect(_on_speed_toggle)
-	top.add_child(_speed_button)
+	row.add_child(_speed_button)
+	center.add_child(row)
 
 	var side_l := VBoxContainer.new()
 	side_l.name = "P1RosterHUD"
 	side_l.visible = false
-	side_l.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	side_l.offset_left = 12.0
-	side_l.offset_top = 64.0
-	side_l.offset_right = 240.0
-	side_l.offset_bottom = 400.0
+	side_l.anchor_left = 0.0
+	side_l.anchor_top = 0.0
+	side_l.anchor_right = 0.0
+	side_l.anchor_bottom = 1.0
+	side_l.offset_left = ROSTER_EDGE_MARGIN_PX
+	side_l.offset_top = ROSTER_TOP_BELOW_HUD_PX
+	side_l.offset_right = ROSTER_EDGE_MARGIN_PX + ROSTER_COLUMN_WIDTH_PX
+	side_l.offset_bottom = ROSTER_BOTTOM_MARGIN_PX
 	_ui_layer.add_child(side_l)
 	_p1_roster_labels = VBoxContainer.new()
+	_p1_roster_labels.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_p1_roster_labels.set_v_size_flags(Control.SIZE_EXPAND_FILL)
+	_p1_roster_labels.add_theme_constant_override("separation", ROSTER_CARD_GAP_PX)
 	side_l.add_child(_p1_roster_labels)
 
 	var side_r := VBoxContainer.new()
 	side_r.name = "P2RosterHUD"
 	side_r.visible = false
-	side_r.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-	side_r.offset_right = -12.0
-	side_r.offset_top = 64.0
-	side_r.offset_left = -260.0
-	side_r.offset_bottom = 400.0
+	side_r.anchor_left = 1.0
+	side_r.anchor_top = 0.0
+	side_r.anchor_right = 1.0
+	side_r.anchor_bottom = 1.0
+	side_r.offset_left = -ROSTER_EDGE_MARGIN_PX - ROSTER_COLUMN_WIDTH_PX
+	side_r.offset_top = ROSTER_TOP_BELOW_HUD_PX
+	side_r.offset_right = -ROSTER_EDGE_MARGIN_PX
+	side_r.offset_bottom = ROSTER_BOTTOM_MARGIN_PX
 	_ui_layer.add_child(side_r)
 	_p2_roster_labels = VBoxContainer.new()
-	# Top-align labels in the right strip (END stacks from bottom).
+	# Top-align; cards flush right in the strip; vertical stack fills height.
 	side_r.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_p2_roster_labels.add_theme_constant_override("separation", 4)
-	_p1_roster_labels.add_theme_constant_override("separation", 4)
+	_p2_roster_labels.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_p2_roster_labels.set_v_size_flags(Control.SIZE_EXPAND_FILL)
+	_p2_roster_labels.add_theme_constant_override("separation", ROSTER_CARD_GAP_PX)
 	side_r.add_child(_p2_roster_labels)
 
 
@@ -440,10 +524,13 @@ func _build_preparation_controls() -> void:
 	_commence_button.name = "CommenceBattle"
 	_commence_button.text = "COMMENCE BATTLE"
 	_commence_button.visible = false
-	_commence_button.custom_minimum_size = Vector2(240, 44)
+	_commence_button.custom_minimum_size = Vector2(COMMENCE_BATTLE_MIN_WIDTH_PX, 44.0)
 	_commence_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_commence_button.offset_bottom = -24.0
+	var half_w: float = 0.5 * COMMENCE_BATTLE_MIN_WIDTH_PX
+	_commence_button.offset_left = -half_w
 	_commence_button.offset_top = -68.0
+	_commence_button.offset_right = half_w
+	_commence_button.offset_bottom = -24.0
 	_commence_button.pressed.connect(_on_commence_battle)
 	_style_button(_commence_button)
 	_ui_layer.add_child(_commence_button)
@@ -451,7 +538,10 @@ func _build_preparation_controls() -> void:
 
 func _on_window_resized() -> void:
 	var screen_size := get_viewport_rect().size
-	
+	if _ui_layer != null and is_instance_valid(_ui_layer):
+		_ui_layer.size = screen_size
+	_update_battle_layer_layout()
+
 	# Update panel size
 	if _header_panel != null:
 		_header_panel.size = screen_size
@@ -505,6 +595,8 @@ func _on_window_resized() -> void:
 		_header_panel.queue_redraw()
 	if _ui_layer != null:
 		_ui_layer.queue_redraw()
+	if _game_state == COMBAT or _game_state == PREPARATION or _game_state == MATCH_OVER:
+		call_deferred("_roster_reflow_squares")
 	if (_game_state == COMBAT or _game_state == PREPARATION) and _backend != null:
 		# Do not re-apply tick_fx (floaters / melee VFX) — same snapshot, layout-only.
 		_update_visualization_from_snapshot(false)
@@ -699,7 +791,7 @@ func _update_unit_node(unit_dict: Dictionary) -> void:
 		_world_layer.add_child(unit_node)
 	var px: float = float(unit_dict.get("pos_x", 0.0))
 	var py: float = float(unit_dict.get("pos_y", 0.0))
-	unit_node.position = world_to_screen(px, py)
+	unit_node.position = world_to_battle_local(px, py)
 	if unit_node.has_method("set_snapshot_data"):
 		unit_node.set_snapshot_data(unit_dict)
 	unit_node.visible = _is_unit_on_battlefield(unit_dict)
@@ -798,7 +890,7 @@ func _projectile_screen_radius_px() -> float:
 func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: StringName) -> Node2D:
 	var proj_node := Node2D.new()
 	proj_node.name = "Projectile_%d" % proj_id
-	proj_node.position = world_to_screen(pos_x, pos_y)
+	proj_node.position = world_to_battle_local(pos_x, pos_y)
 	var col: Color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
 	var r: float = _projectile_screen_radius_px()
 	var disc := Polygon2D.new()
@@ -839,51 +931,93 @@ func _refresh_combat_hud(snapshot: Dictionary) -> void:
 func _refresh_side_rosters_from_snapshot(units: Array) -> void:
 	if _p1_roster_labels == null or _p2_roster_labels == null:
 		return
-	for c in _p1_roster_labels.get_children():
-		c.queue_free()
-	for c in _p2_roster_labels.get_children():
-		c.queue_free()
 	var p1: Array = []
 	var p2: Array = []
 	for u in units:
 		if u is Dictionary:
-			var ud: Dictionary = u
-			if String(ud.get("team", "")) == "player":
-				p1.append(ud)
-			elif String(ud.get("team", "")) == "enemy":
-				p2.append(ud)
+			var ud2: Dictionary = u
+			if String(ud2.get("team", "")) == "player":
+				p1.append(ud2)
+			elif String(ud2.get("team", "")) == "enemy":
+				p2.append(ud2)
 	p1.sort_custom(func(a, b): return int(a.get("instance_id", 0)) < int(b.get("instance_id", 0)))
 	p2.sort_custom(func(a, b): return int(a.get("instance_id", 0)) < int(b.get("instance_id", 0)))
-	for ud in p1:
-		var lb := Label.new()
-		var nm: String = str(ud.get("archetype_id", "?"))
-		var k: int = int(ud.get("kills", 0))
-		var d: int = int(ud.get("deaths", 0))
-		var a: int = int(ud.get("assists", 0))
-		var st: String = str(ud.get("state", "ALIVE"))
-		var s: String = "%s  (%d/%d/%d)" % [nm, k, d, a]
-		if st == "DEAD" or not bool(ud.get("alive", true)):
-			s += "  %.1fs" % float(ud.get("respawn_timer", 0.0))
-			lb.add_theme_color_override("font_color", COLOR_SUBTLE)
-		else:
-			lb.add_theme_color_override("font_color", COLOR_PLAYER)
-		lb.text = s
-		_p1_roster_labels.add_child(lb)
-	for ud in p2:
-		var lb2 := Label.new()
-		var nm2: String = str(ud.get("archetype_id", "?"))
-		var k2: int = int(ud.get("kills", 0))
-		var d2: int = int(ud.get("deaths", 0))
-		var a2: int = int(ud.get("assists", 0))
-		var st2: String = str(ud.get("state", "ALIVE"))
-		var s2: String = "(%d/%d/%d)  %s" % [k2, d2, a2, nm2]
-		if st2 == "DEAD" or not bool(ud.get("alive", true)):
-			s2 = "%.1fs  " % float(ud.get("respawn_timer", 0.0)) + s2
-			lb2.add_theme_color_override("font_color", COLOR_SUBTLE)
-		else:
-			lb2.add_theme_color_override("font_color", COLOR_ENEMY)
-		lb2.text = s2
-		_p2_roster_labels.add_child(lb2)
+	var start_s: int = int(mini(ROSTER_COLUMN_WIDTH_PX, float(ROSTER_TILE_START_PX)))
+	var in_p1: bool = _try_update_roster_column_in_place(_p1_roster_labels, p1)
+	if not in_p1:
+		for c in _p1_roster_labels.get_children():
+			c.queue_free()
+		for ud3 in p1:
+			var card1: Node = RosterChampionCardScript.new() as Node
+			if card1 == null or not card1.has_method("setup"):
+				continue
+			card1.call("setup", ud3, false, true, start_s)
+			_p1_roster_labels.add_child(card1)
+	var in_p2: bool = _try_update_roster_column_in_place(_p2_roster_labels, p2)
+	if not in_p2:
+		for c2 in _p2_roster_labels.get_children():
+			c2.queue_free()
+		for ud4 in p2:
+			var card2: Node = RosterChampionCardScript.new() as Node
+			if card2 == null or not card2.has_method("setup"):
+				continue
+			card2.call("setup", ud4, true, false, start_s)
+			_p2_roster_labels.add_child(card2)
+	call_deferred("_roster_reflow_squares")
+
+
+func _is_roster_champion_card(n: Node) -> bool:
+	return n != null and n.get_script() == RosterChampionCardScript
+
+
+func _try_update_roster_column_in_place(vb: VBoxContainer, team_units: Array) -> bool:
+	var n: int = team_units.size()
+	if vb.get_child_count() != n or n < 1:
+		return false
+	for i in n:
+		var ch: Node = vb.get_child(i)
+		if not _is_roster_champion_card(ch) or not ch.has_method("apply_unit_data"):
+			return false
+		var ud0: Dictionary = team_units[i] as Dictionary
+		if int(ch.get("instance_id")) != int(ud0.get("instance_id", 0)):
+			return false
+	for j in n:
+		var c2: Node = vb.get_child(j)
+		if c2.has_method("apply_unit_data"):
+			c2.call("apply_unit_data", team_units[j] as Dictionary, 0, false)
+	return true
+
+
+func _roster_reflow_squares() -> void:
+	if _p1_roster_labels == null or _p2_roster_labels == null:
+		return
+	_reflow_one_roster_column(_p1_roster_labels)
+	_reflow_one_roster_column(_p2_roster_labels)
+
+
+func _reflow_one_roster_column(vb: VBoxContainer) -> void:
+	var p: Control = vb.get_parent() as Control
+	if p == null:
+		return
+	var n: int = vb.get_child_count()
+	if n < 1:
+		return
+	var col_w: float = maxf(1.0, p.size.x)
+	var col_h: float = maxf(1.0, p.size.y)
+	if col_h < 2.0:
+		col_h = maxf(
+			1.0,
+			get_viewport().get_visible_rect().size.y - ROSTER_TOP_BELOW_HUD_PX - ROSTER_BOTTOM_MARGIN_PX
+		)
+	var gap: float = float(ROSTER_CARD_GAP_PX)
+	var per_row_h: float = (col_h - gap * float(n - 1)) / float(n)
+	var s: int = int(floorf(minf(per_row_h, col_w)))
+	if s < ROSTER_TILE_MIN_SQUARE_PX:
+		s = ROSTER_TILE_MIN_SQUARE_PX
+	for j in n:
+		var ch2: Node = vb.get_child(j)
+		if _is_roster_champion_card(ch2) and ch2.has_method("set_square_size"):
+			ch2.call("set_square_size", s)
 
 
 func _apply_tick_fx(snapshot: Dictionary) -> void:
@@ -908,6 +1042,7 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		var wx: float = float(d.get("x", 0.0))
 		var wy: float = float(d.get("y", 0.0))
 		var sp: Vector2 = world_to_screen(wx, wy)
+		var sp_battle: Vector2 = world_to_battle_local(wx, wy)
 		if k == "damage" or k == "dmg":
 			var amt: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, Color(0.9, 0.45, 0.45))
@@ -931,7 +1066,7 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 			var sh: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("[%d]" % int(ceil(sh)), sp, Color(0.55, 0.75, 1.0))
 		elif k == "melee_slash":
-			_spawn_melee_slash_fx(sp)
+			_spawn_melee_slash_fx(sp_battle)
 		elif k.begins_with("aoe_"):
 			var r_w: float = float(d.get("r", d.get("radius", 0.0)))
 			if r_w <= 0.0 and k == "aoe_splash":
@@ -981,23 +1116,23 @@ func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Col
 func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:
 	if world_r <= 0.0:
 		return
-	var sp: Vector2 = world_to_screen(wx, wy)
 	var vp: Vector2 = get_viewport_rect().size
-	var rpx: float = world_r * (vp.x / SimConstantsScript.WORLD_SIZE)
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
+	var sp: Vector2 = world_to_screen(wx, wy)
+	var rpx: float = world_r * (s / SimConstantsScript.WORLD_SIZE)
 	if rpx < 1.5:
 		return
 	var col: Color = _aoe_ring_color_for(kind, src_id, snapshot)
-	# Slight screen-space oval so the ring matches non-square viewports the same as world_to_screen.
-	var rpx_y: float = world_r * (vp.y / SimConstantsScript.WORLD_SIZE)
 	var n: Node2D = AoeRingNodeScript.new()
 	n.name = "AoeRing"
 	n.position = sp
 	var fill_c := Color(col.r, col.g, col.b, 0.22 * col.a)
-	n.setup(rpx, rpx_y, fill_c, col, 3.0)
+	n.setup(rpx, rpx, fill_c, col, 3.0)
 	if _aoe_fx_layer != null and is_instance_valid(_aoe_fx_layer):
 		_aoe_fx_layer.add_child(n)
 	else:
 		n.z_index = 20
+		n.position = world_to_battle_local(wx, wy)
 		_world_layer.add_child(n)
 	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
 	n.modulate = Color(1, 1, 1, 0.92)
@@ -1442,8 +1577,12 @@ func _on_start_match_clicked() -> void:
 func _setup_control_panel() -> void:
 	if _control_panel == null:
 		return
-
 	var hbox := HBoxContainer.new()
+	hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hbox.offset_left = BOTTOM_HBOX_MARGIN_H_PX
+	hbox.offset_top = BOTTOM_HBOX_MARGIN_V_PX
+	hbox.offset_right = -BOTTOM_HBOX_MARGIN_H_PX
+	hbox.offset_bottom = -BOTTOM_HBOX_MARGIN_V_PX
 	_control_panel.add_child(hbox)
 
 	var pause_button := Button.new()
@@ -1635,6 +1774,7 @@ func _can_start_match() -> bool:
 
 func _show_world_and_hud_for_battle() -> void:
 	var screen_size := get_viewport_rect().size
+	_update_battle_layer_layout()
 	if _header_panel != null:
 		_header_panel.visible = false
 	if _role_filter_container != null:
@@ -1651,8 +1791,6 @@ func _show_world_and_hud_for_battle() -> void:
 		_aoe_fx_layer.visible = true
 	if _control_panel != null:
 		_control_panel.visible = true
-		_control_panel.size = Vector2(screen_size.x, 56.0)
-		_control_panel.position = Vector2(0.0, screen_size.y - 56.0)
 	var top_hud: Control = _ui_layer.get_node_or_null("CombatHUD")
 	if top_hud != null:
 		top_hud.visible = true

@@ -247,3 +247,13 @@ static func spawn_position(index: int, team: StringName) -> Vector2:
 		x = WORLD_SIZE - DRAFT_X_BASE - (float(column) * DRAFT_X_STEP)
 	var y: float = DRAFT_Y_BASE + (float(row) * DRAFT_Y_STEP)
 	return Vector2(x, y)
+
+
+## Largest centered square in viewport; [0, WORLD_SIZE]^2 maps to that region (letterbox / pillarbox).
+static func viewer_battle_square_side(vp: Vector2) -> float:
+	return minf(vp.x, vp.y)
+
+
+static func viewer_battle_square_offset(vp: Vector2) -> Vector2:
+	var s: float = viewer_battle_square_side(vp)
+	return Vector2((vp.x - s) * 0.5, (vp.y - s) * 0.5)

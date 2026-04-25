@@ -28,11 +28,11 @@ const COLOR_SECTION_BG := Color(0.133, 0.133, 0.18, 1.0)
 const COLOR_SECTION_BORDER := Color(0.275, 0.275, 0.353, 1.0)
 
 const ROLE_COLORS: Dictionary = {
-	"tank": Color(0.275, 0.51, 0.706),
+	"tank": Color(0.8, 0.2, 0.2),
 	"fighter": Color(0.824, 0.412, 0.118),
 	"assassin": Color(0.6, 0.196, 0.8),
 	"marksman": Color(0.133, 0.545, 0.133),
-	"mage": Color(0.0, 0.749, 1.0),
+	"mage": Color(0.3, 0.6, 0.8),
 	"support": Color(0.855, 0.647, 0.125),
 }
 

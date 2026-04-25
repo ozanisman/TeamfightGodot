@@ -23,6 +23,15 @@ func _ready() -> void:
 	if _argv_has_flag("--stats-dashboard"):
 		call_deferred("_open_stats_dashboard")
 		return
+	if _argv_has_flag("--simulation-viewer"):
+		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
+		if (
+			load_status != GDExtensionManager.LOAD_STATUS_OK
+			and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
+		):
+			push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
+		call_deferred("_open_simulation_viewer")
+		return
 	if _argv_has_flag("--headless-run"):
 		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
 		if (
@@ -39,6 +48,10 @@ func _ready() -> void:
 
 func _open_stats_dashboard() -> void:
 	get_tree().change_scene_to_file("res://scenes/stats_dashboard.tscn")
+
+
+func _open_simulation_viewer() -> void:
+	get_tree().change_scene_to_file("res://scenes/simulation_viewer.tscn")
 
 
 func _start_headless_run() -> void:

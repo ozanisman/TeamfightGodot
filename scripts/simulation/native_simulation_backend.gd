@@ -2,6 +2,7 @@ class_name NativeSimulationBackend
 extends RefCounted
 
 const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfight_simulation_core.gd")
+const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const SimRunnerScript := preload("res://scripts/simulation/sim_runner.gd")
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
@@ -219,6 +220,18 @@ func get_tick_snapshot() -> Dictionary:
 		s["live_winner"] = "draw"
 	if not s.has("match_duration"):
 		s["match_duration"] = 60.0
+	var tfx: Array = Array(s.get("tick_fx", []))
+	for i in range(tfx.size()):
+		if tfx[i] is not Dictionary:
+			continue
+		var te: Dictionary = tfx[i]
+		var k: String = str(te.get("kind", ""))
+		if (k == "aoe_damage" or k == "aoe_taunt" or k == "aoe_splash" or k.begins_with("aoe_")) and not te.has("r"):
+			if te.has("radius"):
+				te["r"] = float(te.get("radius", 0.0))
+		if k == "aoe_splash" and (not te.has("r") or float(te.get("r", 0.0)) <= 0.0):
+			te["r"] = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
+	s["tick_fx"] = tfx
 	return s
 
 func get_trace_events() -> Array:

@@ -2437,6 +2437,7 @@ void TeamfightSimulationCore::_apply_splash_damage(UnitState &source, UnitState 
 	if (radius <= 0.0) {
 		return;
 	}
+	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_splash"));
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
@@ -2454,6 +2455,7 @@ void TeamfightSimulationCore::_apply_splash_damage(UnitState &source, UnitState 
 }
 
 void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius, double duration) {
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_taunt"));
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
@@ -2472,6 +2474,7 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 
 void TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind) {
 	(void)reason;
+	_viewer_record_aoe_ring_fx(source, center_source, radius, StringName("aoe_damage"));
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
@@ -3860,6 +3863,21 @@ void TeamfightSimulationCore::_viewer_record_shield_fx(const UnitState &p_target
 	_viewer_fx_push(ev);
 }
 
+void TeamfightSimulationCore::_viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind) {
+	if (p_radius <= 0.0) {
+		return;
+	}
+	ViewerFxEvent ev;
+	ev.kind = p_kind;
+	ev.src_id = p_source.instance_id;
+	ev.target_id = p_center.instance_id;
+	ev.pos_x = p_center.pos_x;
+	ev.pos_y = p_center.pos_y;
+	ev.val = 0.0;
+	ev.radius = p_radius;
+	_viewer_fx_push(ev);
+}
+
 String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const {
 	if (!p_u.alive) {
 		return String("DEAD");
@@ -3954,6 +3972,11 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		e["x"] = ve.pos_x;
 		e["y"] = ve.pos_y;
 		e["val"] = ve.val;
+		if (ve.radius > 0.0) {
+			const double r = ve.radius;
+			e["r"] = r;
+			e["radius"] = r;
+		}
 		fx.append(e);
 	}
 	root["tick_fx"] = fx;

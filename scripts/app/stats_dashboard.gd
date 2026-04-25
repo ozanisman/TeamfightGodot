@@ -52,11 +52,11 @@ const CI_SUPPORTED: Dictionary = {
 }
 
 const ROLE_COLORS: Dictionary = {
-	"tank": Color8(70, 130, 180),
+	"tank": Color8(204, 51, 51),
 	"fighter": Color8(210, 105, 30),
 	"assassin": Color8(153, 50, 204),
 	"marksman": Color8(34, 139, 34),
-	"mage": Color8(0, 191, 255),
+	"mage": Color8(76, 153, 204),
 	"support": Color8(218, 165, 32),
 }
 

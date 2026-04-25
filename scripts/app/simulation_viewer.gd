@@ -295,15 +295,92 @@ func _on_window_resized() -> void:
 	# Update role filter buttons with new sizes
 	_update_role_filter_buttons(screen_size)
 	
-	# Re-populate champion grid with new sizes
+	# Update champion buttons in place instead of recreating them
 	if _game_state == DRAFTING:
-		_populate_champion_grid()
+		_update_champion_buttons_in_place(screen_size)
 	
 	# Force redraw to clear visual artifacts
 	if _header_panel != null:
 		_header_panel.queue_redraw()
 	if _ui_layer != null:
 		_ui_layer.queue_redraw()
+
+
+func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
+	var start_y_ratio := 0.41  # 41% of screen height
+	var square_size_ratio := 0.10  # 10% of screen width
+	var square_margin_ratio := 0.015  # 1.5% of screen width
+	var start_x_ratio := 0.025  # 2.5% of screen width
+
+	var square_size := screen_size.x * square_size_ratio
+	var square_margin := screen_size.x * square_margin_ratio
+	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
+
+	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+	var visible_heroes: Array[StringName] = []
+
+	# Filter by role
+	for champion_id in champion_ids:
+		if _active_role_filters.is_empty():
+			visible_heroes.append(champion_id)
+		else:
+			var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+			if champion != null:
+				var champion_dict: Dictionary = champion.to_dict()
+				var stats_dict: Dictionary = champion_dict.get("stats", {})
+				var role: StringName = StringName(stats_dict.get("role", ""))
+				if _active_role_filters.has(role):
+					visible_heroes.append(champion_id)
+
+	# Sort by name
+	visible_heroes.sort_custom(func(a, b): return String(a) < String(b))
+
+	# Update existing buttons or create new ones
+	var existing_buttons: Dictionary = {}
+	for child in _header_panel.get_children():
+		if child is Button and child.name.begins_with("Champion"):
+			existing_buttons[child.name] = child
+
+	# Update or create buttons
+	for i in range(visible_heroes.size()):
+		var champion_id: StringName = visible_heroes[i]
+		var button_name := "Champion_" + String(champion_id)
+		var button: Button = existing_buttons.get(button_name)
+		
+		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+		if champion == null:
+			continue
+		
+		var champion_dict: Dictionary = champion.to_dict()
+		var stats_dict: Dictionary = champion_dict.get("stats", {})
+		var role: StringName = StringName(stats_dict.get("role", ""))
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+
+		var row := i / cols
+		var col := i % cols
+		var new_size := Vector2(square_size, square_size)
+		var new_position := Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
+
+		if button != null:
+			# Update existing button
+			button.size = new_size
+			button.position = new_position
+			existing_buttons.erase(button_name)
+		else:
+			# Create new button
+			button = Button.new()
+			button.name = button_name
+			button.text = String(champion_id)
+			button.size = new_size
+			button.position = new_position
+			var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
+			_style_champion_button(button, role_color, champion_id, is_taken)
+			button.pressed.connect(_on_champion_clicked.bind(champion_id))
+			_header_panel.add_child(button)
+
+	# Remove buttons that are no longer needed
+	for button_name in existing_buttons:
+		existing_buttons[button_name].queue_free()
 
 
 func _update_action_buttons(screen_size: Vector2) -> void:
@@ -592,6 +669,11 @@ func _populate_champion_grid() -> void:
 	var square_margin := screen_size.x * square_margin_ratio
 	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
 
+	# Hide existing champion buttons before clearing to prevent visual artifacts
+	for child in _header_panel.get_children():
+		if child is Button and child.name.begins_with("Champion"):
+			child.visible = false
+	
 	# Clear existing champion buttons
 	for child in _header_panel.get_children():
 		if child is Button and child.name.begins_with("Champion"):

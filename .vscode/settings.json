@@ -1,3 +1,38 @@
 {
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/native/build": true,
+        "**/native/bin": true
+    },
+    "search.exclude": {
+        "**/native/build": true,
+        "**/native/bin": true
+    },
+    "files.watcherExclude": {
+        "**/native/build/**": true,
+        "**/native/bin/**": true
+    },
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.errorSquiggles": "enabled",
+    "files.associations": {
+        "*.hpp": "cpp",
+        "*.cpp": "cpp"
+    },
+    "C_Cpp.autocomplete": "default",
+    "C_Cpp.intelliSenseEngineFallback": "disabled",
+    "C_Cpp.workspaceSymbols": {
+        "includePath": [
+            "${workspaceFolder}/native/src",
+            "${workspaceFolder}/third_party/godot-cpp/include",
+            "${workspaceFolder}/third_party/godot-cpp/gen/include"
+        ]
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

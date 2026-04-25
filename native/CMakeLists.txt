@@ -3,6 +3,7 @@ project(teamfight_simulation_core LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(GODOT_CPP_PATH "" CACHE PATH "Path to the godot-cpp checkout")
 if(NOT GODOT_CPP_PATH AND DEFINED ENV{GODOT_CPP_PATH})
@@ -61,10 +62,12 @@ set_target_properties(teamfight_simulation_core PROPERTIES
 
 target_include_directories(teamfight_simulation_core PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${GODOT_CPP_PATH}/include
+    ${GODOT_CPP_PATH}/gen/include
 )
 
 target_compile_definitions(teamfight_simulation_core PRIVATE
     GD_EXTENSION_BUILD
 )
 
-target_link_libraries(teamfight_simulation_core PRIVATE godot::cpp)
+target_link_libraries(teamfight_simulation_core PRIVATE godot-cpp)

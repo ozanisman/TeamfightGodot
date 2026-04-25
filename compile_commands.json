@@ -1,0 +1,12 @@
+[
+  {
+    "directory": "c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native",
+    "command": "cl.exe /std:c++17 /DGD_EXTENSION_BUILD /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\third_party\\godot-cpp\\include /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\third_party\\godot-cpp\\gen\\include /c c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src\\teamfight_simulation_core.cpp",
+    "file": "c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src\\teamfight_simulation_core.cpp"
+  },
+  {
+    "directory": "c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native",
+    "command": "cl.exe /std:c++17 /DGD_EXTENSION_BUILD /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\third_party\\godot-cpp\\include /Ic:\\Users\\ozani\\Desktop\\TeamfightGodot\\third_party\\godot-cpp\\gen\\include /c c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src\\register_types.cpp",
+    "file": "c:\\Users\\ozani\\Desktop\\TeamfightGodot\\native\\src\\register_types.cpp"
+  }
+]

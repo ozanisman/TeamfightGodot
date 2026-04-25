@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/native/src",
+                "${workspaceFolder}/third_party/godot-cpp/include",
+                "${workspaceFolder}/third_party/godot-cpp/gen/include"
+            ],
+            "defines": [
+                "GD_EXTENSION_BUILD"
+            ],
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64",
+            "forcedInclude": [],
+            "compilerArgs": [],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/native/src",
+                    "${workspaceFolder}/third_party/godot-cpp/include",
+                    "${workspaceFolder}/third_party/godot-cpp/gen/include"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}

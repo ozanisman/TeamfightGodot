@@ -1,0 +1,14 @@
+CompileFlags:
+  Add:
+    - -I${workspaceFolder}/native/src
+    - -I${workspaceFolder}/third_party/godot-cpp/include
+    - -I${workspaceFolder}/third_party/godot-cpp/gen/include
+    - -DGD_EXTENSION_BUILD
+    - -std=c++17
+  Compiler: cl.exe
+Diagnostics:
+  UnusedIncludes: Strict
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes

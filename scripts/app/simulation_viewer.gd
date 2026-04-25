@@ -392,11 +392,15 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		var button_size := Vector2(square_size, square_size)
 		var button_position := Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 
+		var button_name = "Champion_" + String(champion_id)
+		var new_size = Vector2(square_size, square_size)
+		var new_position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
+
 		var button := Button.new()
-		button.name = "Champion_" + String(champion_id)
-		button.text = String(champion_id)
-		button.size = button_size
-		button.position = button_position
+		button.name = button_name
+		button.text = String(stats_dict.get("name", String(champion_id)))
+		button.size = new_size
+		button.position = new_position
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
@@ -757,7 +761,7 @@ func _populate_champion_grid() -> void:
 		var col := i % cols
 		var button := Button.new()
 		button.name = "Champion_" + String(champion_id)
-		button.text = String(champion_id)
+		button.text = String(stats_dict.get("name", String(champion_id)))
 		button.custom_minimum_size = Vector2(square_size, square_size)
 		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 		var role_color: Color = ROLE_COLORS.get(String(role), COLOR_BUTTON)

@@ -57,7 +57,14 @@ elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
 }
 
-$godotArgs = @("--headless", "--path", $projectRoot, "--log-file", $logFile)
+$godotArgs = @("--path", $projectRoot, "--log-file", $logFile)
+$isSimulationViewer = $Arguments -contains "--simulation-viewer"
+if (-not $isSimulationViewer) {
+	$godotArgs += @("--headless")
+}
+if ($isSimulationViewer) {
+	$godotArgs += @("--maximized")
+}
 if ($checkOnly) {
 	$godotArgs += @("--script", "res://scripts/tools/check_only.gd")
 }
@@ -82,7 +89,7 @@ elseif ($checkStatsAggregator) {
 elseif ($generateStats) {
 	$godotArgs += @("--script", "res://scripts/tools/generate_simulation_stats.gd")
 }
-elseif (-not $checkOnly -and -not $checkNativeLoad) {
+elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {

@@ -143,3 +143,51 @@ func run_matches_simulation_only(match_inputs: Array) -> void:
 		return
 	for index in range(match_inputs.size()):
 		run_match_simulation_only(match_inputs[index])
+
+## Incremental match API (used by simulation viewer and gameplay loops).
+func begin_match(match_input: Variant) -> void:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return
+	if _backend.has_method("begin_match"):
+		_backend.call("begin_match", match_input)
+		return
+	# Fallback: GDScript backend doesn't support incremental API
+	push_error("Incremental API requires native backend.")
+
+func advance_one_tick() -> void:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return
+	if _backend.has_method("advance_one_tick"):
+		_backend.call("advance_one_tick")
+		return
+	push_error("Incremental API requires native backend.")
+
+func match_ticks_exhausted() -> bool:
+	if not _ensure_native_backend():
+		return true
+	if _backend.has_method("match_ticks_exhausted"):
+		return _backend.call("match_ticks_exhausted")
+	return true
+
+func finish_and_summarize() -> Dictionary:
+	if not _ensure_native_backend():
+		return {}
+	if _backend.has_method("finish_and_summarize"):
+		return _backend.call("finish_and_summarize")
+	return {}
+
+func get_tick_snapshot() -> Dictionary:
+	if not _ensure_native_backend():
+		return {}
+	if _backend.has_method("get_tick_snapshot"):
+		return _backend.call("get_tick_snapshot")
+	return {}
+
+func get_trace_events() -> Array:
+	if not _ensure_native_backend():
+		return []
+	if _backend.has_method("get_trace_events"):
+		return _backend.call("get_trace_events")
+	return []

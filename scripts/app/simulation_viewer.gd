@@ -795,15 +795,15 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
 	
-	if is_active:
-		# Bright when this specific filter is active
+	if is_active or _active_role_filters.is_empty():
+		# Bright when this specific filter is active OR all filters are empty (see all)
 		var style_box := StyleBoxFlat.new()
 		style_box.bg_color = role_color
 		button.add_theme_stylebox_override("normal", style_box)
 		button.add_theme_stylebox_override("hover", style_box)
 		button.add_theme_stylebox_override("pressed", style_box)
 	else:
-		# Dimmed when this specific filter is inactive
+		# Dimmed when this specific filter is inactive (others are active)
 		var dimmed_color := Color(
 			max(0.0, role_color.r * 0.5),
 			max(0.0, role_color.g * 0.5),

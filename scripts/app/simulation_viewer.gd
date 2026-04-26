@@ -47,6 +47,7 @@ const ROSTER_CARD_GAP_PX: int = 6
 const ROSTER_TILE_START_PX: int = 96
 ## Keep in sync with roster_champion_card.gd MIN_SQUARE_PX and ROLE_COLORS.
 const ROSTER_TILE_MIN_SQUARE_PX: int = 40
+const UI_WINDOW_MIN := Vector2(1920, 1080)
 
 const ROLE_COLORS: Dictionary = {
 	"tank": Color(0.8, 0.2, 0.2),
@@ -144,8 +145,12 @@ func _ready() -> void:
 		push_error("Native simulation backend not available. Simulation viewer requires native backend.")
 		return
 
-	# Maximize window on startup
-	get_tree().root.mode = Window.MODE_MAXIMIZED
+	# Set window minimum size and maximize on startup
+	custom_minimum_size = UI_WINDOW_MIN
+	var win: Window = get_viewport().get_window()
+	if win != null:
+		win.min_size = UI_WINDOW_MIN
+		win.mode = Window.MODE_MAXIMIZED
 
 	# Create UI elements programmatically to avoid scene instantiation issues
 	_create_ui_structure()

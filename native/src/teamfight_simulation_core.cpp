@@ -349,6 +349,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_summary_cache.clear();
 	_time = 0.0;
 	_tick = 0;
+	_sudden_death_ticks = 0;
 	_tick_rate = DEFAULT_TICK_RATE;
 	_seed = 0;
 	_winner_team = StringName("draw");
@@ -2866,7 +2867,21 @@ void TeamfightSimulationCore::_simulate() {
 	for (int64_t tick_index = 0; tick_index < max_ticks; ++tick_index) {
 		_step_tick(profile);
 	}
+	
+	_sudden_death_ticks = 0;
+	
+	// Sudden death: continue simulation until kills are unequal
+	if (_player_kills == _enemy_kills) {
+		int64_t max_sudden_death_ticks = 100000; // Safety limit
+		
+		while (_player_kills == _enemy_kills && _sudden_death_ticks < max_sudden_death_ticks) {
+			_step_tick(profile);
+			_sudden_death_ticks++;
+		}
+	}
+	
 	_winner_team = _determine_winner();
+	
 	if (profile) {
 		_sim_profile_emit_json_stderr();
 	}
@@ -3613,12 +3628,31 @@ void TeamfightSimulationCore::advance_one_tick() {
 		return;
 	}
 	_step_tick(false);
+	
+	// Track sudden death ticks after regulation
+	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
+	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
+	if (_tick >= max_ticks) {
+		_sudden_death_ticks++;
+	}
 }
 
 bool TeamfightSimulationCore::match_ticks_exhausted() const {
 	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
 	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
-	return _tick >= max_ticks;
+	// Allow sudden death: continue ticking if kills are tied
+	if (_tick >= max_ticks) {
+		// After regulation, only stop if kills are unequal or safety limit reached
+		if (_player_kills != _enemy_kills) {
+			return true;
+		}
+		// Safety limit: 1M ticks after regulation
+		if (_sudden_death_ticks >= 1000000) {
+			return true;
+		}
+		return false;
+	}
+	return false;
 }
 
 Dictionary TeamfightSimulationCore::finish_and_summarize() {

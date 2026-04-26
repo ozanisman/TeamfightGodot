@@ -375,6 +375,7 @@ private:
 	CPythonRandom _rng;
 	double _time = 0.0;
 	int64_t _tick = 0;
+	int64_t _sudden_death_ticks = 0;
 	double _tick_rate = DEFAULT_TICK_RATE;
 	int64_t _seed = 0;
 	StringName _winner_team = StringName("draw");

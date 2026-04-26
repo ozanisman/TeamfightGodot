@@ -37,6 +37,40 @@ static func export_champion_schema() -> Dictionary:
 	push_error("Failed to parse golden champion schema fixture.")
 	return {}
 
+static func generate_champion_schema_from_gdscript() -> Dictionary:
+	var catalog := ChampionCatalogScript.build_catalog()
+	var passives := ChampionCatalogScript.build_passive_registry()
+	var role_configs := ChampionCatalogScript.build_role_configs()
+	
+	# Start with champions at top level (for C++ compatibility)
+	var result: Dictionary = {}
+	for champion_id in catalog.keys():
+		var champ = catalog[champion_id]
+		var champ_dict: Dictionary = champ.to_dict()
+		result[String(champion_id)] = champ_dict
+	
+	# Add passives and role_configs as additional top-level keys
+	result["passives"] = _normalize_numbers(passives)
+	result["role_configs"] = _normalize_numbers(role_configs)
+	
+	return result
+
+static func write_champion_schema_to_file(output_path: String = GoldenChampionSchemaPath) -> bool:
+	var schema := generate_champion_schema_from_gdscript()
+	var json_string := JSON.stringify(schema, "\t")
+	if json_string.is_empty():
+		push_error("Failed to stringify champion schema.")
+		return false
+	
+	var file := FileAccess.open(output_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to open file for writing: %s" % output_path)
+		return false
+	
+	file.store_string(json_string)
+	file.close()
+	return true
+
 static func export_role_config_schema() -> Dictionary:
 	var result: Dictionary = {}
 	var role_configs := ChampionCatalogScript.build_role_configs()

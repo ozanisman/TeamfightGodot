@@ -666,231 +666,39 @@ Dictionary TeamfightSimulationCore::_effective_champion_for(const StringName &ar
 }
 
 void TeamfightSimulationCore::_build_role_configs() {
-	Dictionary tank_mods;
-	tank_mods[StringName("tenacity")] = 0.2;
-	Dictionary fighter_mods;
-	fighter_mods[StringName("life_steal")] = 0.1;
-	fighter_mods[StringName("tenacity")] = 0.1;
-	Dictionary marksman_mods;
-	marksman_mods[StringName("attack_speed")] = 1.2;
-	Dictionary assassin_mods;
-	assassin_mods[StringName("move_speed")] = 1.5;
-	Dictionary mage_mods;
-	Dictionary support_mods;
-	support_mods[StringName("ability_cd")] = 4.0;
-
-	Dictionary tank;
-	tank[StringName("stat_mods")] = tank_mods;
-	tank[StringName("passive_on_tick")] = Variant();
-	Dictionary tank_take_damage_params;
-	tank_take_damage_params[StringName("damage_ratio")] = 0.1;
-	tank[StringName("passive_post_take_damage")] = effect_dict(StringName("post_damage_mana_gain"), tank_take_damage_params);
-
-	Dictionary fighter;
-	fighter[StringName("stat_mods")] = fighter_mods;
-	fighter[StringName("passive_on_tick")] = Variant();
-	fighter[StringName("passive_post_take_damage")] = Variant();
-
-	Dictionary marksman;
-	marksman[StringName("stat_mods")] = marksman_mods;
-	marksman[StringName("passive_on_tick")] = Variant();
-	marksman[StringName("passive_post_take_damage")] = Variant();
-
-	Dictionary assassin;
-	assassin[StringName("stat_mods")] = assassin_mods;
-	assassin[StringName("passive_on_tick")] = Variant();
-	assassin[StringName("passive_post_take_damage")] = Variant();
-
-	Dictionary mage;
-	mage[StringName("stat_mods")] = mage_mods;
-	Dictionary mage_tick_params;
-	mage_tick_params[StringName("flat_amount")] = 1.0;
-	mage[StringName("passive_on_tick")] = effect_dict(StringName("mana_regen"), mage_tick_params);
-	mage[StringName("passive_post_take_damage")] = Variant();
-
-	Dictionary support;
-	support[StringName("stat_mods")] = support_mods;
-	support[StringName("passive_on_tick")] = Variant();
-	support[StringName("passive_post_take_damage")] = Variant();
-
-	_role_configs[StringName("tank")] = tank;
-	_role_configs[StringName("fighter")] = fighter;
-	_role_configs[StringName("marksman")] = marksman;
-	_role_configs[StringName("assassin")] = assassin;
-	_role_configs[StringName("mage")] = mage;
-	_role_configs[StringName("support")] = support;
+	// Load role configs from the champion schema JSON (generated from GDScript)
+	Dictionary catalog = _champion_catalog;
+	if (!catalog.has("role_configs")) {
+		UtilityFunctions::push_error("Champion schema missing 'role_configs' key");
+		return;
+	}
+	
+	Dictionary role_configs_dict = Dictionary(catalog.get("role_configs", Dictionary()));
+	Array role_keys = role_configs_dict.keys();
+	
+	for (int64_t i = 0; i < role_keys.size(); ++i) {
+		StringName role_id = StringName(String(role_keys[i]));
+		Dictionary role_entry = Dictionary(role_configs_dict.get(role_id, Dictionary()));
+		_role_configs[role_id] = role_entry;
+	}
 }
 
 void TeamfightSimulationCore::_build_passive_registry() {
-	Dictionary duelist;
-	Array duelist_on_attack;
-	Dictionary duelist_multiplier_params;
-	duelist_multiplier_params[StringName("multiplier")] = 1.2;
-	duelist_on_attack.append(effect_dict(StringName("constant_multiplier"), duelist_multiplier_params));
-	duelist[StringName("on_attack")] = duelist_on_attack;
-
-	Dictionary eagle_eye;
-	Array eagle_eye_on_attack;
-	Dictionary eagle_eye_params;
-	eagle_eye_params[StringName("multiplier")] = 1.25;
-	eagle_eye_on_attack.append(effect_dict(StringName("constant_multiplier"), eagle_eye_params));
-	eagle_eye[StringName("on_attack")] = eagle_eye_on_attack;
-	Array eagle_eye_post_attack;
-	Dictionary threshold_params;
-	threshold_params[StringName("threshold_multiplier")] = 3.0;
-	Dictionary splash_params;
-	splash_params[StringName("radius")] = 2.0;
-	splash_params[StringName("ratio")] = 0.5;
-	splash_params[StringName("damage_type")] = String("physical");
-	splash_params[StringName("reason")] = String("Rain of Arrows");
-	splash_params[StringName("color")] = Array();
-	threshold_params[StringName("splash")] = effect_dict(StringName("splash_damage"), splash_params);
-	eagle_eye_post_attack.append(effect_dict(StringName("threshold_splash_damage"), threshold_params));
-	eagle_eye[StringName("post_attack")] = eagle_eye_post_attack;
-
-	Dictionary bastion;
-	Array bastion_on_defense;
-	Dictionary bastion_params;
-	bastion_params[StringName("multiplier")] = 0.9;
-	bastion_on_defense.append(effect_dict(StringName("constant_multiplier"), bastion_params));
-	bastion[StringName("on_defense")] = bastion_on_defense;
-
-	Dictionary executioner;
-	Array executioner_on_attack;
-	Dictionary executioner_params;
-	executioner_params[StringName("hp_ratio_threshold")] = 0.3;
-	executioner_params[StringName("multiplier")] = 2.0;
-	executioner_on_attack.append(effect_dict(StringName("target_hp_threshold_multiplier"), executioner_params));
-	executioner[StringName("on_attack")] = executioner_on_attack;
-
-	Dictionary mana_font;
-	Array mana_font_on_tick;
-	Dictionary mana_font_params;
-	mana_font_params[StringName("flat_amount")] = 3.0;
-	mana_font_on_tick.append(effect_dict(StringName("mana_regen"), mana_font_params));
-	mana_font[StringName("on_tick")] = mana_font_on_tick;
-
-	Dictionary marksman;
-	Array marksman_on_attack;
-	Dictionary marksman_params;
-	marksman_params[StringName("min_distance")] = 3.0;
-	marksman_params[StringName("multiplier")] = 1.25;
-	marksman_on_attack.append(effect_dict(StringName("distance_threshold_multiplier"), marksman_params));
-	marksman[StringName("on_attack")] = marksman_on_attack;
-
-	Dictionary bloodlust;
-	Array bloodlust_post_attack;
-	Dictionary bloodlust_params;
-	bloodlust_params[StringName("heal_ratio")] = 0.15;
-	bloodlust_post_attack.append(effect_dict(StringName("damage_based_heal"), bloodlust_params));
-	bloodlust[StringName("post_attack")] = bloodlust_post_attack;
-
-	Dictionary rejuvenation;
-	Array rejuvenation_on_tick;
-	Dictionary rejuvenation_params;
-	rejuvenation_params[StringName("flat_amount")] = 5.0;
-	rejuvenation_params[StringName("reason")] = String("Rejuvenation");
-	rejuvenation_on_tick.append(effect_dict(StringName("heal"), rejuvenation_params));
-	rejuvenation[StringName("on_tick")] = rejuvenation_on_tick;
-
-	Dictionary agility;
-	Array agility_on_defense;
-	Dictionary agility_params;
-	agility_params[StringName("dodge_chance")] = 0.25;
-	agility_params[StringName("on_dodge_multiplier")] = 0.0;
-	agility_params[StringName("on_hit_multiplier")] = 1.0;
-	agility_on_defense.append(effect_dict(StringName("dodge"), agility_params));
-	agility[StringName("on_defense")] = agility_on_defense;
-
-	Dictionary enlightenment;
-	Array enlightenment_post_attack;
-	Dictionary enlightenment_params;
-	enlightenment_params[StringName("flat_amount")] = 5.0;
-	enlightenment_post_attack.append(effect_dict(StringName("mana_restore_on_hit"), enlightenment_params));
-	enlightenment[StringName("post_attack")] = enlightenment_post_attack;
-
-	Dictionary tenacity;
-	Array tenacity_on_defense;
-	Dictionary tenacity_params;
-	tenacity_params[StringName("multiplier")] = 0.9;
-	tenacity_on_defense.append(effect_dict(StringName("constant_multiplier"), tenacity_params));
-	tenacity[StringName("on_defense")] = tenacity_on_defense;
-
-	Dictionary swiftness;
-	Array swiftness_on_attack;
-	Dictionary swiftness_params;
-	swiftness_params[StringName("multiplier")] = 1.15;
-	swiftness_on_attack.append(effect_dict(StringName("constant_multiplier"), swiftness_params));
-	swiftness[StringName("on_attack")] = swiftness_on_attack;
-
-	Dictionary vampirism;
-	Array vampirism_post_attack;
-	Dictionary vampirism_params;
-	vampirism_params[StringName("flat_amount")] = 3.0;
-	vampirism_params[StringName("reason")] = String("Vampirism");
-	vampirism_post_attack.append(effect_dict(StringName("heal"), vampirism_params));
-	vampirism[StringName("post_attack")] = vampirism_post_attack;
-
-	Dictionary technique;
-	Array technique_post_attack;
-	Dictionary technique_params;
-	technique_params[StringName("every_n")] = 3;
-	technique_params[StringName("stun_duration")] = 0.5;
-	technique_post_attack.append(effect_dict(StringName("every_n_attacks_stun"), technique_params));
-	technique[StringName("post_attack")] = technique_post_attack;
-
-	Dictionary demolition;
-	Array demolition_post_attack;
-	Dictionary demolition_params;
-	demolition_params[StringName("radius")] = 0.5;
-	demolition_params[StringName("ratio")] = 0.5;
-	demolition_params[StringName("damage_type")] = String("physical");
-	demolition_params[StringName("reason")] = String("Explosion");
-	demolition_params[StringName("color")] = Array();
-	demolition_post_attack.append(effect_dict(StringName("splash_damage"), demolition_params));
-	demolition[StringName("post_attack")] = demolition_post_attack;
-
-	Dictionary devotion;
-	Array devotion_on_tick;
-	Dictionary devotion_params;
-	devotion_params[StringName("max_hp_ratio")] = 0.02;
-	devotion_params[StringName("reason")] = String("Devotion");
-	devotion_on_tick.append(effect_dict(StringName("heal"), devotion_params));
-	devotion[StringName("on_tick")] = devotion_on_tick;
-
-	Dictionary siphon;
-	Array siphon_post_attack;
-	Dictionary siphon_params;
-	siphon_params[StringName("flat_amount")] = 5.0;
-	siphon_post_attack.append(effect_dict(StringName("drain_target_mana_on_hit"), siphon_params));
-	siphon[StringName("post_attack")] = siphon_post_attack;
-
-	Dictionary bravery;
-	Array bravery_on_attack;
-	Dictionary bravery_params;
-	bravery_params[StringName("min_hp_ratio")] = 0.8;
-	bravery_params[StringName("multiplier")] = 1.2;
-	bravery_on_attack.append(effect_dict(StringName("self_hp_threshold_multiplier"), bravery_params));
-	bravery[StringName("on_attack")] = bravery_on_attack;
-
-	_passive_registry[StringName("duelist")] = duelist;
-	_passive_registry[StringName("eagle_eye")] = eagle_eye;
-	_passive_registry[StringName("bastion")] = bastion;
-	_passive_registry[StringName("executioner")] = executioner;
-	_passive_registry[StringName("mana_font")] = mana_font;
-	_passive_registry[StringName("marksman")] = marksman;
-	_passive_registry[StringName("bloodlust")] = bloodlust;
-	_passive_registry[StringName("rejuvenation")] = rejuvenation;
-	_passive_registry[StringName("agility")] = agility;
-	_passive_registry[StringName("enlightenment")] = enlightenment;
-	_passive_registry[StringName("tenacity")] = tenacity;
-	_passive_registry[StringName("swiftness")] = swiftness;
-	_passive_registry[StringName("vampirism")] = vampirism;
-	_passive_registry[StringName("technique")] = technique;
-	_passive_registry[StringName("demolition")] = demolition;
-	_passive_registry[StringName("devotion")] = devotion;
-	_passive_registry[StringName("siphon")] = siphon;
-	_passive_registry[StringName("bravery")] = bravery;
+	// Load passives from the champion schema JSON (generated from GDScript)
+	Dictionary catalog = _champion_catalog;
+	if (!catalog.has("passives")) {
+		UtilityFunctions::push_error("Champion schema missing 'passives' key");
+		return;
+	}
+	
+	Dictionary passives_dict = Dictionary(catalog.get("passives", Dictionary()));
+	Array passive_keys = passives_dict.keys();
+	
+	for (int64_t i = 0; i < passive_keys.size(); ++i) {
+		StringName passive_id = StringName(String(passive_keys[i]));
+		Dictionary passive_entry = Dictionary(passives_dict.get(passive_id, Dictionary()));
+		_passive_registry[passive_id] = passive_entry;
+	}
 }
 
 Dictionary TeamfightSimulationCore::_coerce_match_input(const Variant &match_input) const {

@@ -1,1216 +1,1259 @@
 {
-  "archer": {
-    "ability": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 1.5,
-        "damage_type": "physical",
-        "radius_override": null,
-        "reason": "Volley",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ability_desc": "Fires a focused shot dealing 150% damage.",
-    "description": "A classic long-range scout that provides consistent physical DPS from the backline.",
-    "name": "Archer",
-    "passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
-    "passive_ids": [
-      "eagle_eye"
-    ],
-    "role": "marksman",
-    "stats": {
-      "ability_cd": 8.0,
-      "armor": 0.05,
-      "attack_damage": 21.0,
-      "attack_range": 3,
-      "attack_speed": 1.2,
-      "life_steal": 0.0,
-      "magic_resist": 0.05,
-      "mana_per_attack": 10.0,
-      "max_hp": 75.0,
-      "max_mana": 100.0,
-      "move_speed": 1,
-      "name": "Archer",
-      "passive_id": "eagle_eye",
-      "projectile_radius": 0.03,
-      "projectile_speed": 8.0,
-      "respawn_time": 10.0,
-      "role": "marksman",
-      "tenacity": 0.0,
-      "ultimate_cd": 30.0,
-      "unit_id": "archer"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 4.0,
-        "damage_type": "physical",
-        "radius_override": 0.06,
-        "reason": "Rain of Arrows",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ultimate_desc": "Rains down arrows for 400% massive physical damage and deals splash damage on impact.",
-    "unit_id": "archer"
-  },
-  "artillery": {
-    "ability": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 1.2,
-        "damage_type": "physical",
-        "radius_override": null,
-        "reason": "Shell Shock",
-        "speed_override": null,
-        "stun_duration": 0.8
-      }
-    },
-    "ability_desc": "Explosive shell dealing 120% damage and 0.8s stun.",
-    "description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
-    "name": "Artillery",
-    "passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
-    "passive_ids": [
-      "demolition"
-    ],
-    "role": "marksman",
-    "stats": {
-      "ability_cd": 14.0,
-      "armor": 0.05,
-      "attack_damage": 25.0,
-      "attack_range": 5,
-      "attack_speed": 1.2,
-      "life_steal": 0.0,
-      "magic_resist": 0.05,
-      "mana_per_attack": 10.0,
-      "max_hp": 55.0,
-      "max_mana": 50.0,
-      "move_speed": 0.3,
-      "name": "Artillery",
-      "passive_id": "demolition",
-      "projectile_radius": 0.05,
-      "projectile_speed": 3.0,
-      "respawn_time": 10.0,
-      "role": "marksman",
-      "tenacity": 0.0,
-      "ultimate_cd": 50.0,
-      "unit_id": "artillery"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 5.0,
-        "damage_type": "physical",
-        "radius_override": 0.08,
-        "reason": "Big Bertha",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ultimate_desc": "Fires a massive artillery shell for 500% damage.",
-    "unit_id": "artillery"
-  },
-  "assassin": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 1.2,
-              "damage_type": "physical",
-              "reason": "Shadow Dash",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 0.5,
-              "reason": "Shadow Dash"
-            }
-          }
-        ],
-        "reason": "Shadow Dash"
-      }
-    },
-    "ability_desc": "Quick dash for 120% damage and a short 0.5s stun.",
-    "description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
-    "name": "Assassin",
-    "passive_desc": "Deals double damage to targets below 30% HP.",
-    "passive_ids": [
-      "executioner"
-    ],
-    "role": "assassin",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.05,
-      "attack_damage": 25.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.4,
-      "life_steal": 0.0,
-      "magic_resist": 0.05,
-      "mana_per_attack": 10.0,
-      "max_hp": 165.0,
-      "max_mana": 60.0,
-      "move_speed": 1.5,
-      "name": "Assassin",
-      "passive_id": "executioner",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "assassin",
-      "tenacity": 0.0,
-      "ultimate_cd": 20.0,
-      "unit_id": "assassin"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 5.0,
-        "damage_type": "physical",
-        "radius_override": null,
-        "reason": "Assassinate",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ultimate_desc": "Executes a target with 500% physical damage.",
-    "unit_id": "assassin"
-  },
-  "berserker": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "self_damage",
-            "params": {
-              "damage_ratio": 0.1,
-              "damage_type": "true",
-              "reason": "Blood Price"
-            }
-          },
-          {
-            "kind": "self_shield",
-            "params": {
-              "reason": "Blood Price",
-              "shield_ratio": 0.15
-            }
-          }
-        ],
-        "reason": "Blood Price"
-      }
-    },
-    "ability_desc": "Damages self for 10% max HP and gains 150% of the value as a shield.",
-    "description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
-    "name": "Berserker",
-    "passive_desc": "Heals for 15% of all damage dealt by auto-attacks.",
-    "passive_ids": [
-      "bloodlust"
-    ],
-    "role": "fighter",
-    "stats": {
-      "ability_cd": 5.0,
-      "armor": 0.15,
-      "attack_damage": 12.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.6,
-      "life_steal": 0.1,
-      "magic_resist": 0.05,
-      "mana_per_attack": 10.0,
-      "max_hp": 185.0,
-      "max_mana": 60.0,
-      "move_speed": 1.3,
-      "name": "Berserker",
-      "passive_id": "bloodlust",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "fighter",
-      "tenacity": 0.1,
-      "ultimate_cd": 18.0,
-      "unit_id": "berserker"
-    },
-    "ultimate": {
-      "kind": "damage",
-      "params": {
-        "damage_multiplier": 3.0,
-        "damage_type": "true",
-        "reason": "Berserker Rage",
-        "trigger_on_hit": false
-      }
-    },
-    "ultimate_desc": "Unleashes a devastating strike for 300% true damage.",
-    "unit_id": "berserker"
-  },
-  "cleric": {
-    "ability": {
-      "kind": "heal",
-      "params": {
-        "current_hp_ratio": 0.0,
-        "flat_amount": 0.0,
-        "max_hp_ratio": 0.3,
-        "reason": "Holy Mending"
-      }
-    },
-    "ability_desc": "Heals an ally or self for 30% max HP.",
-    "description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
-    "name": "Cleric",
-    "passive_desc": "Regenerates 2% of max HP every second.",
-    "passive_ids": [
-      "devotion"
-    ],
-    "role": "support",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.1,
-      "attack_damage": 15.0,
-      "attack_range": 3.5,
-      "attack_speed": 1.2,
-      "life_steal": 0.0,
-      "magic_resist": 0.2,
-      "mana_per_attack": 10.0,
-      "max_hp": 125.0,
-      "max_mana": 100.0,
-      "move_speed": 1.5,
-      "name": "Cleric",
-      "passive_id": "devotion",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "support",
-      "tenacity": 0.0,
-      "ultimate_cd": 32.0,
-      "unit_id": "cleric"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "heal",
-            "params": {
-              "current_hp_ratio": 0.0,
-              "flat_amount": 0.0,
-              "max_hp_ratio": 0.55,
-              "reason": "Divine Aura"
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.5,
-              "reason": "Divine Aura"
-            }
-          }
-        ],
-        "reason": "Divine Aura"
-      }
-    },
-    "ultimate_desc": "Heals for 55% max HP and stuns target for 1.5s.",
-    "unit_id": "cleric"
-  },
-  "colossus": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "self_aoe_taunt",
-            "params": {
-              "duration": 2.0,
-              "radius": 1.0,
-              "reason": "Seismic Slam"
-            }
-          },
-          {
-            "kind": "self_aoe_damage",
-            "params": {
-              "color": [
-                160,
-                160,
-                160
-              ],
-              "damage_multiplier": 1.0,
-              "damage_type": "physical",
-              "radius": 1.0,
-              "reason": "Seismic Slam"
-            }
-          }
-        ],
-        "reason": "Seismic Slam"
-      }
-    },
-    "ability_desc": "Deals 100% damage and taunts all targets in a 1 unit radius for 2.0s.",
-    "description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
-    "name": "Colossus",
-    "passive_desc": "Reduces all incoming damage by 10%.",
-    "passive_ids": [
-      "tenacity"
-    ],
-    "role": "tank",
-    "stats": {
-      "ability_cd": 12.0,
-      "armor": 0.3,
-      "attack_damage": 8.0,
-      "attack_range": 0.3,
-      "attack_speed": 0.6,
-      "life_steal": 0.0,
-      "magic_resist": 0.25,
-      "mana_per_attack": 10.0,
-      "max_hp": 350.0,
-      "max_mana": 100.0,
-      "move_speed": 0.8,
-      "name": "Colossus",
-      "passive_id": "tenacity",
-      "projectile_radius": 0.05,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "tank",
-      "tenacity": 0.2,
-      "ultimate_cd": 50.0,
-      "unit_id": "colossus"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 2.5,
-              "damage_type": "physical",
-              "reason": "Earthshaker",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 3.5,
-              "reason": "Earthshaker"
-            }
-          }
-        ],
-        "reason": "Earthshaker"
-      }
-    },
-    "ultimate_desc": "Colossal impact for 250% damage and a 3.5s stun.",
-    "unit_id": "colossus"
-  },
-  "guardian": {
-    "ability": {
-      "kind": "shield",
-      "params": {
-        "max_hp_ratio": 0.2,
-        "reason": "Guardian Shield"
-      }
-    },
-    "ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
-    "description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
-    "name": "Guardian",
-    "passive_desc": "Reduces incoming damage by 10%.",
-    "passive_ids": [
-      "bastion"
-    ],
-    "role": "tank",
-    "stats": {
-      "ability_cd": 10.0,
-      "armor": 0.35,
-      "attack_damage": 10.0,
-      "attack_range": 0.3,
-      "attack_speed": 0.8,
-      "life_steal": 0.0,
-      "magic_resist": 0.25,
-      "mana_per_attack": 10.0,
-      "max_hp": 220.0,
-      "max_mana": 100.0,
-      "move_speed": 1.1,
-      "name": "Guardian",
-      "passive_id": "bastion",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "tank",
-      "tenacity": 0.2,
-      "ultimate_cd": 40.0,
-      "unit_id": "guardian"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 2.0,
-              "damage_type": "physical",
-              "reason": "Aegis Crash",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 3.0,
-              "reason": "Aegis Crash"
-            }
-          }
-        ],
-        "reason": "Aegis Crash"
-      }
-    },
-    "ultimate_desc": "Slams the ground for 200% damage and a 3.0s stun.",
-    "unit_id": "guardian"
-  },
-  "mage": {
-    "ability": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 2.0,
-        "damage_type": "magic",
-        "radius_override": null,
-        "reason": "Arcane Bolt",
-        "speed_override": 7.0,
-        "stun_duration": 0.0
-      }
-    },
-    "ability_desc": "Fires a magical projectile dealing 200% magic damage.",
-    "description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
-    "name": "Mage",
-    "passive_desc": "Restores 3 mana every second. Meteor impact deals 50% splash damage in a 2.5 unit radius.",
-    "passive_ids": [
-      "mana_font"
-    ],
-    "role": "mage",
-    "stats": {
-      "ability_cd": 7.0,
-      "armor": 0.05,
-      "attack_damage": 19.0,
-      "attack_range": 3.5,
-      "attack_speed": 1.0,
-      "life_steal": 0.0,
-      "magic_resist": 0.25,
-      "mana_per_attack": 10.0,
-      "max_hp": 80.0,
-      "max_mana": 80.0,
-      "move_speed": 1.2,
-      "name": "Mage",
-      "passive_id": "mana_font",
-      "projectile_radius": 0.03,
-      "projectile_speed": 6.0,
-      "respawn_time": 10.0,
-      "role": "mage",
-      "tenacity": 0.0,
-      "ultimate_cd": 22.0,
-      "unit_id": "mage"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 6.0,
-        "damage_type": "magic",
-        "radius_override": 0.07,
-        "reason": "Meteor Bombardment",
-        "speed_override": 4.0,
-        "stun_duration": 0.0
-      }
-    },
-    "ultimate_desc": "Calls down a meteor for 600% magic damage and deals splash damage on impact.",
-    "unit_id": "mage"
-  },
-  "monk": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 1.2,
-              "damage_type": "physical",
-              "reason": "Pressure Point",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 0.8,
-              "reason": "Pressure Point"
-            }
-          }
-        ],
-        "reason": "Pressure Point"
-      }
-    },
-    "ability_desc": "Precise strike for 120% damage and 0.8s stun.",
-    "description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
-    "name": "Monk",
-    "passive_desc": "Every 3rd attack stuns the target for 0.5s.",
-    "passive_ids": [
-      "technique"
-    ],
-    "role": "fighter",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.1,
-      "attack_damage": 18.0,
-      "attack_range": 0.3,
-      "attack_speed": 2.2,
-      "life_steal": 0.1,
-      "magic_resist": 0.1,
-      "mana_per_attack": 10.0,
-      "max_hp": 155.0,
-      "max_mana": 60.0,
-      "move_speed": 1.4,
-      "name": "Monk",
-      "passive_id": "technique",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "fighter",
-      "tenacity": 0.1,
-      "ultimate_cd": 16.0,
-      "unit_id": "monk"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 2.5,
-              "damage_type": "physical",
-              "reason": "Hundred-Hand Slap",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.5,
-              "reason": "Hundred-Hand Slap"
-            }
-          }
-        ],
-        "reason": "Hundred-Hand Slap"
-      }
-    },
-    "ultimate_desc": "Rapid flurry for 250% damage and 1.5s stun.",
-    "unit_id": "monk"
-  },
-  "oracle": {
-    "ability": {
-      "kind": "heal",
-      "params": {
-        "current_hp_ratio": 0.0,
-        "flat_amount": 0.0,
-        "max_hp_ratio": 0.2,
-        "reason": "Purify"
-      }
-    },
-    "ability_desc": "Heals an ally or self for 20% max HP.",
-    "description": "A mystical seer who converts mana into healing, sustaining allies through long-range purification.",
-    "name": "Oracle",
-    "passive_desc": "Restores 5 mana after each auto-attack.",
-    "passive_ids": [
-      "enlightenment"
-    ],
-    "role": "support",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.05,
-      "attack_damage": 15.0,
-      "attack_range": 3.5,
-      "attack_speed": 1.1,
-      "life_steal": 0.0,
-      "magic_resist": 0.2,
-      "mana_per_attack": 10.0,
-      "max_hp": 90.0,
-      "max_mana": 150.0,
-      "move_speed": 1.5,
-      "name": "Oracle",
-      "passive_id": "enlightenment",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "support",
-      "tenacity": 0.0,
-      "ultimate_cd": 24.0,
-      "unit_id": "oracle"
-    },
-    "ultimate": {
-      "kind": "shield",
-      "params": {
-        "max_hp_ratio": 0.4,
-        "reason": "Divine Shield"
-      }
-    },
-    "ultimate_desc": "Shields an ally or self for 40% max HP.",
-    "unit_id": "oracle"
-  },
-  "paladin": {
-    "ability": {
-      "kind": "heal",
-      "params": {
-        "current_hp_ratio": 0.0,
-        "flat_amount": 0.0,
-        "max_hp_ratio": 0.15,
-        "reason": "Lay on Hands"
-      }
-    },
-    "ability_desc": "Heals self for 15% max HP.",
-    "description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
-    "name": "Paladin",
-    "passive_desc": "Regenerates 5 HP every second.",
-    "passive_ids": [
-      "rejuvenation"
-    ],
-    "role": "tank",
-    "stats": {
-      "ability_cd": 10.0,
-      "armor": 0.25,
-      "attack_damage": 14.0,
-      "attack_range": 0.3,
-      "attack_speed": 0.8,
-      "life_steal": 0.0,
-      "magic_resist": 0.25,
-      "mana_per_attack": 10.0,
-      "max_hp": 200.0,
-      "max_mana": 80.0,
-      "move_speed": 1.4,
-      "name": "Paladin",
-      "passive_id": "rejuvenation",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "tank",
-      "tenacity": 0.2,
-      "ultimate_cd": 35.0,
-      "unit_id": "paladin"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "heal",
-            "params": {
-              "current_hp_ratio": 0.0,
-              "flat_amount": 0.0,
-              "max_hp_ratio": 0.3,
-              "reason": "Divine Judgment"
-            }
-          },
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 2.0,
-              "damage_type": "physical",
-              "reason": "Divine Judgment",
-              "trigger_on_hit": true
-            }
-          }
-        ],
-        "reason": "Divine Judgment"
-      }
-    },
-    "ultimate_desc": "Heals self for 30% max HP and deals 200% damage.",
-    "unit_id": "paladin"
-  },
-  "rogue": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 0.8,
-              "damage_type": "magic",
-              "reason": "Poison Vial",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 2.0,
-              "reason": "Poison Vial"
-            }
-          }
-        ],
-        "reason": "Poison Vial"
-      }
-    },
-    "ability_desc": "Deals 80% magic damage and stuns for 2.0s.",
-    "description": "An evasive melee fighter who relies on high dodge chance and speed to survive encounters.",
-    "name": "Rogue",
-    "passive_desc": "Grants a 25% chance to dodge incoming damage.",
-    "passive_ids": [
-      "agility"
-    ],
-    "role": "assassin",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.1,
-      "attack_damage": 18.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.8,
-      "life_steal": 0.0,
-      "magic_resist": 0.1,
-      "mana_per_attack": 10.0,
-      "max_hp": 90.0,
-      "max_mana": 40.0,
-      "move_speed": 1.5,
-      "name": "Rogue",
-      "passive_id": "agility",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "assassin",
-      "tenacity": 0.0,
-      "ultimate_cd": 18.0,
-      "unit_id": "rogue"
-    },
-    "ultimate": {
-      "kind": "damage",
-      "params": {
-        "damage_multiplier": 3.5,
-        "damage_type": "physical",
-        "reason": "Eviscerate",
-        "trigger_on_hit": true
-      }
-    },
-    "ultimate_desc": "Lethal execution dealing 350% physical damage.",
-    "unit_id": "rogue"
-  },
-  "siren": {
-    "ability": {
-      "kind": "stun",
-      "params": {
-        "duration": 0.5,
-        "reason": "Enthralling Song"
-      }
-    },
-    "ability_desc": "Binds target stunning for 0.5s stun.",
-    "description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
-    "name": "Siren",
-    "passive_desc": "Drains 5 mana from the target on each auto-attack.",
-    "passive_ids": [
-      "siphon"
-    ],
-    "role": "support",
-    "stats": {
-      "ability_cd": 4.0,
-      "armor": 0.05,
-      "attack_damage": 15.0,
-      "attack_range": 3.5,
-      "attack_speed": 1.1,
-      "life_steal": 0.0,
-      "magic_resist": 0.15,
-      "mana_per_attack": 10.0,
-      "max_hp": 85.0,
-      "max_mana": 80.0,
-      "move_speed": 1.6,
-      "name": "Siren",
-      "passive_id": "siphon",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "support",
-      "tenacity": 0.0,
-      "ultimate_cd": 35.0,
-      "unit_id": "siren"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 3.0,
-              "damage_type": "magic",
-              "reason": "Banshee Wail",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.0,
-              "reason": "Banshee Wail"
-            }
-          }
-        ],
-        "reason": "Banshee Wail"
-      }
-    },
-    "ultimate_desc": "Shrieks for 300% magic damage and stunning for 1.0s.",
-    "unit_id": "siren"
-  },
-  "sniper": {
-    "ability": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 1.8,
-        "damage_type": "physical",
-        "radius_override": null,
-        "reason": "Headshot",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ability_desc": "High-precision strike for 180% damage.",
-    "description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
-    "name": "Sniper",
-    "passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
-    "passive_ids": [
-      "marksman"
-    ],
-    "role": "marksman",
-    "stats": {
-      "ability_cd": 12.0,
-      "armor": 0.05,
-      "attack_damage": 21.0,
-      "attack_range": 4,
-      "attack_speed": 1.2,
-      "life_steal": 0.0,
-      "magic_resist": 0.05,
-      "mana_per_attack": 10.0,
-      "max_hp": 60.0,
-      "max_mana": 60.0,
-      "move_speed": 0.9,
-      "name": "Sniper",
-      "passive_id": "marksman",
-      "projectile_radius": 0.03,
-      "projectile_speed": 12.0,
-      "respawn_time": 10.0,
-      "role": "marksman",
-      "tenacity": 0.0,
-      "ultimate_cd": 45.0,
-      "unit_id": "sniper"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 3.5,
-        "damage_type": "physical",
-        "radius_override": null,
-        "reason": "ULTIMATE",
-        "speed_override": 15.0,
-        "stun_duration": 0.0
-      }
-    },
-    "ultimate_desc": "Lethal long-range shot for 350% damage.",
-    "unit_id": "sniper"
-  },
-  "swordsman": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 1.5,
-              "damage_type": "physical",
-              "reason": "Concussive Blow",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.0,
-              "reason": "Concussive Blow"
-            }
-          }
-        ],
-        "reason": "Concussive Blow"
-      }
-    },
-    "ability_desc": "Deals 150% damage and stuns the target for 1.0s.",
-    "description": "A balanced frontline duelist who excels at locking down single targets with concussive strikes.",
-    "name": "Swordsman",
-    "passive_desc": "Increases attack damage by 20%.",
-    "passive_ids": [
-      "duelist"
-    ],
-    "role": "fighter",
-    "stats": {
-      "ability_cd": 6.0,
-      "armor": 0.25,
-      "attack_damage": 14.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.2,
-      "life_steal": 0.1,
-      "magic_resist": 0.15,
-      "mana_per_attack": 10.0,
-      "max_hp": 120.0,
-      "max_mana": 50.0,
-      "move_speed": 1.1,
-      "name": "Swordsman",
-      "passive_id": "duelist",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "fighter",
-      "tenacity": 0.1,
-      "ultimate_cd": 25.0,
-      "unit_id": "swordsman"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 3.0,
-              "damage_type": "physical",
-              "reason": "Blade Dance",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 2.0,
-              "reason": "Blade Dance"
-            }
-          }
-        ],
-        "reason": "Blade Dance"
-      }
-    },
-    "ultimate_desc": "Strikes for 300% damage and applies a 2.0s stun.",
-    "unit_id": "swordsman"
-  },
-  "valkyrie": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 1.5,
-              "damage_type": "physical",
-              "reason": "Shield Slam",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 0.5,
-              "reason": "Shield Slam"
-            }
-          }
-        ],
-        "reason": "Shield Slam"
-      }
-    },
-    "ability_desc": "Bashes target for 150% damage and 0.5s stun.",
-    "description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
-    "name": "Valkyrie",
-    "passive_desc": "Deals 20% bonus damage while above 80% HP.",
-    "passive_ids": [
-      "bravery"
-    ],
-    "role": "fighter",
-    "stats": {
-      "ability_cd": 7.0,
-      "armor": 0.2,
-      "attack_damage": 15.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.1,
-      "life_steal": 0.1,
-      "magic_resist": 0.15,
-      "mana_per_attack": 10.0,
-      "max_hp": 210.0,
-      "max_mana": 60.0,
-      "move_speed": 1.5,
-      "name": "Valkyrie",
-      "passive_id": "bravery",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "fighter",
-      "tenacity": 0.1,
-      "ultimate_cd": 28.0,
-      "unit_id": "valkyrie"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 3.0,
-              "damage_type": "physical",
-              "reason": "Valhalla Call",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.5,
-              "reason": "Valhalla Call"
-            }
-          }
-        ],
-        "reason": "Valhalla Call"
-      }
-    },
-    "ultimate_desc": "War cry dealing 300% damage and 1.5s stun.",
-    "unit_id": "valkyrie"
-  },
-  "warlock": {
-    "ability": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 1.5,
-        "damage_type": "magic",
-        "radius_override": null,
-        "reason": "Soul Siphon",
-        "speed_override": null,
-        "stun_duration": 0.0
-      }
-    },
-    "ability_desc": "Deals 150% magic damage and heals self for 20% of it.",
-    "description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
-    "name": "Warlock",
-    "passive_desc": "Heals for 3 HP after each auto-attack.",
-    "passive_ids": [
-      "vampirism"
-    ],
-    "role": "mage",
-    "stats": {
-      "ability_cd": 6.0,
-      "armor": 0.05,
-      "attack_damage": 21.0,
-      "attack_range": 3.5,
-      "attack_speed": 0.9,
-      "life_steal": 0.0,
-      "magic_resist": 0.2,
-      "mana_per_attack": 10.0,
-      "max_hp": 100.0,
-      "max_mana": 100.0,
-      "move_speed": 1.4,
-      "name": "Warlock",
-      "passive_id": "vampirism",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "mage",
-      "tenacity": 0.0,
-      "ultimate_cd": 22.0,
-      "unit_id": "warlock"
-    },
-    "ultimate": {
-      "kind": "projectile",
-      "params": {
-        "damage_multiplier": 4.0,
-        "damage_type": "magic",
-        "radius_override": null,
-        "reason": "Chaos Rift",
-        "speed_override": null,
-        "stun_duration": 1.0
-      }
-    },
-    "ultimate_desc": "Rifts the ground for 400% magic damage and 1.0s stun.",
-    "unit_id": "warlock"
-  },
-  "wraith": {
-    "ability": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 1.2,
-              "damage_type": "magic",
-              "reason": "Spectral Touch",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 0.8,
-              "reason": "Spectral Touch"
-            }
-          }
-        ],
-        "reason": "Spectral Touch"
-      }
-    },
-    "ability_desc": "Magic strike for 120% damage and 0.8s stun.",
-    "description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
-    "name": "Wraith",
-    "passive_desc": "Increases attack damage by 15%.",
-    "passive_ids": [
-      "swiftness"
-    ],
-    "role": "assassin",
-    "stats": {
-      "ability_cd": 5.0,
-      "armor": 0.05,
-      "attack_damage": 26.0,
-      "attack_range": 0.3,
-      "attack_speed": 1.5,
-      "life_steal": 0.0,
-      "magic_resist": 0.15,
-      "mana_per_attack": 10.0,
-      "max_hp": 155.0,
-      "max_mana": 40.0,
-      "move_speed": 1.5,
-      "name": "Wraith",
-      "passive_id": "swiftness",
-      "projectile_radius": 0.03,
-      "projectile_speed": 5.0,
-      "respawn_time": 10.0,
-      "role": "assassin",
-      "tenacity": 0.0,
-      "ultimate_cd": 15.0,
-      "unit_id": "wraith"
-    },
-    "ultimate": {
-      "kind": "multi",
-      "params": {
-        "effects": [
-          {
-            "kind": "damage",
-            "params": {
-              "damage_multiplier": 2.5,
-              "damage_type": "magic",
-              "reason": "Phantom Strike",
-              "trigger_on_hit": false
-            }
-          },
-          {
-            "kind": "stun",
-            "params": {
-              "duration": 1.5,
-              "reason": "Phantom Strike"
-            }
-          }
-        ],
-        "reason": "Phantom Strike"
-      }
-    },
-    "ultimate_desc": "Teleports for 250% magic damage and 1.5s stun.",
-    "unit_id": "wraith"
-  }
+	"archer": {
+		"ability": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 1.5,
+				"reason": "Volley"
+			}
+		},
+		"ability_desc": "Fires a focused shot dealing 150% damage.",
+		"description": "A classic long-range scout that provides consistent physical DPS from the backline.",
+		"name": "Archer",
+		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
+		"passive_ids": [
+			"eagle_eye"
+		],
+		"role": "marksman",
+		"stats": {
+			"ability_cd": 8.0,
+			"armor": 0.05,
+			"attack_damage": 21.0,
+			"attack_range": 3.0,
+			"attack_speed": 0.9,
+			"life_steal": 0.0,
+			"magic_resist": 0.05,
+			"mana_per_attack": 10.0,
+			"max_hp": 75.0,
+			"max_mana": 100.0,
+			"move_speed": 1.0,
+			"name": "Archer",
+			"passive_id": "eagle_eye",
+			"projectile_radius": 0.03,
+			"projectile_speed": 8.0,
+			"respawn_time": 10.0,
+			"role": "marksman",
+			"tenacity": 0.0,
+			"ultimate_cd": 30.0,
+			"unit_id": "archer"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 4.0,
+				"radius_override": 0.06,
+				"reason": "Rain of Arrows"
+			}
+		},
+		"ultimate_desc": "Rains down arrows for 400% massive physical damage and deals splash damage on impact.",
+		"unit_id": "archer"
+	},
+	"artillery": {
+		"ability": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 1.2,
+				"reason": "Shell Shock",
+				"stun_duration": 0.8
+			}
+		},
+		"ability_desc": "Explosive shell dealing 120% damage and 0.8s stun.",
+		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
+		"name": "Artillery",
+		"passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
+		"passive_ids": [
+			"demolition"
+		],
+		"role": "marksman",
+		"stats": {
+			"ability_cd": 14.0,
+			"armor": 0.05,
+			"attack_damage": 25.0,
+			"attack_range": 5.0,
+			"attack_speed": 0.4,
+			"life_steal": 0.0,
+			"magic_resist": 0.05,
+			"mana_per_attack": 10.0,
+			"max_hp": 55.0,
+			"max_mana": 50.0,
+			"move_speed": 0.3,
+			"name": "Artillery",
+			"passive_id": "demolition",
+			"projectile_radius": 0.05,
+			"projectile_speed": 3.0,
+			"respawn_time": 10.0,
+			"role": "marksman",
+			"tenacity": 0.0,
+			"ultimate_cd": 50.0,
+			"unit_id": "artillery"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 5.0,
+				"radius_override": 0.08,
+				"reason": "Big Bertha"
+			}
+		},
+		"ultimate_desc": "Fires a massive artillery shell for 500% damage.",
+		"unit_id": "artillery"
+	},
+	"assassin": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.2,
+							"reason": "Shadow Dash",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 0.5,
+							"reason": "Shadow Dash"
+						}
+					}
+				],
+				"reason": "Shadow Dash"
+			}
+		},
+		"ability_desc": "Quick dash for 120% damage and a short 0.5s stun.",
+		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
+		"name": "Assassin",
+		"passive_desc": "Deals double damage to targets below 30% HP.",
+		"passive_ids": [
+			"executioner"
+		],
+		"role": "assassin",
+		"stats": {
+			"ability_cd": 4.0,
+			"armor": 0.05,
+			"attack_damage": 25.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.4,
+			"life_steal": 0.0,
+			"magic_resist": 0.05,
+			"mana_per_attack": 10.0,
+			"max_hp": 165.0,
+			"max_mana": 60.0,
+			"move_speed": 1.3,
+			"name": "Assassin",
+			"passive_id": "executioner",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "assassin",
+			"tenacity": 0.0,
+			"ultimate_cd": 20.0,
+			"unit_id": "assassin"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 5.0,
+				"reason": "Assassinate"
+			}
+		},
+		"ultimate_desc": "Executes a target with 500% physical damage.",
+		"unit_id": "assassin"
+	},
+	"berserker": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_damage",
+						"params": {
+							"damage_ratio": 0.1,
+							"reason": "Blood Price"
+						}
+					},
+					{
+						"kind": "self_shield",
+						"params": {
+							"reason": "Blood Price",
+							"shield_ratio": 0.15
+						}
+					}
+				],
+				"reason": "Blood Price"
+			}
+		},
+		"ability_desc": "Damages self for 10% max HP and gains 150% of the value as a shield.",
+		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
+		"name": "Berserker",
+		"passive_desc": "Heals for 15% of all damage dealt by auto-attacks.",
+		"passive_ids": [
+			"bloodlust"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 5.0,
+			"armor": 0.15,
+			"attack_damage": 12.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.6,
+			"life_steal": 0.0,
+			"magic_resist": 0.05,
+			"mana_per_attack": 10.0,
+			"max_hp": 185.0,
+			"max_mana": 60.0,
+			"move_speed": 1.3,
+			"name": "Berserker",
+			"passive_id": "bloodlust",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 18.0,
+			"unit_id": "berserker"
+		},
+		"ultimate": {
+			"kind": "damage",
+			"params": {
+				"damage_multiplier": 3.0,
+				"damage_type": "true",
+				"reason": "Berserker Rage",
+				"trigger_on_hit": false
+			}
+		},
+		"ultimate_desc": "Unleashes a devastating strike for 300% true damage.",
+		"unit_id": "berserker"
+	},
+	"cleric": {
+		"ability": {
+			"kind": "heal",
+			"params": {
+				"max_hp_ratio": 0.3,
+				"reason": "Holy Mending"
+			}
+		},
+		"ability_desc": "Heals an ally or self for 30% max HP.",
+		"description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
+		"name": "Cleric",
+		"passive_desc": "Regenerates 2% of max HP every second.",
+		"passive_ids": [
+			"devotion"
+		],
+		"role": "support",
+		"stats": {
+			"ability_cd": 8.0,
+			"armor": 0.1,
+			"attack_damage": 15.0,
+			"attack_range": 3.5,
+			"attack_speed": 1.2,
+			"life_steal": 0.0,
+			"magic_resist": 0.2,
+			"mana_per_attack": 10.0,
+			"max_hp": 125.0,
+			"max_mana": 100.0,
+			"move_speed": 1.5,
+			"name": "Cleric",
+			"passive_id": "devotion",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "support",
+			"tenacity": 0.0,
+			"ultimate_cd": 32.0,
+			"unit_id": "cleric"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "heal",
+						"params": {
+							"max_hp_ratio": 0.55,
+							"reason": "Divine Aura"
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Divine Aura"
+						}
+					}
+				],
+				"reason": "Divine Aura"
+			}
+		},
+		"ultimate_desc": "Heals for 55% max HP and stuns target for 1.5s.",
+		"unit_id": "cleric"
+	},
+	"colossus": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_taunt",
+						"params": {
+							"duration": 2.0,
+							"radius": 1.0,
+							"reason": "Seismic Slam"
+						}
+					},
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 1.0,
+							"damage_type": "physical",
+							"radius": 1.0,
+							"reason": "Seismic Slam"
+						}
+					}
+				],
+				"reason": "Seismic Slam"
+			}
+		},
+		"ability_desc": "Deals 100% damage and taunts all targets in a 1 unit radius for 2.0s.",
+		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
+		"name": "Colossus",
+		"passive_desc": "Reduces all incoming damage by 10%.",
+		"passive_ids": [
+			"durability"
+		],
+		"role": "tank",
+		"stats": {
+			"ability_cd": 12.0,
+			"armor": 0.3,
+			"attack_damage": 8.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.6,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 10.0,
+			"max_hp": 350.0,
+			"max_mana": 100.0,
+			"move_speed": 0.8,
+			"name": "Colossus",
+			"passive_id": "durability",
+			"projectile_radius": 0.05,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "tank",
+			"tenacity": 0.0,
+			"ultimate_cd": 50.0,
+			"unit_id": "colossus"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.5,
+							"reason": "Earthshaker",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 3.5,
+							"reason": "Earthshaker"
+						}
+					}
+				],
+				"reason": "Earthshaker"
+			}
+		},
+		"ultimate_desc": "Colossal impact for 250% damage and a 3.5s stun.",
+		"unit_id": "colossus"
+	},
+	"guardian": {
+		"ability": {
+			"kind": "shield",
+			"params": {
+				"max_hp_ratio": 0.2,
+				"reason": "Guardian Shield"
+			}
+		},
+		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
+		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
+		"name": "Guardian",
+		"passive_desc": "Reduces incoming damage by 10%.",
+		"passive_ids": [
+			"bastion"
+		],
+		"role": "tank",
+		"stats": {
+			"ability_cd": 10.0,
+			"armor": 0.35,
+			"attack_damage": 10.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 10.0,
+			"max_hp": 220.0,
+			"max_mana": 100.0,
+			"move_speed": 1.1,
+			"name": "Guardian",
+			"passive_id": "bastion",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "tank",
+			"tenacity": 0.0,
+			"ultimate_cd": 40.0,
+			"unit_id": "guardian"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.0,
+							"reason": "Aegis Crash",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 3.0,
+							"reason": "Aegis Crash"
+						}
+					}
+				],
+				"reason": "Aegis Crash"
+			}
+		},
+		"ultimate_desc": "Slams the ground for 200% damage and a 3.0s stun.",
+		"unit_id": "guardian"
+	},
+	"mage": {
+		"ability": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 2.0,
+				"damage_type": "magic",
+				"reason": "Arcane Bolt",
+				"speed_override": 7.0
+			}
+		},
+		"ability_desc": "Fires a magical projectile dealing 200% magic damage.",
+		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
+		"name": "Mage",
+		"passive_desc": "Restores 3 mana every second. Meteor impact deals 50% splash damage in a 2.5 unit radius.",
+		"passive_ids": [
+			"mana_font"
+		],
+		"role": "mage",
+		"stats": {
+			"ability_cd": 7.0,
+			"armor": 0.05,
+			"attack_damage": 19.0,
+			"attack_range": 3.5,
+			"attack_speed": 1.0,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 10.0,
+			"max_hp": 80.0,
+			"max_mana": 80.0,
+			"move_speed": 1.2,
+			"name": "Mage",
+			"passive_id": "mana_font",
+			"projectile_radius": 0.03,
+			"projectile_speed": 6.0,
+			"respawn_time": 10.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"ultimate_cd": 22.0,
+			"unit_id": "mage"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 6.0,
+				"damage_type": "magic",
+				"radius_override": 0.07,
+				"reason": "Meteor Bombardment",
+				"speed_override": 4.0
+			}
+		},
+		"ultimate_desc": "Calls down a meteor for 600% magic damage and deals splash damage on impact.",
+		"unit_id": "mage"
+	},
+	"monk": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.2,
+							"reason": "Pressure Point",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 0.8,
+							"reason": "Pressure Point"
+						}
+					}
+				],
+				"reason": "Pressure Point"
+			}
+		},
+		"ability_desc": "Precise strike for 120% damage and 0.8s stun.",
+		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
+		"name": "Monk",
+		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
+		"passive_ids": [
+			"technique"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 4.0,
+			"armor": 0.1,
+			"attack_damage": 18.0,
+			"attack_range": 0.3,
+			"attack_speed": 2.2,
+			"life_steal": 0.0,
+			"magic_resist": 0.1,
+			"mana_per_attack": 10.0,
+			"max_hp": 155.0,
+			"max_mana": 60.0,
+			"move_speed": 1.4,
+			"name": "Monk",
+			"passive_id": "technique",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 16.0,
+			"unit_id": "monk"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.5,
+							"reason": "Hundred-Hand Slap",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Hundred-Hand Slap"
+						}
+					}
+				],
+				"reason": "Hundred-Hand Slap"
+			}
+		},
+		"ultimate_desc": "Rapid flurry for 250% damage and 1.5s stun.",
+		"unit_id": "monk"
+	},
+	"oracle": {
+		"ability": {
+			"kind": "heal",
+			"params": {
+				"max_hp_ratio": 0.2,
+				"reason": "Purify"
+			}
+		},
+		"ability_desc": "Heals an ally or self for 20% max HP.",
+		"description": "A mystical seer who converts mana into healing, sustaining allies through long-range purification.",
+		"name": "Oracle",
+		"passive_desc": "Restores 5 mana after each auto-attack.",
+		"passive_ids": [
+			"enlightenment"
+		],
+		"role": "support",
+		"stats": {
+			"ability_cd": 6.0,
+			"armor": 0.05,
+			"attack_damage": 15.0,
+			"attack_range": 3.5,
+			"attack_speed": 1.1,
+			"life_steal": 0.0,
+			"magic_resist": 0.2,
+			"mana_per_attack": 10.0,
+			"max_hp": 90.0,
+			"max_mana": 150.0,
+			"move_speed": 1.5,
+			"name": "Oracle",
+			"passive_id": "enlightenment",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "support",
+			"tenacity": 0.0,
+			"ultimate_cd": 24.0,
+			"unit_id": "oracle"
+		},
+		"ultimate": {
+			"kind": "shield",
+			"params": {
+				"max_hp_ratio": 0.4,
+				"reason": "Divine Shield"
+			}
+		},
+		"ultimate_desc": "Shields an ally or self for 40% max HP.",
+		"unit_id": "oracle"
+	},
+	"paladin": {
+		"ability": {
+			"kind": "heal",
+			"params": {
+				"max_hp_ratio": 0.15,
+				"reason": "Lay on Hands"
+			}
+		},
+		"ability_desc": "Heals self for 15% max HP.",
+		"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
+		"name": "Paladin",
+		"passive_desc": "Regenerates 5 HP every second.",
+		"passive_ids": [
+			"rejuvenation"
+		],
+		"role": "tank",
+		"stats": {
+			"ability_cd": 10.0,
+			"armor": 0.25,
+			"attack_damage": 14.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 10.0,
+			"max_hp": 200.0,
+			"max_mana": 80.0,
+			"move_speed": 1.4,
+			"name": "Paladin",
+			"passive_id": "rejuvenation",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "tank",
+			"tenacity": 0.0,
+			"ultimate_cd": 35.0,
+			"unit_id": "paladin"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "heal",
+						"params": {
+							"max_hp_ratio": 0.3,
+							"reason": "Divine Judgment"
+						}
+					},
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.0,
+							"reason": "Divine Judgment",
+							"trigger_on_hit": false
+						}
+					}
+				],
+				"reason": "Divine Judgment"
+			}
+		},
+		"ultimate_desc": "Heals self for 30% max HP and deals 200% damage.",
+		"unit_id": "paladin"
+	},
+	"passives": {
+		"agility": {
+			"on_defense": [
+				"<RefCounted#-9223372006404127226>"
+			]
+		},
+		"bastion": {
+			"on_defense": [
+				"<RefCounted#-9223372006504790527>"
+			]
+		},
+		"bloodlust": {
+			"post_attack": [
+				"<RefCounted#-9223372006437681660>"
+			]
+		},
+		"bravery": {
+			"on_attack": [
+				"<RefCounted#-9223372006253132273>"
+			]
+		},
+		"demolition": {
+			"post_attack": [
+				"<RefCounted#-9223372006303463924>"
+			]
+		},
+		"devotion": {
+			"on_tick": [
+				"<RefCounted#-9223372006286686707>"
+			]
+		},
+		"duelist": {
+			"on_attack": [
+				"<RefCounted#-9223372006571899394>"
+			]
+		},
+		"durability": {
+			"on_defense": [
+				"<RefCounted#-9223372006370572792>"
+			]
+		},
+		"eagle_eye": {
+			"on_attack": [
+				"<RefCounted#-9223372006555122183>"
+			],
+			"post_attack": [
+				"<RefCounted#-9223372006521567744>"
+			]
+		},
+		"enlightenment": {
+			"post_attack": [
+				"<RefCounted#-9223372006387350009>"
+			]
+		},
+		"executioner": {
+			"on_attack": [
+				"<RefCounted#-9223372006488013313>"
+			]
+		},
+		"mana_font": {
+			"on_tick": [
+				"<RefCounted#-9223372006471236094>"
+			]
+		},
+		"marksman": {
+			"on_attack": [
+				"<RefCounted#-9223372006454458877>"
+			]
+		},
+		"rejuvenation": {
+			"on_tick": [
+				"<RefCounted#-9223372006420904443>"
+			]
+		},
+		"siphon": {
+			"post_attack": [
+				"<RefCounted#-9223372006269909490>"
+			]
+		},
+		"swiftness": {
+			"on_attack": [
+				"<RefCounted#-9223372006353795575>"
+			]
+		},
+		"technique": {
+			"post_attack": [
+				"<RefCounted#-9223372006320241141>"
+			]
+		},
+		"vampirism": {
+			"post_attack": [
+				"<RefCounted#-9223372006337018358>"
+			]
+		}
+	},
+	"rogue": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 0.8,
+							"damage_type": "magic",
+							"reason": "Poison Vial",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.0,
+							"reason": "Poison Vial"
+						}
+					}
+				],
+				"reason": "Poison Vial"
+			}
+		},
+		"ability_desc": "Deals 80% magic damage and stuns for 2.0s.",
+		"description": "An evasive melee fighter who relies on high dodge chance and speed to survive encounters.",
+		"name": "Rogue",
+		"passive_desc": "Grants a 25% chance to dodge incoming damage.",
+		"passive_ids": [
+			"agility"
+		],
+		"role": "assassin",
+		"stats": {
+			"ability_cd": 4.0,
+			"armor": 0.1,
+			"attack_damage": 18.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.1,
+			"mana_per_attack": 10.0,
+			"max_hp": 90.0,
+			"max_mana": 40.0,
+			"move_speed": 2.4,
+			"name": "Rogue",
+			"passive_id": "agility",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "assassin",
+			"tenacity": 0.0,
+			"ultimate_cd": 18.0,
+			"unit_id": "rogue"
+		},
+		"ultimate": {
+			"kind": "damage",
+			"params": {
+				"damage_multiplier": 3.5,
+				"reason": "Eviscerate"
+			}
+		},
+		"ultimate_desc": "Lethal execution dealing 350% physical damage.",
+		"unit_id": "rogue"
+	},
+	"role_configs": {
+		"assassin": "<RefCounted#-9223372006169246188>",
+		"fighter": "<RefCounted#-9223372006202800622>",
+		"mage": "<RefCounted#-9223372006135691754>",
+		"marksman": "<RefCounted#-9223372006186023405>",
+		"support": "<RefCounted#-9223372006118914537>",
+		"tank": "<RefCounted#-9223372006219577839>"
+	},
+	"siren": {
+		"ability": {
+			"kind": "stun",
+			"params": {
+				"duration": 0.5,
+				"reason": "Enthralling Song"
+			}
+		},
+		"ability_desc": "Binds target stunning for 0.5s stun.",
+		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
+		"name": "Siren",
+		"passive_desc": "Drains 5 mana from the target on each auto-attack.",
+		"passive_ids": [
+			"siphon"
+		],
+		"role": "support",
+		"stats": {
+			"ability_cd": 10.0,
+			"armor": 0.05,
+			"attack_damage": 15.0,
+			"attack_range": 3.5,
+			"attack_speed": 1.1,
+			"life_steal": 0.0,
+			"magic_resist": 0.15,
+			"mana_per_attack": 10.0,
+			"max_hp": 85.0,
+			"max_mana": 80.0,
+			"move_speed": 1.6,
+			"name": "Siren",
+			"passive_id": "siphon",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "support",
+			"tenacity": 0.0,
+			"ultimate_cd": 35.0,
+			"unit_id": "siren"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 3.0,
+							"damage_type": "magic",
+							"reason": "Banshee Wail",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Banshee Wail"
+						}
+					}
+				],
+				"reason": "Banshee Wail"
+			}
+		},
+		"ultimate_desc": "Shrieks for 300% magic damage and stunning for 1.0s.",
+		"unit_id": "siren"
+	},
+	"sniper": {
+		"ability": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 1.8,
+				"reason": "Headshot"
+			}
+		},
+		"ability_desc": "High-precision strike for 180% damage.",
+		"description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
+		"name": "Sniper",
+		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
+		"passive_ids": [
+			"marksman"
+		],
+		"role": "marksman",
+		"stats": {
+			"ability_cd": 12.0,
+			"armor": 0.05,
+			"attack_damage": 21.0,
+			"attack_range": 4.0,
+			"attack_speed": 0.4,
+			"life_steal": 0.0,
+			"magic_resist": 0.05,
+			"mana_per_attack": 10.0,
+			"max_hp": 60.0,
+			"max_mana": 60.0,
+			"move_speed": 0.9,
+			"name": "Sniper",
+			"passive_id": "marksman",
+			"projectile_radius": 0.03,
+			"projectile_speed": 12.0,
+			"respawn_time": 10.0,
+			"role": "marksman",
+			"tenacity": 0.0,
+			"ultimate_cd": 45.0,
+			"unit_id": "sniper"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 3.5,
+				"reason": "ULTIMATE",
+				"speed_override": 15.0
+			}
+		},
+		"ultimate_desc": "Lethal long-range shot for 350% damage.",
+		"unit_id": "sniper"
+	},
+	"swordsman": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.5,
+							"reason": "Concussive Blow",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Concussive Blow"
+						}
+					}
+				],
+				"reason": "Concussive Blow"
+			}
+		},
+		"ability_desc": "Deals 150% damage and stuns the target for 1.0s.",
+		"description": "A balanced frontline duelist who excels at locking down single targets with concussive strikes.",
+		"name": "Swordsman",
+		"passive_desc": "Increases attack damage by 20%.",
+		"passive_ids": [
+			"duelist"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 6.0,
+			"armor": 0.25,
+			"attack_damage": 14.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.2,
+			"life_steal": 0.0,
+			"magic_resist": 0.15,
+			"mana_per_attack": 10.0,
+			"max_hp": 120.0,
+			"max_mana": 50.0,
+			"move_speed": 1.1,
+			"name": "Swordsman",
+			"passive_id": "duelist",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 25.0,
+			"unit_id": "swordsman"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 3.0,
+							"reason": "Blade Dance",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.0,
+							"reason": "Blade Dance"
+						}
+					}
+				],
+				"reason": "Blade Dance"
+			}
+		},
+		"ultimate_desc": "Strikes for 300% damage and applies a 2.0s stun.",
+		"unit_id": "swordsman"
+	},
+	"valkyrie": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.5,
+							"reason": "Shield Slam",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 0.5,
+							"reason": "Shield Slam"
+						}
+					}
+				],
+				"reason": "Shield Slam"
+			}
+		},
+		"ability_desc": "Bashes target for 150% damage and 0.5s stun.",
+		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
+		"name": "Valkyrie",
+		"passive_desc": "Deals 20% bonus damage while above 80% HP.",
+		"passive_ids": [
+			"bravery"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 7.0,
+			"armor": 0.2,
+			"attack_damage": 15.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.1,
+			"life_steal": 0.0,
+			"magic_resist": 0.15,
+			"mana_per_attack": 10.0,
+			"max_hp": 210.0,
+			"max_mana": 60.0,
+			"move_speed": 1.5,
+			"name": "Valkyrie",
+			"passive_id": "bravery",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 28.0,
+			"unit_id": "valkyrie"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 3.0,
+							"reason": "Valhalla Call",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Valhalla Call"
+						}
+					}
+				],
+				"reason": "Valhalla Call"
+			}
+		},
+		"ultimate_desc": "War cry dealing 300% damage and 1.5s stun.",
+		"unit_id": "valkyrie"
+	},
+	"warlock": {
+		"ability": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 1.5,
+				"damage_type": "magic",
+				"reason": "Soul Siphon"
+			}
+		},
+		"ability_desc": "Deals 150% magic damage and heals self for 20% of it.",
+		"description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
+		"name": "Warlock",
+		"passive_desc": "Heals for 3 HP after each auto-attack.",
+		"passive_ids": [
+			"vampirism"
+		],
+		"role": "mage",
+		"stats": {
+			"ability_cd": 6.0,
+			"armor": 0.05,
+			"attack_damage": 21.0,
+			"attack_range": 3.5,
+			"attack_speed": 0.9,
+			"life_steal": 0.0,
+			"magic_resist": 0.2,
+			"mana_per_attack": 10.0,
+			"max_hp": 100.0,
+			"max_mana": 100.0,
+			"move_speed": 1.4,
+			"name": "Warlock",
+			"passive_id": "vampirism",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"ultimate_cd": 22.0,
+			"unit_id": "warlock"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 4.0,
+				"damage_type": "magic",
+				"reason": "Chaos Rift",
+				"stun_duration": 1.0
+			}
+		},
+		"ultimate_desc": "Rifts the ground for 400% magic damage and 1.0s stun.",
+		"unit_id": "warlock"
+	},
+	"wraith": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.2,
+							"damage_type": "magic",
+							"reason": "Spectral Touch",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 0.8,
+							"reason": "Spectral Touch"
+						}
+					}
+				],
+				"reason": "Spectral Touch"
+			}
+		},
+		"ability_desc": "Magic strike for 120% damage and 0.8s stun.",
+		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
+		"name": "Wraith",
+		"passive_desc": "Increases attack damage by 15%.",
+		"passive_ids": [
+			"swiftness"
+		],
+		"role": "assassin",
+		"stats": {
+			"ability_cd": 5.0,
+			"armor": 0.05,
+			"attack_damage": 26.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.5,
+			"life_steal": 0.0,
+			"magic_resist": 0.15,
+			"mana_per_attack": 10.0,
+			"max_hp": 155.0,
+			"max_mana": 40.0,
+			"move_speed": 2.5,
+			"name": "Wraith",
+			"passive_id": "swiftness",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "assassin",
+			"tenacity": 0.0,
+			"ultimate_cd": 15.0,
+			"unit_id": "wraith"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.5,
+							"damage_type": "magic",
+							"reason": "Phantom Strike",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Phantom Strike"
+						}
+					}
+				],
+				"reason": "Phantom Strike"
+			}
+		},
+		"ultimate_desc": "Teleports for 250% magic damage and 1.5s stun.",
+		"unit_id": "wraith"
+	}
 }

@@ -6,8 +6,8 @@
 # Flow (high level):
 # 1. Base data lives in fixtures/goldens/champion_schema.json (never edited for live tuning).
 # 2. fixtures/goldens/balance_patches.json loads at catalog init: stat tweaks + optional kit_id / inline ability blobs.
-# 3. fixtures/goldens/ability_kits.json holds named presets ("kits") that can replace ability, ultimate, passive_ids.
-#    See fixtures/goldens/ability_kits.example.json for a copy-paste preset (guardian_healer_kit).
+# 3. fixtures/goldens/champion_kits.json holds named presets ("kits") that can replace ability, ultimate, passive_ids.
+#    See fixtures/goldens/champion_kits.example.json for a copy-paste preset (guardian_healer_kit).
 # 4. When the patch list changes, the sim rebuilds one cached "effective champion" dict per archetype (fast spawns).
 #
 # Per-patch merge order for each matching champion:
@@ -32,8 +32,8 @@ static func example_patch_list() -> Array:
 		"reason": "Comment: lowers auto and ability-scaled damage that uses attack_damage.",
 	}
 
-	# --- 2) Patch that applies a named kit from ability_kits.json ---
-	# Requires a matching entry under "kits" in fixtures/goldens/ability_kits.json, e.g.:
+	# --- 2) Patch that applies a named kit from champion_kits.json ---
+	# Requires a matching entry under "kits" in fixtures/goldens/champion_kits.json, e.g.:
 	#   "guardian_healer_kit": { "ability": { ... }, "ultimate": { ... }, "passive_ids": [...] }
 	var kit_patch := {
 		"patch_id": "example_guardian_kit_swap",

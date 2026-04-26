@@ -10,6 +10,8 @@ const RoleConfigSpecScript := preload("res://scripts/simulation/role_config_spec
 static var _role_config_cache: Dictionary = {}
 static var _catalog_cache: Dictionary = {}
 static var _passive_cache: Dictionary = {}
+static var _role_kits: Dictionary = {}
+static var _role_kits_loaded: bool = false
 
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
@@ -109,7 +111,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 14.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.2,
-			"move_speed": 1.1,
+			"move_speed": 0.6,
 			"armor": 0.25,
 			"magic_resist": 0.15,
 			"tenacity": 0.0,
@@ -158,7 +160,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 21.0,
 			"attack_range": 3.0,
 			"attack_speed": 0.9,
-			"move_speed": 1.0,
+			"move_speed": 0.4,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -189,7 +191,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 10.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.8,
-			"move_speed": 1.1,
+			"move_speed": 0.5,
 			"armor": 0.35,
 			"magic_resist": 0.25,
 			"tenacity": 0.0,
@@ -229,7 +231,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 25.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.4,
-			"move_speed": 1.3,
+			"move_speed": 0.7,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -269,7 +271,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 19.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.0,
-			"move_speed": 1.2,
+			"move_speed": 0.5,
 			"armor": 0.05,
 			"magic_resist": 0.25,
 			"tenacity": 0.0,
@@ -300,7 +302,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 21.0,
 			"attack_range": 4.0,
 			"attack_speed": 0.4,
-			"move_speed": 0.9,
+			"move_speed": 0.4,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -331,7 +333,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 12.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.6,
-			"move_speed": 1.3,
+			"move_speed": 0.6,
 			"armor": 0.15,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -371,7 +373,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 14.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.8,
-			"move_speed": 1.4,
+			"move_speed": 0.5,
 			"armor": 0.25,
 			"magic_resist": 0.25,
 			"tenacity": 0.0,
@@ -411,7 +413,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 18.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.8,
-			"move_speed": 2.4,
+			"move_speed": 0.7,
 			"armor": 0.10,
 			"magic_resist": 0.10,
 			"tenacity": 0.0,
@@ -451,7 +453,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.1,
-			"move_speed": 1.5,
+			"move_speed": 0.5,
 			"armor": 0.05,
 			"magic_resist": 0.20,
 			"tenacity": 0.0,
@@ -482,7 +484,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 8.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.6,
-			"move_speed": 0.8,
+			"move_speed": 0.5,
 			"armor": 0.30,
 			"magic_resist": 0.25,
 			"tenacity": 0.0,
@@ -531,7 +533,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 26.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.5,
-			"move_speed": 2.5,
+			"move_speed": 0.7,
 			"armor": 0.05,
 			"magic_resist": 0.15,
 			"tenacity": 0.0,
@@ -580,7 +582,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 21.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.9,
-			"move_speed": 1.4,
+			"move_speed": 0.5,
 			"armor": 0.05,
 			"magic_resist": 0.20,
 			"tenacity": 0.0,
@@ -611,7 +613,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 18.0,
 			"attack_range": 0.3,
 			"attack_speed": 2.2,
-			"move_speed": 1.4,
+			"move_speed": 0.6,
 			"armor": 0.10,
 			"magic_resist": 0.10,
 			"tenacity": 0.0,
@@ -660,7 +662,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 25.0,
 			"attack_range": 5.0,
 			"attack_speed": 0.4,
-			"move_speed": 0.3,
+			"move_speed": 0.1,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -691,7 +693,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.2,
-			"move_speed": 1.5,
+			"move_speed": 0.5,
 			"armor": 0.10,
 			"magic_resist": 0.20,
 			"tenacity": 0.0,
@@ -731,7 +733,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.1,
-			"move_speed": 1.6,
+			"move_speed": 0.5,
 			"armor": 0.05,
 			"magic_resist": 0.15,
 			"tenacity": 0.0,
@@ -771,7 +773,7 @@ const CHAMPION_DATA := {
 			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.1,
-			"move_speed": 1.5,
+			"move_speed": 0.6,
 			"armor": 0.20,
 			"magic_resist": 0.15,
 			"tenacity": 0.0,
@@ -890,32 +892,32 @@ const PASSIVE_DATA := {
 
 const ROLE_CONFIG_DATA := {
 	&"tank": {
-		"stat_mods": {&"tenacity": 0.0},
+		"stat_mods": {},
 		"passive_on_tick": null,
-		"passive_post_take_damage": {"kind": &"post_damage_mana_gain", "params": {"damage_ratio": 0.0}},
+		"passive_post_take_damage": {"kind": &"post_damage_mana_gain", "params": {"damage_ratio": SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO}},
 	},
 	&"fighter": {
-		"stat_mods": {&"life_steal": 0.0, &"tenacity": 0.0},
+		"stat_mods": {},
 		"passive_on_tick": null,
 		"passive_post_take_damage": null,
 	},
 	&"marksman": {
-		"stat_mods": {&"attack_speed": 0.0},
+		"stat_mods": {},
 		"passive_on_tick": null,
 		"passive_post_take_damage": null,
 	},
 	&"assassin": {
-		"stat_mods": {&"move_speed": 0.0},
+		"stat_mods": {},
 		"passive_on_tick": null,
 		"passive_post_take_damage": null,
 	},
 	&"mage": {
 		"stat_mods": {},
-		"passive_on_tick": {"kind": &"mana_regen", "params": {"flat_amount": 0.0}},
+		"passive_on_tick": {"kind": &"mana_regen", "params": {"flat_amount": SimConstantsScript.MAGE_MANA_REGEN_TICK}},
 		"passive_post_take_damage": null,
 	},
 	&"support": {
-		"stat_mods": {&"ability_cd": 0.0},
+		"stat_mods": {},
 		"passive_on_tick": null,
 		"passive_post_take_damage": null,
 	},
@@ -929,31 +931,13 @@ static func build_role_configs() -> Dictionary:
 		var data: Dictionary = ROLE_CONFIG_DATA[role_id]
 		var stat_mods: Dictionary = data["stat_mods"].duplicate()
 		
-		if role_id == &"tank":
-			stat_mods[&"tenacity"] = SimConstantsScript.TANK_TENACITY_MOD
-		elif role_id == &"fighter":
-			stat_mods[&"life_steal"] = SimConstantsScript.FIGHTER_LIFESTEAL_MOD
-			stat_mods[&"tenacity"] = SimConstantsScript.FIGHTER_TENACITY_MOD
-		elif role_id == &"marksman":
-			stat_mods[&"attack_speed"] = SimConstantsScript.MARKSMAN_AS_MOD
-		elif role_id == &"assassin":
-			stat_mods[&"move_speed"] = SimConstantsScript.ASSASSIN_MS_MOD
-		elif role_id == &"support":
-			stat_mods[&"ability_cd"] = SimConstantsScript.SUPPORT_ABILITY_CD_FLAT
-		
 		var passive_on_tick = null
 		if data["passive_on_tick"] != null:
-			var tick_data: Dictionary = data["passive_on_tick"].duplicate(true)
-			if role_id == &"mage":
-				tick_data["params"]["flat_amount"] = SimConstantsScript.MAGE_MANA_REGEN_TICK
-			passive_on_tick = _build_effect(tick_data)
+			passive_on_tick = _build_effect(data["passive_on_tick"])
 		
 		var passive_post_take_damage = null
 		if data["passive_post_take_damage"] != null:
-			var damage_data: Dictionary = data["passive_post_take_damage"].duplicate(true)
-			if role_id == &"tank":
-				damage_data["params"]["damage_ratio"] = SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO
-			passive_post_take_damage = _build_effect(damage_data)
+			passive_post_take_damage = _build_effect(data["passive_post_take_damage"])
 		
 		_role_config_cache[role_id] = RoleConfigSpecScript.new(stat_mods, passive_on_tick, passive_post_take_damage)
 	
@@ -998,6 +982,62 @@ static func get_champion_ids() -> Array[StringName]:
 
 static func get_champion(unit_id: StringName):
 	return build_catalog().get(unit_id, null)
+
+static func _load_role_kits() -> void:
+	if _role_kits_loaded:
+		return
+	var file := FileAccess.open("res://fixtures/goldens/role_kits.json", FileAccess.READ)
+	if file == null:
+		_role_kits = {}
+		_role_kits_loaded = true
+		return
+	var json_string := file.get_as_text()
+	file.close()
+	var json := JSON.new()
+	var parse_result := json.parse(json_string)
+	if parse_result != OK:
+		_role_kits = {}
+		_role_kits_loaded = true
+		return
+	var data: Dictionary = json.data
+	_role_kits = data.get("kits", {})
+	_role_kits_loaded = true
+
+static func reload_role_kits() -> void:
+	_role_kits_loaded = false
+	_role_kits.clear()
+	_role_config_cache.clear()
+	_load_role_kits()
+
+static func get_effective_stats(hero_id: StringName) -> Dictionary:
+	var champion = get_champion(hero_id)
+	if champion == null:
+		return {}
+	var stats_dict: Dictionary = champion.stats.to_dict().duplicate(true)
+	var role: StringName = stats_dict.get("role", &"")
+	
+	# Apply role kit overrides
+	_load_role_kits()
+	for kit_id in _role_kits.keys():
+		var kit: Dictionary = _role_kits[kit_id]
+		if kit.get("role", "") == String(role):
+			var kit_stat_mods: Dictionary = kit.get("stat_mods", {})
+			for key in kit_stat_mods.keys():
+				var mod_data: Dictionary = kit_stat_mods[key]
+				var mod_type: String = mod_data.get("type", "add")
+				var mod_value: float = mod_data.get("value", 0.0)
+				var current_value: float = stats_dict.get(key, 0.0)
+				match mod_type:
+					"multiply":
+						stats_dict[key] = current_value * mod_value
+					"divide":
+						stats_dict[key] = current_value / mod_value if mod_value != 0.0 else current_value
+					"subtract":
+						stats_dict[key] = current_value - mod_value
+					_:  # add (default)
+						stats_dict[key] = current_value + mod_value
+	
+	return stats_dict
 
 static func export_schema_dict() -> Dictionary:
 	var schema: Dictionary = {}

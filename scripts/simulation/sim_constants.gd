@@ -1,8 +1,14 @@
 class_name SimConstants
 extends RefCounted
 
+# ========================================
+# VERSION
+# ========================================
 const SIMULATION_RULES_VERSION: int = 1
 
+# ========================================
+# WORLD & SIMULATION
+# ========================================
 const MATCH_DURATION: float = 60.0
 const DEFAULT_TICK_RATE: float = 0.1
 const DEFAULT_MAX_SIM_TICKS: int = 4000
@@ -25,6 +31,9 @@ const VIEWER_AOE_MIN_RING_RADIUS_PX: float = 2.0
 const AOE_VISUAL_MAX_DURATION: float = 0.55
 const REGEN_TICK_INTERVAL: float = 1.0
 
+# ========================================
+# MOVEMENT & NAVIGATION
+# ========================================
 const KITE_SPEED_MODIFIER: float = 0.5
 const KITE_DURATION: float = 1.0
 const NUDGE_SPEED_MODIFIER: float = 0.4
@@ -35,6 +44,9 @@ const SEPARATION_RADIUS_MELEE: float = 0.25
 const SEPARATION_RANGE_THRESHOLD: float = 1.5
 const KITE_DANGER_THRESHOLD: float = 0.9
 
+# ========================================
+# TARGET SELECTION - GENERAL
+# ========================================
 const TARGET_SWITCH_THRESHOLD: float = 0.9
 const TARGET_SWITCH_MARGIN: float = 0.75
 const TARGET_BUCKET_MARGIN: float = 0.75
@@ -46,6 +58,9 @@ const DISTANCE_WEIGHT_DEFAULT: float = 1.0
 const PROJECTILE_TIME_WEIGHT_DEFAULT: float = 0.0
 const TANK_PENALTY_DEFAULT: float = 2.0
 
+# ========================================
+# TARGET SELECTION - HP & EXECUTE
+# ========================================
 const ALLY_CRITICAL_HP_RATIO: float = 0.35
 const TARGET_WOUNDED_HP_RATIO: float = 0.4
 const TARGET_EXECUTE_HP_RATIO: float = 0.25
@@ -57,6 +72,9 @@ const AOE_DENSITY_RADIUS: float = 2.0
 const BODYGUARD_RADIUS: float = 2.5
 const OBSCURANCE_DISTANCE_FACTOR: float = 0.8
 
+# ========================================
+# TARGET SELECTION - SCORING
+# ========================================
 const SCORE_HP_WEIGHT_SCALE: float = 10.0
 const SCORE_THREAT_WEIGHT_SCALE: float = 5.0
 const SCORE_DISTANCE_WEIGHT_SCALE: float = 3.0
@@ -66,11 +84,17 @@ const SPACING_EXPONENT: float = 1.5
 const ROLE_PRIORITY_GLOBAL_SCALE: float = 0.85
 const IN_RANGE_SCORE_BONUS: float = 0.6
 
+# ========================================
+# TARGET SELECTION - TIMING
+# ========================================
 const KITE_TARGET_WINDOW_MIN_FACTOR: float = 0.7
 const KITE_TARGET_WINDOW_MAX_FACTOR: float = 1.3
 const SWITCH_COMMIT_WINDOW_SECONDS: float = 0.18
 const SWITCH_COMMIT_WINDOW_SWING_FRACTION: float = 0.25
 
+# ========================================
+# TARGET SELECTION - ROLE WEIGHTS
+# ========================================
 const BODYGUARD_WEIGHT_TANK: float = 3.0
 const BODYGUARD_WEIGHT_SUPPORT: float = 4.0
 const OBSCURANCE_WEIGHT_DEFAULT: float = 4.5
@@ -79,12 +103,18 @@ const FLANKING_WEIGHT_ASSASSIN: float = 2.0
 const OBSCURANCE_LINE_RADIUS: float = 0.35
 const FLANKING_TEAM_CENTER_SCALE: float = 0.35
 
+# ========================================
+# TARGET SELECTION - RANGED VS MELEE
+# ========================================
 const RANGED_THRESHOLD: float = 1.0
 const MELEE_CONTACT_BUFFER: float = 0.00001
 const THREAT_BURST_THRESHOLD: float = 0.1
 const THREAT_BURST_MULTIPLIER: float = 5.0
 const TAUNT_SCORE_BONUS: float = -100.0
 
+# ========================================
+# TARGET SELECTION - ROLE SPECIFIC
+# ========================================
 const STICKINESS_MARKSMAN: float = 5.0
 const STICKINESS_SUPPORT: float = 1.0
 const THREAT_DECAY_TANK: float = 4.0
@@ -129,6 +159,9 @@ const THREAT_RESPONSE_MAGE: float = 1.1
 const THREAT_RESPONSE_SUPPORT: float = 1.7
 const THREAT_RESPONSE_RANGE_FALLOFF: float = 0.6
 
+# ========================================
+# TARGET SELECTION - ROLE PRIORITIES
+# ========================================
 const ROLE_PRIORITIES_TANK: Dictionary = {
 	&"assassin": -5.0,
 	&"fighter": -2.0,
@@ -175,20 +208,31 @@ const PROJECTILE_TIME_WEIGHT_MARKSMAN: float = 0.35
 const PROJECTILE_TIME_WEIGHT_MAGE: float = 0.45
 const PROJECTILE_TIME_WEIGHT_SUPPORT: float = 0.3
 
-const TANK_TENACITY_MOD: float = 0.2
+# ========================================
+# ROLE MODIFIERS
+# ========================================
 const TANK_MANA_GAIN_DAMAGE_RATIO: float = 0.1
-const FIGHTER_LIFESTEAL_MOD: float = 0.1
-const FIGHTER_TENACITY_MOD: float = 0.1
-const MARKSMAN_AS_MOD: float = 1.2
-const ASSASSIN_MS_MOD: float = 1.5
 const MAGE_MANA_REGEN_TICK: float = 1.0
-const SUPPORT_ABILITY_CD_FLAT: float = 4.0
 
+const STAT_MOD_TYPES: Dictionary = {
+	&"tenacity": "add",
+	&"life_steal": "add",
+	&"ability_cd": "add",
+	&"attack_speed": "multiply",
+	&"move_speed": "multiply",
+}
+
+# ========================================
+# PROJECTILE DEFAULTS
+# ========================================
 const DEFAULT_PROJECTILE_SPEED: float = 5.0
 const DEFAULT_PROJECTILE_RADIUS: float = 0.03
 const DEFAULT_PROJECTILE_STUN_DURATION: float = 0.0
 const DEFAULT_VISUAL_EFFECT_COLOR: Color = Color(1.0, 1.0, 1.0)
 
+# ========================================
+# VIEWER CONFIGURATION
+# ========================================
 const VIEWER_WIDTH: int = 1000
 const VIEWER_HEIGHT: int = 800
 const VIEWER_SIDEBAR_WIDTH: int = 280
@@ -197,6 +241,10 @@ const VIEWER_WORLD_GRID_DIVISIONS: int = 10
 const MELEE_HIT_EFFECT_RADIUS: float = 0.15
 const MELEE_HIT_EFFECT_DURATION: float = 0.1
 const PROJECTILE_CORE_RADIUS: int = 2
+
+# ========================================
+# DRAFT & POSITIONING
+# ========================================
 const DRAFT_X_BASE: float = 0.9
 const DRAFT_X_STEP: float = 0.9
 const DRAFT_Y_BASE: float = 1.2
@@ -214,6 +262,9 @@ const PREP_SNAP_GRID: float = 2.0
 const SCOREBOARD_Y_START: int = 150
 const SCOREBOARD_Y_STEP: int = 25
 
+# ========================================
+# SIMULATION CONFIGURATION
+# ========================================
 const SIMULATION_BASE_SEED: int = 42
 const DEFAULT_SIMULATION_ROUNDS: int = 10000
 const SIMULATION_MIN_SYNERGY_GAMES: int = 5

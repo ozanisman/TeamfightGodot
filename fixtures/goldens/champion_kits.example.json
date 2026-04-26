@@ -1,5 +1,5 @@
 {
-  "_readme": "Copy the contents of 'kits' into ability_kits.json to enable kit_id patches. Root keys other than 'kits' are ignored by the loader.",
+  "_readme": "Copy the contents of 'kits' into champion_kits.json to enable kit_id patches. Root keys other than 'kits' are ignored by the loader.",
   "kits": {
     "guardian_healer_kit": {
       "ability": {

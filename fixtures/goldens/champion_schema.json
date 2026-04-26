@@ -26,7 +26,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 75.0,
 			"max_mana": 100.0,
-			"move_speed": 1.0,
+			"move_speed": 0.4,
 			"name": "Archer",
 			"passive_id": "eagle_eye",
 			"projectile_radius": 0.03,
@@ -76,7 +76,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 55.0,
 			"max_mana": 50.0,
-			"move_speed": 0.3,
+			"move_speed": 0.1,
 			"name": "Artillery",
 			"passive_id": "demolition",
 			"projectile_radius": 0.05,
@@ -128,7 +128,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 165.0,
 			"max_mana": 60.0,
-			"move_speed": 1.3,
+			"move_speed": 0.7,
 			"name": "Assassin",
 			"passive_id": "executioner",
 			"projectile_radius": 0.03,
@@ -179,7 +179,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 185.0,
 			"max_mana": 60.0,
-			"move_speed": 1.3,
+			"move_speed": 0.6,
 			"name": "Berserker",
 			"passive_id": "bloodlust",
 			"projectile_radius": 0.03,
@@ -229,7 +229,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 125.0,
 			"max_mana": 100.0,
-			"move_speed": 1.5,
+			"move_speed": 0.5,
 			"name": "Cleric",
 			"passive_id": "devotion",
 			"projectile_radius": 0.03,
@@ -283,7 +283,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 350.0,
 			"max_mana": 100.0,
-			"move_speed": 0.8,
+			"move_speed": 0.5,
 			"name": "Colossus",
 			"passive_id": "durability",
 			"projectile_radius": 0.05,
@@ -334,7 +334,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 220.0,
 			"max_mana": 100.0,
-			"move_speed": 1.1,
+			"move_speed": 0.5,
 			"name": "Guardian",
 			"passive_id": "bastion",
 			"projectile_radius": 0.03,
@@ -387,7 +387,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 80.0,
 			"max_mana": 80.0,
-			"move_speed": 1.2,
+			"move_speed": 0.5,
 			"name": "Mage",
 			"passive_id": "mana_font",
 			"projectile_radius": 0.03,
@@ -441,7 +441,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 155.0,
 			"max_mana": 60.0,
-			"move_speed": 1.4,
+			"move_speed": 0.6,
 			"name": "Monk",
 			"passive_id": "technique",
 			"projectile_radius": 0.03,
@@ -492,7 +492,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 90.0,
 			"max_mana": 150.0,
-			"move_speed": 1.5,
+			"move_speed": 0.5,
 			"name": "Oracle",
 			"passive_id": "enlightenment",
 			"projectile_radius": 0.03,
@@ -540,7 +540,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 200.0,
 			"max_mana": 80.0,
-			"move_speed": 1.4,
+			"move_speed": 0.5,
 			"name": "Paladin",
 			"passive_id": "rejuvenation",
 			"projectile_radius": 0.03,
@@ -689,7 +689,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 90.0,
 			"max_mana": 40.0,
-			"move_speed": 2.4,
+			"move_speed": 0.7,
 			"name": "Rogue",
 			"passive_id": "agility",
 			"projectile_radius": 0.03,
@@ -711,12 +711,59 @@
 		"unit_id": "rogue"
 	},
 	"role_configs": {
-		"assassin": "<RefCounted#-9223372006169246153>",
-		"fighter": "<RefCounted#-9223372006202800587>",
-		"mage": "<RefCounted#-9223372006135691719>",
-		"marksman": "<RefCounted#-9223372006186023370>",
-		"support": "<RefCounted#-9223372006118914502>",
-		"tank": "<RefCounted#-9223372006219577804>"
+		"assassin": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": null,
+			"stat_mods": {
+				"move_speed": 1.5
+			}
+		},
+		"fighter": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": null,
+			"stat_mods": {
+				"life_steal": 0.1,
+				"tenacity": 0.1
+			}
+		},
+		"mage": {
+			"passive_on_tick": {
+				"kind": "mana_regen",
+				"params": {
+					"flat_amount": 1.0
+				}
+			},
+			"passive_post_take_damage": null,
+			"stat_mods": {
+
+			}
+		},
+		"marksman": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": null,
+			"stat_mods": {
+				"attack_speed": 10.0
+			}
+		},
+		"support": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": null,
+			"stat_mods": {
+				"ability_cd": 4.0
+			}
+		},
+		"tank": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": {
+				"kind": "post_damage_mana_gain",
+				"params": {
+					"damage_ratio": 0.1
+				}
+			},
+			"stat_mods": {
+				"tenacity": 0.2
+			}
+		}
 	},
 	"siren": {
 		"ability": {
@@ -745,7 +792,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 85.0,
 			"max_mana": 80.0,
-			"move_speed": 1.6,
+			"move_speed": 0.5,
 			"name": "Siren",
 			"passive_id": "siphon",
 			"projectile_radius": 0.03,
@@ -796,7 +843,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 60.0,
 			"max_mana": 60.0,
-			"move_speed": 0.9,
+			"move_speed": 0.4,
 			"name": "Sniper",
 			"passive_id": "marksman",
 			"projectile_radius": 0.03,
@@ -848,7 +895,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 120.0,
 			"max_mana": 50.0,
-			"move_speed": 1.1,
+			"move_speed": 0.6,
 			"name": "Swordsman",
 			"passive_id": "duelist",
 			"projectile_radius": 0.03,
@@ -902,7 +949,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 210.0,
 			"max_mana": 60.0,
-			"move_speed": 1.5,
+			"move_speed": 0.6,
 			"name": "Valkyrie",
 			"passive_id": "bravery",
 			"projectile_radius": 0.03,
@@ -954,7 +1001,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 100.0,
 			"max_mana": 100.0,
-			"move_speed": 1.4,
+			"move_speed": 0.5,
 			"name": "Warlock",
 			"passive_id": "vampirism",
 			"projectile_radius": 0.03,
@@ -1007,7 +1054,7 @@
 			"mana_per_attack": 10.0,
 			"max_hp": 155.0,
 			"max_mana": 40.0,
-			"move_speed": 2.5,
+			"move_speed": 0.7,
 			"name": "Wraith",
 			"passive_id": "swiftness",
 			"projectile_radius": 0.03,

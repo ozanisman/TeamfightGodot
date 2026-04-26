@@ -39,7 +39,7 @@ const DASHBOARD_MAX_FPS := 60
 const UI_BALANCE_BAR_MIN := Vector2(236, 56)
 const UI_SIDEBAR_MIN_W := 320
 const UI_TOP_BAR_H := 52
-const UI_WINDOW_MIN := Vector2(960, 640)
+const UI_WINDOW_MIN := Vector2(1920, 1080)
 ## When true, export always opens the confirm dialog first (for UI testing only).
 const DEBUG_FORCE_REGEN_CONFIRM_POPUP := false
 

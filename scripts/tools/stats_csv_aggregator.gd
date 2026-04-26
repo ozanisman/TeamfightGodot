@@ -25,6 +25,7 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 	if summary == null:
 		push_error("StatsCsvAggregator: bad summary")
 		return
+	
 	_ensure_roles()
 	var bucket: Dictionary = _bucket(team_size)
 	var wt: StringName = summary.winner_team

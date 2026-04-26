@@ -1,8 +1,20 @@
 class_name RosterChampionCard
 extends PanelContainer
 ## One square tile in the side roster: name, K/D/A, HP and mana progress bars.
+## ROLE_COLORS matches simulation_viewer.gd (draft / arena).
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+
+const ROLE_COLORS: Dictionary = {
+	"tank": Color(0.8, 0.2, 0.2),
+	"fighter": Color(0.824, 0.412, 0.118),
+	"assassin": Color(0.6, 0.196, 0.8),
+	"marksman": Color(0.133, 0.545, 0.133),
+	"mage": Color(0.3, 0.6, 0.8),
+	"support": Color(0.855, 0.647, 0.125),
+}
+const _NAME_NEUTRAL := Color(0.82, 0.84, 0.88, 1.0)
 
 const COLOR_HP_BG := Color(0.18, 0.18, 0.2, 1.0)
 const COLOR_HP_FILL := Color(0.31, 0.78, 0.31, 1.0)
@@ -15,6 +27,7 @@ var instance_id: int = 0
 
 var _name_label: Label
 var _kda_label: Label
+var _respawn_label: Label
 var _hp_bar: ProgressBar
 var _mana_bar: ProgressBar
 var _align_right: bool
@@ -64,6 +77,7 @@ func setup(
 	_inner = VBoxContainer.new()
 	_inner.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_inner.add_theme_constant_override("separation", 2)
+	# Tuned in [method apply_font_and_bar_scales] from [member _square_px].
 	_inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_child(_inner)
@@ -83,6 +97,12 @@ func setup(
 	_kda_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
 	_inner.add_child(_kda_label)
 
+	_respawn_label = Label.new()
+	_respawn_label.visible = false
+	_respawn_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_respawn_label.add_theme_color_override("font_color", Color(0.9, 0.72, 0.45, 1.0))
+	_inner.add_child(_respawn_label)
+
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.custom_minimum_size = Vector2(0, 0)
@@ -95,6 +115,7 @@ func setup(
 	_inner.add_child(_mana_bar)
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_kda_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_respawn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -112,6 +133,20 @@ func setup(
 	if p_align_right:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+
+static func _role_color_for_archetype(archetype_key: String) -> Color:
+	var arch: StringName = StringName(archetype_key)
+	if String(arch).is_empty():
+		return _NAME_NEUTRAL
+	var ch: Variant = ChampionCatalogScript.get_champion(arch)
+	if ch == null:
+		return _NAME_NEUTRAL
+	var d: Dictionary = ch.to_dict()
+	var st: Dictionary = d.get("stats", {})
+	var rk: String = str(st.get("role", "")).to_lower()
+	return ROLE_COLORS.get(rk, _NAME_NEUTRAL) as Color
 
 
 func _make_bar(c_bg: Color, c_fill: Color) -> ProgressBar:
@@ -158,17 +193,19 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var d: int = int(ud.get("deaths", 0))
 	var a: int = int(ud.get("assists", 0))
 	var st: String = str(ud.get("state", "ALIVE"))
-	var kda_s: String = "K / D / A  %d / %d / %d" % [k, d, a]
+	var kda_s: String = "%d / %d / %d" % [k, d, a]
+	_kda_label.text = kda_s
+	var name_c: Color = _role_color_for_archetype(nm)
 	if st == "DEAD" or not bool(ud.get("alive", true)):
-		kda_s += "  ·  %.1fs" % float(ud.get("respawn_timer", 0.0))
-		_name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55, 1.0))
+		var t_rem: float = maxf(0.0, float(ud.get("respawn_timer", 0.0)))
+		_respawn_label.visible = true
+		_respawn_label.text = "Respawn: %.1fs" % t_rem
+		_name_label.add_theme_color_override("font_color", name_c.darkened(0.45))
 		_kda_label.add_theme_color_override("font_color", Color(0.55, 0.5, 0.5, 1.0))
 		modulate = Color(0.75, 0.75, 0.8, 0.9)
 	else:
-		if _team_is_player:
-			_name_label.add_theme_color_override("font_color", Color(0.55, 0.7, 1.0, 1.0))
-		else:
-			_name_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5, 1.0))
+		_respawn_label.visible = false
+		_name_label.add_theme_color_override("font_color", name_c)
 		_kda_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
 		modulate = Color.WHITE
 	var max_hp: float = maxf(1.0, float(ud.get("max_hp", 1.0)))
@@ -189,14 +226,19 @@ func apply_font_and_bar_scales() -> void:
 	if _name_label == null:
 		return
 	var s: float = float(_square_px)
-	# Scales with tile; clamp for readability.
-	var name_fs: int = int(clampf(s * 0.1, 8.0, 13.0))
-	var kda_fs: int = int(clampf(s * 0.072, 7.0, 11.0))
-	var bar_h: float = clampf(s * 0.07, 4.0, 10.0)
+	# Scales with tile; wider clamps so large side columns use readable type.
+	var name_fs: int = int(clampf(s * 0.128, 10.0, 19.0))
+	var kda_fs: int = int(clampf(s * 0.102, 9.0, 15.0))
+	var respawn_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
+	var bar_h: float = clampf(s * 0.082, 4.0, 12.0)
+	var sep: int = int(clampf(s * 0.034, 2.0, 6.0))
+	_inner.add_theme_constant_override("separation", sep)
 	_name_label.add_theme_font_size_override("font_size", name_fs)
 	_kda_label.add_theme_font_size_override("font_size", kda_fs)
+	_respawn_label.add_theme_font_size_override("font_size", respawn_fs)
 	_hp_bar.custom_minimum_size = Vector2(0, bar_h)
 	_mana_bar.custom_minimum_size = Vector2(0, bar_h)
 	if _align_right and _kda_label != null:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

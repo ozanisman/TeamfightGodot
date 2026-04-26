@@ -255,7 +255,7 @@ static func build_catalog() -> Dictionary:
 			[&"enlightenment"]
 		),
 		&"colossus": _champ(
-			_stats(&"colossus", &"Colossus", &"tank", 350.0, 8.0, 0.3, 0.6, 0.8, 0.30, 0.25, 0.0, 0.0, 100.0, 10.0, 12.0, 50.0, SimConstantsScript.DEFAULT_PROJECTILE_SPEED, 0.05, &"tenacity"),
+			_stats(&"colossus", &"Colossus", &"tank", 350.0, 8.0, 0.3, 0.6, 0.8, 0.30, 0.25, 0.0, 0.0, 100.0, 10.0, 12.0, 50.0, SimConstantsScript.DEFAULT_PROJECTILE_SPEED, 0.05, &"durability"),
 			"A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
 			"Deals 100% damage and taunts all targets in a 1 unit radius for 2.0s.",
 			"Colossal impact for 250% damage and a 3.5s stun.",
@@ -274,7 +274,7 @@ static func build_catalog() -> Dictionary:
 				],
 				&"reason": "Earthshaker",
 			}),
-			[&"tenacity"]
+			[&"durability"]
 		),
 		&"wraith": _champ(
 			_stats(&"wraith", &"Wraith", &"assassin", 155.0, 26.0, 0.3, 1.5, 2.5, 0.05, 0.15, 0.0, 0.0, 40.0, 10.0, 5.0, 15.0, SimConstantsScript.DEFAULT_PROJECTILE_SPEED, SimConstantsScript.DEFAULT_PROJECTILE_RADIUS, &"swiftness"),
@@ -444,7 +444,7 @@ static func build_passive_registry() -> Dictionary:
 		&"enlightenment": {
 			&"post_attack": [_effect(&"mana_restore_on_hit", {&"flat_amount": 5.0})],
 		},
-		&"tenacity": {
+		&"durability": {
 			&"on_defense": [_effect(&"constant_multiplier", {&"multiplier": 0.9})],
 		},
 		&"swiftness": {

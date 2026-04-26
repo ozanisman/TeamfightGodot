@@ -325,7 +325,7 @@
 		"name": "Colossus",
 		"passive_desc": "Reduces all incoming damage by 10%.",
 		"passive_ids": [
-			"tenacity"
+			"durability"
 		],
 		"role": "tank",
 		"stats": {
@@ -341,7 +341,7 @@
 			"max_mana": 100.0,
 			"move_speed": 0.8,
 			"name": "Colossus",
-			"passive_id": "tenacity",
+			"passive_id": "durability",
 			"projectile_radius": 0.05,
 			"projectile_speed": 5.0,
 			"respawn_time": 10.0,

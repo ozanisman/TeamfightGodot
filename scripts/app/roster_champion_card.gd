@@ -28,6 +28,7 @@ var instance_id: int = 0
 var _name_label: Label
 var _kda_label: Label
 var _respawn_label: Label
+var _behavior_label: Label
 var _hp_bar: ProgressBar
 var _mana_bar: ProgressBar
 var _align_right: bool
@@ -97,6 +98,12 @@ func setup(
 	_kda_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
 	_inner.add_child(_kda_label)
 
+	_behavior_label = Label.new()
+	_behavior_label.visible = false
+	_behavior_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_behavior_label.add_theme_color_override("font_color", Color(0.6, 0.8, 0.95, 1.0))
+	_inner.add_child(_behavior_label)
+
 	_respawn_label = Label.new()
 	_respawn_label.visible = false
 	_respawn_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
@@ -133,6 +140,7 @@ func setup(
 	if p_align_right:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
@@ -195,6 +203,30 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var st: String = str(ud.get("state", "ALIVE"))
 	var kda_s: String = "%d / %d / %d" % [k, d, a]
 	_kda_label.text = kda_s
+	
+	# Set behavior label based on unit state
+	var behavior_text := ""
+	if st == "KITING":
+		behavior_text = "Behavior: [KITING]"
+	elif float(ud.get("casting_remaining", 0.0)) > 0.0:
+		var ckind: String = str(ud.get("casting_kind", ""))
+		if ckind.to_lower().contains("ult"):
+			behavior_text = "Behavior: [ULTIMATE]"
+		else:
+			behavior_text = "Behavior: [ABILITY]"
+	elif float(ud.get("stun_remaining", 0.0)) > 0.0 or st == "STUNNED":
+		behavior_text = "Behavior: [STUNNED]"
+	elif int(ud.get("target_id", 0)) > 0:
+		behavior_text = "Behavior: [ATTACKING]"
+	else:
+		behavior_text = "Behavior: [MOVING]"
+	
+	if not behavior_text.is_empty():
+		_behavior_label.text = behavior_text
+		_behavior_label.visible = true
+	else:
+		_behavior_label.visible = false
+	
 	var name_c: Color = _role_color_for_archetype(nm)
 	if st == "DEAD" or not bool(ud.get("alive", true)):
 		var t_rem: float = maxf(0.0, float(ud.get("respawn_timer", 0.0)))
@@ -229,16 +261,19 @@ func apply_font_and_bar_scales() -> void:
 	# Scales with tile; wider clamps so large side columns use readable type.
 	var name_fs: int = int(clampf(s * 0.128, 10.0, 19.0))
 	var kda_fs: int = int(clampf(s * 0.102, 9.0, 15.0))
+	var behavior_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var respawn_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var bar_h: float = clampf(s * 0.082, 4.0, 12.0)
 	var sep: int = int(clampf(s * 0.034, 2.0, 6.0))
 	_inner.add_theme_constant_override("separation", sep)
 	_name_label.add_theme_font_size_override("font_size", name_fs)
 	_kda_label.add_theme_font_size_override("font_size", kda_fs)
+	_behavior_label.add_theme_font_size_override("font_size", behavior_fs)
 	_respawn_label.add_theme_font_size_override("font_size", respawn_fs)
 	_hp_bar.custom_minimum_size = Vector2(0, bar_h)
 	_mana_bar.custom_minimum_size = Vector2(0, bar_h)
 	if _align_right and _kda_label != null:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

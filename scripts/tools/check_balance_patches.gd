@@ -127,7 +127,7 @@ func test_inline_ability_reduces_ability_damage(core: Object) -> void:
 
 
 func test_kit_id_reduces_ability_damage(core: Object) -> void:
-	## Named kit in fixtures/goldens/ability_kits.json — same idea as inline but exercises kit_id resolution.
+	## Named kit in fixtures/goldens/champion_kits.json — same idea as inline but exercises kit_id resolution.
 	var seed := 6161
 	core.set_balance_patches([])
 	var base_summary := _run_duel(core, seed)

@@ -51,7 +51,13 @@ static func generate_champion_schema_from_gdscript() -> Dictionary:
 	
 	# Add passives and role_configs as additional top-level keys
 	result["passives"] = _normalize_numbers(passives)
-	result["role_configs"] = _normalize_numbers(role_configs)
+	
+	# Convert role_configs to dictionaries
+	var role_configs_dict: Dictionary = {}
+	for role_id in role_configs.keys():
+		var config = role_configs[role_id]
+		role_configs_dict[String(role_id)] = config.to_dict()
+	result["role_configs"] = _normalize_numbers(role_configs_dict)
 	
 	return result
 

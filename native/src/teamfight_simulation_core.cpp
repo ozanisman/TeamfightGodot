@@ -446,9 +446,9 @@ void TeamfightSimulationCore::_ensure_catalog_loaded() {
 		}
 	}
 
-	// Optional ability kits (preset ability/ultimate/passive swaps).
+	// Optional champion kits (preset ability/ultimate/passive swaps).
 	_ability_kits = Dictionary();
-	Dictionary kits_root = _load_json_file_if_exists(String(ABILITY_KITS_PATH));
+	Dictionary kits_root = _load_json_file_if_exists(String(CHAMPION_KITS_PATH));
 	if (!kits_root.is_empty()) {
 		_ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
 	}

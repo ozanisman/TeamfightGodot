@@ -364,7 +364,7 @@ private:
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
 	static constexpr const char *BALANCE_PATCHES_PATH = "res://fixtures/goldens/balance_patches.json";
-	static constexpr const char *ABILITY_KITS_PATH = "res://fixtures/goldens/ability_kits.json";
+	static constexpr const char *CHAMPION_KITS_PATH = "res://fixtures/goldens/champion_kits.json";
 
 	std::vector<UnitState> _units;
 	std::vector<ProjectileState> _projectiles;
@@ -386,7 +386,7 @@ private:
 	Dictionary _champion_catalog;
 	Dictionary _role_configs;
 	std::vector<BalancePatch> _balance_patches;
-	Dictionary _ability_kits; // "kit_id" -> kit Dictionary (ability, ultimate, passive_ids)
+	Dictionary _ability_kits; // "kit_id" -> kit Dictionary (ability, ultimate, passive_ids) - loaded from champion_kits.json
 	Dictionary _effective_champion_by_archetype; // key: String archetype_id, value: effective champion Dictionary
 	Dictionary _passive_registry;
 	std::unordered_map<int64_t, int64_t> _unit_index_map;

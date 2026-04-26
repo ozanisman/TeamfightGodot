@@ -140,11 +140,11 @@ func _build_champion_bbcode(hero_id: StringName) -> String:
 	if ch == null:
 		return ""
 	var d: Dictionary = ch.to_dict()
-	var st: Dictionary = d.get("stats", {})
+	var st: Dictionary = ChampionCatalogScript.get_effective_stats(hero_id)
+	
 	var name: String = str(st.get("name", hero_id))
-	var role: String = str(st.get("role", "")).to_upper()
+	var role_s: String = str(st.get("role", "")).to_upper()
 	var display_name: String = _escape_bbcode_plain(name)
-	var role_s: String = _escape_bbcode_plain(role)
 	var br_col: Color = _border_for_dict(st)
 	var title_line: String = (
 		"[color=%s]%s[/color]  (%s)" % [br_col.to_html(false), display_name, role_s]

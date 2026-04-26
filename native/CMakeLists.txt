@@ -40,6 +40,24 @@ add_library(teamfight_simulation_core SHARED
     src/teamfight_simulation_core.cpp
 )
 
+# Generate champion schema JSON from GDScript before building
+set(CHAMPION_SCHEMA_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/goldens/champion_schema.json")
+set(EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tools/export_champion_schema.gd")
+
+add_custom_command(
+    OUTPUT ${CHAMPION_SCHEMA_OUTPUT}
+    COMMAND godot --headless --script ${EXPORT_SCRIPT}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+    COMMENT "Generating champion schema from GDScript"
+    VERBATIM
+)
+
+add_custom_target(generate_champion_schema
+    DEPENDS ${CHAMPION_SCHEMA_OUTPUT}
+)
+
+add_dependencies(teamfight_simulation_core generate_champion_schema)
+
 set_target_properties(teamfight_simulation_core PROPERTIES
     OUTPUT_NAME "teamfight_simulation_core"
     PREFIX ""

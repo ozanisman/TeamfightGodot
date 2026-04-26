@@ -123,6 +123,18 @@ func _draw() -> void:
 	if label.is_empty():
 		label = "?"
 	if String(_u.get("state", "")) == "KITING":
-		label += " [K]"
+		label += " [KITING]"
+	elif float(_u.get("casting_remaining", 0.0)) > 0.0:
+		var ckind: String = str(_u.get("casting_kind", ""))
+		if ckind.to_lower().contains("ult"):
+			label += " [ULTIMATE]"
+		else:
+			label += " [ABILITY]"
+	elif float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
+		label += " [STUNNED]"
+	elif int(_u.get("target_id", 0)) > 0:
+		label += " [ATTACKING]"
+	else:
+		label += " [MOVING]"
 	var font: Font = ThemeDB.fallback_font
 	draw_string(font, o + Vector2(-20, -34), label, HORIZONTAL_ALIGNMENT_LEFT, 200, 11, Color(0.95, 0.95, 0.95))

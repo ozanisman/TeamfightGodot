@@ -144,6 +144,9 @@ func _ready() -> void:
 		push_error("Native simulation backend not available. Simulation viewer requires native backend.")
 		return
 
+	# Maximize window on startup
+	get_tree().root.mode = Window.MODE_MAXIMIZED
+
 	# Create UI elements programmatically to avoid scene instantiation issues
 	_create_ui_structure()
 
@@ -1150,7 +1153,7 @@ func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
 	s.add_child(line)
 	_world_layer.add_child(s)
 	var tw := create_tween()
-	tw.tween_property(line, "modulate:a", 0.0, 0.1)
+	tw.tween_property(line, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(s.queue_free)
 
 
@@ -1543,7 +1546,27 @@ func _on_random_draft_clicked() -> void:
 
 
 func _on_start_match_clicked() -> void:
-	_enter_preparation()
+	if _backend == null:
+		return
+	if not _can_start_match():
+		return
+	var match_input: Object = MatchReplayInputScript.build_match_input(
+		0,
+		_player_picks,
+		_enemy_picks,
+		SimConstantsScript.DEFAULT_TICK_RATE
+	)
+	_backend.begin_match(match_input)
+	_game_state = COMBAT
+	_sim_time_accumulator = 0.0
+	_show_world_and_hud_for_battle()
+	if _arena_layer != null:
+		_arena_layer.show_preparation_zones = false
+	if _commence_button != null:
+		_commence_button.visible = false
+	_lbl_combat_state.text = "COMBAT"
+	_hud_pause.visible = false
+	_update_visualization_from_snapshot()
 
 
 func _setup_control_panel() -> void:

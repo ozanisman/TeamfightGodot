@@ -19,6 +19,8 @@ const CASTING_WINDUP: float = 0.5
 const AOE_VISUAL_DURATION: float = 0.3
 ## When native tick_fx omits r, use this for aoe_splash (matches demolition in champion_schema).
 const VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD: float = 0.5
+## Floor (screen px) for drawing small world radii (e.g. demolition 0.5) so sub-pixel rings are not dropped.
+const VIEWER_AOE_MIN_RING_RADIUS_PX: float = 2.0
 ## AoE edge + fill stay readable a bit longer than floaters.
 const AOE_VISUAL_MAX_DURATION: float = 0.55
 const REGEN_TICK_INTERVAL: float = 1.0

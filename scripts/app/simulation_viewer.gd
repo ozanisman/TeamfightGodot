@@ -45,7 +45,7 @@ const BOTTOM_HBOX_MARGIN_H_PX: float = 10.0
 const BOTTOM_HBOX_MARGIN_V_PX: float = 8.0
 const ROSTER_CARD_GAP_PX: int = 6
 const ROSTER_TILE_START_PX: int = 96
-## Keep in sync with roster_champion_card.gd MIN_SQUARE_PX (no class_name in viewer types; parse-safe).
+## Keep in sync with roster_champion_card.gd MIN_SQUARE_PX and ROLE_COLORS.
 const ROSTER_TILE_MIN_SQUARE_PX: int = 40
 
 const ROLE_COLORS: Dictionary = {
@@ -1063,18 +1063,6 @@ func _reflow_one_roster_column(vb: VBoxContainer) -> void:
 
 func _apply_tick_fx(snapshot: Dictionary) -> void:
 	var evs: Array = Array(snapshot.get("tick_fx", []))
-	var aoe_world_centers: Array = []  # Vector2, world (x,y) for dedupe; only "real" radii (else infer is blocked with no draw)
-	for e0 in evs:
-		if e0 is not Dictionary:
-			continue
-		var d0: Dictionary = e0
-		var k0: String = str(d0.get("kind", ""))
-		if k0.begins_with("aoe_"):
-			var r0: float = float(d0.get("r", d0.get("radius", 0.0)))
-			if r0 <= 0.0 and k0 == "aoe_splash":
-				r0 = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
-			if r0 > 0.0:
-				aoe_world_centers.append(Vector2(float(d0.get("x", 0.0)), float(d0.get("y", 0.0))))
 	for e in evs:
 		if e is not Dictionary:
 			continue
@@ -1087,19 +1075,6 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		if k == "damage" or k == "dmg":
 			var amt: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, Color(0.9, 0.45, 0.45))
-			# Infer splash/impact ring for ranged autos if native aoe_ events are absent (e.g. older DLL) or r missing.
-			var src_id: int = int(d.get("src_id", 0))
-			if src_id > 0 and not _aoe_world_position_has_fx(aoe_world_centers, wx, wy):
-				var u_src: Dictionary = _find_unit_in_snapshot_by_id(snapshot, src_id)
-				if not u_src.is_empty() and float(u_src.get("attack_range", 0.0)) > SimConstantsScript.RANGED_THRESHOLD:
-					_spawn_aoe_ring_fx(
-						wx,
-						wy,
-						SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD,
-						"aoe_splash",
-						src_id,
-						snapshot
-					)
 		elif k == "heal":
 			var h: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("+%d" % int(ceil(h)), sp, COLOR_SUCCESS)
@@ -1114,24 +1089,6 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 				r_w = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
 			if r_w > 0.0:
 				_spawn_aoe_ring_fx(wx, wy, r_w, k, int(d.get("src_id", 0)), snapshot)
-
-
-func _find_unit_in_snapshot_by_id(snapshot: Dictionary, instance_id: int) -> Dictionary:
-	if instance_id == 0:
-		return {}
-	for u in snapshot.get("units", []):
-		if u is Dictionary and int((u as Dictionary).get("instance_id", 0)) == instance_id:
-			return u
-	return {}
-
-
-func _aoe_world_position_has_fx(centers: Array, wx: float, wy: float) -> bool:
-	## Same tick may emit damage and aoe at the same (x,y); avoid double ring.
-	var e_w: float = 0.12
-	for p in centers:
-		if p is Vector2 and absf(p.x - wx) < e_w and absf(p.y - wy) < e_w:
-			return true
-	return false
 
 
 func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Color:
@@ -1161,8 +1118,7 @@ func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_
 	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
 	var sp: Vector2 = world_to_screen(wx, wy)
 	var rpx: float = world_r * (s / SimConstantsScript.WORLD_SIZE)
-	if rpx < 1.5:
-		return
+	rpx = maxf(rpx, SimConstantsScript.VIEWER_AOE_MIN_RING_RADIUS_PX)
 	var col: Color = _aoe_ring_color_for(kind, src_id, snapshot)
 	var n: Node2D = AoeRingNodeScript.new()
 	n.name = "AoeRing"

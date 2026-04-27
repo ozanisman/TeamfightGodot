@@ -23,6 +23,22 @@ TeamfightGodot is the Godot 4 rewrite of the Teamfight autobattler simulator. Th
 
 Run everything from the repo root through [`run_godot.ps1`](run_godot.ps1). It expects `C:\Godot\godot.exe` unless you change the script.
 
+## Quick start
+
+1. Build the native extension in `native/build`:
+   ```powershell
+   cmake --build native/build --config Release
+   ```
+2. Verify scripts and native load:
+   ```powershell
+   .\run_godot.ps1 -- --check-only
+   .\run_godot.ps1 -- --check-native-load
+   ```
+3. Run fixture parity:
+   ```powershell
+   .\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
+   ```
+
 ## Common commands
 
 Compile/load check:
@@ -86,4 +102,5 @@ Primary 5v5 throughput gate:
 - `--check-only` is the first check to run after editing GDScript.
 - `--bench-skip-summaries` only enables the native batch path when `--workers=1`.
 - The root-certificate warning on Windows can appear during startup and is not necessarily a failure.
+- If native loading fails, the app falls back to the GDScript simulation core.
 - More detailed workflow notes live in [`docs/simulation_and_testing.md`](docs/simulation_and_testing.md).

@@ -1,28 +1,29 @@
-# Native Simulation Core
+# TeamfightGodot
 
-Native GDExtension runtime for TeamfightGodot.
+TeamfightGodot is the Godot 4 rewrite of the Teamfight autobattler simulator. The current project shape is:
 
-## Current state
+- native `TeamfightSimulationCore` in C++ for the production match engine
+- GDScript harnesses for replay, parity, batch jobs, stats, and viewer tooling
+- frozen goldens in `fixtures/goldens/` as the source of truth for combat parity
 
-- `TeamfightSimulationCore` is the production match engine target.
-- GDScript remains the reference fallback and harness layer.
-- The native path must preserve replay, parity, and fixture shapes.
-- The extension entry point lives at [`../teamfight_simulation_core.gdextension`](../teamfight_simulation_core.gdextension).
+## Layout
 
-## Core contract
+- `native/` - GDExtension core and build files
+- `scripts/` - GDScript runtime, tools, and batch workers
+- `scenes/` - main game, stats dashboard, and viewer scenes
+- `fixtures/goldens/` - replay parity fixtures
+- `docs/` - workflow, testing, and benchmark notes
+- `logs/` - benchmark and run artifacts
 
-- `TeamfightSimulationCore.clear()`
-- `TeamfightSimulationCore.run_match(match_input)`
-- `TeamfightSimulationCore.run_matches(match_inputs)`
-- `TeamfightSimulationCore.run_match_simulation_only(match_input)`
-- `TeamfightSimulationCore.run_matches_simulation_only(match_inputs)`
-- `TeamfightSimulationCore.begin_match(match_input)`
-- `TeamfightSimulationCore.advance_one_tick()`
-- `TeamfightSimulationCore.finish_and_summarize()`
+## Entry points
 
-## Useful commands
+- Main scene: `scenes/game_root.tscn`
+- Visual simulation: `scenes/simulation_viewer.tscn`
+- Stats dashboard: `scenes/stats_dashboard.tscn`
 
-Run all commands from the repo root with [`run_godot.ps1`](../run_godot.ps1). User args go after `--`.
+Run everything from the repo root through [`run_godot.ps1`](run_godot.ps1). It expects `C:\Godot\godot.exe` unless you change the script.
+
+## Common commands
 
 Compile/load check:
 ```powershell
@@ -32,6 +33,11 @@ Compile/load check:
 Native load smoke:
 ```powershell
 .\run_godot.ps1 -- --check-native-load
+```
+
+Determinism subset:
+```powershell
+.\run_godot.ps1 -- --check-determinism
 ```
 
 Fixture parity:
@@ -48,7 +54,8 @@ Stats dashboard:
 ```powershell
 .\run_godot.ps1 --simulation-viewer --stats-dashboard
 ```
-Smoke load:
+
+Dashboard smoke load:
 ```powershell
 .\run_godot.ps1 -- --check-stats-dashboard
 ```
@@ -63,9 +70,20 @@ Primary 5v5 throughput gate:
 .\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
 ```
 
+## Useful flags
+
+- `--batch-count=N` - number of matches for batch runs
+- `--team-size=N` - roster size per side
+- `--workers=N` / `--max-workers=N` - worker cap for benchmark runs
+- `--bench-skip-summaries` - skip replay summary construction when benchmarking
+- `--base-seed=N` - starting seed for batch runs
+- `--player=...` / `--enemy=...` - archetype lists for single batch runs
+- `--tick-rate=N` - override input tick rate
+- `--export-workers=N` - cap stats export threads; `0` uses the detected auto cap
+
 ## Notes
 
-- `--bench-skip-summaries` only enables the native batch path for `--workers=1`.
-- `--export-workers=0` lets the stats export pick the detected max cap automatically.
-- `--stats-dashboard` opens [`scenes/stats_dashboard.tscn`](../scenes/stats_dashboard.tscn) through [`scripts/app/game_root.gd`](../scripts/app/game_root.gd).
-- On Windows, the known root-certificate warning can appear during Godot startup and does not necessarily mean the run failed.
+- `--check-only` is the first check to run after editing GDScript.
+- `--bench-skip-summaries` only enables the native batch path when `--workers=1`.
+- The root-certificate warning on Windows can appear during startup and is not necessarily a failure.
+- More detailed workflow notes live in [`docs/simulation_and_testing.md`](docs/simulation_and_testing.md).

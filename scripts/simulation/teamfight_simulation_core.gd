@@ -755,6 +755,39 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 				if attack_count % every_n == 0 and not target.is_empty():
 					_apply_stun(source, target, float(params.get("stun_duration", 0.0)))
 			return {"reason": String(params.get("reason", ""))}
+		&"self_dash":
+			var dash_distance: float = float(params.get("distance", 1.0))
+			var dash_direction: Dictionary = Dictionary(params.get("direction", {}))
+			var target_id: int = int(params.get("target_id", 0))
+			
+			var current_x: float = float(source.get("x", 0.0))
+			var current_y: float = float(source.get("y", 0.0))
+			
+			var new_x: float = current_x
+			var new_y: float = current_y
+			
+			if target_id != 0:
+				var target_unit: Dictionary = _unit_by_id(target_id)
+				if not target_unit.is_empty():
+					var target_x: float = float(target_unit.get("x", 0.0))
+					var target_y: float = float(target_unit.get("y", 0.0))
+					var dx: float = target_x - current_x
+					var dy: float = target_y - current_y
+					var dist: float = sqrt(dx*dx + dy*dy)
+					if dist > 0.0:
+						var move_dist: float = minf(dash_distance, dist)
+						new_x = current_x + (dx / dist) * move_dist
+						new_y = current_y + (dy / dist) * move_dist
+			else:
+				new_x = current_x + float(dash_direction.get("x", 0.0)) * dash_distance
+				new_y = current_y + float(dash_direction.get("y", 0.0)) * dash_distance
+			
+			new_x = clampf(new_x, 0.0, _map_width)
+			new_y = clampf(new_y, 0.0, _map_height)
+			
+			source["x"] = new_x
+			source["y"] = new_y
+			return {"dash_distance": dash_distance}
 		&"dodge":
 			return {}
 		&"constant_multiplier":

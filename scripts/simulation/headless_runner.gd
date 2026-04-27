@@ -111,7 +111,13 @@ static func _payloads_match_with_tolerance(actual_payload: Dictionary, expected_
 			"damage_received",
 			"damage_mitigated",
 			"healing_done",
+			"healing_done_auto",
+			"healing_done_ability",
+			"healing_done_ultimate",
 			"shielding_done",
+			"shielding_done_auto",
+			"shielding_done_ability",
+			"shielding_done_ultimate",
 		]:
 			var actual_value := float(actual_unit.get(key, 0.0))
 			var expected_value := float(expected_unit.get(key, 0.0))
@@ -292,7 +298,13 @@ static func _summarize_payload_diff(actual_payload: Dictionary, expected_payload
 			"damage_received",
 			"damage_mitigated",
 			"healing_done",
+			"healing_done_auto",
+			"healing_done_ability",
+			"healing_done_ultimate",
 			"shielding_done",
+			"shielding_done_auto",
+			"shielding_done_ability",
+			"shielding_done_ultimate",
 			"auto_attacks",
 			"abilities",
 			"ultimates",

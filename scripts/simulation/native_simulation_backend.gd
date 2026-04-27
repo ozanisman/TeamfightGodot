@@ -23,6 +23,8 @@ static func is_windows_native_dll_file_present() -> bool:
 
 
 func _try_load_native_extension() -> void:
+	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
+		return
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
 	# load_extension returns GDExtensionManager.LoadStatus, not Error. 2 == LOAD_STATUS_ALREADY_LOADED.
 	if (

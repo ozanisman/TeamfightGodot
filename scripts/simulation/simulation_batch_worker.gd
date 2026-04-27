@@ -28,12 +28,17 @@ static func _summary_object(summary_value: Variant):
 		return MatchReplaySummaryScript.from_dict(Dictionary(summary_value))
 	return MatchReplaySummaryScript.new()
 
-static func _build_batch_input_for_seed(match_seed: int, team_size: int):
+static func _build_batch_input_for_seed(
+	match_seed: int,
+	team_size: int,
+	archetypes: Array[StringName],
+	players: Array[StringName],
+	enemies: Array[StringName]
+):
 	var rng = RandomNumberGenerator.new()
 	rng.seed = match_seed
-	var archetypes = ChampionCatalogScript.get_champion_ids()
-	var players: Array[StringName] = []
-	var enemies: Array[StringName] = []
+	players.clear()
+	enemies.clear()
 	if archetypes.size() < team_size * 2:
 		for _i in range(team_size):
 			players.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
@@ -93,6 +98,9 @@ func run_chunk(data: Dictionary) -> Array:
 		return []
 
 	var chunk_len: int = maxi(0, end_index - start_index)
+	var archetypes: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+	var players: Array[StringName] = []
+	var enemies: Array[StringName] = []
 	var results: Array = []
 	results.resize(chunk_len)
 
@@ -101,7 +109,7 @@ func run_chunk(data: Dictionary) -> Array:
 		inputs.resize(chunk_len)
 		var input_index: int = 0
 		for match_index in range(start_index, end_index):
-			inputs[input_index] = _build_batch_input_for_seed(base_seed + match_index, team_size)
+			inputs[input_index] = _build_batch_input_for_seed(base_seed + match_index, team_size, archetypes, players, enemies)
 			input_index += 1
 		backend.run_matches_simulation_only(inputs)
 		for i in range(chunk_len):
@@ -112,7 +120,7 @@ func run_chunk(data: Dictionary) -> Array:
 
 	var result_index: int = 0
 	for match_index in range(start_index, end_index):
-		var batch_match_input = _build_batch_input_for_seed(base_seed + match_index, team_size)
+		var batch_match_input = _build_batch_input_for_seed(base_seed + match_index, team_size, archetypes, players, enemies)
 		if bench_skip_summaries and backend.has_method("run_match_simulation_only"):
 			backend.run_match_simulation_only(batch_match_input)
 			results[result_index] = true

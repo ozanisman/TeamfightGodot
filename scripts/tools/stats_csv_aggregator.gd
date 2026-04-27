@@ -79,7 +79,13 @@ func _coerce_unit(item: Variant) -> Object:
 		u.damage_received = float(ud.get("damage_received", 0.0))
 		u.damage_mitigated = float(ud.get("damage_mitigated", 0.0))
 		u.healing_done = float(ud.get("healing_done", 0.0))
+		u.healing_done_auto = float(ud.get("healing_done_auto", 0.0))
+		u.healing_done_ability = float(ud.get("healing_done_ability", 0.0))
+		u.healing_done_ultimate = float(ud.get("healing_done_ultimate", 0.0))
 		u.shielding_done = float(ud.get("shielding_done", 0.0))
+		u.shielding_done_auto = float(ud.get("shielding_done_auto", 0.0))
+		u.shielding_done_ability = float(ud.get("shielding_done_ability", 0.0))
+		u.shielding_done_ultimate = float(ud.get("shielding_done_ultimate", 0.0))
 		u.stuns = int(ud.get("stuns", 0))
 		u.kills = int(ud.get("kills", 0))
 		u.deaths = int(ud.get("deaths", 0))
@@ -151,7 +157,13 @@ func _hero_entry(bucket: Dictionary, hero: String) -> Dictionary:
 			"dmg_r": 0.0,
 			"dmg_m": 0.0,
 			"heal": 0.0,
+			"heal_auto": 0.0,
+			"heal_ability": 0.0,
+			"heal_ultimate": 0.0,
 			"shield": 0.0,
+			"shield_auto": 0.0,
+			"shield_ability": 0.0,
+			"shield_ultimate": 0.0,
 			"stuns": 0,
 			"kills": 0,
 			"deaths": 0,
@@ -175,7 +187,13 @@ func _acc_hero(bucket: Dictionary, hero: String, wt: StringName, u: Object) -> v
 	h["dmg_r"] = float(h["dmg_r"]) + float(u.damage_received)
 	h["dmg_m"] = float(h["dmg_m"]) + float(u.damage_mitigated)
 	h["heal"] = float(h["heal"]) + float(u.healing_done)
+	h["heal_auto"] = float(h["heal_auto"]) + float(u.healing_done_auto)
+	h["heal_ability"] = float(h["heal_ability"]) + float(u.healing_done_ability)
+	h["heal_ultimate"] = float(h["heal_ultimate"]) + float(u.healing_done_ultimate)
 	h["shield"] = float(h["shield"]) + float(u.shielding_done)
+	h["shield_auto"] = float(h["shield_auto"]) + float(u.shielding_done_auto)
+	h["shield_ability"] = float(h["shield_ability"]) + float(u.shielding_done_ability)
+	h["shield_ultimate"] = float(h["shield_ultimate"]) + float(u.shielding_done_ultimate)
 	h["stuns"] = int(h["stuns"]) + int(u.stuns)
 	h["kills"] = int(h["kills"]) + int(u.kills)
 	h["deaths"] = int(h["deaths"]) + int(u.deaths)
@@ -196,11 +214,14 @@ func _role_entry(bucket: Dictionary, role: String) -> Dictionary:
 			"dmg_r": 0.0,
 			"dmg_m": 0.0,
 			"heal": 0.0,
+			"heal_auto": 0.0,
+			"heal_ability": 0.0,
+			"heal_ultimate": 0.0,
 			"shield": 0.0,
+			"shield_auto": 0.0,
+			"shield_ability": 0.0,
+			"shield_ultimate": 0.0,
 			"stuns": 0,
-			"kills": 0,
-			"deaths": 0,
-			"assists": 0,
 			"d_auto": 0.0,
 			"d_ab": 0.0,
 			"d_ult": 0.0,
@@ -220,11 +241,14 @@ func _acc_role(bucket: Dictionary, role: String, wt: StringName, u: Object) -> v
 	r["dmg_r"] = float(r["dmg_r"]) + float(u.damage_received)
 	r["dmg_m"] = float(r["dmg_m"]) + float(u.damage_mitigated)
 	r["heal"] = float(r["heal"]) + float(u.healing_done)
+	r["heal_auto"] = float(r["heal_auto"]) + float(u.healing_done_auto)
+	r["heal_ability"] = float(r["heal_ability"]) + float(u.healing_done_ability)
+	r["heal_ultimate"] = float(r["heal_ultimate"]) + float(u.healing_done_ultimate)
 	r["shield"] = float(r["shield"]) + float(u.shielding_done)
+	r["shield_auto"] = float(r["shield_auto"]) + float(u.shielding_done_auto)
+	r["shield_ability"] = float(r["shield_ability"]) + float(u.shielding_done_ability)
+	r["shield_ultimate"] = float(r["shield_ultimate"]) + float(u.shielding_done_ultimate)
 	r["stuns"] = int(r["stuns"]) + int(u.stuns)
-	r["kills"] = int(r["kills"]) + int(u.kills)
-	r["deaths"] = int(r["deaths"]) + int(u.deaths)
-	r["assists"] = int(r["assists"]) + int(u.assists)
 	r["d_auto"] = float(r["d_auto"]) + float(u.damage_dealt_auto)
 	r["d_ab"] = float(r["d_ab"]) + float(u.damage_dealt_ability)
 	r["d_ult"] = float(r["d_ult"]) + float(u.damage_dealt_ultimate)
@@ -299,7 +323,7 @@ func _build_summary_csv() -> String:
 func _build_combat_csv() -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(
-		"team_size,hero,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_shielding,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate"
+		"team_size,hero,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate"
 	)
 	var sizes: Array = _by_size.keys()
 	sizes.sort()
@@ -318,7 +342,7 @@ func _build_combat_csv() -> String:
 			var wr: float = float(w) / float(tg)
 			var kda: float = (float(h["kills"]) + float(h["assists"])) / maxf(1.0, float(h["deaths"]))
 			lines.append(
-				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
 				% [
 					int(sz),
 					_csv_cell(String(hero)),
@@ -331,7 +355,13 @@ func _build_combat_csv() -> String:
 					_fmt_f(float(h["dmg_r"]) / float(tg)),
 					_fmt_f(float(h["dmg_m"]) / float(tg)),
 					_fmt_f(float(h["heal"]) / float(tg)),
+					_fmt_f(float(h["heal_auto"]) / float(tg)),
+					_fmt_f(float(h["heal_ability"]) / float(tg)),
+					_fmt_f(float(h["heal_ultimate"]) / float(tg)),
 					_fmt_f(float(h["shield"]) / float(tg)),
+					_fmt_f(float(h["shield_auto"]) / float(tg)),
+					_fmt_f(float(h["shield_ability"]) / float(tg)),
+					_fmt_f(float(h["shield_ultimate"]) / float(tg)),
 					_fmt_f(float(h["stuns"]) / float(tg)),
 					_fmt_f(float(h["kills"]) / float(tg)),
 					_fmt_f(float(h["deaths"]) / float(tg)),
@@ -348,7 +378,7 @@ func _build_combat_csv() -> String:
 func _build_role_csv() -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(
-		"team_size,role,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_shielding,avg_stuns,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate"
+		"team_size,role,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_stuns,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate"
 	)
 	var sizes: Array = _by_size.keys()
 	sizes.sort()
@@ -365,9 +395,8 @@ func _build_role_csv() -> String:
 			if tg <= 0:
 				continue
 			var wr: float = float(w) / float(tg)
-			var kda: float = (float(r["kills"]) + float(r["assists"])) / maxf(1.0, float(r["deaths"]))
 			lines.append(
-				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
 				% [
 					int(sz),
 					_csv_cell(String(role)),
@@ -380,9 +409,14 @@ func _build_role_csv() -> String:
 					_fmt_f(float(r["dmg_r"]) / float(tg)),
 					_fmt_f(float(r["dmg_m"]) / float(tg)),
 					_fmt_f(float(r["heal"]) / float(tg)),
+					_fmt_f(float(r["heal_auto"]) / float(tg)),
+					_fmt_f(float(r["heal_ability"]) / float(tg)),
+					_fmt_f(float(r["heal_ultimate"]) / float(tg)),
 					_fmt_f(float(r["shield"]) / float(tg)),
+					_fmt_f(float(r["shield_auto"]) / float(tg)),
+					_fmt_f(float(r["shield_ability"]) / float(tg)),
+					_fmt_f(float(r["shield_ultimate"]) / float(tg)),
 					_fmt_f(float(r["stuns"]) / float(tg)),
-					_fmt_f(kda),
 					_fmt_f(float(r["d_auto"]) / float(tg)),
 					_fmt_f(float(r["d_ab"]) / float(tg)),
 					_fmt_f(float(r["d_ult"]) / float(tg)),

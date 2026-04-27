@@ -40,31 +40,26 @@ func _pct_label(total: int, part: int, team: String) -> String:
 func _draw() -> void:
 	var bw: float = size.x
 	var font: Font = ThemeDB.fallback_font
-	var third: float = bw / 3.0
+	var half: float = bw / 2.0
 	var y_bar: float = PERCENT_BASELINE_Y + GAP_AFTER_PERCENT_LINE
 
 	var rp1: float = float(_p1) / float(_total) if _total > 0 else 0.0
-	var rd: float = float(_draws) / float(_total) if _total > 0 else 0.0
 	var rp2: float = float(_p2) / float(_total) if _total > 0 else 0.0
 
-	_draw_segment_label(font, 0.0, third, _pct_label(_total, _p1, "P1"), COLOR_P1)
-	_draw_segment_label(font, third, third, _pct_label(_total, _draws, "Draws"), COLOR_DRAW)
-	_draw_segment_label(font, 2.0 * third, third, _pct_label(_total, _p2, "P2"), COLOR_P2)
+	_draw_segment_label(font, 0.0, half, _pct_label(_total, _p1, "P1"), COLOR_P1)
+	_draw_segment_label(font, half, half, _pct_label(_total, _p2, "P2"), COLOR_P2)
 
 	draw_rect(Rect2(0.0, y_bar, bw, BAR_HEIGHT), COLOR_TRACK)
 	if _total < 1:
 		return
 
 	var w1: float = rp1 * bw
-	var w2: float = rd * bw
-	var w3: float = maxf(0.0, bw - w1 - w2)
+	var w2: float = maxf(0.0, bw - w1)
 
 	if w1 > 0.0:
 		draw_rect(Rect2(0.0, y_bar, maxf(1.0, w1), BAR_HEIGHT), COLOR_P1)
 	if w2 > 0.0:
-		draw_rect(Rect2(w1, y_bar, maxf(1.0, w2), BAR_HEIGHT), COLOR_DRAW)
-	if w3 > 0.0:
-		draw_rect(Rect2(w1 + w2, y_bar, maxf(1.0, w3), BAR_HEIGHT), COLOR_P2)
+		draw_rect(Rect2(w1, y_bar, maxf(1.0, w2), BAR_HEIGHT), COLOR_P2)
 
 
 func _draw_segment_label(font: Font, seg_x: float, seg_w: float, text: String, col: Color) -> void:

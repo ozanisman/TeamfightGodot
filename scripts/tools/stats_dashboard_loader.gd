@@ -150,6 +150,12 @@ func load_from_dir(dir_path: String) -> Error:
 				"auto": _float_cell(row, "avg_dmg_auto") * float(total),
 				"ability": _float_cell(row, "avg_dmg_ability") * float(total),
 				"ultimate": _float_cell(row, "avg_dmg_ultimate") * float(total),
+				"heal_auto": _float_cell(row, "avg_healing_auto") * float(total),
+				"heal_ability": _float_cell(row, "avg_healing_ability") * float(total),
+				"heal_ultimate": _float_cell(row, "avg_healing_ultimate") * float(total),
+				"shield_auto": _float_cell(row, "avg_shielding_auto") * float(total),
+				"shield_ability": _float_cell(row, "avg_shielding_ability") * float(total),
+				"shield_ultimate": _float_cell(row, "avg_shielding_ultimate") * float(total),
 			},
 		}
 
@@ -178,11 +184,16 @@ func load_from_dir(dir_path: String) -> Error:
 			"healing_done": _float_cell(row, "avg_healing") * float(total_r),
 			"shielding_done": _float_cell(row, "avg_shielding") * float(total_r),
 			"stuns": _float_cell(row, "avg_stuns") * float(total_r),
-			"kda": _float_cell(row, "kda"),
 			"breakdown": {
 				"auto": _float_cell(row, "avg_dmg_auto") * float(total_r),
 				"ability": _float_cell(row, "avg_dmg_ability") * float(total_r),
 				"ultimate": _float_cell(row, "avg_dmg_ultimate") * float(total_r),
+				"heal_auto": _float_cell(row, "avg_healing_auto") * float(total_r),
+				"heal_ability": _float_cell(row, "avg_healing_ability") * float(total_r),
+				"heal_ultimate": _float_cell(row, "avg_healing_ultimate") * float(total_r),
+				"shield_auto": _float_cell(row, "avg_shielding_auto") * float(total_r),
+				"shield_ability": _float_cell(row, "avg_shielding_ability") * float(total_r),
+				"shield_ultimate": _float_cell(row, "avg_shielding_ultimate") * float(total_r),
 			},
 		}
 

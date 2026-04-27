@@ -163,6 +163,7 @@ var _team_button_group: ButtonGroup
 var _team_size_buttons: Dictionary = {}
 var _regen_checks: Dictionary = {}
 var _regen_sample_edit: LineEdit
+var _regen_worker_edit: LineEdit
 var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
@@ -469,6 +470,27 @@ func _build_ui() -> void:
 	_regen_sample_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sample_block.add_child(_regen_sample_edit)
 	export_inner.add_child(sample_block)
+
+	var worker_block := VBoxContainer.new()
+	worker_block.add_theme_constant_override("separation", 6)
+	var worker_max := maxi(
+		1,
+		mini(
+			OS.get_processor_count(),
+			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
+		)
+	)
+	var worker_lbl := Label.new()
+	worker_lbl.text = "Worker threads (< %d)" % worker_max
+	worker_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	worker_block.add_child(worker_lbl)
+	_regen_worker_edit = LineEdit.new()
+	_regen_worker_edit.text = str(_default_export_worker_threads())
+	_regen_worker_edit.placeholder_text = "Integer >= 0"
+	_regen_worker_edit.custom_minimum_size = Vector2(0, UI_MIN_CONTROL_H)
+	_regen_worker_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	worker_block.add_child(_regen_worker_edit)
+	export_inner.add_child(worker_block)
 
 	_regen_button = Button.new()
 	_regen_button.text = "Run export"
@@ -885,11 +907,22 @@ func _read_regen_export_params() -> Variant:
 		_regen_status.text = "Sample size must be >= 1."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return null
+	var worker_text := _regen_worker_edit.text.strip_edges()
+	if worker_text.is_empty() or not worker_text.is_valid_int():
+		_regen_status.text = "Invalid worker count."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		return null
+	var max_worker_threads: int = int(worker_text)
+	if max_worker_threads < 1:
+		_regen_status.text = "Worker count must be >= 1."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		return null
 	return {
 		"output_dir": _resolve_writable_stats_dir(),
 		"team_sizes": selected_sizes,
 		"matches_per_size": n,
 		"base_seed": int(Time.get_ticks_msec() & 0x7FFFFFFF),
+		"max_worker_threads": max_worker_threads,
 	}
 
 
@@ -1106,6 +1139,16 @@ func _chart_scroll_min_x(label_width: float) -> int:
 	return int(label_width + float(chart_scroll_min_bar_region) + tail + float(chart_scroll_width_slack))
 
 
+func _default_export_worker_threads() -> int:
+	return maxi(
+		1,
+		mini(
+			OS.get_processor_count(),
+			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
+		) / 2
+	)
+
+
 func _refresh_chart() -> void:
 	_hide_chart_tooltip()
 	for c in _chart_vbox.get_children():
@@ -1306,13 +1349,10 @@ func _refresh_chart() -> void:
 		bar_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bar_holder.custom_minimum_size = Vector2(chart_bar_holder_min_w, chart_row_bar_h)
 		var fill_ratio: float = clampf(val / bar_scale_max, 0.0, 1.0)
-		var draw_segment_ratio: float = -1.0
 		if (_current_metric == &"winRate" or is_synergy) and not use_ci:
 			var tg: int = StatsDashboardLoaderScript.get_count(u_data)
 			if tg > 0:
 				fill_ratio = clampf(float(u_data.get("wins", 0)) / float(tg), 0.0, 1.0)
-				draw_segment_ratio = clampf(float(u_data.get("draws", 0)) / float(tg), 0.0, 1.0)
-				draw_segment_ratio = minf(draw_segment_ratio, 1.0 - fill_ratio)
 		var ratio_color: float
 		if _absolute_colors and (_current_metric == &"winRate" or is_synergy):
 			ratio_color = val
@@ -1328,7 +1368,7 @@ func _refresh_chart() -> void:
 				var hi: float = maxf(lo, float(ci_bounds[1]))
 				ci_lo_r = clampf(lo / bar_scale_max, 0.0, 1.0)
 				ci_hi_r = clampf(hi / bar_scale_max, 0.0, 1.0)
-		bar_holder.set_visual(fill_ratio, bar_col, ci_lo_r, ci_hi_r, show_pct_axis, draw_segment_ratio)
+		bar_holder.set_visual(fill_ratio, bar_col, ci_lo_r, ci_hi_r, show_pct_axis, -1.0)
 		hb.add_child(bar_holder)
 
 		var count: int = (
@@ -1576,6 +1616,26 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 					float(b.get("auto", 0.0)) / cf,
 					float(b.get("ability", 0.0)) / cf,
 					float(b.get("ultimate", 0.0)) / cf,
+				]
+			)
+			lines.append("")
+			lines.append("Healing Done Breakdown:")
+			lines.append(
+				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
+				% [
+					float(b.get("heal_auto", 0.0)) / cf,
+					float(b.get("heal_ability", 0.0)) / cf,
+					float(b.get("heal_ultimate", 0.0)) / cf,
+				]
+			)
+			lines.append("")
+			lines.append("Shielding Done Breakdown:")
+			lines.append(
+				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
+				% [
+					float(b.get("shield_auto", 0.0)) / cf,
+					float(b.get("shield_ability", 0.0)) / cf,
+					float(b.get("shield_ultimate", 0.0)) / cf,
 				]
 			)
 	for i in range(1, lines.size()):

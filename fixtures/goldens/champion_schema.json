@@ -573,7 +573,7 @@
 		"ability": {
 			"kind": "shield",
 			"params": {
-				"max_hp_ratio": 0.18,
+				"max_hp_ratio": 110.18,
 				"reason": "Purify"
 			}
 		},
@@ -610,7 +610,7 @@
 		"ultimate": {
 			"kind": "shield",
 			"params": {
-				"max_hp_ratio": 0.4,
+				"max_hp_ratio": 140.4,
 				"reason": "Divine Shield"
 			}
 		},

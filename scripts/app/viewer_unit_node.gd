@@ -46,6 +46,36 @@ func set_selected(on: bool) -> void:
 	queue_redraw()
 
 
+func _draw_hp_ticks(o: Vector2, hp_x: float, hp_y: float, bar_w: float, bar_h: float, max_hp: float, hp: float, shield: float) -> void:
+	var total_effective: float = hp + shield
+	var scale: float = bar_w / maxf(max_hp, total_effective)
+	var tick_color := Color(0.3, 0.3, 0.3, 0.8)
+	
+	# Use total_effective as the upper bound for tick drawing when it exceeds max_hp
+	var tick_upper_bound: float = maxf(max_hp, total_effective)
+	
+	# Draw ticks every 10 HP (top to middle)
+	var tick_10_interval := 10.0
+	var num_10_ticks := int(tick_upper_bound / tick_10_interval)
+	for i in range(1, num_10_ticks + 1):
+		var tick_hp := i * tick_10_interval
+		if tick_hp > total_effective:
+			break
+		var tick_x := hp_x + tick_hp * scale
+		var tick_height := bar_h * 0.5
+		draw_line(o + Vector2(tick_x, hp_y), o + Vector2(tick_x, hp_y + tick_height), tick_color, 2.0)
+	
+	# Draw ticks every 100 HP (top to bottom)
+	var tick_100_interval := 100.0
+	var num_100_ticks := int(tick_upper_bound / tick_100_interval)
+	for i in range(1, num_100_ticks + 1):
+		var tick_hp := i * tick_100_interval
+		if tick_hp > total_effective:
+			break
+		var tick_x := hp_x + tick_hp * scale
+		draw_line(o + Vector2(tick_x, hp_y), o + Vector2(tick_x, hp_y + bar_h), tick_color, 2.0)
+
+
 func _lunge_offset_screen() -> Vector2:
 	if _u.is_empty():
 		return Vector2.ZERO
@@ -121,6 +151,10 @@ func _draw() -> void:
 	
 	# Draw HP bar (green)
 	draw_rect(Rect2(o + Vector2(hp_x, hp_y), Vector2(HP_W * hp_ratio, HP_H)), Color(0.31, 0.82, 0.31, 1.0))
+	
+	# Draw tick marks (commented out - may re-enable later)
+	# Draw before shield so they're visible on shield portion
+	# _draw_hp_ticks(o, hp_x, hp_y, HP_W, HP_H, max_hp, hp, shield)
 	
 	# Draw shield bar (white) layered on top, to the right of HP
 	if shield > 0.0:

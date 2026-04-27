@@ -43,3 +43,36 @@ func _draw() -> void:
 		var shield_width: float = size.x * shield_ratio
 		if shield_width > 0.0:
 			draw_rect(Rect2(Vector2(shield_x, 0.0), Vector2(shield_width, size.y)), COLOR_SHIELD_FILL)
+	
+	# Draw tick marks on top of everything for visibility
+	_draw_hp_ticks(size, max_hp, hp, shield)
+
+
+func _draw_hp_ticks(size: Vector2, max_hp: float, hp: float, shield: float) -> void:
+	var total_effective: float = hp + shield
+	var scale: float = size.x / maxf(max_hp, total_effective)
+	var tick_color := Color(0.15, 0.15, 0.15, 0.9)
+	
+	# Use total_effective as the upper bound for tick drawing when it exceeds max_hp
+	var tick_upper_bound: float = maxf(max_hp, total_effective)
+	
+	# Draw ticks every 10 HP (top to middle)
+	var tick_10_interval := 10.0
+	var num_10_ticks := int(tick_upper_bound / tick_10_interval)
+	for i in range(1, num_10_ticks + 1):
+		var tick_hp := i * tick_10_interval
+		if tick_hp > total_effective:
+			break
+		var tick_x := tick_hp * scale
+		var tick_height := size.y * 0.5
+		draw_line(Vector2(tick_x, 0.0), Vector2(tick_x, tick_height), tick_color, 2.0)
+	
+	# Draw ticks every 100 HP (top to bottom)
+	var tick_100_interval := 100.0
+	var num_100_ticks := int(tick_upper_bound / tick_100_interval)
+	for i in range(1, num_100_ticks + 1):
+		var tick_hp := i * tick_100_interval
+		if tick_hp > total_effective:
+			break
+		var tick_x := tick_hp * scale
+		draw_line(Vector2(tick_x, 0.0), Vector2(tick_x, size.y), tick_color, 2.0)

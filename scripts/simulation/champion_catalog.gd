@@ -440,8 +440,8 @@ const CHAMPION_DATA := {
 		"ability_desc": "Grants a shield worth 18% max HP to self or an ally.",
 		"ultimate_desc": "Restores 35% max HP and grants a shield worth 40% max HP.",
 		"passive_desc": "Restores 4 mana after each auto-attack.",
-		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 0.18, "reason": "Purify"}},
-		"ultimate": {"kind": &"shield", "params": {"max_hp_ratio": 0.4, "reason": "Divine Shield"}},
+		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 110.18, "reason": "Purify"}},
+		"ultimate": {"kind": &"shield", "params": {"max_hp_ratio": 140.4, "reason": "Divine Shield"}},
 		"passive_ids": [&"enlightenment"],
 	},
 	&"colossus": {

@@ -573,7 +573,7 @@
 		"ability": {
 			"kind": "shield",
 			"params": {
-				"max_hp_ratio": 110.18,
+				"max_hp_ratio": 1.18,
 				"reason": "Purify"
 			}
 		},

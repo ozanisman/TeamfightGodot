@@ -2,6 +2,7 @@ extends Node
 
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const HeadlessRunnerScript := preload("res://scripts/simulation/headless_runner.gd")
+const SimulationSchemaScript := preload("res://scripts/simulation/simulation_schema.gd")
 
 
 ## True if `flag` was passed after `--` (user args) or anywhere on the command line.
@@ -21,9 +22,11 @@ func _ready() -> void:
 		get_tree().quit()
 		return
 	if _argv_has_flag("--stats-dashboard"):
+		_export_champion_schema()
 		call_deferred("_open_stats_dashboard")
 		return
 	if _argv_has_flag("--simulation-viewer"):
+		_export_champion_schema()
 		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
 		if (
 			load_status != GDExtensionManager.LOAD_STATUS_OK
@@ -56,3 +59,11 @@ func _open_simulation_viewer() -> void:
 
 func _start_headless_run() -> void:
 	HeadlessRunnerScript.run_from_cli(get_tree())
+
+
+func _export_champion_schema() -> void:
+	var success := SimulationSchemaScript.write_champion_schema_to_file()
+	if success:
+		print("Champion schema exported successfully")
+	else:
+		push_error("Failed to export champion schema")

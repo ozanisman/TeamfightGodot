@@ -9,9 +9,41 @@ func _init(_kind: StringName = &"", _params: Dictionary = {}) -> void:
 	params = _params.duplicate(true)
 
 func to_dict() -> Dictionary:
+	var normalized_params: Dictionary = {}
+	for key in params:
+		var value = params[key]
+		if value is EffectSpec:
+			normalized_params[key] = value.to_dict()
+		elif value is Array:
+			var normalized_array: Array = []
+			for item in value:
+				if item is EffectSpec:
+					normalized_array.append(item.to_dict())
+				else:
+					normalized_array.append(item)
+			normalized_params[key] = normalized_array
+		elif value is Dictionary:
+			var normalized_dict: Dictionary = {}
+			for dict_key in value:
+				var dict_value = value[dict_key]
+				if dict_value is EffectSpec:
+					normalized_dict[dict_key] = dict_value.to_dict()
+				elif dict_value is Array:
+					var normalized_nested_array: Array = []
+					for nested_item in dict_value:
+						if nested_item is EffectSpec:
+							normalized_nested_array.append(nested_item.to_dict())
+						else:
+							normalized_nested_array.append(nested_item)
+					normalized_dict[dict_key] = normalized_nested_array
+				else:
+					normalized_dict[dict_key] = dict_value
+			normalized_params[key] = normalized_dict
+		else:
+			normalized_params[key] = value
 	return {
 		"kind": String(kind),
-		"params": params.duplicate(true),
+		"params": normalized_params,
 	}
 
 static func from_dict(data: Dictionary):

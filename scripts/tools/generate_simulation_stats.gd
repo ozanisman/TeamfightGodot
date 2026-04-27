@@ -3,6 +3,7 @@ extends SceneTree
 ## Headless CSV export for stats dashboard. Run via run_godot.ps1 --generate-stats (forwards args after --).
 
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
+const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:
@@ -18,6 +19,9 @@ func _init() -> void:
 
 
 func _run() -> void:
+	# Pre-initialize champion catalog static cache to avoid threading issues
+	ChampionCatalogScript.build_catalog()
+	
 	var out_dir := _extract_argument("--out-dir=", "res://stats_output")
 	var sizes_raw := _extract_argument("--team-sizes=", "1,2,3,4,5")
 	var matches := int(_extract_argument("--matches-per-size=", "100"))

@@ -29,12 +29,13 @@ var _name_label: Label
 var _kda_label: Label
 var _respawn_label: Label
 var _behavior_label: Label
-var _hp_bar: ProgressBar
+var _hp_shield_bar: Control
 var _mana_bar: ProgressBar
 var _align_right: bool
 var _team_is_player: bool
 var _square_px: int = 0
 var _inner: VBoxContainer
+var _ud_cache: Dictionary = {}
 ## [param square_px] initial min edge length; [method set_square_size] reflows from column.
 func setup(
 	ud: Dictionary, p_align_right: bool, p_team_is_player: bool, square_px: int
@@ -115,15 +116,15 @@ func setup(
 	spacer.custom_minimum_size = Vector2(0, 0)
 	_inner.add_child(spacer)
 
-	_hp_bar = _make_bar(COLOR_HP_BG, COLOR_HP_FILL)
-	_inner.add_child(_hp_bar)
+	_hp_shield_bar = _make_hp_shield_bar()
+	_inner.add_child(_hp_shield_bar)
 	_mana_bar = _make_bar(COLOR_MN_BG, COLOR_MN_FILL)
 	_mana_bar.visible = false
 	_inner.add_child(_mana_bar)
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_kda_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_respawn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_shield_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var _tt_catch := Control.new()
@@ -176,15 +177,25 @@ func _make_bar(c_bg: Color, c_fill: Color) -> ProgressBar:
 	return p
 
 
+func _make_hp_shield_bar() -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, 6.0)
+	c.size_flags_vertical = Control.SIZE_SHRINK_END
+	c.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	var st_bg := StyleBoxFlat.new()
+	st_bg.bg_color = COLOR_HP_BG
+	st_bg.set_content_margin_all(0)
+	c.add_theme_stylebox_override("panel", st_bg)
+	c.set_script(preload("res://scripts/app/hp_shield_bar.gd"))
+	return c
+
+
 func set_square_size(px: int) -> void:
 	if px < MIN_SQUARE_PX:
 		px = MIN_SQUARE_PX
 	_square_px = px
 	custom_minimum_size = Vector2(px, px)
 	apply_font_and_bar_scales()
-
-
-var _ud_cache: Dictionary = {}
 
 
 ## Refresh labels and bar values from a snapshot [Dictionary].
@@ -242,8 +253,9 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		modulate = Color.WHITE
 	var max_hp: float = maxf(1.0, float(ud.get("max_hp", 1.0)))
 	var hp: float = float(ud.get("hp", 0.0))
-	_hp_bar.max_value = max_hp
-	_hp_bar.value = clampf(hp, 0.0, max_hp)
+	var shield: float = float(ud.get("shield", 0.0))
+	if _hp_shield_bar != null and _hp_shield_bar.has_method("set_data"):
+		_hp_shield_bar.set_data(max_hp, hp, shield)
 	var max_mn: float = float(ud.get("max_mana", 0.0))
 	var mn: float = float(ud.get("mana", 0.0))
 	if max_mn > SimConstantsScript.EPSILON * 2.0:
@@ -270,7 +282,7 @@ func apply_font_and_bar_scales() -> void:
 	_kda_label.add_theme_font_size_override("font_size", kda_fs)
 	_behavior_label.add_theme_font_size_override("font_size", behavior_fs)
 	_respawn_label.add_theme_font_size_override("font_size", respawn_fs)
-	_hp_bar.custom_minimum_size = Vector2(0, bar_h)
+	_hp_shield_bar.custom_minimum_size = Vector2(0, bar_h)
 	_mana_bar.custom_minimum_size = Vector2(0, bar_h)
 	if _align_right and _kda_label != null:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

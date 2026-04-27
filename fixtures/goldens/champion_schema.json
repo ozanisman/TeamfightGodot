@@ -103,8 +103,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372008031517240>",
-					"<RefCounted#-9223372008014740023>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.0,
+							"reason": "Shadow Dash",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Shadow Dash"
+						}
+					}
 				],
 				"reason": "Shadow Dash"
 			}
@@ -154,8 +167,20 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007863745070>",
-					"<RefCounted#-9223372007846967853>"
+					{
+						"kind": "self_damage",
+						"params": {
+							"damage_ratio": 0.05,
+							"reason": "Blood Price"
+						}
+					},
+					{
+						"kind": "self_shield",
+						"params": {
+							"reason": "Blood Price",
+							"shield_ratio": 0.24
+						}
+					}
 				],
 				"reason": "Blood Price"
 			}
@@ -244,8 +269,20 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372006873889267>",
-					"<RefCounted#-9223372006857112050>"
+					{
+						"kind": "heal",
+						"params": {
+							"max_hp_ratio": 0.38,
+							"reason": "Divine Aura"
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 0.9,
+							"reason": "Divine Aura"
+						}
+					}
 				],
 				"reason": "Divine Aura"
 			}
@@ -258,8 +295,23 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007494646296>",
-					"<RefCounted#-9223372007477869079>"
+					{
+						"kind": "self_aoe_taunt",
+						"params": {
+							"duration": 2.5,
+							"radius": 1.0,
+							"reason": "Seismic Slam"
+						}
+					},
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 1.65,
+							"damage_type": "physical",
+							"radius": 1.0,
+							"reason": "Seismic Slam"
+						}
+					}
 				],
 				"reason": "Seismic Slam"
 			}
@@ -298,8 +350,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007444314645>",
-					"<RefCounted#-9223372007427537428>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 4.6,
+							"reason": "Earthshaker",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 5.2,
+							"reason": "Earthshaker"
+						}
+					}
 				],
 				"reason": "Earthshaker"
 			}
@@ -349,8 +414,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372008115403325>",
-					"<RefCounted#-9223372008098626108>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.9,
+							"reason": "Aegis Crash",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 3.8,
+							"reason": "Aegis Crash"
+						}
+					}
 				],
 				"reason": "Aegis Crash"
 			}
@@ -416,8 +494,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007091993088>",
-					"<RefCounted#-9223372007075215871>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.1,
+							"reason": "Pressure Point",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Pressure Point"
+						}
+					}
 				],
 				"reason": "Pressure Point"
 			}
@@ -456,8 +547,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007041661437>",
-					"<RefCounted#-9223372007024884220>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 4.1,
+							"reason": "Hundred-Hand Slap",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.8,
+							"reason": "Hundred-Hand Slap"
+						}
+					}
 				],
 				"reason": "Hundred-Hand Slap"
 			}
@@ -555,8 +659,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007746304551>",
-					"<RefCounted#-9223372007729527334>"
+					{
+						"kind": "heal",
+						"params": {
+							"max_hp_ratio": 0.46,
+							"reason": "Divine Judgment"
+						}
+					},
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 3.6,
+							"reason": "Divine Judgment",
+							"trigger_on_hit": false
+						}
+					}
 				],
 				"reason": "Divine Judgment"
 			}
@@ -567,95 +684,221 @@
 	"passives": {
 		"agility": {
 			"on_defense": [
-				"<RefCounted#-9223372006404127191>"
+				{
+					"kind": "dodge",
+					"params": {
+						"dodge_chance": 0.25,
+						"on_dodge_multiplier": 0.0,
+						"on_hit_multiplier": 1.0
+					}
+				}
 			]
 		},
 		"bastion": {
 			"on_defense": [
-				"<RefCounted#-9223372006504790493>"
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 0.9
+					}
+				}
 			]
 		},
 		"bloodlust": {
 			"post_attack": [
-				"<RefCounted#-9223372006437681625>"
+				{
+					"kind": "damage_based_heal",
+					"params": {
+						"heal_ratio": 0.15
+					}
+				}
 			]
 		},
 		"bravery": {
 			"on_attack": [
-				"<RefCounted#-9223372006253132238>"
+				{
+					"kind": "self_hp_threshold_multiplier",
+					"params": {
+						"min_hp_ratio": 0.8,
+						"multiplier": 1.2
+					}
+				}
 			]
 		},
 		"demolition": {
 			"post_attack": [
-				"<RefCounted#-9223372006303463889>"
+				{
+					"kind": "splash_damage",
+					"params": {
+						"color": [
+							255,
+							100,
+							50
+						],
+						"damage_type": "physical",
+						"radius": 0.5,
+						"ratio": 0.5,
+						"reason": "Explosion"
+					}
+				}
 			]
 		},
 		"devotion": {
 			"on_tick": [
-				"<RefCounted#-9223372006286686672>"
+				{
+					"kind": "heal",
+					"params": {
+						"max_hp_ratio": 0.02,
+						"reason": "Devotion"
+					}
+				}
 			]
 		},
 		"duelist": {
 			"on_attack": [
-				"<RefCounted#-9223372006571899361>"
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 1.2
+					}
+				}
 			]
 		},
 		"durability": {
 			"on_defense": [
-				"<RefCounted#-9223372006370572757>"
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 0.9
+					}
+				}
 			]
 		},
 		"eagle_eye": {
 			"on_attack": [
-				"<RefCounted#-9223372006555122144>"
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 1.25
+					}
+				}
 			],
 			"post_attack": [
-				"<RefCounted#-9223372006521567710>"
+				{
+					"kind": "threshold_splash_damage",
+					"params": {
+						"splash": {
+							"kind": "splash_damage",
+							"params": {
+								"color": [
+									34,
+									139,
+									34
+								],
+								"damage_type": "physical",
+								"radius": 2.0,
+								"ratio": 0.5,
+								"reason": "Rain of Arrows"
+							}
+						},
+						"threshold_multiplier": 3.0
+					}
+				}
 			]
 		},
 		"enlightenment": {
 			"post_attack": [
-				"<RefCounted#-9223372006387349974>"
+				{
+					"kind": "mana_restore_on_hit",
+					"params": {
+						"flat_amount": 5.0
+					}
+				}
 			]
 		},
 		"executioner": {
 			"on_attack": [
-				"<RefCounted#-9223372006488013276>"
+				{
+					"kind": "target_hp_threshold_multiplier",
+					"params": {
+						"hp_ratio_threshold": 0.3,
+						"multiplier": 2.0
+					}
+				}
 			]
 		},
 		"mana_font": {
 			"on_tick": [
-				"<RefCounted#-9223372006471236059>"
+				{
+					"kind": "mana_regen",
+					"params": {
+						"flat_amount": 3.0
+					}
+				}
 			]
 		},
 		"marksman": {
 			"on_attack": [
-				"<RefCounted#-9223372006454458842>"
+				{
+					"kind": "distance_threshold_multiplier",
+					"params": {
+						"min_distance": 3.0,
+						"multiplier": 1.25
+					}
+				}
 			]
 		},
 		"rejuvenation": {
 			"on_tick": [
-				"<RefCounted#-9223372006420904408>"
+				{
+					"kind": "heal",
+					"params": {
+						"flat_amount": 5.0,
+						"reason": "Rejuvenation"
+					}
+				}
 			]
 		},
 		"siphon": {
 			"post_attack": [
-				"<RefCounted#-9223372006269909455>"
+				{
+					"kind": "drain_target_mana_on_hit",
+					"params": {
+						"flat_amount": 5.0
+					}
+				}
 			]
 		},
 		"swiftness": {
 			"on_attack": [
-				"<RefCounted#-9223372006353795540>"
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 1.15
+					}
+				}
 			]
 		},
 		"technique": {
 			"post_attack": [
-				"<RefCounted#-9223372006320241106>"
+				{
+					"kind": "every_n_attacks_stun",
+					"params": {
+						"every_n": 3,
+						"stun_duration": 0.5
+					}
+				}
 			]
 		},
 		"vampirism": {
 			"post_attack": [
-				"<RefCounted#-9223372006337018323>"
+				{
+					"kind": "heal",
+					"params": {
+						"flat_amount": 3.0,
+						"reason": "Vampirism"
+					}
+				}
 			]
 		}
 	},
@@ -664,8 +907,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007662418466>",
-					"<RefCounted#-9223372007645641249>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.2,
+							"reason": "Backstab",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 4.0,
+							"reason": "Backstab"
+						}
+					}
 				],
 				"reason": "Backstab"
 			}
@@ -806,8 +1062,22 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372006773225965>",
-					"<RefCounted#-9223372006756448748>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.8,
+							"damage_type": "magic",
+							"reason": "Banshee Wail",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Banshee Wail"
+						}
+					}
 				],
 				"reason": "Banshee Wail"
 			}
@@ -869,8 +1139,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372008333507146>",
-					"<RefCounted#-9223372008316729929>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.7,
+							"reason": "Cleave",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.0,
+							"reason": "Cleave"
+						}
+					}
 				],
 				"reason": "Cleave"
 			}
@@ -909,8 +1192,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372008283175495>",
-					"<RefCounted#-9223372008266398278>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 5.6,
+							"reason": "Whirlwind",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 3.2,
+							"reason": "Whirlwind"
+						}
+					}
 				],
 				"reason": "Whirlwind"
 			}
@@ -923,8 +1219,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372006689339880>",
-					"<RefCounted#-9223372006672562663>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.2,
+							"reason": "Shield Slam",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Shield Slam"
+						}
+					}
 				],
 				"reason": "Shield Slam"
 			}
@@ -963,8 +1272,21 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372006639008229>",
-					"<RefCounted#-9223372006622231012>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 4.3,
+							"reason": "Valhalla Call",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.3,
+							"reason": "Valhalla Call"
+						}
+					}
 				],
 				"reason": "Valhalla Call"
 			}
@@ -1028,8 +1350,22 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007360428560>",
-					"<RefCounted#-9223372007343651343>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 2.2,
+							"damage_type": "magic",
+							"reason": "Spectral Touch",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Spectral Touch"
+						}
+					}
 				],
 				"reason": "Spectral Touch"
 			}
@@ -1068,8 +1404,22 @@
 			"kind": "multi",
 			"params": {
 				"effects": [
-					"<RefCounted#-9223372007310096909>",
-					"<RefCounted#-9223372007293319692>"
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 4.8,
+							"damage_type": "magic",
+							"reason": "Phantom Strike",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 2.8,
+							"reason": "Phantom Strike"
+						}
+					}
 				],
 				"reason": "Phantom Strike"
 			}

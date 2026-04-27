@@ -3,6 +3,7 @@ extends RefCounted
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const EffectSpecScript := preload("res://scripts/simulation/effect_spec.gd")
 const GoldenChampionSchemaPath := "res://fixtures/goldens/champion_schema.json"
 
 static func _normalize_numbers(value: Variant) -> Variant:
@@ -23,6 +24,23 @@ static func _normalize_numbers_for_key(value: Variant, key_name: String) -> Vari
 	if (key_name == "attack_range" or key_name == "move_speed" or key_name == "color") and value is float and is_equal_approx(value, round(value)):
 		return int(round(value))
 	return value
+
+static func _normalize_passives(passives: Dictionary) -> Dictionary:
+	var normalized: Dictionary = {}
+	for passive_id in passives:
+		var passive_data: Dictionary = passives[passive_id]
+		var normalized_passive: Dictionary = {}
+		for hook in passive_data:
+			var effects: Array = passive_data[hook]
+			var normalized_effects: Array = []
+			for effect in effects:
+				if effect is EffectSpecScript:
+					normalized_effects.append(effect.to_dict())
+				else:
+					normalized_effects.append(effect)
+			normalized_passive[hook] = normalized_effects
+		normalized[String(passive_id)] = normalized_passive
+	return normalized
 
 static func export_champion_schema() -> Dictionary:
 	var file := FileAccess.open(GoldenChampionSchemaPath, FileAccess.READ)
@@ -50,7 +68,7 @@ static func generate_champion_schema_from_gdscript() -> Dictionary:
 		result[String(champion_id)] = champ_dict
 	
 	# Add passives and role_configs as additional top-level keys
-	result["passives"] = _normalize_numbers(passives)
+	result["passives"] = _normalize_passives(passives)
 	
 	# Convert role_configs to dictionaries
 	var role_configs_dict: Dictionary = {}

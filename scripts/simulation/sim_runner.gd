@@ -49,7 +49,8 @@ func run_to_end_with_core(core: Object, match_input: Variant) -> Dictionary:
 	set_core(core)
 	begin(match_input)
 	while not is_finished():
-		step(_tick_rate)
+		var delta: float = _tick_rate
+		step(delta)
 	return finish()
 
 func get_trace_events() -> Array:

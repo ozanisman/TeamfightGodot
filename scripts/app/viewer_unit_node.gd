@@ -100,17 +100,32 @@ func _draw() -> void:
 		draw_arc(o, r_ring, PI * 0.5, PI * 0.5 + TAU * pr, 32, c_cast, 3.0, true)
 	var hp: float = float(_u.get("hp", 0.0))
 	var max_hp: float = maxf(1.0, float(_u.get("max_hp", 1.0)))
-	var ratio: float = clampf(hp / max_hp, 0.0, 1.0)
+	var shield: float = float(_u.get("shield", 0.0))
 	var hp_x: float = -HP_W * 0.5
 	var hp_y: float = -24.0
 	draw_rect(Rect2(o + Vector2(hp_x, hp_y), Vector2(HP_W, HP_H)), Color(0.31, 0.31, 0.31, 1.0))
-	draw_rect(Rect2(o + Vector2(hp_x, hp_y), Vector2(HP_W * ratio, HP_H)), Color(0.31, 0.82, 0.31, 1.0))
-	if float(_u.get("shield", 0.0)) > 0.0:
-		var sr: float = minf(1.0, float(_u.get("shield", 0.0)) / max_hp)
-		draw_rect(
-			Rect2(o + Vector2(hp_x, hp_y - 3.0), Vector2(HP_W * sr, 2.0)),
-			Color(0.6, 0.78, 1.0, 0.9)
-		)
+	
+	# Calculate HP and shield ratios for display
+	var total_effective: float = hp + shield
+	var hp_ratio: float
+	var shield_ratio: float
+	
+	if total_effective > max_hp:
+		# When HP + Shield > Max HP, show ratio of HP to total effective health
+		hp_ratio = clampf(hp / total_effective, 0.0, 1.0)
+		shield_ratio = clampf(shield / total_effective, 0.0, 1.0)
+	else:
+		# When HP + Shield <= Max HP, show ratios relative to Max HP
+		hp_ratio = clampf(hp / max_hp, 0.0, 1.0)
+		shield_ratio = clampf(shield / max_hp, 0.0, 1.0)
+	
+	# Draw HP bar (green)
+	draw_rect(Rect2(o + Vector2(hp_x, hp_y), Vector2(HP_W * hp_ratio, HP_H)), Color(0.31, 0.82, 0.31, 1.0))
+	
+	# Draw shield bar (white) layered on top, to the right of HP
+	if shield > 0.0:
+		var shield_x: float = hp_x + HP_W * hp_ratio
+		draw_rect(Rect2(o + Vector2(shield_x, hp_y), Vector2(HP_W * shield_ratio, HP_H)), Color(1.0, 1.0, 1.0, 0.9))
 	var max_mana: float = float(_u.get("max_mana", 0.0))
 	if max_mana > 0.0:
 		var mn: float = float(_u.get("mana", 0.0))

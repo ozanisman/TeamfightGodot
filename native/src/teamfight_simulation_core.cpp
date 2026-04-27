@@ -229,6 +229,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	} else if (kind == StringName("self_aoe_damage")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("damage_multiplier", 1.0));
+		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("splash_damage")) {
@@ -871,10 +872,19 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.damage_dealt_auto = 0.0;
 	unit.damage_dealt_ability = 0.0;
 	unit.damage_dealt_ultimate = 0.0;
+	unit.damage_dealt_passive = 0.0;
 	unit.damage_received = 0.0;
 	unit.damage_mitigated = 0.0;
 	unit.healing_done = 0.0;
+	unit.healing_done_auto = 0.0;
+	unit.healing_done_ability = 0.0;
+	unit.healing_done_ultimate = 0.0;
+	unit.healing_done_passive = 0.0;
 	unit.shielding_done = 0.0;
+	unit.shielding_done_auto = 0.0;
+	unit.shielding_done_ability = 0.0;
+	unit.shielding_done_ultimate = 0.0;
+	unit.shielding_done_passive = 0.0;
 	unit.auto_attacks = 0;
 	unit.abilities = 0;
 	unit.ultimates = 0;
@@ -2131,6 +2141,8 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 			source.damage_dealt_ability += total_damage;
 		} else if (action_kind == StringName("ultimate")) {
 			source.damage_dealt_ultimate += total_damage;
+		} else if (action_kind == StringName("passive")) {
+			source.damage_dealt_passive += total_damage;
 		}
 	}
 	if (hp_loss > 0.0 || absorbed > 0.0) {
@@ -2147,6 +2159,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		post_context.source = &target;
 		post_context.target = nullptr;
 		post_context.damage = total_damage;
+		post_context.action_kind = StringName("passive");
 		for (const EffectRecord &effect : post_take_damage_effects) {
 			_execute_effect(effect, post_context);
 		}
@@ -2159,6 +2172,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	post_context.source = &target;
 	post_context.target = nullptr;
 	post_context.damage = total_damage;
+	post_context.action_kind = StringName("passive");
 	for (const EffectRecord &effect : post_take_damage_effects) {
 		_execute_effect(effect, post_context);
 	}
@@ -2203,6 +2217,8 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 		source.shielding_done_ability += amount;
 	} else if (action_kind == StringName("ultimate")) {
 		source.shielding_done_ultimate += amount;
+	} else if (action_kind == StringName("passive")) {
+		source.shielding_done_passive += amount;
 	}
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
@@ -2228,6 +2244,8 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 		source.healing_done_ability += amount;
 	} else if (action_kind == StringName("ultimate")) {
 		source.healing_done_ultimate += amount;
+	} else if (action_kind == StringName("passive")) {
+		source.healing_done_passive += amount;
 	}
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
@@ -3031,7 +3049,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			regen_accumulator -= REGEN_TICK_INTERVAL;
 			const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
 			for (const EffectRecord &effect : effects) {
-				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("auto"));
+				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("passive"));
 				_execute_effect(effect, context);
 			}
 		}
@@ -3487,7 +3505,12 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			_apply_aoe_taunt(source, effect.scalar0, effect.scalar1);
 			return;
 		case EFFECT_OPCODE_SELF_AOE_DAMAGE: {
-			double aoe_damage = source.combat.attack_damage * effect.scalar1;
+			double aoe_damage;
+			if (effect.scalar2 > 0.0) {
+				aoe_damage = effect.scalar2;
+			} else {
+				aoe_damage = source.combat.attack_damage * effect.scalar1;
+			}
 			_apply_aoe_damage(source, source, aoe_damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, effect.reason, context.action_kind);
 			return;
 		}
@@ -3569,16 +3592,19 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 		unit_summary["damage_dealt_auto"] = unit.damage_dealt_auto;
 		unit_summary["damage_dealt_ability"] = unit.damage_dealt_ability;
 		unit_summary["damage_dealt_ultimate"] = unit.damage_dealt_ultimate;
+		unit_summary["damage_dealt_passive"] = unit.damage_dealt_passive;
 		unit_summary["damage_received"] = unit.damage_received;
 		unit_summary["damage_mitigated"] = unit.damage_mitigated;
 		unit_summary["healing_done"] = unit.healing_done;
 		unit_summary["healing_done_auto"] = unit.healing_done_auto;
 		unit_summary["healing_done_ability"] = unit.healing_done_ability;
 		unit_summary["healing_done_ultimate"] = unit.healing_done_ultimate;
+		unit_summary["healing_done_passive"] = unit.healing_done_passive;
 		unit_summary["shielding_done"] = unit.shielding_done;
 		unit_summary["shielding_done_auto"] = unit.shielding_done_auto;
 		unit_summary["shielding_done_ability"] = unit.shielding_done_ability;
 		unit_summary["shielding_done_ultimate"] = unit.shielding_done_ultimate;
+		unit_summary["shielding_done_passive"] = unit.shielding_done_passive;
 		unit_summary["auto_attacks"] = unit.auto_attacks;
 		unit_summary["abilities"] = unit.abilities;
 		unit_summary["ultimates"] = unit.ultimates;

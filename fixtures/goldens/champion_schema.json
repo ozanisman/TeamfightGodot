@@ -694,6 +694,19 @@
 				}
 			]
 		},
+		"aura_damage": {
+			"on_tick": [
+				{
+					"kind": "self_aoe_damage",
+					"params": {
+						"damage_type": "physical",
+						"flat_amount": 5.0,
+						"radius": 1.0,
+						"reason": "Aura Damage"
+					}
+				}
+			]
+		},
 		"bastion": {
 			"on_defense": [
 				{
@@ -940,7 +953,7 @@
 			"attack_damage": 44.0,
 			"attack_range": 0.3,
 			"attack_speed": 2.9,
-			"life_steal": 0.24,
+			"life_steal": 0.0,
 			"magic_resist": 0.28,
 			"mana_per_attack": 10.0,
 			"max_hp": 190.0,
@@ -1243,7 +1256,7 @@
 		"name": "Valkyrie",
 		"passive_desc": "Deals 25% bonus damage while above 80% HP.",
 		"passive_ids": [
-			"bravery"
+			"aura_damage"
 		],
 		"role": "fighter",
 		"stats": {

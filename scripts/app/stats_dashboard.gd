@@ -1611,31 +1611,34 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			lines.append("")
 			lines.append("Damage Dealt Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
+				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
 				% [
 					float(b.get("auto", 0.0)) / cf,
 					float(b.get("ability", 0.0)) / cf,
 					float(b.get("ultimate", 0.0)) / cf,
+					float(b.get("passive", 0.0)) / cf,
 				]
 			)
 			lines.append("")
 			lines.append("Healing Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
+				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
 				% [
 					float(b.get("heal_auto", 0.0)) / cf,
 					float(b.get("heal_ability", 0.0)) / cf,
 					float(b.get("heal_ultimate", 0.0)) / cf,
+					float(b.get("heal_passive", 0.0)) / cf,
 				]
 			)
 			lines.append("")
 			lines.append("Shielding Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f"
+				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
 				% [
 					float(b.get("shield_auto", 0.0)) / cf,
 					float(b.get("shield_ability", 0.0)) / cf,
 					float(b.get("shield_ultimate", 0.0)) / cf,
+					float(b.get("shield_passive", 0.0)) / cf,
 				]
 			)
 	for i in range(1, lines.size()):

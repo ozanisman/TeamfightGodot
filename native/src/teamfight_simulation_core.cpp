@@ -148,6 +148,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("every_n_attacks_stun")) {
 		return EFFECT_OPCODE_EVERY_N_ATTACKS_STUN;
 	}
+	if (kind == StringName("self_dash")) {
+		return EFFECT_OPCODE_SELF_DASH;
+	}
 	if (kind == StringName("dodge")) {
 		return EFFECT_OPCODE_DODGE;
 	}
@@ -258,6 +261,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int0 = int64_t(params.get("every_n", 0));
 		compiled.scalar0 = double(params.get("stun_duration", 0.0));
 		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == StringName("self_dash")) {
+		compiled.scalar0 = double(params.get("distance", 1.0));
+		compiled.int0 = int64_t(params.get("target_id", 0));
+		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
+		compiled.scalar1 = double(direction.get("x", 0.0));
+		compiled.scalar2 = double(direction.get("y", 0.0));
 	} else if (kind == StringName("dodge")) {
 		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
@@ -3551,6 +3560,43 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 				_apply_stun(source, *target, effect.scalar0);
 			}
 			return;
+		case EFFECT_OPCODE_SELF_DASH: {
+			double dash_distance = effect.scalar0;
+			int64_t target_id = effect.int0;
+			double dir_x = effect.scalar1;
+			double dir_y = effect.scalar2;
+			
+			double current_x = source.pos_x;
+			double current_y = source.pos_y;
+			double new_x = current_x;
+			double new_y = current_y;
+			
+			if (target_id != 0) {
+				UnitState *target_unit = _unit_by_id(target_id);
+				if (target_unit != nullptr) {
+					double target_x = target_unit->pos_x;
+					double target_y = target_unit->pos_y;
+					double dx = target_x - current_x;
+					double dy = target_y - current_y;
+					double dist = Math::sqrt(dx * dx + dy * dy);
+					if (dist > 0.0) {
+						double move_dist = Math::min(dash_distance, dist);
+						new_x = current_x + (dx / dist) * move_dist;
+						new_y = current_y + (dy / dist) * move_dist;
+					}
+				}
+			} else {
+				new_x = current_x + dir_x * dash_distance;
+				new_y = current_y + dir_y * dash_distance;
+			}
+			
+			new_x = Math::clamp(new_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			new_y = Math::clamp(new_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			
+			source.pos_x = new_x;
+			source.pos_y = new_y;
+			return;
+		}
 		case EFFECT_OPCODE_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:

@@ -79,6 +79,9 @@ static func flush_stdio_if_available() -> void:
 		_bench_flush_core.call(&"flush_stdio")
 
 func run_chunk(data: Dictionary) -> Array:
+	# Pre-initialize champion catalog in thread context
+	ChampionCatalogScript.build_catalog()
+	
 	var start_index: int = int(data.get("start_index", 0))
 	var end_index: int = int(data.get("end_index", 0))
 	var team_size: int = int(data.get("team_size", 1))

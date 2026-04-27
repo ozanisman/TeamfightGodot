@@ -30,7 +30,7 @@
 - Use a hard timeout on `run_godot.ps1` and kill hung Godot processes instead of waiting indefinitely.
 - Run `--check-only` before long smoke scenes when editing GDScript helpers.
 - Keep explicit types in helpers that parse `Variant` data; this project treats those warnings as errors.
-- Run `--check-only` on `scripts/batch_runner.gd` before smoke runs after batch-path edits.
+- For native TeamfightGodot changes, use the canonical validation sequence: `cmake --build native/build --config Release`, `.\run_godot.ps1 -- --check-only`, `.\run_godot.ps1 -- --check-native-load`, `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json`, and `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1`.
 - Call `clear()` on batch match engines after each match so unit refs do not leak across runs.
 - Before declaring work finished after any Godot run, verify all Godot processes are terminated
 

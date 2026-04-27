@@ -61,6 +61,7 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 
 	if team_size > 1:
 		_acc_combo(bucket, summary.player_comp, wt)
+		_acc_combo(bucket, summary.enemy_comp, _flip_winner(wt))
 
 
 func _coerce_unit(item: Variant) -> Object:
@@ -245,6 +246,14 @@ func _acc_combo(bucket: Dictionary, player_comp: Array, wt: StringName) -> void:
 	combos[combo_label]["n"] = int(combos[combo_label]["n"]) + 1
 	if wt == &"player":
 		combos[combo_label]["w"] = int(combos[combo_label]["w"]) + 1
+
+
+func _flip_winner(wt: StringName) -> StringName:
+	if wt == &"player":
+		return &"enemy"
+	elif wt == &"enemy":
+		return &"player"
+	return wt
 
 
 func _fmt_f(v: float) -> String:

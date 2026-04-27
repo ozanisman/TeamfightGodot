@@ -9,11 +9,13 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 
 var _by_size: Dictionary = {}
 var _role_by_hero: Dictionary = {}
+var _match_logs: Array = []
 
 
 func reset() -> void:
 	_by_size.clear()
 	_role_by_hero.clear()
+	_match_logs.clear()
 
 
 func consume_summary(team_size: int, summary_value: Variant) -> void:
@@ -25,6 +27,15 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 	if summary == null:
 		push_error("StatsCsvAggregator: bad summary")
 		return
+	
+	# Log match details for debugging
+	_match_logs.append({
+		"team_size": team_size,
+		"seed": summary.seed,
+		"winner": String(summary.winner_team),
+		"sudden_death_ticks": summary.sudden_death_ticks,
+		"duration": summary.duration,
+	})
 	
 	_ensure_roles()
 	var bucket: Dictionary = _bucket(team_size)
@@ -89,11 +100,13 @@ func write_to_dir(dir_path: String) -> Error:
 	var hero_csv := _build_combat_csv()
 	var role_csv := _build_role_csv()
 	var combo_csv := _build_combo_csv()
+	var match_log_csv := _build_match_log_csv()
 	for pair: Array in [
 		["summary_stats.csv", summary_csv],
 		["combat_stats.csv", hero_csv],
 		["role_stats.csv", role_csv],
 		["hero_combinations.csv", combo_csv],
+		["match_log.csv", match_log_csv],
 	]:
 		var name: String = String(pair[0])
 		var text: String = String(pair[1])
@@ -390,4 +403,21 @@ func _build_combo_csv() -> String:
 			lines.append(
 				"%d,%s,%s,%d,%d" % [int(sz), _csv_cell(String(ck)), _fmt_f(wr), w, n]
 			)
+	return "\n".join(lines) + "\n"
+
+
+func _build_match_log_csv() -> String:
+	var lines: PackedStringArray = PackedStringArray()
+	lines.append("team_size,seed,winner,sudden_death_ticks,duration")
+	for log in _match_logs:
+		lines.append(
+			"%d,%d,%s,%d,%s"
+			% [
+				int(log.team_size),
+				int(log.seed),
+				_csv_cell(String(log.winner)),
+				int(log.sudden_death_ticks),
+				_fmt_f(float(log.duration)),
+			]
+		)
 	return "\n".join(lines) + "\n"

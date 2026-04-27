@@ -46,7 +46,7 @@ static func _build_batch_input_for_seed(match_seed: int, team_size: int):
 			players.append(pool[i])
 		for i in range(team_size, team_size * 2):
 			enemies.append(pool[i])
-	return MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.SIMULATION_TICK_RATE)
+	return MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.DEFAULT_TICK_RATE)
 
 static func reset_benchmark_progress(total_matches: int) -> void:
 	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):

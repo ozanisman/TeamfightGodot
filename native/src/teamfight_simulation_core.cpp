@@ -3539,6 +3539,7 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 	_summary_cache["seed"] = _seed;
 	_summary_cache["winner_team"] = String(_winner_team);
 	_summary_cache["duration"] = _time;
+	_summary_cache["sudden_death_ticks"] = int64_t(_sudden_death_ticks);
 	_summary_cache["player_kills"] = int64_t(_player_kills);
 	_summary_cache["enemy_kills"] = int64_t(_enemy_kills);
 	_summary_cache["player_comp"] = _player_comp;
@@ -3646,8 +3647,8 @@ bool TeamfightSimulationCore::match_ticks_exhausted() const {
 		if (_player_kills != _enemy_kills) {
 			return true;
 		}
-		// Safety limit: 1M ticks after regulation
-		if (_sudden_death_ticks >= 1000000) {
+		// Safety limit: 100M ticks after regulation
+		if (_sudden_death_ticks >= 100000000) {
 			return true;
 		}
 		return false;

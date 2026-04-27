@@ -13,6 +13,7 @@ const TEAM_ENEMY: StringName = &"enemy"
 const ACTION_AUTO: StringName = &"auto"
 const ACTION_ABILITY: StringName = &"ability"
 const ACTION_ULTIMATE: StringName = &"ultimate"
+const ACTION_PASSIVE: StringName = &"passive"
 
 const EFFECT_ON_ATTACK: StringName = &"on_attack"
 const EFFECT_ON_DEFENSE: StringName = &"on_defense"
@@ -164,10 +165,19 @@ func _spawn_unit(spawn_data: Dictionary, team: StringName, instance_id: int) -> 
 		"damage_dealt_auto": 0.0,
 		"damage_dealt_ability": 0.0,
 		"damage_dealt_ultimate": 0.0,
+		"damage_dealt_passive": 0.0,
 		"damage_received": 0.0,
 		"damage_mitigated": 0.0,
 		"healing_done": 0.0,
+		"healing_done_auto": 0.0,
+		"healing_done_ability": 0.0,
+		"healing_done_ultimate": 0.0,
+		"healing_done_passive": 0.0,
 		"shielding_done": 0.0,
+		"shielding_done_auto": 0.0,
+		"shielding_done_ability": 0.0,
+		"shielding_done_ultimate": 0.0,
+		"shielding_done_passive": 0.0,
 		"auto_attacks": 0,
 		"abilities": 0,
 		"ultimates": 0,
@@ -302,7 +312,7 @@ func _update_cooldowns_and_status() -> void:
 			regen_accumulator -= SimConstantsScript.REGEN_TICK_INTERVAL
 			var effects: Array = _collect_effects(unit, EFFECT_ON_TICK)
 			for effect in effects:
-				var context: Dictionary = _build_context(unit, {}, {}, 0.0, ACTION_AUTO)
+				var context: Dictionary = _build_context(unit, {}, {}, 0.0, ACTION_PASSIVE)
 				_execute_effect(effect, context)
 		unit["regen_accumulator"] = regen_accumulator
 
@@ -530,8 +540,8 @@ func _apply_damage(source: Dictionary, target: Dictionary, damage: float, damage
 			source["damage_dealt_ability"] = float(source.get("damage_dealt_ability", 0.0)) + incoming
 		ACTION_ULTIMATE:
 			source["damage_dealt_ultimate"] = float(source.get("damage_dealt_ultimate", 0.0)) + incoming
-		_:
-			pass
+		ACTION_PASSIVE:
+			source["damage_dealt_passive"] = float(source.get("damage_dealt_passive", 0.0)) + incoming
 
 	if hp_loss > 0.0 or absorbed > 0.0:
 		var source_damage: Dictionary = Dictionary(target.get("damage_sources", {}))
@@ -543,6 +553,13 @@ func _apply_damage(source: Dictionary, target: Dictionary, damage: float, damage
 		target["last_hit_time"] = _time
 		if float(target.get("stats", {}).get("max_hp", 0.0)) > 0.0 and incoming > float(target.get("stats", {}).get("max_hp", 0.0)) * SimConstantsScript.THREAT_BURST_THRESHOLD:
 			target["perceived_threat"] = float(target.get("perceived_threat", 0.0)) + ((incoming / float(target.get("stats", {}).get("max_hp", 1.0))) * SimConstantsScript.THREAT_BURST_MULTIPLIER)
+
+	# Run post_take_damage effects with passive action kind
+	var post_effects: Array = _collect_effects(target, EFFECT_POST_TAKE_DAMAGE)
+	if not post_effects.is_empty():
+		var post_context: Dictionary = _build_context(target, {}, {}, incoming, ACTION_PASSIVE)
+		for effect in post_effects:
+			_execute_effect(effect, post_context)
 
 	if float(target.get("hp", 0.0)) <= 0.0:
 		_handle_death(source, target)
@@ -624,7 +641,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 			var damage_multiplier: float = float(params.get("damage_multiplier", 1.0))
 			var damage_type: StringName = StringName(String(params.get("damage_type", "physical")))
 			var damage: float = float(source.get("stats", {}).get("attack_damage", 0.0)) * damage_multiplier
-			var dealt: float = _apply_damage(source, target, damage, damage_type, StringName(String(context.get("action_kind", ACTION_AUTO))), context)
+			var dealt: float = _apply_damage(source, target, damage, damage_type, StringName(String(context.get("action_kind"))), context)
 			if bool(params.get("trigger_on_hit", true)):
 				_run_post_attack_effects(source, target, dealt, context)
 			return {"damage": dealt, "reason": String(params.get("reason", ""))}
@@ -647,7 +664,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 				"stun_duration": stun_duration,
 				"radius": radius,
 				"time_remaining": time_remaining,
-				"action_kind": context.get("action_kind", ACTION_AUTO),
+				"action_kind": context.get("action_kind"),
 				"reason": String(params.get("reason", "")),
 			})
 			return {"damage": damage, "reason": String(params.get("reason", "")), "use_projectile": true}
@@ -659,7 +676,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 		&"shield":
 			var shield_target: Dictionary = target_ally if not target_ally.is_empty() else source
 			var amount: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("max_hp_ratio", 0.0))
-			_add_shield(source, shield_target, amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
+			_add_shield(source, shield_target, amount, StringName(String(context.get("action_kind"))))
 			return {"shield_added": amount, "reason": String(params.get("reason", ""))}
 		&"heal":
 			var heal_target: Dictionary = target_ally if not target_ally.is_empty() else source
@@ -668,15 +685,15 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 				+ float(heal_target.get("hp", 0.0)) * float(params.get("current_hp_ratio", 0.0))
 				+ float(params.get("flat_amount", 0.0))
 			)
-			_heal_unit(source, heal_target, heal_amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
+			_heal_unit(source, heal_target, heal_amount, StringName(String(context.get("action_kind"))))
 			return {"healing": heal_amount, "reason": String(params.get("reason", ""))}
 		&"self_damage":
 			var self_damage: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("damage_ratio", 0.0))
-			_apply_damage(source, source, self_damage, StringName(String(params.get("damage_type", "true"))), StringName(String(context.get("action_kind", ACTION_AUTO))), context)
+			_apply_damage(source, source, self_damage, StringName(String(params.get("damage_type", "true"))), StringName(String(context.get("action_kind"))), context)
 			return {"damage": self_damage, "reason": String(params.get("reason", ""))}
 		&"self_shield":
-			var self_shield: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("shield_ratio", 0.0))
-			_add_shield(source, source, self_shield, StringName(String(context.get("action_kind", ACTION_AUTO))))
+			var self_shield: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("max_hp_ratio", 0.0))
+			_add_shield(source, source, self_shield, StringName(String(context.get("action_kind"))))
 			return {"shield_added": self_shield, "reason": String(params.get("reason", ""))}
 		&"self_aoe_taunt":
 			var radius: float = float(params.get("radius", 0.0))
@@ -687,15 +704,19 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 			var radius_damage: float = float(params.get("radius", 0.0))
 			var aoe_multiplier: float = float(params.get("damage_multiplier", 1.0))
 			var aoe_type: StringName = StringName(String(params.get("damage_type", "physical")))
-			var aoe_damage: float = float(source.get("stats", {}).get("attack_damage", 0.0)) * aoe_multiplier
-			_apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind", ACTION_AUTO))))
+			var aoe_damage: float
+			if params.has("flat_amount"):
+				aoe_damage = float(params.get("flat_amount", 0.0))
+			else:
+				aoe_damage = float(source.get("stats", {}).get("attack_damage", 0.0)) * aoe_multiplier
+			_apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind"))))
 			return {"damage": aoe_damage, "reason": String(params.get("reason", ""))}
 		&"splash_damage":
 			var splash_radius: float = float(params.get("radius", 0.0))
 			var splash_ratio: float = float(params.get("ratio", 0.0))
 			var splash_damage_type: StringName = StringName(String(params.get("damage_type", "physical")))
 			var splash_reason: String = String(params.get("reason", "Splash"))
-			_apply_splash_damage(source, target, float(context.get("damage", 0.0)), splash_radius, splash_damage_type, StringName(String(context.get("action_kind", ACTION_AUTO))), splash_reason, splash_ratio)
+			_apply_splash_damage(source, target, float(context.get("damage", 0.0)), splash_radius, splash_damage_type, StringName(String(context.get("action_kind"))), splash_reason, splash_ratio)
 			return {"damage": float(context.get("damage", 0.0)), "reason": splash_reason}
 		&"threshold_splash_damage":
 			var threshold_multiplier: float = float(params.get("threshold_multiplier", 1.0))
@@ -715,7 +736,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 		&"damage_based_heal":
 			var heal_ratio: float = float(params.get("heal_ratio", 0.0))
 			var heal_amount: float = float(context.get("damage", 0.0)) * heal_ratio
-			_heal_unit(source, source, heal_amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
+			_heal_unit(source, source, heal_amount, StringName(String(context.get("action_kind"))))
 			return {"healing": heal_amount}
 		&"mana_restore_on_hit":
 			var restore_amount: float = float(params.get("flat_amount", 0.0))
@@ -784,8 +805,8 @@ func _add_shield(source: Dictionary, target: Dictionary, amount: float, action_k
 			source["shielding_done_ability"] = float(source.get("shielding_done_ability", 0.0)) + amount
 		ACTION_ULTIMATE:
 			source["shielding_done_ultimate"] = float(source.get("shielding_done_ultimate", 0.0)) + amount
-		_:
-			pass
+		ACTION_PASSIVE:
+			source["shielding_done_passive"] = float(source.get("shielding_done_passive", 0.0)) + amount
 
 func _heal_unit(source: Dictionary, target: Dictionary, amount: float, action_kind: StringName) -> void:
 	if amount <= 0.0 or target.is_empty():
@@ -802,8 +823,8 @@ func _heal_unit(source: Dictionary, target: Dictionary, amount: float, action_ki
 			source["healing_done_ability"] = float(source.get("healing_done_ability", 0.0)) + amount
 		ACTION_ULTIMATE:
 			source["healing_done_ultimate"] = float(source.get("healing_done_ultimate", 0.0)) + amount
-		_:
-			pass
+		ACTION_PASSIVE:
+			source["healing_done_passive"] = float(source.get("healing_done_passive", 0.0)) + amount
 
 func _restore_mana(source: Dictionary, target: Dictionary, amount: float) -> void:
 	if amount <= 0.0 or target.is_empty():
@@ -1160,10 +1181,19 @@ func _build_summary():
 		unit_summary.damage_dealt_auto = float(unit.get("damage_dealt_auto", 0.0))
 		unit_summary.damage_dealt_ability = float(unit.get("damage_dealt_ability", 0.0))
 		unit_summary.damage_dealt_ultimate = float(unit.get("damage_dealt_ultimate", 0.0))
+		unit_summary.damage_dealt_passive = float(unit.get("damage_dealt_passive", 0.0))
 		unit_summary.damage_received = float(unit.get("damage_received", 0.0))
 		unit_summary.damage_mitigated = float(unit.get("damage_mitigated", 0.0))
 		unit_summary.healing_done = float(unit.get("healing_done", 0.0))
+		unit_summary.healing_done_auto = float(unit.get("healing_done_auto", 0.0))
+		unit_summary.healing_done_ability = float(unit.get("healing_done_ability", 0.0))
+		unit_summary.healing_done_ultimate = float(unit.get("healing_done_ultimate", 0.0))
+		unit_summary.healing_done_passive = float(unit.get("healing_done_passive", 0.0))
 		unit_summary.shielding_done = float(unit.get("shielding_done", 0.0))
+		unit_summary.shielding_done_auto = float(unit.get("shielding_done_auto", 0.0))
+		unit_summary.shielding_done_ability = float(unit.get("shielding_done_ability", 0.0))
+		unit_summary.shielding_done_ultimate = float(unit.get("shielding_done_ultimate", 0.0))
+		unit_summary.shielding_done_passive = float(unit.get("shielding_done_passive", 0.0))
 		unit_summary.auto_attacks = int(unit.get("auto_attacks", 0))
 		unit_summary.abilities = int(unit.get("abilities", 0))
 		unit_summary.ultimates = int(unit.get("ultimates", 0))

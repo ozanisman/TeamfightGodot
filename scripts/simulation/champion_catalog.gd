@@ -387,7 +387,7 @@ const CHAMPION_DATA := {
 			"armor": 0.28,
 			"magic_resist": 0.28,
 			"tenacity": 0.0,
-			"life_steal": 0.24,
+			"life_steal": 0.0,
 			"max_mana": 40.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 1.2,
@@ -812,7 +812,7 @@ const CHAMPION_DATA := {
 				"reason": "Valhalla Call",
 			},
 		},
-		"passive_ids": [&"bravery"],
+		"passive_ids": [&"aura_damage"],
 	},
 }
 
@@ -888,6 +888,9 @@ const PASSIVE_DATA := {
 	},
 	&"bravery": {
 		&"on_attack": [{"kind": &"self_hp_threshold_multiplier", "params": {"min_hp_ratio": 0.8, "multiplier": 1.2}}],
+	},
+	&"aura_damage": {
+		&"on_tick": [{"kind": &"self_aoe_damage", "params": {"radius": 1.0, "flat_amount": 5.0, "damage_type": "physical", "reason": "Aura Damage"}}],
 	},
 }
 

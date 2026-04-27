@@ -659,7 +659,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 		&"shield":
 			var shield_target: Dictionary = target_ally if not target_ally.is_empty() else source
 			var amount: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("max_hp_ratio", 0.0))
-			_add_shield(source, shield_target, amount)
+			_add_shield(source, shield_target, amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
 			return {"shield_added": amount, "reason": String(params.get("reason", ""))}
 		&"heal":
 			var heal_target: Dictionary = target_ally if not target_ally.is_empty() else source
@@ -668,7 +668,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 				+ float(heal_target.get("hp", 0.0)) * float(params.get("current_hp_ratio", 0.0))
 				+ float(params.get("flat_amount", 0.0))
 			)
-			_heal_unit(source, heal_target, heal_amount)
+			_heal_unit(source, heal_target, heal_amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
 			return {"healing": heal_amount, "reason": String(params.get("reason", ""))}
 		&"self_damage":
 			var self_damage: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("damage_ratio", 0.0))
@@ -676,7 +676,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 			return {"damage": self_damage, "reason": String(params.get("reason", ""))}
 		&"self_shield":
 			var self_shield: float = float(source.get("stats", {}).get("max_hp", 0.0)) * float(params.get("shield_ratio", 0.0))
-			_add_shield(source, source, self_shield)
+			_add_shield(source, source, self_shield, StringName(String(context.get("action_kind", ACTION_AUTO))))
 			return {"shield_added": self_shield, "reason": String(params.get("reason", ""))}
 		&"self_aoe_taunt":
 			var radius: float = float(params.get("radius", 0.0))
@@ -715,7 +715,7 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 		&"damage_based_heal":
 			var heal_ratio: float = float(params.get("heal_ratio", 0.0))
 			var heal_amount: float = float(context.get("damage", 0.0)) * heal_ratio
-			_heal_unit(source, source, heal_amount)
+			_heal_unit(source, source, heal_amount, StringName(String(context.get("action_kind", ACTION_AUTO))))
 			return {"healing": heal_amount}
 		&"mana_restore_on_hit":
 			var restore_amount: float = float(params.get("flat_amount", 0.0))
@@ -772,13 +772,22 @@ func _apply_stun(source: Dictionary, target: Dictionary, duration: float) -> voi
 	target["stun_remaining"] = maxf(float(target.get("stun_remaining", 0.0)), duration)
 	source["stuns"] = int(source.get("stuns", 0)) + 1
 
-func _add_shield(source: Dictionary, target: Dictionary, amount: float) -> void:
+func _add_shield(source: Dictionary, target: Dictionary, amount: float, action_kind: StringName) -> void:
 	if amount <= 0.0 or target.is_empty():
 		return
 	target["shield"] = float(target.get("shield", 0.0)) + amount
 	source["shielding_done"] = float(source.get("shielding_done", 0.0)) + amount
+	match action_kind:
+		ACTION_AUTO:
+			source["shielding_done_auto"] = float(source.get("shielding_done_auto", 0.0)) + amount
+		ACTION_ABILITY:
+			source["shielding_done_ability"] = float(source.get("shielding_done_ability", 0.0)) + amount
+		ACTION_ULTIMATE:
+			source["shielding_done_ultimate"] = float(source.get("shielding_done_ultimate", 0.0)) + amount
+		_:
+			pass
 
-func _heal_unit(source: Dictionary, target: Dictionary, amount: float) -> void:
+func _heal_unit(source: Dictionary, target: Dictionary, amount: float, action_kind: StringName) -> void:
 	if amount <= 0.0 or target.is_empty():
 		return
 	var stats: Dictionary = Dictionary(target.get("stats", {}))
@@ -786,6 +795,15 @@ func _heal_unit(source: Dictionary, target: Dictionary, amount: float) -> void:
 	var new_hp: float = minf(max_hp, float(target.get("hp", 0.0)) + amount)
 	target["hp"] = new_hp
 	source["healing_done"] = float(source.get("healing_done", 0.0)) + amount
+	match action_kind:
+		ACTION_AUTO:
+			source["healing_done_auto"] = float(source.get("healing_done_auto", 0.0)) + amount
+		ACTION_ABILITY:
+			source["healing_done_ability"] = float(source.get("healing_done_ability", 0.0)) + amount
+		ACTION_ULTIMATE:
+			source["healing_done_ultimate"] = float(source.get("healing_done_ultimate", 0.0)) + amount
+		_:
+			pass
 
 func _restore_mana(source: Dictionary, target: Dictionary, amount: float) -> void:
 	if amount <= 0.0 or target.is_empty():

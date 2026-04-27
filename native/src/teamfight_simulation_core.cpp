@@ -2188,7 +2188,7 @@ void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, 
 	source.stuns += 1;
 }
 
-void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, double amount) {
+void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
 	if (amount <= 0.0) {
 		return;
 	}
@@ -2197,12 +2197,19 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 		_viewer_record_shield_fx(target, amount);
 	}
 	source.shielding_done += amount;
+	if (action_kind == StringName("auto")) {
+		source.shielding_done_auto += amount;
+	} else if (action_kind == StringName("ability")) {
+		source.shielding_done_ability += amount;
+	} else if (action_kind == StringName("ultimate")) {
+		source.shielding_done_ultimate += amount;
+	}
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
 	}
 }
 
-void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount) {
+void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
 	if (amount <= 0.0) {
 		return;
 	}
@@ -2215,6 +2222,13 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 		_viewer_record_heal_fx(target, gained);
 	}
 	source.healing_done += amount;
+	if (action_kind == StringName("auto")) {
+		source.healing_done_auto += amount;
+	} else if (action_kind == StringName("ability")) {
+		source.healing_done_ability += amount;
+	} else if (action_kind == StringName("ultimate")) {
+		source.healing_done_ultimate += amount;
+	}
 	if (source.instance_id != target.instance_id) {
 		target.recent_benefactors[source.instance_id] = _time;
 	}
@@ -3196,7 +3210,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		_run_post_attack_effects(unit, target, dealt, context);
 		double life_steal = unit.combat.life_steal;
 		if (life_steal > 0.0) {
-			_heal_unit(unit, unit, dealt * life_steal);
+			_heal_unit(unit, unit, dealt * life_steal, StringName("auto"));
 		}
 	}
 	// Python parity: mana gain happens after attack resolution.
@@ -3353,7 +3367,7 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 	if (projectile.action_kind == StringName("auto")) {
 		double life_steal = source->combat.life_steal;
 		if (life_steal > 0.0) {
-			_heal_unit(*source, *source, dealt * life_steal);
+			_heal_unit(*source, *source, dealt * life_steal, StringName("auto"));
 		}
 	}
 	if (projectile.stun_duration > 0.0 && target->alive) {
@@ -3450,13 +3464,13 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 		case EFFECT_OPCODE_SHIELD: {
 			UnitState &shield_target = target_ally == nullptr ? source : *target_ally;
 			double amount = source.combat.max_hp * effect.scalar0;
-			_add_shield(source, shield_target, amount);
+			_add_shield(source, shield_target, amount, context.action_kind);
 			return;
 		}
 		case EFFECT_OPCODE_HEAL: {
 			UnitState &heal_target = target_ally == nullptr ? source : *target_ally;
 			double heal_amount = source.combat.max_hp * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
-			_heal_unit(source, heal_target, heal_amount);
+			_heal_unit(source, heal_target, heal_amount, context.action_kind);
 			return;
 		}
 		case EFFECT_OPCODE_SELF_DAMAGE: {
@@ -3466,7 +3480,7 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 		}
 		case EFFECT_OPCODE_SELF_SHIELD: {
 			double self_shield = source.combat.max_hp * effect.scalar0;
-			_add_shield(source, source, self_shield);
+			_add_shield(source, source, self_shield, context.action_kind);
 			return;
 		}
 		case EFFECT_OPCODE_SELF_AOE_TAUNT:
@@ -3494,7 +3508,7 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			_restore_mana(source, source, context.damage * effect.scalar0);
 			return;
 		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
-			_heal_unit(source, source, context.damage * effect.scalar0);
+			_heal_unit(source, source, context.damage * effect.scalar0, context.action_kind);
 			return;
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 			_restore_mana(source, source, effect.scalar0);
@@ -3558,7 +3572,13 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 		unit_summary["damage_received"] = unit.damage_received;
 		unit_summary["damage_mitigated"] = unit.damage_mitigated;
 		unit_summary["healing_done"] = unit.healing_done;
+		unit_summary["healing_done_auto"] = unit.healing_done_auto;
+		unit_summary["healing_done_ability"] = unit.healing_done_ability;
+		unit_summary["healing_done_ultimate"] = unit.healing_done_ultimate;
 		unit_summary["shielding_done"] = unit.shielding_done;
+		unit_summary["shielding_done_auto"] = unit.shielding_done_auto;
+		unit_summary["shielding_done_ability"] = unit.shielding_done_ability;
+		unit_summary["shielding_done_ultimate"] = unit.shielding_done_ultimate;
 		unit_summary["auto_attacks"] = unit.auto_attacks;
 		unit_summary["abilities"] = unit.abilities;
 		unit_summary["ultimates"] = unit.ultimates;

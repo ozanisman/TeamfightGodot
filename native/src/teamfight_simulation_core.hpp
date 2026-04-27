@@ -118,7 +118,13 @@ private:
 		double damage_received = 0.0;
 		double damage_mitigated = 0.0;
 		double healing_done = 0.0;
+		double healing_done_auto = 0.0;
+		double healing_done_ability = 0.0;
+		double healing_done_ultimate = 0.0;
 		double shielding_done = 0.0;
+		double shielding_done_auto = 0.0;
+		double shielding_done_ability = 0.0;
+		double shielding_done_ultimate = 0.0;
 		int64_t auto_attacks = 0;
 		int64_t abilities = 0;
 		int64_t ultimates = 0;
@@ -518,8 +524,8 @@ private:
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
-	void _add_shield(UnitState &source, UnitState &target, double amount);
-	void _heal_unit(UnitState &source, UnitState &target, double amount);
+	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
+	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);

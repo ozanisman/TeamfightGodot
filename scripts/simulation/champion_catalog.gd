@@ -10,6 +10,7 @@ const RoleConfigSpecScript := preload("res://scripts/simulation/role_config_spec
 static var _role_config_cache: Dictionary = {}
 static var _catalog_cache: Dictionary = {}
 static var _passive_cache: Dictionary = {}
+static var _champion_ids_cache: Array[StringName] = []
 static var _role_kits: Dictionary = {}
 static var _role_kits_loaded: bool = false
 
@@ -975,10 +976,12 @@ static func get_passive_entry(passive_id: StringName):
 	return build_passive_registry().get(passive_id, {})
 
 static func get_champion_ids() -> Array[StringName]:
-	var ids: Array[StringName] = []
-	for unit_id in build_catalog().keys():
-		ids.append(StringName(String(unit_id)))
-	return ids
+	if _champion_ids_cache.is_empty():
+		var ids: Array[StringName] = []
+		for unit_id in build_catalog().keys():
+			ids.append(StringName(String(unit_id)))
+		_champion_ids_cache = ids
+	return _champion_ids_cache.duplicate()
 
 static func get_champion(unit_id: StringName):
 	return build_catalog().get(unit_id, null)

@@ -532,7 +532,7 @@ private:
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
-	void _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
+	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
 	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim = false);
 	UnitState *_select_ally_target(UnitState &unit);
 	double _distance_between(const UnitState &left, const UnitState &right) const;

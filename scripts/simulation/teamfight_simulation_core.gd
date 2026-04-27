@@ -709,8 +709,8 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 				aoe_damage = float(params.get("flat_amount", 0.0))
 			else:
 				aoe_damage = float(source.get("stats", {}).get("attack_damage", 0.0)) * aoe_multiplier
-			_apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind"))))
-			return {"damage": aoe_damage, "reason": String(params.get("reason", ""))}
+			var total_damage: float = _apply_aoe_damage(source, source, aoe_damage, radius_damage, aoe_type, String(params.get("reason", "")), StringName(String(context.get("action_kind"))))
+			return {"damage": total_damage, "reason": String(params.get("reason", ""))}
 		&"splash_damage":
 			var splash_radius: float = float(params.get("radius", 0.0))
 			var splash_ratio: float = float(params.get("ratio", 0.0))
@@ -857,7 +857,8 @@ func _apply_aoe_taunt(source: Dictionary, radius: float, duration: float) -> voi
 			unit["taunt_target_id"] = int(source.get("instance_id", 0))
 			unit["taunt_remaining"] = maxf(float(unit.get("taunt_remaining", 0.0)), duration)
 
-func _apply_aoe_damage(source: Dictionary, center_source: Dictionary, damage: float, radius: float, damage_type: StringName, reason: String, action_kind: StringName) -> void:
+func _apply_aoe_damage(source: Dictionary, center_source: Dictionary, damage: float, radius: float, damage_type: StringName, reason: String, action_kind: StringName) -> float:
+	var total_damage: float = 0.0
 	for unit in _units:
 		if not bool(unit.get("alive", false)):
 			continue
@@ -865,7 +866,9 @@ func _apply_aoe_damage(source: Dictionary, center_source: Dictionary, damage: fl
 			continue
 		if _distance_between_dicts(center_source, unit) <= radius:
 			var context: Dictionary = _build_context(source, unit, {}, damage, action_kind)
-			_apply_damage(source, unit, damage, damage_type, action_kind, context)
+			var dealt: float = _apply_damage(source, unit, damage, damage_type, action_kind, context)
+			total_damage += dealt
+	return total_damage
 
 func _select_enemy_target(unit: Dictionary) -> Dictionary:
 	var taunt_id: int = int(unit.get("taunt_target_id", 0))

@@ -2313,19 +2313,22 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 	}
 }
 
-void TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind) {
+double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind) {
 	(void)reason;
 	_viewer_record_aoe_ring_fx(source, center_source, radius, StringName("aoe_damage"));
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	double total_damage = 0.0;
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &unit = _units[enemy_index];
 		if (_distance_between(center_source, unit) <= radius) {
 			EffectContext context = _build_context(source, &unit, nullptr, damage, action_kind);
-			_apply_damage(source, unit, damage, damage_type, action_kind, context);
+			double dealt = _apply_damage(source, unit, damage, damage_type, action_kind, context);
+			total_damage += dealt;
 		}
 	}
+	return total_damage;
 }
 
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
@@ -3511,7 +3514,9 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			} else {
 				aoe_damage = source.combat.attack_damage * effect.scalar1;
 			}
-			_apply_aoe_damage(source, source, aoe_damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, effect.reason, context.action_kind);
+			double total_damage = _apply_aoe_damage(source, source, aoe_damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, effect.reason, context.action_kind);
+			// Store total damage in context for damage_based_heal to use
+			context.damage = total_damage;
 			return;
 		}
 		case EFFECT_OPCODE_SPLASH_DAMAGE:

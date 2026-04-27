@@ -890,7 +890,15 @@ const PASSIVE_DATA := {
 		&"on_attack": [{"kind": &"self_hp_threshold_multiplier", "params": {"min_hp_ratio": 0.8, "multiplier": 1.2}}],
 	},
 	&"aura_damage": {
-		&"on_tick": [{"kind": &"self_aoe_damage", "params": {"radius": 1.0, "flat_amount": 5.0, "damage_type": "physical", "reason": "Aura Damage"}}],
+		&"on_tick": [{
+			"kind": &"multi",
+			"params": {
+				"effects": [
+					{"kind": &"self_aoe_damage", "params": {"radius": 1.0, "flat_amount": 5.0, "damage_type": "physical", "reason": "Aura Damage"}},
+					{"kind": &"damage_based_heal", "params": {"heal_ratio": 1.0}},
+				],
+			},
+		}],
 	},
 }
 

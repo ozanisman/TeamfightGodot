@@ -697,12 +697,25 @@
 		"aura_damage": {
 			"on_tick": [
 				{
-					"kind": "self_aoe_damage",
+					"kind": "multi",
 					"params": {
-						"damage_type": "physical",
-						"flat_amount": 5.0,
-						"radius": 1.0,
-						"reason": "Aura Damage"
+						"effects": [
+							{
+								"kind": "self_aoe_damage",
+								"params": {
+									"damage_type": "physical",
+									"flat_amount": 5.0,
+									"radius": 1.0,
+									"reason": "Aura Damage"
+								}
+							},
+							{
+								"kind": "damage_based_heal",
+								"params": {
+									"heal_ratio": 1.0
+								}
+							}
+						]
 					}
 				}
 			]

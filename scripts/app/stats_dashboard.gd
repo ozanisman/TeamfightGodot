@@ -2095,8 +2095,8 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 	
 	table.add_child(header_row)
 	
-	# Sort data
-	var sorted_items = _sort_matchup_data(data)
+	# Sort data with special logic for counter matchups
+	var sorted_items = _sort_matchup_data(data, matchup_type)
 	
 	# Data rows
 	for item in sorted_items:
@@ -2134,7 +2134,7 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 	return scroll
 
 
-func _sort_matchup_data(data: Dictionary) -> Array:
+func _sort_matchup_data(data: Dictionary, matchup_type: String) -> Array:
 	var items := []
 	
 	for opponent_name in data.keys():
@@ -2147,10 +2147,16 @@ func _sort_matchup_data(data: Dictionary) -> Array:
 		})
 	
 	match _current_sort_mode:
-		0:  # Winrate (High to Low)
-			items.sort_custom(func(a, b): return a.winrate > b.winrate)
-		1:  # Winrate (Low to High)
-			items.sort_custom(func(a, b): return a.winrate < b.winrate)
+		0:  # Winrate (High to Low) - invert for counters
+			if matchup_type == "vs":
+				items.sort_custom(func(a, b): return a.winrate < b.winrate)  # Lowest first for counters
+			else:
+				items.sort_custom(func(a, b): return a.winrate > b.winrate)  # Highest first for synergies
+		1:  # Winrate (Low to High) - invert for counters
+			if matchup_type == "vs":
+				items.sort_custom(func(a, b): return a.winrate > b.winrate)  # Highest first for counters
+			else:
+				items.sort_custom(func(a, b): return a.winrate < b.winrate)  # Lowest first for synergies
 		2:  # Wins
 			items.sort_custom(func(a, b): return a.wins > b.wins)
 		3:  # Losses

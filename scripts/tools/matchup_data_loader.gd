@@ -131,7 +131,7 @@ func get_best_counters(champion_name: String, limit: int = 5) -> Array:
 	
 	for opponent in matchups["vs"]:
 		var data = matchups["vs"][opponent]
-		if data.winrate > 0.5:  # Only include favorable matchups
+		if data.winrate < 0.5:  # Only include unfavorable matchups (good counters)
 			counters.append({
 				"name": opponent,
 				"winrate": data.winrate,
@@ -139,8 +139,8 @@ func get_best_counters(champion_name: String, limit: int = 5) -> Array:
 				"losses": data.losses
 			})
 	
-	# Sort by winrate descending
-	counters.sort_custom(func(a, b): return a.winrate > b.winrate)
+	# Sort by winrate ascending (worst for current champion = best counter)
+	counters.sort_custom(func(a, b): return a.winrate < b.winrate)
 	
 	# Return top results
 	if counters.size() > limit:
@@ -154,7 +154,7 @@ func get_weak_against(champion_name: String, limit: int = 5) -> Array:
 	
 	for opponent in matchups["vs"]:
 		var data = matchups["vs"][opponent]
-		if data.winrate < 0.5:  # Only include unfavorable matchups
+		if data.winrate > 0.5:  # Only include favorable matchups (weak against)
 			weak.append({
 				"name": opponent,
 				"winrate": data.winrate,
@@ -162,8 +162,8 @@ func get_weak_against(champion_name: String, limit: int = 5) -> Array:
 				"losses": data.losses
 			})
 	
-	# Sort by winrate ascending (worst first)
-	weak.sort_custom(func(a, b): return a.winrate < b.winrate)
+	# Sort by winrate descending (best for current champion = weak against)
+	weak.sort_custom(func(a, b): return a.winrate > b.winrate)
 	
 	# Return top results
 	if weak.size() > limit:

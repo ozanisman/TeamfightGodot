@@ -183,6 +183,10 @@ var _fps_cap_applied: bool = false
 @onready var _root_vb: VBoxContainer = $RootVBox
 
 
+func _native_backend_ready() -> bool:
+	return ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore")
+
+
 func _dim_color(col: Color, amount: float = 60.0 / 255.0) -> Color:
 	return Color(
 		maxf(0.0, col.r - amount),
@@ -432,8 +436,7 @@ func _build_ui() -> void:
 		"Native simulation is required for export and batch tooling. "
 		+ "Build and place teamfight_simulation_core.dll in native/bin/."
 	)
-	# File-only check skips non-Windows and any Windows path that exists without a working GDExtension.
-	_native_required_notice.visible = not NativeSimulationBackendScript.new().is_native_runtime()
+	_native_required_notice.visible = not _native_backend_ready()
 	export_inner.add_child(_native_required_notice)
 
 	var regen_hint := Label.new()
@@ -822,12 +825,12 @@ func _wire_controls() -> void:
 func _setup_regen_native_confirm_dialog() -> void:
 	_regen_native_confirm = ConfirmationDialog.new()
 	_regen_native_confirm.title = "Native backend required"
-	_regen_native_confirm.ok_button_text = "Close"
+	_regen_native_confirm.ok_button_text = "Retry export"
 	_regen_native_confirm.cancel_button_text = "Cancel"
 	_regen_native_confirm.dialog_text = (
 		"native/bin/teamfight_simulation_core.dll was not found. "
-		+ "Export requires the native TeamfightSimulationCore backend and cannot proceed without it.\n\n"
-		+ "Close this dialog after building the native DLL."
+		+ "Export requires the native TeamfightSimulationCore backend.\n\n"
+		+ "Build the DLL, then click Retry export."
 	)
 	_regen_native_confirm.min_size = Vector2i(420, 180)
 	_regen_native_confirm.exclusive = true
@@ -962,7 +965,7 @@ func _on_regenerate_pressed() -> void:
 		return
 	# Use runtime (GDExtension actually loaded), not FileAccess: non-Windows always skipped file check;
 	# a present DLL path can still fail to register TeamfightSimulationCore.
-	if not NativeSimulationBackendScript.new().is_native_runtime():
+	if not _native_backend_ready():
 		_regen_stashed_export_params = params
 		call_deferred("_deferred_show_regen_native_confirm")
 		return
@@ -979,16 +982,16 @@ func _deferred_show_regen_native_confirm() -> void:
 
 
 func _on_regen_native_export_confirmed() -> void:
-	if not NativeSimulationBackendScript.new().is_native_runtime():
-		_regen_status.text = "Native simulation backend required for export."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
 	var params: Variant = _regen_stashed_export_params
 	_regen_stashed_export_params = null
 	if params == null or not params is Dictionary:
 		params = _read_regen_export_params()
 	if params == null or not params is Dictionary:
 		_regen_status.text = "Export settings invalid. Fix errors above, then try again."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		return
+	if not _native_backend_ready():
+		_regen_status.text = "Native simulation backend required for export."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return
 	_run_regen_export_thread(params as Dictionary)

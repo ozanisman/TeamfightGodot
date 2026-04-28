@@ -151,7 +151,7 @@ Example:
 | GDScript backend adapter | [`scripts/simulation/native_simulation_backend.gd`](../scripts/simulation/native_simulation_backend.gd) |
 | Parity hashing / payloads | [`scripts/simulation/parity_tools.gd`](../scripts/simulation/parity_tools.gd) |
 | Match input / summary schema | [`match_replay_input.gd`](../scripts/simulation/match_replay_input.gd), [`match_replay_summary.gd`](../scripts/simulation/match_replay_summary.gd) |
-| Gameplay-driven stepping | [`scripts/simulation/sim_runner.gd`](../scripts/simulation/sim_runner.gd) |
+| Gameplay-driven stepping | [`scripts/simulation/native_simulation_backend.gd`](../scripts/simulation/native_simulation_backend.gd) |
 
 Design note on Python-shaped internals: [`docs/python_relics_vs_godot.md`](python_relics_vs_godot.md).
 

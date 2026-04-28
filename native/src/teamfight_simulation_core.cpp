@@ -1658,7 +1658,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		score += strategy_role_prio(strategy.role_priorities, enemy.role_id);
 		if (enemy.role_id == sn_tank()) {
 			score += strategy.tank_penalty;
-			// Python oracle: assassins apply an extra tank penalty if there are backliners alive.
+			// Assassins apply an extra tank penalty if there are backliners alive.
 			if (attacker.role_id == sn_assassin()) {
 				int64_t enemy_self_idx = _unit_index_by_id(enemy.instance_id);
 				const std::vector<int64_t> &bl = enemy.team == sn_player() ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
@@ -1899,7 +1899,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 }
 
 bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double current_score, double new_score, const TeamfightSimulationCore::UnitStrategy &strategy) const {
-	// Python oracle parity: respect post-switch lock + commit window to avoid last-moment target flip.
+	// Respect post-switch lock + commit window to avoid last-moment target flip.
 	if (unit.target_switch_lock_timer > 0.0) {
 		return false;
 	}
@@ -2897,7 +2897,7 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	target.deaths += 1;
 
 	const std::unordered_map<int64_t, UnitState::DamageSourceEntry> &damage_sources = target.damage_sources;
-	// Reference (teamfight_simulation_core.gd): killer = source with max accumulated damage in window; ties → lower instance_id.
+	// Killer = source with max accumulated damage in window; ties resolve to lower instance_id.
 	int64_t killer_id = 0;
 	double killer_damage = -1.0;
 	for (const auto &entry : damage_sources) {

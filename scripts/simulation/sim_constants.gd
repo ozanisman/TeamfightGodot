@@ -43,6 +43,7 @@ const SEPARATION_RADIUS_RANGED: float = 0.8
 const SEPARATION_RADIUS_MELEE: float = 0.25
 const SEPARATION_RANGE_THRESHOLD: float = 1.5
 const KITE_DANGER_THRESHOLD: float = 0.9
+const UNIT_COLLISION_RADIUS: float = 0.15
 
 # ========================================
 # TARGET SELECTION - GENERAL

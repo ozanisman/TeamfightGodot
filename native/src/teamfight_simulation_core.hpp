@@ -369,6 +369,7 @@ private:
 	static constexpr double PROJECTILE_TIME_WEIGHT_MARKSMAN = 0.35;
 	static constexpr double PROJECTILE_TIME_WEIGHT_MAGE = 0.45;
 	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
+	static constexpr double UNIT_COLLISION_RADIUS = 0.15;
 	static constexpr int SPATIAL_GRID_DIM = 8;
 	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (6+). Standard 5v5 (5 alive) stays brute — avoids grid overhead at small n.
 	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4;
@@ -545,6 +546,8 @@ private:
 	UnitState *_unit_by_id(int64_t instance_id);
 	const UnitState *_unit_by_id(int64_t instance_id) const;
 	int64_t _unit_index_by_id(int64_t instance_id) const;
+	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id = 0) const;
+	Vector2 _find_valid_dash_position(double start_x, double start_y, double target_x, double target_y, double max_distance, int64_t exclude_instance_id = 0) const;
 	void _handle_death(UnitState &killer, UnitState &target);
 	StringName _determine_winner() const;
 	void _respawn_unit(UnitState &unit);

@@ -799,6 +799,13 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 								new_x = current_x + (dx / dist) * move_dist
 								new_y = current_y + (dy / dist) * move_dist
 			
+			# Find valid position avoiding unit collisions
+			var source_id: int = int(source.get("instance_id", 0))
+			var valid_pos: Vector2 = _find_valid_dash_position(current_x, current_y, new_x, new_y, dash_distance, source_id)
+			new_x = valid_pos.x
+			new_y = valid_pos.y
+			
+			# Clamp to boundaries (already done in _find_valid_dash_position, but ensure it)
 			new_x = clampf(new_x, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
 			new_y = clampf(new_y, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
 			
@@ -1131,6 +1138,62 @@ func _distance_between_dicts(left: Dictionary, right: Dictionary) -> float:
 	var left_position: Vector2 = Vector2(float(left.get("x", 0.0)), float(left.get("y", 0.0)))
 	var right_position: Vector2 = Vector2(float(right.get("x", 0.0)), float(right.get("y", 0.0)))
 	return left_position.distance_to(right_position)
+
+func _position_collides_with_unit(x: float, y: float, exclude_instance_id: int = 0) -> bool:
+	var collision_radius: float = SimConstantsScript.UNIT_COLLISION_RADIUS
+	for unit in _units:
+		if int(unit.get("instance_id", 0)) == exclude_instance_id:
+			continue
+		if not bool(unit.get("alive", true)):
+			continue
+		var unit_x: float = float(unit.get("x", 0.0))
+		var unit_y: float = float(unit.get("y", 0.0))
+		var dist: float = sqrt((x - unit_x) * (x - unit_x) + (y - unit_y) * (y - unit_y))
+		if dist < collision_radius * 2.0:
+			return true
+	return false
+
+func _find_valid_dash_position(start_x: float, start_y: float, target_x: float, target_y: float, max_distance: float, exclude_instance_id: int = 0) -> Vector2:
+	var collision_radius: float = SimConstantsScript.UNIT_COLLISION_RADIUS
+	var direction: Vector2 = Vector2(target_x - start_x, target_y - start_y)
+	if direction.length_squared() < SimConstantsScript.EPSILON * SimConstantsScript.EPSILON:
+		return Vector2(start_x, start_y)
+	direction = direction.normalized()
+	
+	# Check if destination is valid
+	if not _position_collides_with_unit(target_x, target_y, exclude_instance_id):
+		return Vector2(target_x, target_y)
+	
+	# Search outward from target and inward from target
+	var step_size: float = 0.01
+	var outward_dist: float = step_size
+	var inward_dist: float = step_size
+	var target_to_start_dist: float = sqrt((target_x - start_x) * (target_x - start_x) + (target_y - start_y) * (target_y - start_y))
+	
+	while outward_dist <= max_distance or inward_dist <= target_to_start_dist:
+		# Test outward positions (beyond target)
+		if outward_dist <= max_distance:
+			var test_x_out: float = target_x + direction.x * outward_dist
+			var test_y_out: float = target_y + direction.y * outward_dist
+			test_x_out = clampf(test_x_out, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
+			test_y_out = clampf(test_y_out, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
+			if not _position_collides_with_unit(test_x_out, test_y_out, exclude_instance_id):
+				return Vector2(test_x_out, test_y_out)
+		
+		# Test inward positions (between start and target)
+		if inward_dist <= target_to_start_dist:
+			var test_x_in: float = target_x - direction.x * inward_dist
+			var test_y_in: float = target_y - direction.y * inward_dist
+			test_x_in = clampf(test_x_in, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
+			test_y_in = clampf(test_y_in, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
+			if not _position_collides_with_unit(test_x_in, test_y_in, exclude_instance_id):
+				return Vector2(test_x_in, test_y_in)
+		
+		outward_dist += step_size
+		inward_dist += step_size
+	
+	# No valid position found, return start position
+	return Vector2(start_x, start_y)
 
 func _attack_range(unit: Dictionary) -> float:
 	return float(Dictionary(unit.get("stats", {})).get("attack_range", 0.0))

@@ -224,10 +224,10 @@ const CHAMPION_DATA := {
 		},
 		"passive_ids": [&"bastion"],
 	},
-	&"assassin": {
+	&"ninja": {
 		"stats": {
-			"unit_id": &"assassin",
-			"name": &"Assassin",
+			"unit_id": &"ninja",
+			"name": &"Ninja",
 			"role": &"assassin",
 			"max_hp": 240.0,
 			"attack_damage": 44.0,
@@ -248,7 +248,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
-		"ability_desc": "Quick dash for 200% damage and a short 1.0s stun.",
+		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
 		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"passive_desc": "Deals double damage to targets below 50% HP.",
 		"ability": {
@@ -256,10 +256,10 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{"kind": &"self_dash", "params": {"distance": 2.0}},
-					{"kind": &"damage", "params": {"damage_multiplier": 1.5, "reason": "Charge Strike"}},
-					{"kind": &"stun", "params": {"duration": 0.5, "reason": "Charge Strike"}},
+					{"kind": &"damage", "params": {"damage_multiplier": 1.5, "reason": "Shadow Strike"}},
+					{"kind": &"stun", "params": {"duration": 0.5, "reason": "Shadow Strike"}},
 				],
-				"reason": "Charge Strike",
+				"reason": "Shadow Strike",
 			},
 			"requires_target_in_range": false,
 		},

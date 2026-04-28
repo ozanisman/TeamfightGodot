@@ -2604,6 +2604,75 @@ double TeamfightSimulationCore::_distance_between(const UnitState &left, const U
 	return Math::sqrt(dx * dx + dy * dy);
 }
 
+bool TeamfightSimulationCore::_position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const {
+	double collision_radius = UNIT_COLLISION_RADIUS;
+	for (const UnitState &unit : _units) {
+		if (unit.instance_id == exclude_instance_id) {
+			continue;
+		}
+		if (!unit.alive) {
+			continue;
+		}
+		double unit_x = unit.pos_x;
+		double unit_y = unit.pos_y;
+		double dist = Math::sqrt((x - unit_x) * (x - unit_x) + (y - unit_y) * (y - unit_y));
+		if (dist < collision_radius * 2.0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+Vector2 TeamfightSimulationCore::_find_valid_dash_position(double start_x, double start_y, double target_x, double target_y, double max_distance, int64_t exclude_instance_id) const {
+	double collision_radius = UNIT_COLLISION_RADIUS;
+	Vector2 direction(target_x - start_x, target_y - start_y);
+	if (direction.length_squared() < EPSILON * EPSILON) {
+		return Vector2(start_x, start_y);
+	}
+	direction = direction.normalized();
+	
+	// Check if destination is valid
+	if (!_position_collides_with_unit(target_x, target_y, exclude_instance_id)) {
+		return Vector2(target_x, target_y);
+	}
+	
+	// Search outward from target and inward from target
+	double step_size = 0.01;
+	double outward_dist = step_size;
+	double inward_dist = step_size;
+	double target_to_start_dist = Math::sqrt((target_x - start_x) * (target_x - start_x) + (target_y - start_y) * (target_y - start_y));
+	
+	while (outward_dist <= max_distance || inward_dist <= target_to_start_dist) {
+		// Test outward positions (beyond target)
+		if (outward_dist <= max_distance) {
+			double test_x_out = target_x + direction.x * outward_dist;
+			double test_y_out = target_y + direction.y * outward_dist;
+			test_x_out = Math::clamp(test_x_out, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			test_y_out = Math::clamp(test_y_out, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			if (!_position_collides_with_unit(test_x_out, test_y_out, exclude_instance_id)) {
+				return Vector2(test_x_out, test_y_out);
+			}
+		}
+		
+		// Test inward positions (between start and target)
+		if (inward_dist <= target_to_start_dist) {
+			double test_x_in = target_x - direction.x * inward_dist;
+			double test_y_in = target_y - direction.y * inward_dist;
+			test_x_in = Math::clamp(test_x_in, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			test_y_in = Math::clamp(test_y_in, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			if (!_position_collides_with_unit(test_x_in, test_y_in, exclude_instance_id)) {
+				return Vector2(test_x_in, test_y_in);
+			}
+		}
+		
+		outward_dist += step_size;
+		inward_dist += step_size;
+	}
+	
+	// No valid position found, return start position
+	return Vector2(start_x, start_y);
+}
+
 double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
 	return unit.combat.attack_range;
 }
@@ -3606,6 +3675,13 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 				}
 			}
 			
+			// Find valid position avoiding unit collisions
+			int64_t source_id = source.instance_id;
+			Vector2 valid_pos = _find_valid_dash_position(current_x, current_y, new_x, new_y, dash_distance, source_id);
+			new_x = valid_pos.x;
+			new_y = valid_pos.y;
+			
+			// Clamp to boundaries (already done in _find_valid_dash_position, but ensure it)
 			new_x = Math::clamp(new_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 			new_y = Math::clamp(new_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 			

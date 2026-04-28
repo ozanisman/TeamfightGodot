@@ -135,7 +135,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Quick dash for 200% damage and a short 1.0s stun.",
+		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
 		"name": "Assassin",
 		"passive_desc": "Deals double damage to targets below 50% HP.",

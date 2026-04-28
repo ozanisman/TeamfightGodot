@@ -9,6 +9,7 @@ const StatsChartAxisGuidesScript := preload("res://scripts/app/stats_chart_axis_
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
+const MatchupDataLoaderScript := preload("res://scripts/tools/matchup_data_loader.gd")
 
 const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
 const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
@@ -170,6 +171,11 @@ var _regen_progress: ProgressBar
 var _regen_status: Label
 var _export_popup: Window
 var _export_popup_content: VBoxContainer
+var _matchup_loader: RefCounted
+var _matchup_vb: VBoxContainer
+var _current_champion: String = ""
+var _current_view_mode: int = 0  # 0=vs, 1=with, 2=both
+var _current_sort_mode: int = 0  # 0=winrate_desc, 1=winrate_asc, 2=wins, 3=losses, 4=alpha
 var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
@@ -434,6 +440,16 @@ func _build_ui() -> void:
 	filter_vb.add_child(_role_grid)
 
 	# Export UI moved to popup - Matchups tab now free for matchup visualization
+	regen_vb.add_child(_section_label("MATCHUP ANALYSIS"))
+	_matchup_vb = VBoxContainer.new()
+	_matchup_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_matchup_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_matchup_vb.add_theme_constant_override("separation", 16)
+	regen_vb.add_child(_matchup_vb)
+	
+	# Initialize matchup loader
+	_matchup_loader = MatchupDataLoaderScript.new()
+	_build_matchup_ui()
 
 	var right_vb := VBoxContainer.new()
 	right_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1617,13 +1633,13 @@ func _on_new_data_pressed() -> void:
 	if _export_popup == null:
 		_build_export_popup()
 		add_child(_export_popup)  # Add to scene tree before showing
-	_export_popup.popup_centered(Vector2i(700, 800))
+	_export_popup.popup_centered(Vector2i(700, 900))
 
 
 func _build_export_popup() -> void:
 	_export_popup = Window.new()
 	_export_popup.title = "Generate New Data"
-	_export_popup.min_size = Vector2i(700, 800)
+	_export_popup.min_size = Vector2i(700, 900)
 	_export_popup.unresizable = false
 	_export_popup.close_requested.connect(func(): _export_popup.hide())
 	
@@ -1758,3 +1774,415 @@ func _build_export_ui_content() -> void:
 	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_regen_status.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	export_inner.add_child(_regen_status)
+
+
+func _build_matchup_ui() -> void:
+	# Load matchup data
+	print("Loading matchup data...")
+	if not _matchup_loader.load_data():
+		print("Failed to load matchup data: " + _matchup_loader.last_error)
+		_show_matchup_error("Failed to load matchup data: " + _matchup_loader.last_error)
+		return
+	
+	print("Matchup data loaded successfully")
+	print("Champion count: ", _matchup_loader.champions.size())
+	
+	# Create main layout
+	var main_hb := HBoxContainer.new()
+	main_hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_hb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_matchup_vb.add_child(main_hb)
+	
+	# Left sidebar
+	var left_panel := VBoxContainer.new()
+	left_panel.custom_minimum_size.x = UI_SIDEBAR_MIN_W
+	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_panel.add_theme_constant_override("separation", 12)
+	main_hb.add_child(left_panel)
+	
+	# Champion selector
+	left_panel.add_child(_section_label("CHAMPION"))
+	var champion_search := LineEdit.new()
+	champion_search.placeholder_text = "Search champion..."
+	champion_search.custom_minimum_size.y = UI_MIN_CONTROL_H
+	champion_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	champion_search.text_changed.connect(_on_champion_search_changed)
+	left_panel.add_child(champion_search)
+	
+	var champion_list := ItemList.new()
+	champion_list.custom_minimum_size.y = 1000
+	champion_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	champion_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_panel.add_child(champion_list)
+	champion_list.item_selected.connect(_on_champion_selected)
+	
+	# Populate champion list
+	for champion in _matchup_loader.champions:
+		champion_list.add_item(champion)
+	
+	print("Added ", _matchup_loader.champions.size(), " champions to ItemList")
+	
+	# View mode
+	left_panel.add_child(_section_label("VIEW MODE"))
+	var view_mode := OptionButton.new()
+	view_mode.custom_minimum_size.y = UI_MIN_CONTROL_H
+	view_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	view_mode.add_item("Counters (vs)")
+	view_mode.add_item("Synergies (with)")
+	view_mode.add_item("Both")
+	view_mode.item_selected.connect(_on_view_mode_changed)
+	left_panel.add_child(view_mode)
+	
+	# Sort options
+	left_panel.add_child(_section_label("SORT BY"))
+	var sort_mode := OptionButton.new()
+	sort_mode.custom_minimum_size.y = UI_MIN_CONTROL_H
+	sort_mode.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sort_mode.add_item("Winrate (High to Low)")
+	sort_mode.add_item("Winrate (Low to High)")
+	sort_mode.add_item("Wins")
+	sort_mode.add_item("Losses")
+	sort_mode.add_item("Alphabetical")
+	sort_mode.item_selected.connect(_on_sort_mode_changed)
+	left_panel.add_child(sort_mode)
+	
+	# Refresh button
+	var refresh_btn := Button.new()
+	refresh_btn.text = "Refresh Data"
+	refresh_btn.custom_minimum_size.y = UI_MIN_CONTROL_H
+	refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	refresh_btn.pressed.connect(_refresh_matchup_data)
+	left_panel.add_child(refresh_btn)
+	
+	# Right content area
+	var right_panel := VBoxContainer.new()
+	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_panel.add_theme_constant_override("separation", 16)
+	main_hb.add_child(right_panel)
+	
+	# Content will be populated when champion is selected
+	_show_matchup_placeholder(right_panel)
+
+
+func _show_matchup_error(error_message: String) -> void:
+	var error_label := Label.new()
+	error_label.text = "Error: " + error_message
+	error_label.add_theme_color_override("font_color", COLOR_RED)
+	error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_matchup_vb.add_child(error_label)
+
+
+func _show_matchup_placeholder(parent: Control) -> void:
+	var placeholder := Label.new()
+	placeholder.text = "Select a champion to view matchup analysis"
+	placeholder.add_theme_color_override("font_color", COLOR_SUBTLE)
+	placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(placeholder)
+
+
+func _on_champion_search_changed(text: String) -> void:
+	pass  # TODO: Implement search filtering
+
+
+func _on_champion_selected(index: int) -> void:
+	if index < 0 or index >= _matchup_loader.champions.size():
+		return
+	
+	_current_champion = _matchup_loader.champions[index]
+	_update_matchup_display()
+
+
+func _on_view_mode_changed(index: int) -> void:
+	_current_view_mode = index
+	_update_matchup_display()
+
+
+func _on_sort_mode_changed(index: int) -> void:
+	_current_sort_mode = index
+	_update_matchup_display()
+
+
+func _update_matchup_display() -> void:
+	if _current_champion.is_empty():
+		return
+	
+	# Clear existing content
+	var right_panel = _matchup_vb.get_child(0).get_child(1)  # Get right panel
+	for child in right_panel.get_children():
+		child.queue_free()
+	
+	# Get matchup data
+	var matchups = _matchup_loader.get_champion_matchups(_current_champion)
+	
+	# Create header
+	var header := Label.new()
+	header.text = "Matchup Analysis: " + _current_champion.to_upper()
+	header.add_theme_color_override("font_color", COLOR_TEXT)
+	header.add_theme_font_size_override("font_size", UI_FONT_SECTION)
+	right_panel.add_child(header)
+	
+	# Create content based on view mode
+	match _current_view_mode:
+		0:  # Counters (vs)
+			_show_vs_matchups(right_panel, matchups)
+		1:  # Synergies (with)
+			_show_with_matchups(right_panel, matchups)
+		2:  # Both
+			_show_both_matchups(right_panel, matchups)
+
+
+func _show_vs_matchups(parent: Control, matchups: Dictionary) -> void:
+	var vs_data = matchups.get("vs", {})
+	if vs_data.is_empty():
+		_show_no_data(parent, "No counter matchup data available")
+		return
+	
+	# Summary section
+	var summary_card := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
+	parent.add_child(summary_card)
+	
+	# Matchup table
+	var table := _create_matchup_table(vs_data, "vs")
+	parent.add_child(table)
+
+
+func _show_with_matchups(parent: Control, matchups: Dictionary) -> void:
+	var with_data = matchups.get("with", {})
+	if with_data.is_empty():
+		_show_no_data(parent, "No synergy matchup data available")
+		return
+	
+	# Summary section
+	var summary_card := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
+	parent.add_child(summary_card)
+	
+	# Matchup table
+	var table := _create_matchup_table(with_data, "with")
+	parent.add_child(table)
+
+
+func _show_both_matchups(parent: Control, matchups: Dictionary) -> void:
+	var vs_data = matchups.get("vs", {})
+	var with_data = matchups.get("with", {})
+	
+	if vs_data.is_empty() and with_data.is_empty():
+		_show_no_data(parent, "No matchup data available")
+		return
+	
+	# Counters section
+	if not vs_data.is_empty():
+		var vs_summary := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
+		parent.add_child(vs_summary)
+		var vs_table := _create_matchup_table(vs_data, "vs")
+		parent.add_child(vs_table)
+	
+	# Synergies section
+	if not with_data.is_empty():
+		var with_summary := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
+		parent.add_child(with_summary)
+		var with_table := _create_matchup_table(with_data, "with")
+		parent.add_child(with_table)
+
+
+func _create_summary_card(title: String, champion: String, matchup_type: String) -> PanelContainer:
+	var card := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_SECTION_BG
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(12)
+	card.add_theme_stylebox_override("panel", style)
+	
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	card.add_child(content)
+	
+	# Title
+	var title_label := Label.new()
+	title_label.text = title
+	title_label.add_theme_color_override("font_color", COLOR_TEXT)
+	title_label.add_theme_font_size_override("font_size", UI_FONT_SECTION - 2)
+	content.add_child(title_label)
+	
+	# Get summary data
+	var best = []
+	var worst = []
+	
+	if matchup_type == "vs":
+		best = _matchup_loader.get_best_counters(champion, 3)
+		worst = _matchup_loader.get_weak_against(champion, 3)
+	else:  # with
+		best = _matchup_loader.get_best_synergies(champion, 3)
+		worst = _matchup_loader.get_poor_synergies(champion, 3)
+	
+	# Best section
+	var best_label := Label.new()
+	best_label.text = "Best " + ("Counters" if matchup_type == "vs" else "Synergies") + ":"
+	best_label.add_theme_color_override("font_color", COLOR_GREEN)
+	content.add_child(best_label)
+	
+	if not best.is_empty():
+		for item in best:
+			var item_label := Label.new()
+			item_label.text = "  • %s (%.1f%%)" % [item.name, item.winrate * 100]
+			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(item_label)
+	else:
+		var none_label := Label.new()
+		none_label.text = "  None"
+		none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		content.add_child(none_label)
+	
+	# Worst section
+	var worst_label := Label.new()
+	worst_label.text = "Worst " + ("Counters" if matchup_type == "vs" else "Synergies") + ":"
+	worst_label.add_theme_color_override("font_color", COLOR_RED)
+	content.add_child(worst_label)
+	
+	if not worst.is_empty():
+		for item in worst:
+			var item_label := Label.new()
+			item_label.text = "  • %s (%.1f%%)" % [item.name, item.winrate * 100]
+			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(item_label)
+	else:
+		var none_label := Label.new()
+		none_label.text = "  None"
+		none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		content.add_child(none_label)
+	
+	return card
+
+
+func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	
+	var table := VBoxContainer.new()
+	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Header
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 8)
+	
+	var opponent_label := Label.new()
+	opponent_label.text = ("Opponent" if matchup_type == "vs" else "Ally").to_upper()
+	opponent_label.custom_minimum_size.x = 150
+	opponent_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(opponent_label)
+	
+	var wins_label := Label.new()
+	wins_label.text = "WINS"
+	wins_label.custom_minimum_size.x = 80
+	wins_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(wins_label)
+	
+	var losses_label := Label.new()
+	losses_label.text = "LOSSES"
+	losses_label.custom_minimum_size.x = 80
+	losses_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(losses_label)
+	
+	var winrate_label := Label.new()
+	winrate_label.text = "WINRATE"
+	winrate_label.custom_minimum_size.x = 100
+	winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(winrate_label)
+	
+	table.add_child(header_row)
+	
+	# Sort data
+	var sorted_items = _sort_matchup_data(data)
+	
+	# Data rows
+	for item in sorted_items:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		
+		var name_label := Label.new()
+		name_label.text = item.name
+		name_label.custom_minimum_size.x = 150
+		name_label.add_theme_color_override("font_color", COLOR_TEXT)
+		row.add_child(name_label)
+		
+		var data_wins_label := Label.new()
+		data_wins_label.text = str(item.wins)
+		data_wins_label.custom_minimum_size.x = 80
+		data_wins_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		row.add_child(data_wins_label)
+		
+		var data_losses_label := Label.new()
+		data_losses_label.text = str(item.losses)
+		data_losses_label.custom_minimum_size.x = 80
+		data_losses_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		row.add_child(data_losses_label)
+		
+		var data_winrate_label := Label.new()
+		data_winrate_label.text = "%.1f%%" % (item.winrate * 100)
+		data_winrate_label.custom_minimum_size.x = 100
+		var color = _get_winrate_color(item.winrate)
+		data_winrate_label.add_theme_color_override("font_color", color)
+		row.add_child(data_winrate_label)
+		
+		table.add_child(row)
+	
+	scroll.add_child(table)
+	return scroll
+
+
+func _sort_matchup_data(data: Dictionary) -> Array:
+	var items := []
+	
+	for opponent_name in data.keys():
+		var matchup = data[opponent_name]
+		items.append({
+			"name": opponent_name,
+			"wins": matchup.wins,
+			"losses": matchup.losses,
+			"winrate": matchup.winrate
+		})
+	
+	match _current_sort_mode:
+		0:  # Winrate (High to Low)
+			items.sort_custom(func(a, b): return a.winrate > b.winrate)
+		1:  # Winrate (Low to High)
+			items.sort_custom(func(a, b): return a.winrate < b.winrate)
+		2:  # Wins
+			items.sort_custom(func(a, b): return a.wins > b.wins)
+		3:  # Losses
+			items.sort_custom(func(a, b): return a.losses > b.losses)
+		4:  # Alphabetical
+			items.sort_custom(func(a, b): return a.name < b.name)
+	
+	return items
+
+
+func _get_winrate_color(winrate: float) -> Color:
+	if winrate >= 0.6:
+		return COLOR_GREEN
+	elif winrate >= 0.4:
+		return COLOR_SUBTLE
+	else:
+		return COLOR_RED
+
+
+func _show_no_data(parent: Control, message: String) -> void:
+	var no_data := Label.new()
+	no_data.text = message
+	no_data.add_theme_color_override("font_color", COLOR_SUBTLE)
+	no_data.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	no_data.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	no_data.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	no_data.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(no_data)
+
+
+func _refresh_matchup_data() -> void:
+	if _matchup_loader.load_data():
+		print("Matchup data refreshed successfully")
+	else:
+		print("Failed to refresh matchup data: " + _matchup_loader.last_error)

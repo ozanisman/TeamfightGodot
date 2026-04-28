@@ -428,6 +428,11 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_enemy_comp.clear();
 	_player_kills = 0;
 	_enemy_kills = 0;
+	
+	// Reset spawn slot tracking
+	_player_spawn_slots_used.clear();
+	_enemy_spawn_slots_used.clear();
+	
 	_unit_index_map.clear();
 	_alive_player_indices.clear();
 	_alive_enemy_indices.clear();
@@ -884,8 +889,23 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 
 	double max_hp = double(stats.get("max_hp", 0.0));
 	double max_mana = double(stats.get("max_mana", 0.0));
-	double x = double(spawn_spec.get("x", 0.0));
-	double y = double(spawn_spec.get("y", 0.0));
+	double x, y;
+	
+	// Generate random spawn position with slot assignment
+	int64_t spawn_slot = _assign_spawn_slot(team);
+	Vector2 spawn_pos = _get_random_spawn_position(team, false);
+	
+	// Override Y coordinate with assigned slot position
+	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+	if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
+		double x_base = (team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+		x = x_base;
+		y = spawn_points[spawn_slot];
+		unit.respawn_slot_index = spawn_slot;
+	} else {
+		x = spawn_pos.x;
+		y = spawn_pos.y;
+	}
 
 	unit.instance_id = instance_id;
 	unit.archetype_id = archetype_id;
@@ -925,6 +945,7 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.spawn_pos_y = y;
 	unit.pos_x = x;
 	unit.pos_y = y;
+	unit.respawn_slot_index = -1; // Initialize with no assigned respawn slot
 	unit.hp = max_hp;
 	unit.shield = 0.0;
 	unit.mana = 0.0;
@@ -2423,7 +2444,7 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 	}
 }
 
-double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind) {
+double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind) {
 	(void)reason;
 	_viewer_record_aoe_ring_fx(source, center_source, radius, StringName("aoe_damage"));
 	StringName source_team = source.team;
@@ -2434,8 +2455,7 @@ double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &
 		UnitState &unit = _units[enemy_index];
 		if (_distance_between(center_source, unit) <= radius) {
 			EffectContext context = _build_context(source, &unit, nullptr, damage, action_kind);
-			double dealt = _apply_damage(source, unit, damage, damage_type, action_kind, context);
-			total_damage += dealt;
+			total_damage += _apply_damage(source, unit, damage, damage_type, action_kind, context);
 		}
 	}
 	return total_damage;
@@ -2772,6 +2792,52 @@ Vector2 TeamfightSimulationCore::_find_valid_dash_position(double start_x, doubl
 	return Vector2(start_x, start_y);
 }
 
+Vector2 TeamfightSimulationCore::_get_random_spawn_position(const StringName &team, bool is_respawn) {
+	double x_base = (team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+	
+	// Use same spawn points for both initial spawn and respawn
+	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+	
+	int max_index = int(spawn_points.size() - 1);
+	int index = (_rng.genrand_uint32() % (max_index + 1));
+	
+	return Vector2(x_base, spawn_points[index]);
+}
+
+int64_t TeamfightSimulationCore::_assign_spawn_slot(const StringName &team) {
+	// Initialize slot tracking if needed
+	std::vector<bool> &slots = (team == StringName("player")) ? _player_spawn_slots_used : _enemy_spawn_slots_used;
+	if (slots.empty()) {
+		slots.resize(9, false); // 9 spawn slots: 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0
+	}
+	
+	// Find available slot and randomly select one
+	std::vector<int64_t> available_slots;
+	for (int64_t i = 0; i < 9; ++i) {
+		if (!slots[i]) {
+			available_slots.push_back(i);
+		}
+	}
+	
+	if (available_slots.empty()) {
+		// Fallback to random slot if none available
+		return (_rng.genrand_uint32() % 9);
+	}
+	
+	// Randomly select from available slots
+	int64_t random_index = _rng.genrand_uint32() % available_slots.size();
+	int64_t selected_slot = available_slots[random_index];
+	slots[selected_slot] = true;
+	return selected_slot;
+}
+
+void TeamfightSimulationCore::_release_spawn_slot(const StringName &team, int64_t slot_index) {
+	std::vector<bool> &slots = (team == StringName("player")) ? _player_spawn_slots_used : _enemy_spawn_slots_used;
+	if (slot_index >= 0 && slot_index < int(slots.size())) {
+		slots[slot_index] = false;
+	}
+}
+
 double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
 	return unit.combat.attack_range;
 }
@@ -2891,6 +2957,14 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 			assist_unit->assists += 1;
 		}
 	}
+
+	// Release previous spawn slot if this unit had one and died again
+	if (target.respawn_slot_index != -1) {
+		_release_spawn_slot(target.team, target.respawn_slot_index);
+	}
+	
+	// Assign new spawn slot for this unit
+	target.respawn_slot_index = _assign_spawn_slot(target.team);
 }
 
 StringName TeamfightSimulationCore::_determine_winner() const {
@@ -2931,12 +3005,23 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.taunt_target_id = 0;
 	unit.forced_target_id = 0;
 	unit.forced_target_kind = StringName();
-	if (unit.team == StringName("player")) {
-		unit.pos_x = DRAFT_X_BASE;
-		unit.pos_y = unit.spawn_pos_y;
+	
+	// Use assigned spawn slot if available, otherwise assign one
+	if (unit.respawn_slot_index == -1) {
+		unit.respawn_slot_index = _assign_spawn_slot(unit.team);
+	}
+	
+	// Generate respawn position from assigned slot
+	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+	double x_base = (unit.team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+	if (unit.respawn_slot_index >= 0 && unit.respawn_slot_index < int(spawn_points.size())) {
+		unit.pos_x = x_base;
+		unit.pos_y = spawn_points[unit.respawn_slot_index];
 	} else {
-		unit.pos_x = WORLD_SIZE - DRAFT_X_BASE;
-		unit.pos_y = unit.spawn_pos_y;
+		// Fallback to random position if slot is invalid
+		Vector2 respawn_pos = _get_random_spawn_position(unit.team, true);
+		unit.pos_x = respawn_pos.x;
+		unit.pos_y = respawn_pos.y;
 	}
 	if (unit_index >= 0) {
 		_add_alive_index(unit.team, unit_index);

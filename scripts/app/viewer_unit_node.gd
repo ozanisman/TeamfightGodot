@@ -175,6 +175,8 @@ func _draw() -> void:
 		label += " [DEAD]"
 	elif float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
 		label += " [STUNNED]"
+	elif float(_u.get("taunt_remaining", 0.0)) > 0.0:
+		label += " [TAUNTED]"
 	elif String(_u.get("state", "")) == "KITING":
 		label += " [KITING]"
 	elif float(_u.get("casting_remaining", 0.0)) > 0.0:

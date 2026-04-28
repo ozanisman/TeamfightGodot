@@ -401,15 +401,15 @@ const CHAMPION_DATA := {
 			"respawn_time": 10.0,
 		},
 		"description": "A nimble backline specialist who strikes with precision and vanishes before being targeted.",
-		"ability_desc": "Deals 220% magic damage and stuns for 4.0s.",
+		"ability_desc": "Deals 220% physical damage and stuns for 1s.",
 		"ultimate_desc": "Lethal execution dealing 780% physical damage.",
-		"passive_desc": "25% chance to dodge attacks and deal no damage when dodging.",
+		"passive_desc": "25% chance to dodge incoming auto attacks, avoiding all damage.",
 		"ability": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
 					{"kind": &"damage", "params": {"damage_multiplier": 2.2, "reason": "Backstab", "trigger_on_hit": false}},
-					{"kind": &"stun", "params": {"duration": 4.0, "reason": "Backstab"}},
+					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Backstab"}},
 				],
 				"reason": "Backstab",
 			},
@@ -464,7 +464,7 @@ const CHAMPION_DATA := {
 			"life_steal": 0.0,
 			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 1.5,
+			"ability_cd": 7.5,
 			"ultimate_cd": 30.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.05,

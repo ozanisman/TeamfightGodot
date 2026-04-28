@@ -267,16 +267,16 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Deals 165% damage and taunts all targets in a 2 unit radius for 2.5s.",
+		"ability_desc": "Taunts all targets in a 2 unit radius for 2.5s and deals 165% damage in a 1 unit radius.",
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
 		"name": "Colossus",
-		"passive_desc": "Reduces all incoming damage by 32%.",
+		"passive_desc": "Reduces all incoming damage by 10%.",
 		"passive_ids": [
 			"durability"
 		],
 		"role": "tank",
 		"stats": {
-			"ability_cd": 1.5,
+			"ability_cd": 5.5,
 			"armor": 0.52,
 			"attack_damage": 17.0,
 			"attack_range": 0.3,

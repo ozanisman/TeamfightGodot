@@ -102,80 +102,6 @@
 		"ultimate_desc": "Fires a massive artillery shell for 330% damage.",
 		"unit_id": "artillery"
 	},
-	"assassin": {
-		"ability": {
-			"kind": "multi",
-			"params": {
-				"effects": [
-					{
-						"kind": "self_dash",
-						"params": {
-							"distance": 2.0
-						},
-						"requires_target_in_range": true
-					},
-					{
-						"kind": "damage",
-						"params": {
-							"damage_multiplier": 1.5,
-							"reason": "Charge Strike"
-						},
-						"requires_target_in_range": true
-					},
-					{
-						"kind": "stun",
-						"params": {
-							"duration": 0.5,
-							"reason": "Charge Strike"
-						},
-						"requires_target_in_range": true
-					}
-				],
-				"reason": "Charge Strike"
-			},
-			"requires_target_in_range": false
-		},
-		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
-		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
-		"name": "Assassin",
-		"passive_desc": "Deals double damage to targets below 50% HP.",
-		"passive_ids": [
-			"executioner"
-		],
-		"role": "assassin",
-		"stats": {
-			"ability_cd": 1.0,
-			"armor": 0.2,
-			"attack_damage": 44.0,
-			"attack_range": 0.3,
-			"attack_speed": 2.1,
-			"life_steal": 0.0,
-			"magic_resist": 0.2,
-			"mana_per_attack": 10.0,
-			"max_hp": 240.0,
-			"max_mana": 60.0,
-			"move_speed": 0.88,
-			"name": "Assassin",
-			"passive_id": "executioner",
-			"projectile_radius": 0.03,
-			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
-			"role": "assassin",
-			"tenacity": 0.0,
-			"ultimate_cd": 12.0,
-			"unit_id": "assassin"
-		},
-		"ultimate": {
-			"kind": "projectile",
-			"params": {
-				"damage_multiplier": 9.0,
-				"reason": "Assassinate"
-			},
-			"requires_target_in_range": true
-		},
-		"ultimate_desc": "Executes a target with 900% physical damage.",
-		"unit_id": "assassin"
-	},
 	"berserker": {
 		"ability": {
 			"kind": "multi",
@@ -608,6 +534,86 @@
 		},
 		"ultimate_desc": "Rapid flurry for 410% damage and 2.8s stun.",
 		"unit_id": "monk"
+	},
+	"ninja": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_dash",
+						"params": {
+							"distance": 2.0
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1000.5,
+							"reason": "Shadow Strike",
+							"requires_field": "reached_target",
+							"requires_result_from": "self_dash",
+							"requires_value": true
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "stun",
+						"params": {
+							"duration": 5.5,
+							"reason": "Shadow Strike",
+							"requires_field": "reached_target",
+							"requires_result_from": "self_dash",
+							"requires_value": true
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Shadow Strike"
+			},
+			"requires_target_in_range": false
+		},
+		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
+		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
+		"name": "Ninja",
+		"passive_desc": "Deals double damage to targets below 50% HP.",
+		"passive_ids": [
+			"executioner"
+		],
+		"role": "assassin",
+		"stats": {
+			"ability_cd": 1.0,
+			"armor": 0.2,
+			"attack_damage": 44.0,
+			"attack_range": 0.3,
+			"attack_speed": 2.1,
+			"life_steal": 0.0,
+			"magic_resist": 0.2,
+			"mana_per_attack": 10.0,
+			"max_hp": 240.0,
+			"max_mana": 60.0,
+			"move_speed": 0.88,
+			"name": "Ninja",
+			"passive_id": "executioner",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "assassin",
+			"tenacity": 0.0,
+			"ultimate_cd": 12.0,
+			"unit_id": "ninja"
+		},
+		"ultimate": {
+			"kind": "projectile",
+			"params": {
+				"damage_multiplier": 9.0,
+				"reason": "Assassinate"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Executes a target with 900% physical damage.",
+		"unit_id": "ninja"
 	},
 	"oracle": {
 		"ability": {

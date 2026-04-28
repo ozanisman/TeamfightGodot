@@ -29,6 +29,7 @@ var _name_label: Label
 var _kda_label: Label
 var _respawn_label: Label
 var _behavior_label: Label
+var _ability_label: Label
 var _hp_shield_bar: Control
 var _mana_bar: ProgressBar
 var _align_right: bool
@@ -105,6 +106,11 @@ func setup(
 	_behavior_label.add_theme_color_override("font_color", Color(0.6, 0.8, 0.95, 1.0))
 	_inner.add_child(_behavior_label)
 
+	_ability_label = Label.new()
+	_ability_label.visible = false
+	_ability_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_inner.add_child(_ability_label)
+
 	_respawn_label = Label.new()
 	_respawn_label.visible = false
 	_respawn_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
@@ -124,6 +130,7 @@ func setup(
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_kda_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_respawn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ability_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_shield_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -142,6 +149,7 @@ func setup(
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
@@ -238,6 +246,27 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	else:
 		_behavior_label.visible = false
 	
+	# Set ability label based on ability cooldown
+	var ability_cd: float = float(ud.get("abi", ud.get("ability_cooldown", 0.0)))
+	var casting_rem: float = float(ud.get("casting_remaining", 0.0))
+	var casting_kind: String = str(ud.get("casting_kind", ""))
+	var ability_text := ""
+	if casting_rem > 0.0 and (casting_kind.to_lower().contains("ability") or casting_kind == "ability"):
+		ability_text = "Ability: [CASTING]"
+		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+	elif ability_cd <= 0.0:
+		ability_text = "Ability: [READY]"
+		_ability_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4, 1.0))
+	else:
+		ability_text = "Ability: %.1fs" % ability_cd
+		_ability_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+	
+	if not ability_text.is_empty():
+		_ability_label.text = ability_text
+		_ability_label.visible = true
+	else:
+		_ability_label.visible = false
+	
 	var name_c: Color = _role_color_for_archetype(nm)
 	if st == "DEAD" or not bool(ud.get("alive", true)):
 		var t_rem: float = maxf(0.0, float(ud.get("respawn_timer", 0.0)))
@@ -274,6 +303,7 @@ func apply_font_and_bar_scales() -> void:
 	var name_fs: int = int(clampf(s * 0.128, 10.0, 19.0))
 	var kda_fs: int = int(clampf(s * 0.102, 9.0, 15.0))
 	var behavior_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
+	var ability_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var respawn_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var bar_h: float = clampf(s * 0.082, 4.0, 12.0)
 	var sep: int = int(clampf(s * 0.034, 2.0, 6.0))
@@ -281,6 +311,7 @@ func apply_font_and_bar_scales() -> void:
 	_name_label.add_theme_font_size_override("font_size", name_fs)
 	_kda_label.add_theme_font_size_override("font_size", kda_fs)
 	_behavior_label.add_theme_font_size_override("font_size", behavior_fs)
+	_ability_label.add_theme_font_size_override("font_size", ability_fs)
 	_respawn_label.add_theme_font_size_override("font_size", respawn_fs)
 	_hp_shield_bar.custom_minimum_size = Vector2(0, bar_h)
 	_mana_bar.custom_minimum_size = Vector2(0, bar_h)
@@ -288,4 +319,5 @@ func apply_font_and_bar_scales() -> void:
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

@@ -5,7 +5,8 @@
 			"params": {
 				"damage_multiplier": 1.4,
 				"reason": "Volley"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Fires a volley for 140% damage.",
 		"description": "A swift ranged attacker who fires volleys of arrows and excels at picking off distant targets.",
@@ -43,7 +44,8 @@
 				"damage_multiplier": 3.8,
 				"radius_override": 0.06,
 				"reason": "Rain of Arrows"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Rain of Arrows for 380% damage with splash.",
 		"unit_id": "archer"
@@ -55,7 +57,8 @@
 				"damage_multiplier": 0.95,
 				"reason": "Shell Shock",
 				"stun_duration": 0.6
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Explosive shell dealing 95% damage and 0.6s stun.",
 		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
@@ -93,7 +96,8 @@
 				"damage_multiplier": 3.3,
 				"radius_override": 0.08,
 				"reason": "Big Bertha"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Fires a massive artillery shell for 330% damage.",
 		"unit_id": "artillery"
@@ -104,23 +108,32 @@
 			"params": {
 				"effects": [
 					{
+						"kind": "self_dash",
+						"params": {
+							"distance": 2.0
+						},
+						"requires_target_in_range": true
+					},
+					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.0,
-							"reason": "Shadow Dash",
-							"trigger_on_hit": false
-						}
+							"damage_multiplier": 1.5,
+							"reason": "Charge Strike"
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
-							"duration": 1.0,
-							"reason": "Shadow Dash"
-						}
+							"duration": 0.5,
+							"reason": "Charge Strike"
+						},
+						"requires_target_in_range": true
 					}
 				],
-				"reason": "Shadow Dash"
-			}
+				"reason": "Charge Strike"
+			},
+			"requires_target_in_range": false
 		},
 		"ability_desc": "Quick dash for 200% damage and a short 1.0s stun.",
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
@@ -131,7 +144,7 @@
 		],
 		"role": "assassin",
 		"stats": {
-			"ability_cd": 2.2,
+			"ability_cd": 1.0,
 			"armor": 0.2,
 			"attack_damage": 44.0,
 			"attack_range": 0.3,
@@ -157,7 +170,8 @@
 			"params": {
 				"damage_multiplier": 9.0,
 				"reason": "Assassinate"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"unit_id": "assassin"
@@ -172,18 +186,21 @@
 						"params": {
 							"damage_ratio": 0.05,
 							"reason": "Blood Price"
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "self_shield",
 						"params": {
 							"reason": "Blood Price",
 							"shield_ratio": 0.24
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Blood Price"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Damages self for 5% max HP and gains 240% of the value as a shield.",
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
@@ -222,7 +239,8 @@
 				"damage_type": "true",
 				"reason": "Berserker Rage",
 				"trigger_on_hit": false
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Unleashes a devastating strike for 420% true damage.",
 		"unit_id": "berserker"
@@ -233,7 +251,8 @@
 			"params": {
 				"max_hp_ratio": 0.2,
 				"reason": "Holy Mending"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Heals an ally or self for 20% max HP.",
 		"description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
@@ -274,18 +293,21 @@
 						"params": {
 							"max_hp_ratio": 0.38,
 							"reason": "Divine Aura"
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 0.9,
 							"reason": "Divine Aura"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Divine Aura"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Heals for 38% max HP and stuns target for 0.9s.",
 		"unit_id": "cleric"
@@ -301,7 +323,8 @@
 							"duration": 2.5,
 							"radius": 1.0,
 							"reason": "Seismic Slam"
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "self_aoe_damage",
@@ -310,11 +333,13 @@
 							"damage_type": "physical",
 							"radius": 1.0,
 							"reason": "Seismic Slam"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Seismic Slam"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Deals 165% damage and taunts all targets in a 1 unit radius for 2.5s.",
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
@@ -356,18 +381,21 @@
 							"damage_multiplier": 4.6,
 							"reason": "Earthshaker",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 5.2,
 							"reason": "Earthshaker"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Earthshaker"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Colossal impact for 460% damage and a 5.2s stun.",
 		"unit_id": "colossus"
@@ -378,7 +406,8 @@
 			"params": {
 				"max_hp_ratio": 0.28,
 				"reason": "Guardian Shield"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Grants a shield worth 28% max HP to self or an ally.",
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
@@ -420,18 +449,21 @@
 							"damage_multiplier": 2.9,
 							"reason": "Aegis Crash",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 3.8,
 							"reason": "Aegis Crash"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Aegis Crash"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Slams the ground for 290% damage and a 3.8s stun.",
 		"unit_id": "guardian"
@@ -444,7 +476,8 @@
 				"damage_type": "magic",
 				"reason": "Arcane Bolt",
 				"speed_override": 7.0
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Fires a magical projectile dealing 170% magic damage.",
 		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
@@ -484,7 +517,8 @@
 				"radius_override": 0.07,
 				"reason": "Meteor Bombardment",
 				"speed_override": 4.0
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Calls down a meteor for 500% magic damage and deals splash damage on impact.",
 		"unit_id": "mage"
@@ -500,18 +534,21 @@
 							"damage_multiplier": 2.1,
 							"reason": "Pressure Point",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 1.5,
 							"reason": "Pressure Point"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Pressure Point"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Precise strike for 210% damage and 1.5s stun.",
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
@@ -553,18 +590,21 @@
 							"damage_multiplier": 4.1,
 							"reason": "Hundred-Hand Slap",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 2.8,
 							"reason": "Hundred-Hand Slap"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Hundred-Hand Slap"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Rapid flurry for 410% damage and 2.8s stun.",
 		"unit_id": "monk"
@@ -575,7 +615,8 @@
 			"params": {
 				"max_hp_ratio": 0.18,
 				"reason": "Purify"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Grants a shield worth 18% max HP to self or an ally.",
 		"description": "A divine seer who manipulates fate through shields and mana restoration.",
@@ -612,7 +653,8 @@
 			"params": {
 				"max_hp_ratio": 0.35,
 				"reason": "Divine Shield"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Restores 35% max HP and grants a shield worth 40% max HP.",
 		"unit_id": "oracle"
@@ -623,7 +665,8 @@
 			"params": {
 				"max_hp_ratio": 0.26,
 				"reason": "Lay on Hands"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Heals self for 26% max HP.",
 		"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
@@ -664,7 +707,8 @@
 						"params": {
 							"max_hp_ratio": 0.46,
 							"reason": "Divine Judgment"
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "damage",
@@ -672,11 +716,13 @@
 							"damage_multiplier": 3.6,
 							"reason": "Divine Judgment",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Divine Judgment"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Heals self for 46% max HP and deals 360% damage.",
 		"unit_id": "paladin"
@@ -690,7 +736,8 @@
 						"dodge_chance": 0.25,
 						"on_dodge_multiplier": 0.0,
 						"on_hit_multiplier": 1.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -707,16 +754,19 @@
 									"flat_amount": 5.0,
 									"radius": 1.0,
 									"reason": "Aura Damage"
-								}
+								},
+								"requires_target_in_range": true
 							},
 							{
 								"kind": "damage_based_heal",
 								"params": {
 									"heal_ratio": 1.0
-								}
+								},
+								"requires_target_in_range": true
 							}
 						]
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -726,7 +776,8 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 0.9
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -736,7 +787,8 @@
 					"kind": "damage_based_heal",
 					"params": {
 						"heal_ratio": 0.15
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -747,7 +799,8 @@
 					"params": {
 						"min_hp_ratio": 0.8,
 						"multiplier": 1.2
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -765,7 +818,8 @@
 						"radius": 0.5,
 						"ratio": 0.5,
 						"reason": "Explosion"
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -776,7 +830,8 @@
 					"params": {
 						"max_hp_ratio": 0.02,
 						"reason": "Devotion"
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -786,7 +841,8 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 1.2
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -796,7 +852,8 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 0.9
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -806,7 +863,8 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 1.25
-					}
+					},
+					"requires_target_in_range": true
 				}
 			],
 			"post_attack": [
@@ -825,10 +883,12 @@
 								"radius": 2.0,
 								"ratio": 0.5,
 								"reason": "Rain of Arrows"
-							}
+							},
+							"requires_target_in_range": true
 						},
 						"threshold_multiplier": 3.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -838,7 +898,8 @@
 					"kind": "mana_restore_on_hit",
 					"params": {
 						"flat_amount": 5.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -849,7 +910,8 @@
 					"params": {
 						"hp_ratio_threshold": 0.3,
 						"multiplier": 2.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -859,7 +921,8 @@
 					"kind": "mana_regen",
 					"params": {
 						"flat_amount": 3.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -870,7 +933,8 @@
 					"params": {
 						"min_distance": 3.0,
 						"multiplier": 1.25
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -881,7 +945,8 @@
 					"params": {
 						"flat_amount": 5.0,
 						"reason": "Rejuvenation"
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -891,7 +956,8 @@
 					"kind": "drain_target_mana_on_hit",
 					"params": {
 						"flat_amount": 5.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -901,7 +967,8 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 1.15
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -912,7 +979,8 @@
 					"params": {
 						"every_n": 3,
 						"stun_duration": 0.5
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -923,7 +991,8 @@
 					"params": {
 						"flat_amount": 3.0,
 						"reason": "Vampirism"
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		}
@@ -939,18 +1008,21 @@
 							"damage_multiplier": 2.2,
 							"reason": "Backstab",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 4.0,
 							"reason": "Backstab"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Backstab"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Deals 220% magic damage and stuns for 4.0s.",
 		"description": "A nimble backline specialist who strikes with precision and vanishes before being targeted.",
@@ -987,7 +1059,8 @@
 			"params": {
 				"damage_multiplier": 7.8,
 				"reason": "Eviscerate"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Lethal execution dealing 780% physical damage.",
 		"unit_id": "rogue"
@@ -1012,7 +1085,8 @@
 				"kind": "mana_regen",
 				"params": {
 					"flat_amount": 1.0
-				}
+				},
+				"requires_target_in_range": true
 			},
 			"passive_post_take_damage": null,
 			"stat_mods": {
@@ -1039,7 +1113,8 @@
 				"kind": "post_damage_mana_gain",
 				"params": {
 					"damage_ratio": 0.1
-				}
+				},
+				"requires_target_in_range": true
 			},
 			"stat_mods": {
 
@@ -1052,7 +1127,8 @@
 			"params": {
 				"duration": 0.5,
 				"reason": "Enthralling Song"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
@@ -1095,18 +1171,21 @@
 							"damage_type": "magic",
 							"reason": "Banshee Wail",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 1.0,
 							"reason": "Banshee Wail"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Banshee Wail"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
 		"unit_id": "siren"
@@ -1117,7 +1196,8 @@
 			"params": {
 				"damage_multiplier": 1.5,
 				"reason": "Headshot"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "High-precision strike for 150% damage.",
 		"description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
@@ -1155,7 +1235,8 @@
 				"damage_multiplier": 2.8,
 				"reason": "ULTIMATE",
 				"speed_override": 15.0
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Lethal long-range shot for 280% damage.",
 		"unit_id": "sniper"
@@ -1171,18 +1252,21 @@
 							"damage_multiplier": 2.7,
 							"reason": "Cleave",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 2.0,
 							"reason": "Cleave"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Cleave"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Cleaves for 270% damage and 2.0s stun.",
 		"description": "A skilled duelist who gains attack damage with each strike and can stun groups of enemies.",
@@ -1224,18 +1308,21 @@
 							"damage_multiplier": 5.6,
 							"reason": "Whirlwind",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 3.2,
 							"reason": "Whirlwind"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Whirlwind"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Whirlwind for 560% damage and 3.2s stun.",
 		"unit_id": "swordsman"
@@ -1251,18 +1338,21 @@
 							"damage_multiplier": 2.2,
 							"reason": "Shield Slam",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 1.0,
 							"reason": "Shield Slam"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Shield Slam"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Bashes target for 220% damage and 1.0s stun.",
 		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
@@ -1304,18 +1394,21 @@
 							"damage_multiplier": 4.3,
 							"reason": "Valhalla Call",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 2.3,
 							"reason": "Valhalla Call"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Valhalla Call"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "War cry dealing 430% damage and 2.3s stun.",
 		"unit_id": "valkyrie"
@@ -1327,7 +1420,8 @@
 				"damage_multiplier": 1.0,
 				"damage_type": "magic",
 				"reason": "Soul Siphon"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Deals 100% magic damage and heals self for 8% of it.",
 		"description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
@@ -1366,7 +1460,8 @@
 				"damage_type": "magic",
 				"reason": "Chaos Rift",
 				"stun_duration": 0.5
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Rifts the ground for 260% magic damage and 0.5s stun.",
 		"unit_id": "warlock"
@@ -1383,18 +1478,21 @@
 							"damage_type": "magic",
 							"reason": "Spectral Touch",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 1.5,
 							"reason": "Spectral Touch"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Spectral Touch"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Magic strike for 220% damage and 1.5s stun.",
 		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
@@ -1437,18 +1535,21 @@
 							"damage_type": "magic",
 							"reason": "Phantom Strike",
 							"trigger_on_hit": false
-						}
+						},
+						"requires_target_in_range": true
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 2.8,
 							"reason": "Phantom Strike"
-						}
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Phantom Strike"
-			}
+			},
+			"requires_target_in_range": true
 		},
 		"ultimate_desc": "Teleports for 480% magic damage and 2.8s stun.",
 		"unit_id": "wraith"

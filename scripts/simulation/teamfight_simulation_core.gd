@@ -132,6 +132,8 @@ func _spawn_unit(spawn_data: Dictionary, team: StringName, instance_id: int) -> 
 		"passive_effects": passive_effects,
 		"ability_effect": champion_dict.get("ability", null),
 		"ultimate_effect": champion_dict.get("ultimate", null),
+		"ability_requires_target_in_range": bool(Dictionary(champion_dict.get("ability", {})).get("requires_target_in_range", true)),
+		"ultimate_requires_target_in_range": bool(Dictionary(champion_dict.get("ultimate", {})).get("requires_target_in_range", true)),
 		"spawn_x": x,
 		"spawn_y": y,
 		"x": x,
@@ -245,7 +247,7 @@ func _append_effects(passive_effects: Dictionary, entry: Dictionary) -> void:
 
 func _append_effect(passive_effects: Dictionary, kind: StringName, effect: Variant) -> void:
 	var effect_list: Array = Array(passive_effects.get(kind, []))
-	effect_list.append(effect)
+	effect_list.append(_effect_to_dict(effect))
 	passive_effects[kind] = effect_list
 
 func _simulate() -> void:
@@ -342,11 +344,18 @@ func _process_actions() -> void:
 		unit["distance_to_target"] = distance
 		unit["in_range"] = SimConstantsScript.is_melee_in_contact(distance, _attack_range(unit))
 		unit["current_target_score"] = _score_enemy_target(unit, target, _strategy_for_unit(unit))
-		if _try_cast_ultimate(unit, target, distance):
-			continue
-		if _try_cast_ability(unit, target, distance):
-			continue
-		if SimConstantsScript.is_melee_in_contact(distance, _attack_range(unit)):
+		
+		var in_contact: bool = SimConstantsScript.is_melee_in_contact(distance, _attack_range(unit))
+		var can_cast_ultimate: bool = in_contact or not bool(unit.get("ultimate_requires_target_in_range", true))
+		var can_cast_ability: bool = in_contact or not bool(unit.get("ability_requires_target_in_range", true))
+		
+		if can_cast_ultimate:
+			if _try_cast_ultimate(unit, target, distance):
+				continue
+		if can_cast_ability:
+			if _try_cast_ability(unit, target, distance):
+				continue
+		if in_contact:
 			_perform_auto_attack(unit, target, distance)
 		else:
 			_move_toward_target(unit, target)
@@ -758,7 +767,6 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 		&"self_dash":
 			var dash_distance: float = float(params.get("distance", 1.0))
 			var dash_direction: Dictionary = Dictionary(params.get("direction", {}))
-			var target_id: int = int(params.get("target_id", 0))
 			
 			var current_x: float = float(source.get("x", 0.0))
 			var current_y: float = float(source.get("y", 0.0))
@@ -766,24 +774,33 @@ func _execute_effect(effect: Variant, context: Dictionary) -> Dictionary:
 			var new_x: float = current_x
 			var new_y: float = current_y
 			
-			if target_id != 0:
-				var target_unit: Dictionary = _unit_by_id(target_id)
-				if not target_unit.is_empty():
-					var target_x: float = float(target_unit.get("x", 0.0))
-					var target_y: float = float(target_unit.get("y", 0.0))
-					var dx: float = target_x - current_x
-					var dy: float = target_y - current_y
-					var dist: float = sqrt(dx*dx + dy*dy)
-					if dist > 0.0:
-						var move_dist: float = minf(dash_distance, dist)
-						new_x = current_x + (dx / dist) * move_dist
-						new_y = current_y + (dy / dist) * move_dist
-			else:
+			# Check if direction is explicitly provided (non-zero values)
+			var has_direction: bool = (float(dash_direction.get("x", 0.0)) != 0.0 or float(dash_direction.get("y", 0.0)) != 0.0)
+			
+			if has_direction:
+				# Use explicit direction
 				new_x = current_x + float(dash_direction.get("x", 0.0)) * dash_distance
 				new_y = current_y + float(dash_direction.get("y", 0.0)) * dash_distance
+			else:
+				# Use target from context
+				var context_target: Dictionary = Dictionary(context.get("target", {}))
+				if not context_target.is_empty():
+					var target_id: int = int(context_target.get("instance_id", 0))
+					if target_id != 0:
+						var target_unit: Dictionary = _unit_by_id(target_id)
+						if not target_unit.is_empty():
+							var target_x: float = float(target_unit.get("x", 0.0))
+							var target_y: float = float(target_unit.get("y", 0.0))
+							var dx: float = target_x - current_x
+							var dy: float = target_y - current_y
+							var dist: float = sqrt(dx*dx + dy*dy)
+							if dist > 0.0:
+								var move_dist: float = minf(dash_distance, dist)
+								new_x = current_x + (dx / dist) * move_dist
+								new_y = current_y + (dy / dist) * move_dist
 			
-			new_x = clampf(new_x, 0.0, _map_width)
-			new_y = clampf(new_y, 0.0, _map_height)
+			new_x = clampf(new_x, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
+			new_y = clampf(new_y, SimConstantsScript.WORLD_BOUNDARY_MIN, SimConstantsScript.WORLD_BOUNDARY_MAX)
 			
 			source["x"] = new_x
 			source["y"] = new_y

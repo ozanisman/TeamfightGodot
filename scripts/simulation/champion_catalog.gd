@@ -16,6 +16,7 @@ static var _role_kits_loaded: bool = false
 
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
+	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
 	
 	for key in params:
 		var value = params[key]
@@ -27,7 +28,7 @@ static func _build_effect(data: Dictionary) -> EffectSpecScript:
 		elif key == "splash" and value is Dictionary:
 			params[key] = _build_effect(value)
 	
-	return EffectSpecScript.new(data["kind"], params)
+	return EffectSpecScript.new(data["kind"], params, requires_target_in_range)
 
 static func _build_stats(data: Dictionary) -> ChampionStatsScript:
 	var stats := ChampionStatsScript.new()
@@ -239,7 +240,7 @@ const CHAMPION_DATA := {
 			"life_steal": 0.0,
 			"max_mana": 60.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 2.2,
+			"ability_cd": 1.0,
 			"ultimate_cd": 12.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
@@ -254,11 +255,13 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_multiplier": 2.0, "reason": "Shadow Dash", "trigger_on_hit": false}},
-					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Shadow Dash"}},
+					{"kind": &"self_dash", "params": {"distance": 2.0}},
+					{"kind": &"damage", "params": {"damage_multiplier": 1.5, "reason": "Charge Strike"}},
+					{"kind": &"stun", "params": {"duration": 0.5, "reason": "Charge Strike"}},
 				],
-				"reason": "Shadow Dash",
+				"reason": "Charge Strike",
 			},
+			"requires_target_in_range": false,
 		},
 		"ultimate": {"kind": &"projectile", "params": {"damage_multiplier": 9.0, "reason": "Assassinate"}},
 		"passive_ids": [&"executioner"],

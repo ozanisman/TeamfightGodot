@@ -550,7 +550,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 10000.5,
+							"damage_multiplier": 1.5,
 							"reason": "Shadow Strike",
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
@@ -583,7 +583,7 @@
 		],
 		"role": "assassin",
 		"stats": {
-			"ability_cd": 1.0,
+			"ability_cd": 6.0,
 			"armor": 0.2,
 			"attack_damage": 44.0,
 			"attack_range": 0.3,
@@ -910,7 +910,27 @@
 			]
 		},
 		"executioner": {
+			"on_ability": [
+				{
+					"kind": "target_hp_threshold_multiplier",
+					"params": {
+						"hp_ratio_threshold": 0.3,
+						"multiplier": 2.0
+					},
+					"requires_target_in_range": true
+				}
+			],
 			"on_attack": [
+				{
+					"kind": "target_hp_threshold_multiplier",
+					"params": {
+						"hp_ratio_threshold": 0.3,
+						"multiplier": 2.0
+					},
+					"requires_target_in_range": true
+				}
+			],
+			"on_ultimate": [
 				{
 					"kind": "target_hp_threshold_multiplier",
 					"params": {

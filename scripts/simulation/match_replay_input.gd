@@ -2,7 +2,7 @@ class_name MatchReplayInput
 extends RefCounted
 ## Match input for the native simulation core.
 ## - [member debug_combat_trace]: when true, the core records compact trace rows; read them via
-##   [method SimRunner.get_trace_events] or [code]TeamfightSimulationCore.get_trace_events()[/code] after stepping.
+##   native [code]TeamfightSimulationCore.get_trace_events()[/code] after stepping.
 ##   Kinds include [code]target_switch[/code], [code]cast_start[/code], [code]death[/code], [code]projectile[/code], [code]auto_melee[/code].
 ## - [member record_events]: reserved for a future replay-grade event list on [MatchReplaySummary]; not populated yet.
 

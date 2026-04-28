@@ -296,7 +296,7 @@ private:
 	static constexpr double KITE_DURATION = 1.0;
 	static constexpr double KITE_DANGER_THRESHOLD = 0.9;
 	static constexpr double DRAFT_X_BASE = 0.9;
-	// POS_SCALE removed: positions are now stored as IEEE 754 double to match Python oracle arithmetic.
+	// Positions are stored as IEEE 754 double for deterministic arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
@@ -610,7 +610,7 @@ public:
 	void run_match_simulation_only(const Variant &match_input);
 	void run_matches_simulation_only(const Array &match_inputs);
 
-	/// Incremental match API (used by SimRunner / gameplay loops). Does not replace run_match for batch parity runs.
+	/// Incremental match API (used by gameplay loops and viewer stepping). Does not replace run_match for batch parity runs.
 	void begin_match(const Variant &match_input);
 	void advance_one_tick();
 	bool match_ticks_exhausted() const;

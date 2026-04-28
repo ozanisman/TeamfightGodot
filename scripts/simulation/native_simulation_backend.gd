@@ -1,22 +1,17 @@
 class_name NativeSimulationBackend
 extends RefCounted
 
-const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfight_simulation_core.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
-const SimRunnerScript := preload("res://scripts/simulation/sim_runner.gd")
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 ## Must match [libraries] windows.* entry in teamfight_simulation_core.gdextension.
 const NativeWindowsDllResPath := "res://native/bin/teamfight_simulation_core.dll"
 
 var _backend: Object = null
-var _native_available: bool = false
-var _validation_mode: bool = false
 static var _logged_extension_load_failure: bool = false
 static var _logged_native_unavailable: bool = false
 
 
-## Windows-only path probe; do not use alone to decide if native sim is active — use is_native_runtime().
 static func is_windows_native_dll_file_present() -> bool:
 	if OS.get_name() != "Windows":
 		return true
@@ -45,7 +40,6 @@ func _attach_native_only() -> void:
 	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
 		_backend = ClassDB.instantiate(NativeClassName)
 		if _backend != null:
-			_native_available = true
 			return
 		push_warning("Native simulation core failed to instantiate.")
 	if not _logged_native_unavailable:
@@ -56,20 +50,12 @@ func _attach_native_only() -> void:
 		)
 
 
-func _init(validation_mode: bool = false) -> void:
-	_validation_mode = validation_mode
-	if validation_mode:
-		push_warning("Validation mode: using reference-only GDScript backend.")
-		_backend = TeamfightSimulationCoreScript.new()
-		_native_available = false
-	else:
-		_attach_native_only()
+func _init() -> void:
+	_attach_native_only()
 
 func _ensure_native_backend() -> bool:
 	if _backend != null:
 		return true
-	if _validation_mode:
-		return false
 	_try_load_native_extension()
 	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
 		var native_backend: Object = ClassDB.instantiate(NativeClassName)
@@ -78,7 +64,6 @@ func _ensure_native_backend() -> bool:
 				native_backend = null
 			else:
 				_backend = native_backend
-				_native_available = true
 				return true
 	if not _logged_native_unavailable:
 		_logged_native_unavailable = true
@@ -91,24 +76,16 @@ func _ensure_native_backend() -> bool:
 func is_available() -> bool:
 	return _ensure_native_backend()
 
-
-## True when GDExtension TeamfightSimulationCore is active.
-func is_native_runtime() -> bool:
-	return _native_available
-
 func clear() -> void:
 	if not _ensure_native_backend():
 		return
-	if _backend != null and _backend.has_method("clear"):
-		_backend.call("clear")
+	_backend.call("clear")
 
 func run_match(match_input):
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return {}
-
-	var runner := SimRunnerScript.new()
-	return runner.run_to_end_with_core(_backend, match_input)
+	return _backend.call("run_match", match_input)
 
 func run_matches(match_inputs: Array):
 	if not _ensure_native_backend():
@@ -116,13 +93,8 @@ func run_matches(match_inputs: Array):
 		return []
 	if _backend.has_method("run_matches"):
 		return _backend.call("run_matches", match_inputs)
-
-	var results: Array = []
-	results.resize(match_inputs.size())
-	for index in range(match_inputs.size()):
-		results[index] = run_match(match_inputs[index])
-		clear()
-	return results
+	push_error("Native simulation backend is missing run_matches().")
+	return []
 
 func run_match_simulation_only(match_input: Variant) -> void:
 	if not _ensure_native_backend():
@@ -131,9 +103,7 @@ func run_match_simulation_only(match_input: Variant) -> void:
 	if _backend.has_method("run_match_simulation_only"):
 		_backend.call("run_match_simulation_only", match_input)
 		return
-	run_match(match_input)
-	if _backend != null and _backend.has_method("clear"):
-		_backend.call("clear")
+	push_error("Native simulation backend is missing run_match_simulation_only().")
 
 ## Runs N full simulations without building summaries. Call from one thread at a time (e.g. bench with --workers=1).
 func run_matches_simulation_only(match_inputs: Array) -> void:
@@ -143,8 +113,7 @@ func run_matches_simulation_only(match_inputs: Array) -> void:
 	if _backend.has_method("run_matches_simulation_only"):
 		_backend.call("run_matches_simulation_only", match_inputs)
 		return
-	for index in range(match_inputs.size()):
-		run_match_simulation_only(match_inputs[index])
+	push_error("Native simulation backend is missing run_matches_simulation_only().")
 
 ## Incremental match API (used by simulation viewer and gameplay loops).
 func begin_match(match_input: Variant) -> void:
@@ -170,6 +139,7 @@ func match_ticks_exhausted() -> bool:
 		return true
 	if _backend.has_method("match_ticks_exhausted"):
 		return _backend.call("match_ticks_exhausted")
+	push_error("Native simulation backend is missing match_ticks_exhausted().")
 	return true
 
 func finish_and_summarize() -> Dictionary:
@@ -177,6 +147,7 @@ func finish_and_summarize() -> Dictionary:
 		return {}
 	if _backend.has_method("finish_and_summarize"):
 		return _backend.call("finish_and_summarize")
+	push_error("Native simulation backend is missing finish_and_summarize().")
 	return {}
 
 func get_tick_snapshot() -> Dictionary:
@@ -233,10 +204,3 @@ func get_tick_snapshot() -> Dictionary:
 			te["r"] = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
 	s["tick_fx"] = tfx
 	return s
-
-func get_trace_events() -> Array:
-	if not _ensure_native_backend():
-		return []
-	if _backend.has_method("get_trace_events"):
-		return _backend.call("get_trace_events")
-	return []

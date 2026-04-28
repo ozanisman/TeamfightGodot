@@ -9,7 +9,6 @@ const HeadlessRunnerScript := preload("res://scripts/simulation/headless_runner.
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
-const TeamfightSimulationCoreScript := preload("res://scripts/simulation/teamfight_simulation_core.gd")
 const CheckDeterminismScript := preload("res://scripts/tools/check_determinism.gd")
 const CheckBenchmarkScript := preload("res://scripts/tools/check_benchmark.gd")
 const ParityToolsScript := preload("res://scripts/simulation/parity_tools.gd")

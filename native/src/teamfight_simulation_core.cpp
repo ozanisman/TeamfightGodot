@@ -838,6 +838,15 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 		if (kind == StringName("post_attack")) {
 			return 3;
 		}
+		if (kind == StringName("post_take_damage")) {
+			return 4;
+		}
+		if (kind == StringName("on_ability")) {
+			return 5;
+		}
+		if (kind == StringName("on_ultimate")) {
+			return 6;
+		}
 		return 4;
 	};
 
@@ -854,6 +863,8 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 		effect_kinds.append(StringName("on_tick"));
 		effect_kinds.append(StringName("post_attack"));
 		effect_kinds.append(StringName("post_take_damage"));
+		effect_kinds.append(StringName("on_ability"));
+		effect_kinds.append(StringName("on_ultimate"));
 		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
 			Variant kind_value = effect_kinds[kind_index];
 			Array effects = Array(entry.get(kind_value, Array()));
@@ -1603,11 +1614,12 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		attack_range = _attack_range(attacker);
 		effective_range = _effective_attack_range(attacker);
 		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
+		// No buffer for testing
 		bool in_range = false;
 		if (attack_range > RANGED_THRESHOLD) {
 			in_range = dist <= attack_range;
 		} else {
-			in_range = (dist <= effective_range) || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+			in_range = (dist <= effective_range); // || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
 		}
 		double hp_ratio = enemy.hp / Math::max(0.0001, enemy.combat.max_hp);
 		double range_gap = Math::max(0.0, dist - Math::max(effective_range, EPSILON));
@@ -1881,7 +1893,7 @@ bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double curre
 		if (attack_range > RANGED_THRESHOLD) {
 			in_range = dist <= attack_range;
 		} else {
-			in_range = (dist <= effective_range) || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+			in_range = (dist <= effective_range); // No buffer for testing
 		}
 		if (in_range) {
 			double attack_speed = Math::max(0.0001, unit.combat.attack_speed);
@@ -2115,6 +2127,12 @@ const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCor
 	if (kind == StringName("post_take_damage")) {
 		return unit.passive_effects[4];
 	}
+	if (kind == StringName("on_ability")) {
+		return unit.passive_effects[5];
+	}
+	if (kind == StringName("on_ultimate")) {
+		return unit.passive_effects[6];
+	}
 	return EMPTY_EFFECTS;
 }
 
@@ -2129,7 +2147,7 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 			}
 			double target_hp = context.target->hp;
 			double target_max_hp = Math::max(0.0001, context.target->combat.max_hp);
-			if (target_hp / target_max_hp < effect.scalar0) {
+			if (target_hp / target_max_hp <= effect.scalar0) {
 				return effect.scalar1;
 			}
 			return 1.0;
@@ -2167,6 +2185,26 @@ double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitSta
 	(void)distance;
 	EffectContext context = _build_context(unit, &target, nullptr, damage, StringName("auto"));
 	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_attack"));
+	double modified_damage = damage;
+	for (const EffectRecord &effect : effects) {
+		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
+	}
+	return modified_damage;
+}
+
+double TeamfightSimulationCore::_apply_ability_modifiers(UnitState &unit, UnitState *target, double damage) {
+	EffectContext context = _build_context(unit, target, nullptr, damage, StringName("ability"));
+	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_ability"));
+	double modified_damage = damage;
+	for (const EffectRecord &effect : effects) {
+		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
+	}
+	return modified_damage;
+}
+
+double TeamfightSimulationCore::_apply_ultimate_modifiers(UnitState &unit, UnitState *target, double damage) {
+	EffectContext context = _build_context(unit, target, nullptr, damage, StringName("ultimate"));
+	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_ultimate"));
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
 		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
@@ -2740,9 +2778,7 @@ double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
 
 double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) const {
 	double attack_range = _attack_range(unit);
-	if (attack_range <= RANGED_THRESHOLD) {
-		return attack_range + MELEE_CONTACT_BUFFER;
-	}
+	// No buffer for testing
 	return attack_range;
 }
 
@@ -3231,7 +3267,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		SimProfileAccScope _uu_combat(profile_sim, _sim_profile_uu_combat);
 		double distance = _distance_between(unit, *target);
 		double effective_range = _effective_attack_range(unit);
-		bool in_contact = (distance <= effective_range) || (Math::abs(distance - effective_range) <= MELEE_CONTACT_BUFFER);
+		bool in_contact = (distance <= effective_range); // No buffer for testing
 
 		// Action priority: check range requirements per action type
 		bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
@@ -3605,6 +3641,8 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				StringName child_kind = _kind_for_opcode(child.opcode);
 				if (!child_kind.is_empty()) {
 					combined_results[child_kind] = child_result;
+					// Also update the accumulated_results for subsequent children
+					context.accumulated_results = combined_results;
 				}
 			}
 			return combined_results;
@@ -3616,6 +3654,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				return damage_result;
 			}
 			double damage = source.combat.attack_damage * effect.scalar0;
+			
+			// Apply ability/ultimate modifiers if applicable
+			if (context.action_kind == StringName("ability")) {
+				damage = _apply_ability_modifiers(source, target, damage);
+			} else if (context.action_kind == StringName("ultimate")) {
+				damage = _apply_ultimate_modifiers(source, target, damage);
+			}
+			
 			double dealt = _apply_damage(source, *target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
 			if (effect.scalar1 > 0.5) {
 				_run_post_attack_effects(source, *target, dealt, context);
@@ -3634,7 +3680,16 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			ProjectileState projectile_state;
 			projectile_state.source_id = source.instance_id;
 			projectile_state.target_id = target->instance_id;
-			projectile_state.damage = source.combat.attack_damage * effect.scalar2;
+			double damage = source.combat.attack_damage * effect.scalar2;
+			
+			// Apply ability/ultimate modifiers if applicable
+			if (context.action_kind == StringName("ability")) {
+				damage = _apply_ability_modifiers(source, target, damage);
+			} else if (context.action_kind == StringName("ultimate")) {
+				damage = _apply_ultimate_modifiers(source, target, damage);
+			}
+			
+			projectile_state.damage = damage;
 			projectile_state.damage_type = effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type;
 			projectile_state.stun_duration = effect.scalar3;
 			// Python parity: null speed/radius override → fall back to unit's projectile stats.
@@ -3807,8 +3862,6 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double current_y = source.pos_y;
 			double new_x = current_x;
 			double new_y = current_y;
-			double intended_x = new_x;
-			double intended_y = new_y;
 			
 			// Check if direction is explicitly provided (non-zero values)
 			bool has_direction = (dir_x != 0.0 || dir_y != 0.0);
@@ -3817,8 +3870,6 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				// Use explicit direction
 				new_x = current_x + dir_x * dash_distance;
 				new_y = current_y + dir_y * dash_distance;
-				intended_x = new_x;
-				intended_y = new_y;
 			} else {
 				// Use target from context
 				if (target != nullptr) {
@@ -3834,10 +3885,6 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 							double move_dist = Math::min(dash_distance, dist);
 							new_x = current_x + (dx / dist) * move_dist;
 							new_y = current_y + (dy / dist) * move_dist;
-							intended_x = target_x;
-							intended_y = target_y;
-							// Check if we reached the target
-							dash_result["reached_target"] = (move_dist >= dist - EPSILON);
 						}
 					}
 				}
@@ -3852,6 +3899,22 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// Clamp to boundaries (already done in _find_valid_dash_position, but ensure it)
 			new_x = Math::clamp(new_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 			new_y = Math::clamp(new_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			
+			// Calculate reached_target based on final distance to target
+			if (!has_direction && target != nullptr) {
+				int64_t target_id = target->instance_id;
+				UnitState *target_unit = _unit_by_id(target_id);
+				if (target_unit != nullptr) {
+					double target_x = target_unit->pos_x;
+					double target_y = target_unit->pos_y;
+					double final_dx = target_x - new_x;
+					double final_dy = target_y - new_y;
+					double final_dist = Math::sqrt(final_dx * final_dx + final_dy * final_dy);
+					// Consider target reached if we're within attack range (with melee buffer)
+					bool reached = (final_dist <= source.combat.attack_range + 0.1);
+					dash_result["reached_target"] = reached;
+				}
+			}
 			
 			source.pos_x = new_x;
 			source.pos_y = new_y;

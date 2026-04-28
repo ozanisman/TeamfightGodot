@@ -81,7 +81,7 @@ private:
 			double tenacity = 0.0;
 		} combat;
 		Dictionary stats;
-		std::array<std::vector<EffectRecord>, 5> passive_effects;
+		std::array<std::vector<EffectRecord>, 7> passive_effects;
 		EffectRecord ability_effect;
 		EffectRecord ultimate_effect;
 		bool has_ability_effect = false;
@@ -528,6 +528,8 @@ private:
 	EffectContext _build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind);
 	const std::vector<EffectRecord> &_collect_effects(const UnitState &unit, const StringName &kind);
 	double _apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage);
+	double _apply_ability_modifiers(UnitState &unit, UnitState *target, double damage);
+	double _apply_ultimate_modifiers(UnitState &unit, UnitState *target, double damage);
 	double _apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context);
 	double _defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind);
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);

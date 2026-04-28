@@ -240,7 +240,7 @@ const CHAMPION_DATA := {
 			"life_steal": 0.0,
 			"max_mana": 60.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 1.0,
+			"ability_cd": 6.0,
 			"ultimate_cd": 12.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
@@ -250,7 +250,7 @@ const CHAMPION_DATA := {
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
 		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% damage and stun for 0.5s.",
 		"ultimate_desc": "Executes a target with 900% physical damage.",
-		"passive_desc": "Deals double damage to targets below 50% HP.",
+		"passive_desc": "Deals double damage to targets below 30% HP.",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -849,6 +849,8 @@ const PASSIVE_DATA := {
 	},
 	&"executioner": {
 		&"on_attack": [{"kind": &"target_hp_threshold_multiplier", "params": {"hp_ratio_threshold": 0.3, "multiplier": 2.0}}],
+		&"on_ability": [{"kind": &"target_hp_threshold_multiplier", "params": {"hp_ratio_threshold": 0.3, "multiplier": 2.0}}],
+		&"on_ultimate": [{"kind": &"target_hp_threshold_multiplier", "params": {"hp_ratio_threshold": 0.3, "multiplier": 2.0}}],
 	},
 	&"mana_font": {
 		&"on_tick": [{"kind": &"mana_regen", "params": {"flat_amount": 3.0}}],

@@ -229,6 +229,8 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		behavior_text = "Behavior: [DEAD]"
 	elif float(ud.get("stun_remaining", 0.0)) > 0.0 or st == "STUNNED":
 		behavior_text = "Behavior: [STUNNED]"
+	elif float(ud.get("taunt_remaining", 0.0)) > 0.0:
+		behavior_text = "Behavior: [TAUNTED]"
 	elif st == "KITING":
 		behavior_text = "Behavior: [KITING]"
 	elif float(ud.get("casting_remaining", 0.0)) > 0.0:

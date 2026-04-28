@@ -247,7 +247,7 @@
 						"kind": "self_aoe_taunt",
 						"params": {
 							"duration": 2.5,
-							"radius": 1.0,
+							"radius": 2.0,
 							"reason": "Seismic Slam"
 						},
 						"requires_target_in_range": true
@@ -267,7 +267,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Deals 165% damage and taunts all targets in a 1 unit radius for 2.5s.",
+		"ability_desc": "Deals 165% damage and taunts all targets in a 2 unit radius for 2.5s.",
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
 		"name": "Colossus",
 		"passive_desc": "Reduces all incoming damage by 32%.",
@@ -276,7 +276,7 @@
 		],
 		"role": "tank",
 		"stats": {
-			"ability_cd": 7.5,
+			"ability_cd": 1.5,
 			"armor": 0.52,
 			"attack_damage": 17.0,
 			"attack_range": 0.3,
@@ -1452,7 +1452,7 @@
 		"ability_desc": "Deals 100% magic damage and heals self for 8% of it.",
 		"description": "A dark sorcerer who siphons the life force of his enemies to sustain himself and his allies.",
 		"name": "Warlock",
-		"passive_desc": "Heals for 1 HP after each auto-attack.",
+		"passive_desc": "Heals for 3 HP after each auto-attack.",
 		"passive_ids": [
 			"vampirism"
 		],

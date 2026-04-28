@@ -157,6 +157,7 @@ var _chart_host: Control
 var _axis_guides: Control
 var _tt_panel: PanelContainer
 var _tt_label: RichTextLabel
+var _right_panel: VBoxContainer
 var _tt_style: StyleBoxFlat
 var _error_label: Label
 var _team_button_group: ButtonGroup
@@ -167,6 +168,8 @@ var _regen_worker_edit: LineEdit
 var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
+var _export_popup: Window
+var _export_popup_content: VBoxContainer
 var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
@@ -290,12 +293,14 @@ func _build_ui() -> void:
 
 	var top := HBoxContainer.new()
 	top.custom_minimum_size.y = UI_TOP_BAR_H
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
 	var quit := Button.new()
 	quit.text = "Quit"
 	quit.custom_minimum_size = Vector2(96, UI_MIN_CONTROL_H)
 	quit.size_flags_horizontal = Control.SIZE_SHRINK_END
 	quit.pressed.connect(func(): get_tree().quit())
-	top.add_child(Label.new()) # spacer
 	top.add_child(quit)
 	_root_vb.add_child(top)
 
@@ -331,7 +336,20 @@ func _build_ui() -> void:
 	regen_scroll.add_child(regen_vb)
 	tabs.add_child(regen_scroll)
 	tabs.set_tab_title(0, "Filters")
-	tabs.set_tab_title(1, "New Data")
+	tabs.set_tab_title(1, "Matchups")
+
+	# Add tab change listener
+	tabs.tab_changed.connect(_on_tab_changed)
+
+	# Add New Data button to top bar (after spacer, before Quit)
+	var new_data_button := Button.new()
+	new_data_button.text = "New Data"
+	new_data_button.custom_minimum_size = Vector2(120, UI_MIN_CONTROL_H)
+	new_data_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	new_data_button.pressed.connect(_on_new_data_pressed)
+	top.add_child(new_data_button)
+	# Move after spacer (index 0) and before Quit (last child)
+	top.move_child(new_data_button, 1)
 
 	_error_label = Label.new()
 	_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -415,111 +433,14 @@ func _build_ui() -> void:
 		_role_grid.add_child(tb)
 	filter_vb.add_child(_role_grid)
 
-	regen_vb.add_child(_section_label("EXPORT"))
-	var export_card := PanelContainer.new()
-	var export_card_style := StyleBoxFlat.new()
-	export_card_style.bg_color = COLOR_SECTION_BG
-	export_card_style.set_corner_radius_all(8)
-	export_card_style.set_content_margin_all(12)
-	export_card.add_theme_stylebox_override("panel", export_card_style)
-	var export_inner := VBoxContainer.new()
-	export_inner.add_theme_constant_override("separation", 14)
-	export_card.add_child(export_inner)
-	regen_vb.add_child(export_card)
-
-	_native_required_notice = Label.new()
-	_native_required_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_native_required_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_native_required_notice.add_theme_color_override("font_color", COLOR_RED)
-	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY)
-	_native_required_notice.text = (
-		"Native simulation is required for export and batch tooling. "
-		+ "Build and place teamfight_simulation_core.dll in native/bin/."
-	)
-	_native_required_notice.visible = not _native_backend_ready()
-	export_inner.add_child(_native_required_notice)
-
-	var regen_hint := Label.new()
-	regen_hint.text = "Select which modes to export. Each checked size runs the match count below."
-	regen_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	regen_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	regen_hint.add_theme_color_override("font_color", COLOR_SUBTLE)
-	export_inner.add_child(regen_hint)
-
-	var modes_row := HFlowContainer.new()
-	modes_row.add_theme_constant_override("h_separation", 10)
-	modes_row.add_theme_constant_override("v_separation", 8)
-	for sz_idx in range(sizes.size()):
-		var sz2: int = int(sizes[sz_idx])
-		var cb := CheckBox.new()
-		cb.text = "%dv%d" % [sz2, sz2]
-		cb.custom_minimum_size.y = UI_MIN_CONTROL_H
-		cb.button_pressed = true
-		cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		_regen_checks[sz2] = cb
-		modes_row.add_child(cb)
-	export_inner.add_child(modes_row)
-
-	var sample_block := VBoxContainer.new()
-	sample_block.add_theme_constant_override("separation", 6)
-	var sample_lbl := Label.new()
-	sample_lbl.text = "Matches per selected mode"
-	sample_lbl.add_theme_color_override("font_color", COLOR_TEXT)
-	sample_block.add_child(sample_lbl)
-	_regen_sample_edit = LineEdit.new()
-	_regen_sample_edit.text = ""
-	_regen_sample_edit.placeholder_text = "Integer ≥ 1"
-	_regen_sample_edit.custom_minimum_size = Vector2(0, UI_MIN_CONTROL_H)
-	_regen_sample_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sample_block.add_child(_regen_sample_edit)
-	export_inner.add_child(sample_block)
-
-	var worker_block := VBoxContainer.new()
-	worker_block.add_theme_constant_override("separation", 6)
-	var worker_max := maxi(
-		1,
-		mini(
-			OS.get_processor_count(),
-			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
-		)
-	)
-	var worker_lbl := Label.new()
-	worker_lbl.text = "Worker threads (< %d)" % worker_max
-	worker_lbl.add_theme_color_override("font_color", COLOR_TEXT)
-	worker_block.add_child(worker_lbl)
-	_regen_worker_edit = LineEdit.new()
-	_regen_worker_edit.text = str(_default_export_worker_threads())
-	_regen_worker_edit.placeholder_text = "Integer >= 0"
-	_regen_worker_edit.custom_minimum_size = Vector2(0, UI_MIN_CONTROL_H)
-	_regen_worker_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	worker_block.add_child(_regen_worker_edit)
-	export_inner.add_child(worker_block)
-
-	_regen_button = Button.new()
-	_regen_button.text = "Run export"
-	_regen_button.tooltip_text = "Regenerate stats CSVs (native sim)"
-	_regen_button.clip_text = true
-	_regen_button.custom_minimum_size = Vector2(0, UI_MIN_CONTROL_H)
-	_regen_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	export_inner.add_child(_regen_button)
-	_regen_progress = ProgressBar.new()
-	_regen_progress.visible = false
-	_regen_progress.min_value = 0.0
-	_regen_progress.max_value = 1.0
-	_regen_progress.custom_minimum_size.y = 32
-	_regen_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	export_inner.add_child(_regen_progress)
-	_regen_status = Label.new()
-	_regen_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_regen_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
-	export_inner.add_child(_regen_status)
+	# Export UI moved to popup - Matchups tab now free for matchup visualization
 
 	var right_vb := VBoxContainer.new()
 	right_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_vb.size_flags_stretch_ratio = 1.0
 	split.add_child(right_vb)
+	_right_panel = right_vb  # Store reference for tab switching
 
 	_title_label = Label.new()
 	_title_label.add_theme_color_override("font_color", COLOR_TEXT)
@@ -819,7 +740,9 @@ func _wire_controls() -> void:
 		_absolute_colors = not _absolute_colors
 		_refresh_chart()
 	)
-	_regen_button.pressed.connect(_on_regenerate_pressed)
+	# Only connect regen button if it exists (export UI built in popup)
+	if _regen_button != null:
+		_regen_button.pressed.connect(_on_regenerate_pressed)
 
 
 func _setup_regen_native_confirm_dialog() -> void:
@@ -1680,5 +1603,158 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 				]
 			)
 	for i in range(1, lines.size()):
-		lines[i] = _escape_bbcode_plain(lines[i])
+		lines[i] = "  " + lines[i]
 	return "\n".join(lines)
+
+
+func _on_tab_changed(tab_index: int) -> void:
+	# Hide right panel when switching to matchups tab, show for filters tab
+	if _right_panel != null:
+		_right_panel.visible = (tab_index == 0)
+
+
+func _on_new_data_pressed() -> void:
+	if _export_popup == null:
+		_build_export_popup()
+		add_child(_export_popup)  # Add to scene tree before showing
+	_export_popup.popup_centered(Vector2i(700, 800))
+
+
+func _build_export_popup() -> void:
+	_export_popup = Window.new()
+	_export_popup.title = "Generate New Data"
+	_export_popup.min_size = Vector2i(700, 800)
+	_export_popup.unresizable = false
+	_export_popup.close_requested.connect(func(): _export_popup.hide())
+	
+	var main_vb := VBoxContainer.new()
+	main_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vb.add_theme_constant_override("separation", 20)
+	_export_popup.add_child(main_vb)
+	
+	# Add export content
+	_export_popup_content = VBoxContainer.new()
+	_export_popup_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_export_popup_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_export_popup_content.add_theme_constant_override("separation", 18)
+	main_vb.add_child(_export_popup_content)
+	
+	# Build export UI (moved from Matchups tab)
+	_build_export_ui_content()
+	
+	# Close button
+	var close_button := Button.new()
+	close_button.text = "Close"
+	close_button.custom_minimum_size = Vector2(140, 56)
+	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_button.pressed.connect(func(): _export_popup.hide())
+	main_vb.add_child(close_button)
+
+
+func _build_export_ui_content() -> void:
+	_export_popup_content.add_child(_section_label("EXPORT"))
+	var export_card := PanelContainer.new()
+	var export_card_style := StyleBoxFlat.new()
+	export_card_style.bg_color = COLOR_SECTION_BG
+	export_card_style.set_corner_radius_all(8)
+	export_card_style.set_content_margin_all(16)
+	export_card.add_theme_stylebox_override("panel", export_card_style)
+	var export_inner := VBoxContainer.new()
+	export_inner.add_theme_constant_override("separation", 18)
+	export_card.add_child(export_inner)
+	_export_popup_content.add_child(export_card)
+
+	_native_required_notice = Label.new()
+	_native_required_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_native_required_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_native_required_notice.add_theme_color_override("font_color", COLOR_RED)
+	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	_native_required_notice.text = (
+		"Native simulation is required for export and batch tooling. "
+		+ "Build and place teamfight_simulation_core.dll in native/bin/."
+	)
+	_native_required_notice.visible = not _native_backend_ready()
+	export_inner.add_child(_native_required_notice)
+
+	var regen_hint := Label.new()
+	regen_hint.text = "Select which modes to export. Each checked size runs the match count below."
+	regen_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	regen_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	regen_hint.add_theme_color_override("font_color", COLOR_SUBTLE)
+	regen_hint.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	export_inner.add_child(regen_hint)
+
+	var modes_row := HFlowContainer.new()
+	modes_row.add_theme_constant_override("h_separation", 12)
+	modes_row.add_theme_constant_override("v_separation", 10)
+	var sizes: Array = Array(SimConstantsScript.SIMULATION_TEAM_SIZES)
+	for sz_idx in range(sizes.size()):
+		var sz2: int = int(sizes[sz_idx])
+		var cb := CheckBox.new()
+		cb.text = "%dv%d" % [sz2, sz2]
+		cb.custom_minimum_size.y = 56
+		cb.button_pressed = true
+		cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_regen_checks[sz2] = cb
+		modes_row.add_child(cb)
+	export_inner.add_child(modes_row)
+
+	var sample_block := VBoxContainer.new()
+	sample_block.add_theme_constant_override("separation", 8)
+	var sample_lbl := Label.new()
+	sample_lbl.text = "Matches per selected mode"
+	sample_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	sample_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	sample_block.add_child(sample_lbl)
+	_regen_sample_edit = LineEdit.new()
+	_regen_sample_edit.text = ""
+	_regen_sample_edit.placeholder_text = "Integer ≥ 1"
+	_regen_sample_edit.custom_minimum_size = Vector2(0, 56)
+	_regen_sample_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sample_block.add_child(_regen_sample_edit)
+	export_inner.add_child(sample_block)
+
+	var worker_block := VBoxContainer.new()
+	worker_block.add_theme_constant_override("separation", 8)
+	var worker_max := maxi(
+		1,
+		mini(
+			OS.get_processor_count(),
+			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
+		)
+	)
+	var worker_lbl := Label.new()
+	worker_lbl.text = "Worker threads (< %d)" % worker_max
+	worker_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	worker_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	worker_block.add_child(worker_lbl)
+	_regen_worker_edit = LineEdit.new()
+	_regen_worker_edit.text = str(_default_export_worker_threads())
+	_regen_worker_edit.placeholder_text = "Integer >= 0"
+	_regen_worker_edit.custom_minimum_size = Vector2(0, 56)
+	_regen_worker_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	worker_block.add_child(_regen_worker_edit)
+	export_inner.add_child(worker_block)
+
+	_regen_button = Button.new()
+	_regen_button.text = "Run export"
+	_regen_button.tooltip_text = "Regenerate stats CSVs (native sim)"
+	_regen_button.clip_text = true
+	_regen_button.custom_minimum_size = Vector2(0, 56)
+	_regen_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_regen_button.pressed.connect(_on_regenerate_pressed)
+	export_inner.add_child(_regen_button)
+	_regen_progress = ProgressBar.new()
+	_regen_progress.visible = false
+	_regen_progress.min_value = 0.0
+	_regen_progress.max_value = 1.0
+	_regen_progress.custom_minimum_size.y = 40
+	_regen_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	export_inner.add_child(_regen_progress)
+	_regen_status = Label.new()
+	_regen_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_regen_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_regen_status.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	export_inner.add_child(_regen_status)

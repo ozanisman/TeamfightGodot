@@ -6,19 +6,42 @@ extends RefCounted
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const UnitReplaySummaryScript := preload("res://scripts/simulation/unit_replay_summary.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const MatchupAggregatorScript := preload("res://scripts/tools/matchup_aggregator.gd")
+const MatchupAggregator := preload("res://scripts/tools/matchup_aggregator.gd")
 
 var _by_size: Dictionary = {}
 var _role_by_hero: Dictionary = {}
 var _match_logs: Array = []
+var _matchup_aggregator: MatchupAggregator
 
 
 func reset() -> void:
 	_by_size.clear()
 	_role_by_hero.clear()
 	_match_logs.clear()
+	if _matchup_aggregator == null:
+		_matchup_aggregator = MatchupAggregator.new()
+	else:
+		_matchup_aggregator.reset()
 
 
 func consume_summary(team_size: int, summary_value: Variant) -> void:
+	# Handle both individual summaries and chunk results with matchup data
+	if summary_value is Dictionary and summary_value.has("match_results"):
+		# This is a chunk result with matchup data
+		if _matchup_aggregator == null:
+			_matchup_aggregator = MatchupAggregator.new()
+		_matchup_aggregator.consume_chunk_result(summary_value)
+		
+		# Process individual match summaries from the chunk
+		var match_results = summary_value.get("match_results", [])
+		for result in match_results:
+			_consume_individual_summary(team_size, result)
+	else:
+		# This is an individual summary (old format)
+		_consume_individual_summary(team_size, summary_value)
+
+func _consume_individual_summary(team_size: int, summary_value: Variant) -> void:
 	var summary: Object
 	if summary_value is Dictionary:
 		summary = MatchReplaySummaryScript.from_dict(summary_value)
@@ -485,3 +508,10 @@ func _build_match_log_csv() -> String:
 			]
 		)
 	return "\n".join(lines) + "\n"
+
+func write_matchup_file(output_dir: String) -> bool:
+	if _matchup_aggregator == null:
+		return false
+	
+	var matchup_path = output_dir + "/matchup_data.json"
+	return _matchup_aggregator.write_matchup_file(matchup_path)

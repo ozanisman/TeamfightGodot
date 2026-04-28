@@ -14,6 +14,47 @@ static var _champion_ids_cache: Array[StringName] = []
 static var _role_kits: Dictionary = {}
 static var _role_kits_loaded: bool = false
 
+# Thread-local cache storage for safe multi-threading
+static var _thread_local_caches: Dictionary = {}
+static var _cache_mutex: Mutex = Mutex.new()
+
+static func _get_thread_id() -> int:
+	# Get current thread ID for thread-local storage
+	return OS.get_thread_caller_id()
+
+static func _get_thread_cache() -> Dictionary:
+	var thread_id = _get_thread_id()
+	_cache_mutex.lock()
+	if not _thread_local_caches.has(thread_id):
+		_thread_local_caches[thread_id] = {
+			"catalog": {},
+			"passive": {},
+			"role_config": {},
+			"champion_ids": []
+		}
+	var cache = _thread_local_caches[thread_id]
+	_cache_mutex.unlock()
+	return cache
+
+static func clear_thread_cache() -> void:
+	var thread_id = _get_thread_id()
+	_cache_mutex.lock()
+	_thread_local_caches.erase(thread_id)
+	_cache_mutex.unlock()
+
+static func clear_all_caches() -> void:
+	_cache_mutex.lock()
+	_catalog_cache.clear()
+	_passive_cache.clear()
+	_role_config_cache.clear()
+	_champion_ids_cache.clear()
+	_thread_local_caches.clear()
+	_cache_mutex.unlock()
+
+static func clear_export_caches() -> void:
+	# Clear caches before export to ensure fresh data
+	clear_all_caches()
+
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
 	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
@@ -189,7 +230,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"guardian",
 			"name": &"Guardian",
 			"role": &"tank",
-			"max_hp": 280.0,
+			"max_hp": 300.0,
 			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.9,
@@ -941,8 +982,10 @@ const ROLE_CONFIG_DATA := {
 }
 
 static func build_role_configs() -> Dictionary:
-	if not _role_config_cache.is_empty():
-		return _role_config_cache
+	# Use thread-local cache for multi-threading safety
+	var thread_cache = _get_thread_cache()
+	if not thread_cache["role_config"].is_empty():
+		return thread_cache["role_config"]
 
 	for role_id in ROLE_CONFIG_DATA:
 		var data: Dictionary = ROLE_CONFIG_DATA[role_id]
@@ -956,22 +999,27 @@ static func build_role_configs() -> Dictionary:
 		if data["passive_post_take_damage"] != null:
 			passive_post_take_damage = _build_effect(data["passive_post_take_damage"])
 		
-		_role_config_cache[role_id] = RoleConfigSpecScript.new(stat_mods, passive_on_tick, passive_post_take_damage)
+		thread_cache["role_config"][role_id] = RoleConfigSpecScript.new(stat_mods, passive_on_tick, passive_post_take_damage)
 	
-	return _role_config_cache
+	return thread_cache["role_config"]
 
 static func build_catalog() -> Dictionary:
-	if not _catalog_cache.is_empty():
-		return _catalog_cache
+	# Use thread-local cache for multi-threading safety
+	var thread_cache = _get_thread_cache()
+	if not thread_cache["catalog"].is_empty():
+		return thread_cache["catalog"]
 
+	# Build catalog from CHAMPION_DATA
 	for unit_id in CHAMPION_DATA:
-		_catalog_cache[unit_id] = _build_champion(CHAMPION_DATA[unit_id])
+		thread_cache["catalog"][unit_id] = _build_champion(CHAMPION_DATA[unit_id])
 	
-	return _catalog_cache
+	return thread_cache["catalog"]
 
 static func build_passive_registry() -> Dictionary:
-	if not _passive_cache.is_empty():
-		return _passive_cache
+	# Use thread-local cache for multi-threading safety
+	var thread_cache = _get_thread_cache()
+	if not thread_cache["passive"].is_empty():
+		return thread_cache["passive"]
 
 	for passive_id in PASSIVE_DATA:
 		var data: Dictionary = PASSIVE_DATA[passive_id]
@@ -984,20 +1032,21 @@ static func build_passive_registry() -> Dictionary:
 				built_effects.append(_build_effect(effect_data))
 			result[hook] = built_effects
 		
-		_passive_cache[passive_id] = result
+		thread_cache["passive"][passive_id] = result
 	
-	return _passive_cache
+	return thread_cache["passive"]
 
 static func get_passive_entry(passive_id: StringName):
 	return build_passive_registry().get(passive_id, {})
 
 static func get_champion_ids() -> Array[StringName]:
-	if _champion_ids_cache.is_empty():
+	var thread_cache = _get_thread_cache()
+	if thread_cache["champion_ids"].is_empty():
 		var ids: Array[StringName] = []
 		for unit_id in build_catalog().keys():
 			ids.append(StringName(String(unit_id)))
-		_champion_ids_cache = ids
-	return _champion_ids_cache.duplicate()
+		thread_cache["champion_ids"] = ids
+	return thread_cache["champion_ids"].duplicate()
 
 static func get_champion(unit_id: StringName):
 	return build_catalog().get(unit_id, null)

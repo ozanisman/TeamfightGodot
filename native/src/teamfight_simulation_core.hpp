@@ -40,6 +40,9 @@ private:
 		StringName damage_type;
 		String reason;
 		std::vector<EffectRecord> children;
+		StringName requires_result_from;  // Which previous effect to check
+		StringName requires_field;        // Which field to check
+		Variant requires_value;           // What value to require
 	};
 
 	struct EffectContext {
@@ -49,6 +52,7 @@ private:
 		double damage = 0.0;
 		StringName action_kind;
 		double distance = 0.0;
+		Dictionary accumulated_results;
 	};
 
 	struct UnitState {
@@ -484,6 +488,7 @@ private:
 	Dictionary _effective_champion_for(const StringName &archetype_id) const;
 	static void _parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
 	static int64_t _opcode_for_kind(const StringName &kind);
+	static StringName _kind_for_opcode(int64_t opcode);
 	EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;
@@ -527,8 +532,10 @@ private:
 	double _defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind);
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
 	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
-	void _execute_effect(const EffectRecord &effect, EffectContext &context);
+	Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
 	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
+	void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
+	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);

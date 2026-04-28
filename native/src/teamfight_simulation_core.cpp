@@ -169,6 +169,61 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	return EFFECT_OPCODE_UNKNOWN;
 }
 
+StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
+	switch (opcode) {
+		case EFFECT_OPCODE_MULTI:
+			return StringName("multi");
+		case EFFECT_OPCODE_DAMAGE:
+			return StringName("damage");
+		case EFFECT_OPCODE_PROJECTILE:
+			return StringName("projectile");
+		case EFFECT_OPCODE_STUN:
+			return StringName("stun");
+		case EFFECT_OPCODE_SHIELD:
+			return StringName("shield");
+		case EFFECT_OPCODE_HEAL:
+			return StringName("heal");
+		case EFFECT_OPCODE_SELF_DAMAGE:
+			return StringName("self_damage");
+		case EFFECT_OPCODE_SELF_SHIELD:
+			return StringName("self_shield");
+		case EFFECT_OPCODE_SELF_AOE_TAUNT:
+			return StringName("self_aoe_taunt");
+		case EFFECT_OPCODE_SELF_AOE_DAMAGE:
+			return StringName("self_aoe_damage");
+		case EFFECT_OPCODE_SPLASH_DAMAGE:
+			return StringName("splash_damage");
+		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE:
+			return StringName("threshold_splash_damage");
+		case EFFECT_OPCODE_MANA_REGEN:
+			return StringName("mana_regen");
+		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
+			return StringName("post_damage_mana_gain");
+		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
+			return StringName("damage_based_heal");
+		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
+			return StringName("mana_restore_on_hit");
+		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
+			return StringName("drain_target_mana_on_hit");
+		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
+			return StringName("every_n_attacks_stun");
+		case EFFECT_OPCODE_SELF_DASH:
+			return StringName("self_dash");
+		case EFFECT_OPCODE_DODGE:
+			return StringName("dodge");
+		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
+			return StringName("constant_multiplier");
+		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
+			return StringName("target_hp_threshold_multiplier");
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
+			return StringName("distance_threshold_multiplier");
+		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
+			return StringName("self_hp_threshold_multiplier");
+		default:
+			return StringName();
+	}
+}
+
 TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
 	EffectRecord compiled;
 	StringName kind = StringName(String(effect.get("kind", "")));
@@ -271,6 +326,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
 		compiled.scalar2 = double(params.get("on_hit_multiplier", 1.0));
 	}
+	
+	// Handle conditional execution parameters
+	compiled.requires_result_from = StringName(String(params.get("requires_result_from", "")));
+	compiled.requires_field = StringName(String(params.get("requires_field", "")));
+	compiled.requires_value = params.get("requires_value", Variant());
+	
 	return compiled;
 }
 
@@ -3515,33 +3576,60 @@ void TeamfightSimulationCore::_update_projectiles() {
 	_scratch_projectiles.clear();
 }
 
-void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, EffectContext &context) {
+Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, EffectContext &context) {
+	Dictionary result;
+	
 	if (context.source == nullptr) {
-		return;
+		return result;
 	}
 	UnitState &source = *context.source;
 	UnitState *target = context.target;
 	UnitState *target_ally = context.target_ally;
+	
+	// Check conditional requirements
+	if (!_check_condition(effect, context.accumulated_results)) {
+		Dictionary failed_result;
+		failed_result["success"] = false;
+		failed_result["condition_failed"] = true;
+		return failed_result;
+	}
+	
 	switch (effect.opcode) {
-		case EFFECT_OPCODE_MULTI:
+		case EFFECT_OPCODE_MULTI: {
+			Dictionary combined_results;
 			for (const EffectRecord &child : effect.children) {
-				_execute_effect(child, context);
+				// Update context with accumulated results before executing child
+				context.accumulated_results = combined_results;
+				Dictionary child_result = _execute_effect(child, context);
+				// Store the result under the effect's kind name for conditional access
+				StringName child_kind = _kind_for_opcode(child.opcode);
+				if (!child_kind.is_empty()) {
+					combined_results[child_kind] = child_result;
+				}
 			}
-			return;
+			return combined_results;
+		}
 		case EFFECT_OPCODE_DAMAGE: {
+			Dictionary damage_result;
+			damage_result["success"] = false;
 			if (target == nullptr) {
-				return;
+				return damage_result;
 			}
 			double damage = source.combat.attack_damage * effect.scalar0;
 			double dealt = _apply_damage(source, *target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
 			if (effect.scalar1 > 0.5) {
 				_run_post_attack_effects(source, *target, dealt, context);
 			}
-			return;
+			damage_result["success"] = true;
+			damage_result["damage_dealt"] = dealt;
+			damage_result["target_killed"] = !target->alive;
+			return damage_result;
 		}
 		case EFFECT_OPCODE_PROJECTILE: {
+			Dictionary projectile_result;
+			projectile_result["success"] = false;
 			if (target == nullptr) {
-				return;
+				return projectile_result;
 			}
 			ProjectileState projectile_state;
 			projectile_state.source_id = source.instance_id;
@@ -3562,39 +3650,71 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			projectile_state.action_kind = context.action_kind;
 			projectile_state.reason = effect.reason;
 			_projectiles.push_back(projectile_state);
-			return;
+			projectile_result["success"] = true;
+			projectile_result["projectile_created"] = true;
+			projectile_result["damage"] = projectile_state.damage;
+			return projectile_result;
 		}
-		case EFFECT_OPCODE_STUN:
+		case EFFECT_OPCODE_STUN: {
+			Dictionary stun_result;
+			stun_result["success"] = false;
 			if (target != nullptr) {
 				_apply_stun(source, *target, effect.scalar0);
+				stun_result["success"] = true;
+				stun_result["stun_applied"] = true;
+				stun_result["duration"] = effect.scalar0;
 			}
-			return;
+			return stun_result;
+		}
 		case EFFECT_OPCODE_SHIELD: {
+			Dictionary shield_result;
+			shield_result["success"] = true;
 			UnitState &shield_target = target_ally == nullptr ? source : *target_ally;
 			double amount = source.combat.max_hp * effect.scalar0;
 			_add_shield(source, shield_target, amount, context.action_kind);
-			return;
+			shield_result["shield_applied"] = true;
+			shield_result["amount"] = amount;
+			return shield_result;
 		}
 		case EFFECT_OPCODE_HEAL: {
+			Dictionary heal_result;
+			heal_result["success"] = true;
 			UnitState &heal_target = target_ally == nullptr ? source : *target_ally;
 			double heal_amount = source.combat.max_hp * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
 			_heal_unit(source, heal_target, heal_amount, context.action_kind);
-			return;
+			heal_result["heal_applied"] = true;
+			heal_result["amount"] = heal_amount;
+			return heal_result;
 		}
 		case EFFECT_OPCODE_SELF_DAMAGE: {
+			Dictionary self_damage_result;
+			self_damage_result["success"] = true;
 			double self_damage = source.combat.max_hp * effect.scalar0;
-			_apply_damage(source, source, self_damage, effect.damage_type.is_empty() ? StringName("true") : effect.damage_type, context.action_kind, context);
-			return;
+			double dealt = _apply_damage(source, source, self_damage, effect.damage_type.is_empty() ? StringName("true") : effect.damage_type, context.action_kind, context);
+			self_damage_result["damage_dealt"] = dealt;
+			return self_damage_result;
 		}
 		case EFFECT_OPCODE_SELF_SHIELD: {
+			Dictionary self_shield_result;
+			self_shield_result["success"] = true;
 			double self_shield = source.combat.max_hp * effect.scalar0;
 			_add_shield(source, source, self_shield, context.action_kind);
-			return;
+			self_shield_result["shield_applied"] = true;
+			self_shield_result["amount"] = self_shield;
+			return self_shield_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_TAUNT:
+		case EFFECT_OPCODE_SELF_AOE_TAUNT: {
+			Dictionary taunt_result;
+			taunt_result["success"] = true;
 			_apply_aoe_taunt(source, effect.scalar0, effect.scalar1);
-			return;
+			taunt_result["taunt_applied"] = true;
+			taunt_result["radius"] = effect.scalar0;
+			taunt_result["duration"] = effect.scalar1;
+			return taunt_result;
+		}
 		case EFFECT_OPCODE_SELF_AOE_DAMAGE: {
+			Dictionary aoe_damage_result;
+			aoe_damage_result["success"] = true;
 			double aoe_damage;
 			if (effect.scalar2 > 0.0) {
 				aoe_damage = effect.scalar2;
@@ -3604,41 +3724,81 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			double total_damage = _apply_aoe_damage(source, source, aoe_damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, effect.reason, context.action_kind);
 			// Store total damage in context for damage_based_heal to use
 			context.damage = total_damage;
-			return;
+			aoe_damage_result["damage_dealt"] = total_damage;
+			return aoe_damage_result;
 		}
-		case EFFECT_OPCODE_SPLASH_DAMAGE:
+		case EFFECT_OPCODE_SPLASH_DAMAGE: {
+			Dictionary splash_result;
+			splash_result["success"] = true;
 			if (target != nullptr) {
 				_apply_splash_damage(source, *target, context.damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, effect.reason, effect.scalar1);
+				splash_result["splash_applied"] = true;
 			}
-			return;
-		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE:
+			return splash_result;
+		}
+		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE: {
+			Dictionary threshold_result;
+			threshold_result["success"] = true;
 			if (context.damage > source.combat.attack_damage * effect.scalar0 && !effect.children.empty()) {
-				_execute_effect(effect.children[0], context);
+				Dictionary child_result = _execute_effect(effect.children[0], context);
+				threshold_result["splash_triggered"] = true;
+				_merge_accumulated_results(threshold_result, child_result);
 			}
-			return;
-		case EFFECT_OPCODE_MANA_REGEN:
+			return threshold_result;
+		}
+		case EFFECT_OPCODE_MANA_REGEN: {
+			Dictionary mana_result;
+			mana_result["success"] = true;
 			_restore_mana(source, source, effect.scalar0 + source.combat.max_mana * effect.scalar1);
-			return;
-		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
+			mana_result["mana_restored"] = effect.scalar0 + source.combat.max_mana * effect.scalar1;
+			return mana_result;
+		}
+		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN: {
+			Dictionary post_mana_result;
+			post_mana_result["success"] = true;
 			_restore_mana(source, source, context.damage * effect.scalar0);
-			return;
-		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
+			post_mana_result["mana_restored"] = context.damage * effect.scalar0;
+			return post_mana_result;
+		}
+		case EFFECT_OPCODE_DAMAGE_BASED_HEAL: {
+			Dictionary heal_result;
+			heal_result["success"] = true;
 			_heal_unit(source, source, context.damage * effect.scalar0, context.action_kind);
-			return;
-		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
+			heal_result["heal_applied"] = true;
+			heal_result["amount"] = context.damage * effect.scalar0;
+			return heal_result;
+		}
+		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {
+			Dictionary mana_result;
+			mana_result["success"] = true;
 			_restore_mana(source, source, effect.scalar0);
-			return;
-		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
+			mana_result["mana_restored"] = effect.scalar0;
+			return mana_result;
+		}
+		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT: {
+			Dictionary drain_result;
+			drain_result["success"] = true;
 			if (target != nullptr) {
 				target->mana = Math::max(0.0, target->mana - effect.scalar0);
+				drain_result["mana_drained"] = effect.scalar0;
 			}
-			return;
-		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
+			return drain_result;
+		}
+		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN: {
+			Dictionary stun_result;
+			stun_result["success"] = true;
 			if (effect.int0 > 0 && target != nullptr && source.attack_count % effect.int0 == 0) {
 				_apply_stun(source, *target, effect.scalar0);
+				stun_result["stun_applied"] = true;
+				stun_result["duration"] = effect.scalar0;
 			}
-			return;
+			return stun_result;
+		}
 		case EFFECT_OPCODE_SELF_DASH: {
+			Dictionary dash_result;
+			dash_result["success"] = true;
+			dash_result["reached_target"] = false;
+			
 			double dash_distance = effect.scalar0;
 			double dir_x = effect.scalar1;
 			double dir_y = effect.scalar2;
@@ -3647,6 +3807,8 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			double current_y = source.pos_y;
 			double new_x = current_x;
 			double new_y = current_y;
+			double intended_x = new_x;
+			double intended_y = new_y;
 			
 			// Check if direction is explicitly provided (non-zero values)
 			bool has_direction = (dir_x != 0.0 || dir_y != 0.0);
@@ -3655,6 +3817,8 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 				// Use explicit direction
 				new_x = current_x + dir_x * dash_distance;
 				new_y = current_y + dir_y * dash_distance;
+				intended_x = new_x;
+				intended_y = new_y;
 			} else {
 				// Use target from context
 				if (target != nullptr) {
@@ -3670,6 +3834,10 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 							double move_dist = Math::min(dash_distance, dist);
 							new_x = current_x + (dx / dist) * move_dist;
 							new_y = current_y + (dy / dist) * move_dist;
+							intended_x = target_x;
+							intended_y = target_y;
+							// Check if we reached the target
+							dash_result["reached_target"] = (move_dist >= dist - EPSILON);
 						}
 					}
 				}
@@ -3687,16 +3855,51 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			
 			source.pos_x = new_x;
 			source.pos_y = new_y;
-			return;
+			
+			// Calculate actual distance traveled
+			double actual_distance = Math::sqrt((new_x - current_x) * (new_x - current_x) + (new_y - current_y) * (new_y - current_y));
+			dash_result["distance_traveled"] = actual_distance;
+			
+			return dash_result;
 		}
 		case EFFECT_OPCODE_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
 		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
-		default:
-			return;
+		default: {
+			Dictionary default_result;
+			default_result["success"] = true;
+			return default_result;
+		}
 	}
+}
+
+void TeamfightSimulationCore::_merge_accumulated_results(Dictionary &target, const Dictionary &source) {
+	Array keys = source.keys();
+	for (int64_t index = 0; index < keys.size(); ++index) {
+		Variant key = keys[index];
+		Variant source_value = source[key];
+		target[key] = source_value;
+	}
+}
+
+bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const Dictionary &results) {
+	if (effect.requires_result_from.is_empty()) {
+		return true;  // No condition
+	}
+	
+	if (!results.has(effect.requires_result_from)) {
+		return false;  // Required effect didn't run
+	}
+	
+	Dictionary required_result = results[effect.requires_result_from];
+	if (!required_result.has(effect.requires_field)) {
+		return false;  // Field doesn't exist
+	}
+	
+	Variant actual_value = required_result[effect.requires_field];
+	return actual_value == effect.requires_value;
 }
 
 void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dictionary &source_result) {

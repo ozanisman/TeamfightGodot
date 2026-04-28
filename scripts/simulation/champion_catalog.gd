@@ -256,8 +256,8 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{"kind": &"self_dash", "params": {"distance": 2.0}},
-					{"kind": &"damage", "params": {"damage_multiplier": 1.5, "reason": "Shadow Strike"}},
-					{"kind": &"stun", "params": {"duration": 0.5, "reason": "Shadow Strike"}},
+					{"kind": &"damage", "params": {"damage_multiplier": 1000.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
+					{"kind": &"stun", "params": {"duration": 5.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
 				],
 				"reason": "Shadow Strike",
 			},

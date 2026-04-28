@@ -336,8 +336,10 @@ func _build_ui() -> void:
 	regen_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	regen_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	regen_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	regen_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	var regen_vb := VBoxContainer.new()
 	regen_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	regen_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	regen_vb.add_theme_constant_override("separation", 10)
 	regen_scroll.add_child(regen_vb)
 	tabs.add_child(regen_scroll)
@@ -1810,7 +1812,6 @@ func _build_matchup_ui() -> void:
 	left_panel.add_child(champion_search)
 	
 	var champion_list := ItemList.new()
-	champion_list.custom_minimum_size.y = 1000
 	champion_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	champion_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_panel.add_child(champion_list)
@@ -2058,14 +2059,11 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 
 
 func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	var main_container := VBoxContainer.new()
+	main_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
-	var table := VBoxContainer.new()
-	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	# Header
+	# Fixed header
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 8)
 	
@@ -2093,7 +2091,19 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 	winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
 	header_row.add_child(winrate_label)
 	
-	table.add_child(header_row)
+	main_container.add_child(header_row)
+	
+	# Scrollable data area
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	main_container.add_child(scroll)
+	
+	var table := VBoxContainer.new()
+	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(table)
 	
 	# Sort data with special logic for counter matchups
 	var sorted_items = _sort_matchup_data(data, matchup_type)
@@ -2130,8 +2140,7 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 		
 		table.add_child(row)
 	
-	scroll.add_child(table)
-	return scroll
+	return main_container
 
 
 func _sort_matchup_data(data: Dictionary, matchup_type: String) -> Array:

@@ -171,7 +171,11 @@ func _draw() -> void:
 	var label: String = str(_u.get("archetype_id", &""))
 	if label.is_empty():
 		label = "?"
-	if String(_u.get("state", "")) == "KITING":
+	if String(_u.get("state", "")) == "DEAD":
+		label += " [DEAD]"
+	elif float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
+		label += " [STUNNED]"
+	elif String(_u.get("state", "")) == "KITING":
 		label += " [KITING]"
 	elif float(_u.get("casting_remaining", 0.0)) > 0.0:
 		var ckind: String = str(_u.get("casting_kind", ""))
@@ -179,11 +183,11 @@ func _draw() -> void:
 			label += " [ULTIMATE]"
 		else:
 			label += " [ABILITY]"
-	elif float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
-		label += " [STUNNED]"
-	elif int(_u.get("target_id", 0)) > 0:
+	elif int(_u.get("target_id", 0)) > 0 and bool(_u.get("in_range", false)):
 		label += " [ATTACKING]"
-	else:
+	elif int(_u.get("target_id", 0)) > 0:
 		label += " [MOVING]"
+	else:
+		label += " [WAITING]"
 	var font: Font = ThemeDB.fallback_font
 	draw_string(font, o + Vector2(-20, -34), label, HORIZONTAL_ALIGNMENT_LEFT, 200, 11, Color(0.95, 0.95, 0.95))

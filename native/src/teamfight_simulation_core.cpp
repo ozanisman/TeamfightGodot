@@ -4168,6 +4168,22 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["attack_speed"] = u.combat.attack_speed;
 		d["casting_remaining"] = u.casting_remaining;
 		d["casting_kind"] = String(u.casting_kind);
+		
+		// Calculate distance to target and in-range status
+	bool in_range = false;
+	if (u.target_id > 0) {
+		const UnitState *target = _unit_by_id(u.target_id);
+		if (target != nullptr && target->alive) {
+			double dx = target->pos_x - u.pos_x;
+			double dy = target->pos_y - u.pos_y;
+			double distance = Math::sqrt(dx * dx + dy * dy);
+			d["target_distance"] = distance;
+			in_range = distance <= u.combat.attack_range;
+		}
+	} else {
+		d["target_distance"] = -1.0;  // No target
+	}
+	d["in_range"] = in_range;
 		d["kills"] = u.kills;
 		d["deaths"] = u.deaths;
 		d["assists"] = u.assists;

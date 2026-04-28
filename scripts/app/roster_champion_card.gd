@@ -225,7 +225,11 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	
 	# Set behavior label based on unit state
 	var behavior_text := ""
-	if st == "KITING":
+	if st == "DEAD":
+		behavior_text = "Behavior: [DEAD]"
+	elif float(ud.get("stun_remaining", 0.0)) > 0.0 or st == "STUNNED":
+		behavior_text = "Behavior: [STUNNED]"
+	elif st == "KITING":
 		behavior_text = "Behavior: [KITING]"
 	elif float(ud.get("casting_remaining", 0.0)) > 0.0:
 		var ckind: String = str(ud.get("casting_kind", ""))
@@ -233,12 +237,12 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 			behavior_text = "Behavior: [ULTIMATE]"
 		else:
 			behavior_text = "Behavior: [ABILITY]"
-	elif float(ud.get("stun_remaining", 0.0)) > 0.0 or st == "STUNNED":
-		behavior_text = "Behavior: [STUNNED]"
-	elif int(ud.get("target_id", 0)) > 0:
+	elif int(ud.get("target_id", 0)) > 0 and bool(ud.get("in_range", false)):
 		behavior_text = "Behavior: [ATTACKING]"
-	else:
+	elif int(ud.get("target_id", 0)) > 0:
 		behavior_text = "Behavior: [MOVING]"
+	else:
+		behavior_text = "Behavior: [WAITING]"
 	
 	if not behavior_text.is_empty():
 		_behavior_label.text = behavior_text

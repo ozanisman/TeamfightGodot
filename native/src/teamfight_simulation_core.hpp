@@ -278,7 +278,7 @@ private:
 	static constexpr double REGEN_TICK_INTERVAL = 1.0;
 	static constexpr double CASTING_WINDUP = 0.5;
 	static constexpr double RANGED_THRESHOLD = 1.0;
-	static constexpr double MELEE_CONTACT_BUFFER = 0.00001;
+	static constexpr double MELEE_CONTACT_BUFFER = 0.01;
 	static constexpr double DEFAULT_PROJECTILE_SPEED = 5.0;
 	static constexpr double DEFAULT_PROJECTILE_RADIUS = 0.03;
 	static constexpr double DEFAULT_PROJECTILE_STUN_DURATION = 0.0;

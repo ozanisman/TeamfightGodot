@@ -2844,7 +2844,10 @@ double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
 
 double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) const {
 	double attack_range = _attack_range(unit);
-	// No buffer for testing
+	// Add melee contact buffer for melee units
+	if (attack_range <= RANGED_THRESHOLD) {
+		return attack_range + MELEE_CONTACT_BUFFER;
+	}
 	return attack_range;
 }
 

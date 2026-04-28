@@ -263,7 +263,6 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("self_dash")) {
 		compiled.scalar0 = double(params.get("distance", 1.0));
-		compiled.int0 = int64_t(params.get("target_id", 0));
 		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
@@ -826,6 +825,7 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.combat.ability_cd = double(stats.get("ability_cd", 0.0));
 	unit.combat.ultimate_cd = double(stats.get("ultimate_cd", 0.0));
 	unit.combat.attack_range = double(stats.get("attack_range", 0.0));
+	unit.combat.cast_range = double(stats.get("cast_range", 0.0));
 	unit.combat.move_speed = double(stats.get("move_speed", 0.0));
 	unit.combat.attack_speed = double(stats.get("attack_speed", 1.0));
 	unit.combat.attack_damage = double(stats.get("attack_damage", 0.0));
@@ -841,6 +841,8 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	Variant ultimate_effect = champion.get("ultimate", Variant());
 	unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
 	unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
+	unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
+	unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
 	if (unit.has_ability_effect) {
 		unit.ability_effect = _compile_effect(Dictionary(ability_effect));
 	}
@@ -3101,14 +3103,21 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		double effective_range = _effective_attack_range(unit);
 		bool in_contact = (distance <= effective_range) || (Math::abs(distance - effective_range) <= MELEE_CONTACT_BUFFER);
 
-		// Action priority (Python: casts/autos only if in_range).
-		if (in_contact) {
+		// Action priority: check range requirements per action type
+		bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
+		bool can_cast_ability = in_contact || !unit.ability_requires_target_in_range;
+
+		if (can_cast_ultimate) {
 			if (_try_cast_ultimate(unit, *target, distance)) {
 				return;
 			}
+		}
+		if (can_cast_ability) {
 			if (_try_cast_ability(unit, *target, distance)) {
 				return;
 			}
+		}
+		if (in_contact) {
 			if (unit.attack_cooldown <= 0.0) {
 				_perform_auto_attack(unit, *target, distance);
 				return;
@@ -3562,7 +3571,6 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			return;
 		case EFFECT_OPCODE_SELF_DASH: {
 			double dash_distance = effect.scalar0;
-			int64_t target_id = effect.int0;
 			double dir_x = effect.scalar1;
 			double dir_y = effect.scalar2;
 			
@@ -3571,23 +3579,31 @@ void TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, Effect
 			double new_x = current_x;
 			double new_y = current_y;
 			
-			if (target_id != 0) {
-				UnitState *target_unit = _unit_by_id(target_id);
-				if (target_unit != nullptr) {
-					double target_x = target_unit->pos_x;
-					double target_y = target_unit->pos_y;
-					double dx = target_x - current_x;
-					double dy = target_y - current_y;
-					double dist = Math::sqrt(dx * dx + dy * dy);
-					if (dist > 0.0) {
-						double move_dist = Math::min(dash_distance, dist);
-						new_x = current_x + (dx / dist) * move_dist;
-						new_y = current_y + (dy / dist) * move_dist;
-					}
-				}
-			} else {
+			// Check if direction is explicitly provided (non-zero values)
+			bool has_direction = (dir_x != 0.0 || dir_y != 0.0);
+			
+			if (has_direction) {
+				// Use explicit direction
 				new_x = current_x + dir_x * dash_distance;
 				new_y = current_y + dir_y * dash_distance;
+			} else {
+				// Use target from context
+				if (target != nullptr) {
+					int64_t target_id = target->instance_id;
+					UnitState *target_unit = _unit_by_id(target_id);
+					if (target_unit != nullptr) {
+						double target_x = target_unit->pos_x;
+						double target_y = target_unit->pos_y;
+						double dx = target_x - current_x;
+						double dy = target_y - current_y;
+						double dist = Math::sqrt(dx * dx + dy * dy);
+						if (dist > 0.0) {
+							double move_dist = Math::min(dash_distance, dist);
+							new_x = current_x + (dx / dist) * move_dist;
+							new_y = current_y + (dy / dist) * move_dist;
+						}
+					}
+				}
 			}
 			
 			new_x = Math::clamp(new_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);

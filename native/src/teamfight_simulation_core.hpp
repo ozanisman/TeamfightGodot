@@ -63,6 +63,7 @@ private:
 			double ability_cd = 0.0;
 			double ultimate_cd = 0.0;
 			double attack_range = 0.0;
+			double cast_range = 0.0;
 			double move_speed = 0.0;
 			double attack_speed = 1.0;
 			double attack_damage = 0.0;
@@ -81,6 +82,8 @@ private:
 		EffectRecord ultimate_effect;
 		bool has_ability_effect = false;
 		bool has_ultimate_effect = false;
+		bool ability_requires_target_in_range = true;
+		bool ultimate_requires_target_in_range = true;
 		double spawn_pos_x = 0.0;
 		double spawn_pos_y = 0.0;
 		double pos_x = 0.0;

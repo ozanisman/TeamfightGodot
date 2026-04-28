@@ -3,10 +3,12 @@ extends RefCounted
 
 var kind: StringName = &""
 var params: Dictionary = {}
+var requires_target_in_range: bool = true
 
-func _init(_kind: StringName = &"", _params: Dictionary = {}) -> void:
+func _init(_kind: StringName = &"", _params: Dictionary = {}, _requires_target_in_range: bool = true) -> void:
 	kind = _kind
 	params = _params.duplicate(true)
+	requires_target_in_range = _requires_target_in_range
 
 func to_dict() -> Dictionary:
 	var normalized_params: Dictionary = {}
@@ -44,10 +46,12 @@ func to_dict() -> Dictionary:
 	return {
 		"kind": String(kind),
 		"params": normalized_params,
+		"requires_target_in_range": requires_target_in_range,
 	}
 
 static func from_dict(data: Dictionary):
 	var effect := new()
 	effect.kind = StringName(String(data.get("kind", "")))
 	effect.params = Dictionary(data.get("params", {}))
+	effect.requires_target_in_range = bool(data.get("requires_target_in_range", true))
 	return effect

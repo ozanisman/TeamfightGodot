@@ -155,6 +155,7 @@ private:
 		std::unordered_map<int64_t, double> recent_benefactors;
 		double last_hit_time = 0.0;
 		double regen_accumulator = 0.0;
+		int64_t respawn_slot_index = -1; // -1 = no assigned slot
 	};
 
 	struct UnitStrategy {
@@ -317,6 +318,15 @@ private:
 	static constexpr double STICKINESS_DEFAULT = 2.0;
 	static constexpr double STICKINESS_MARKSMAN = 5.0;
 	static constexpr double STICKINESS_SUPPORT = 1.0;
+
+	// Random vertical spawning constants
+	static constexpr double SPAWN_Y_MIN = 3.0;
+	static constexpr double SPAWN_Y_MAX = 7.0;
+	static constexpr double RESPAWN_Y_MIN = 3.0; // Same as initial spawn
+	static constexpr double RESPAWN_Y_MAX = 7.0; // Same as initial spawn
+	static constexpr double PLAYER_SPAWN_X_BASE = 1.0;
+	static constexpr double ENEMY_SPAWN_X_BASE = 9.0;
+	static constexpr double SPAWN_Y_STEP = 0.5;
 	static constexpr double THREAT_RESPONSE_TANK = 2.0;
 	static constexpr double THREAT_RESPONSE_FIGHTER = 1.8;
 	static constexpr double THREAT_RESPONSE_ASSASSIN = 0.8;
@@ -402,6 +412,10 @@ private:
 	Array _enemy_comp;
 	int64_t _player_kills = 0;
 	int64_t _enemy_kills = 0;
+	
+	// Spawn slot tracking per team (indices into spawn_points array)
+	std::vector<bool> _player_spawn_slots_used;
+	std::vector<bool> _enemy_spawn_slots_used;
 	Dictionary _champion_catalog;
 	Dictionary _role_configs;
 	std::vector<BalancePatch> _balance_patches;
@@ -546,7 +560,7 @@ private:
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
-	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const String &reason, const StringName &action_kind);
+	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
 	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim = false);
 	UnitState *_select_ally_target(UnitState &unit);
 	double _distance_between(const UnitState &left, const UnitState &right) const;
@@ -560,6 +574,9 @@ private:
 	void _handle_death(UnitState &killer, UnitState &target);
 	StringName _determine_winner() const;
 	void _respawn_unit(UnitState &unit);
+	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn = false);
+	int64_t _assign_spawn_slot(const StringName &team);
+	void _release_spawn_slot(const StringName &team, int64_t slot_index);
 	void _set_current_target(UnitState &unit, const UnitState &target);
 	Dictionary _build_summary();
 	Dictionary _effect_to_dict(const Variant &effect) const;

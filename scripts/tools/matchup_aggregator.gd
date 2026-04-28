@@ -99,68 +99,52 @@ func _serialize_matchup_data_ordered() -> Dictionary:
 	
 	return ordered_data
 
-func write_matchup_file(output_path: String) -> bool:
-	var matchup_data = export_matchup_json()
-	# Use custom JSON serialization to preserve field order
-	var json_string := _serialize_to_json_ordered(matchup_data, "\t")
-	if json_string.is_empty():
-		push_error("Failed to stringify matchup data.")
-		return false
+func write_matchup_csv_files(output_dir: String) -> bool:
+	var matchup_data = global_matchup_tracker.get_matchup_data()
 	
-	var file := FileAccess.open(output_path, FileAccess.WRITE)
-	if file == null:
-		push_error("Failed to open matchup file for writing: %s" % output_path)
-		return false
+	# Write matchup_vs.csv
+	var vs_lines: PackedStringArray = []
+	vs_lines.append("champion,opponent,wins,losses,winrate")
 	
-	file.store_string(json_string)
-	file.close()
-	print("Matchup data exported successfully to: %s" % output_path)
+	# Write matchup_with.csv
+	var with_lines: PackedStringArray = []
+	with_lines.append("champion,ally,wins,losses,winrate")
+	
+	for champion_id in matchup_data.keys():
+		var matchups = matchup_data[champion_id]
+		var sorted_keys = matchups.keys()
+		sorted_keys.sort()
+		
+		for key in sorted_keys:
+			var data = matchups[key]
+			if key.begins_with("vs_"):
+				var opponent = key.substr(3)
+				vs_lines.append("%s,%s,%d,%d,%s" % [champion_id, opponent, data.wins, data.losses, _fmt_f(data.winrate)])
+			elif key.begins_with("with_"):
+				var ally = key.substr(5)
+				with_lines.append("%s,%s,%d,%d,%s" % [champion_id, ally, data.wins, data.losses, _fmt_f(data.winrate)])
+	
+	# Write vs file
+	var vs_path = output_dir + "/matchup_vs.csv"
+	var vs_file = FileAccess.open(vs_path, FileAccess.WRITE)
+	if vs_file == null:
+		push_error("Failed to open matchup_vs.csv for writing: %s" % vs_path)
+		return false
+	vs_file.store_string("\n".join(vs_lines))
+	vs_file.close()
+	print("Matchup vs data exported successfully to: %s" % vs_path)
+	
+	# Write with file
+	var with_path = output_dir + "/matchup_with.csv"
+	var with_file = FileAccess.open(with_path, FileAccess.WRITE)
+	if with_file == null:
+		push_error("Failed to open matchup_with.csv for writing: %s" % with_path)
+		return false
+	with_file.store_string("\n".join(with_lines))
+	with_file.close()
+	print("Matchup with data exported successfully to: %s" % with_path)
+	
 	return true
 
-func _serialize_to_json_ordered(data: Variant, indent: String = "") -> String:
-	var next_indent = indent + "\t"
-
-	if data is Dictionary:
-		if data.is_empty():
-			return "{}"
-
-		var parts: Array[String] = []
-		parts.append("{")
-
-		var keys = data.keys()
-		for i in range(keys.size()):
-			var key = keys[i]
-			var value = data[key]
-
-			var line = next_indent + JSON.stringify(key) + ": " + _serialize_to_json_ordered(value, next_indent)
-
-			if i < keys.size() - 1:
-				line += ","
-
-			parts.append(line)
-
-		parts.append(indent + "}")
-		return "\n".join(parts)
-
-	elif data is Array:
-		if data.is_empty():
-			return "[]"
-
-		var parts: Array[String] = []
-		parts.append("[")
-
-		for i in range(data.size()):
-			var value = data[i]
-
-			var line = next_indent + _serialize_to_json_ordered(value, next_indent)
-
-			if i < data.size() - 1:
-				line += ","
-
-			parts.append(line)
-
-		parts.append(indent + "]")
-		return "\n".join(parts)
-
-	else:
-		return JSON.stringify(data)
+func _fmt_f(value: float) -> String:
+	return str(snapped(value, 0.000001))

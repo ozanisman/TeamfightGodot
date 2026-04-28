@@ -513,5 +513,4 @@ func write_matchup_file(output_dir: String) -> bool:
 	if _matchup_aggregator == null:
 		return false
 	
-	var matchup_path = output_dir + "/matchup_data.json"
-	return _matchup_aggregator.write_matchup_file(matchup_path)
+	return _matchup_aggregator.write_matchup_csv_files(output_dir)

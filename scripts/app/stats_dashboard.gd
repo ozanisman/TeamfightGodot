@@ -167,7 +167,7 @@ var _regen_worker_edit: LineEdit
 var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
-var _native_fallback_notice: Label
+var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
 var _regen_thread: Thread
@@ -423,18 +423,18 @@ func _build_ui() -> void:
 	export_card.add_child(export_inner)
 	regen_vb.add_child(export_card)
 
-	_native_fallback_notice = Label.new()
-	_native_fallback_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_native_fallback_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_native_fallback_notice.add_theme_color_override("font_color", COLOR_RED)
-	_native_fallback_notice.add_theme_font_size_override("font_size", UI_FONT_BODY)
-	_native_fallback_notice.text = (
-		"Not using native simulation: running GDScript backend (slower). "
-		+ "Build and place teamfight_simulation_core.dll in native/bin/ to use the native core."
+	_native_required_notice = Label.new()
+	_native_required_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_native_required_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_native_required_notice.add_theme_color_override("font_color", COLOR_RED)
+	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	_native_required_notice.text = (
+		"Native simulation is required for export and batch tooling. "
+		+ "Build and place teamfight_simulation_core.dll in native/bin/."
 	)
 	# File-only check skips non-Windows and any Windows path that exists without a working GDExtension.
-	_native_fallback_notice.visible = not NativeSimulationBackendScript.new().is_native_runtime()
-	export_inner.add_child(_native_fallback_notice)
+	_native_required_notice.visible = not NativeSimulationBackendScript.new().is_native_runtime()
+	export_inner.add_child(_native_required_notice)
 
 	var regen_hint := Label.new()
 	regen_hint.text = "Select which modes to export. Each checked size runs the match count below."
@@ -821,13 +821,13 @@ func _wire_controls() -> void:
 
 func _setup_regen_native_confirm_dialog() -> void:
 	_regen_native_confirm = ConfirmationDialog.new()
-	_regen_native_confirm.title = "Native DLL not found"
-	_regen_native_confirm.ok_button_text = "Run anyway"
+	_regen_native_confirm.title = "Native backend required"
+	_regen_native_confirm.ok_button_text = "Close"
 	_regen_native_confirm.cancel_button_text = "Cancel"
 	_regen_native_confirm.dialog_text = (
 		"native/bin/teamfight_simulation_core.dll was not found. "
-		+ "Export will use the GDScript simulator (slower, more CPU).\n\n"
-		+ "Run export anyway?"
+		+ "Export requires the native TeamfightSimulationCore backend and cannot proceed without it.\n\n"
+		+ "Close this dialog after building the native DLL."
 	)
 	_regen_native_confirm.min_size = Vector2i(420, 180)
 	_regen_native_confirm.exclusive = true
@@ -979,6 +979,10 @@ func _deferred_show_regen_native_confirm() -> void:
 
 
 func _on_regen_native_export_confirmed() -> void:
+	if not NativeSimulationBackendScript.new().is_native_runtime():
+		_regen_status.text = "Native simulation backend required for export."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		return
 	var params: Variant = _regen_stashed_export_params
 	_regen_stashed_export_params = null
 	if params == null or not params is Dictionary:

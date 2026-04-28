@@ -3,14 +3,14 @@
 TeamfightGodot is the Godot 4 rewrite of the Teamfight autobattler simulator. The current project shape is:
 
 - native `TeamfightSimulationCore` in C++ for the production match engine
-- GDScript harnesses for replay, parity, batch jobs, stats, and viewer tooling
+- GDScript for startup, validation, replay/parity tooling, and developer views
 - frozen goldens in `fixtures/goldens/` as the source of truth for combat parity
 
 ## Layout
 
 - `native/` - GDExtension core and build files
-- `scripts/` - GDScript runtime, tools, and batch workers
-- `scenes/` - main game, stats dashboard, and viewer scenes
+- `scripts/` - GDScript startup, tools, and batch workers
+- `scenes/` - main game plus developer-view scenes
 - `fixtures/goldens/` - replay parity fixtures
 - `docs/` - workflow, testing, and benchmark notes
 - `logs/` - benchmark and run artifacts
@@ -18,8 +18,8 @@ TeamfightGodot is the Godot 4 rewrite of the Teamfight autobattler simulator. Th
 ## Entry points
 
 - Main scene: `scenes/game_root.tscn`
-- Visual simulation: `scenes/simulation_viewer.tscn`
-- Stats dashboard: `scenes/stats_dashboard.tscn`
+- Visual simulation tool: `scenes/simulation_viewer.tscn`
+- Stats dashboard tool: `scenes/stats_dashboard.tscn`
 
 Run everything from the repo root through [`run_godot.ps1`](run_godot.ps1). It expects `C:\Godot\godot.exe` unless you change the script.
 
@@ -102,5 +102,5 @@ Primary 5v5 throughput gate:
 - `--check-only` is the first check to run after editing GDScript.
 - `--bench-skip-summaries` only enables the native batch path when `--workers=1`.
 - The root-certificate warning on Windows can appear during startup and is not necessarily a failure.
-- If native loading fails, the app falls back to the GDScript simulation core.
+- Production runtime requires the native simulation core; GDScript is for validation and tooling.
 - More detailed workflow notes live in [`docs/simulation_and_testing.md`](docs/simulation_and_testing.md).

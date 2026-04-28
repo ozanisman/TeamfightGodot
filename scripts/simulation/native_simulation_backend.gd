@@ -13,6 +13,7 @@ var _backend: Object = null
 var _native_available: bool = false
 var _validation_mode: bool = false
 static var _logged_extension_load_failure: bool = false
+static var _logged_native_unavailable: bool = false
 
 
 ## Windows-only path probe; do not use alone to decide if native sim is active — use is_native_runtime().
@@ -39,31 +40,30 @@ func _try_load_native_extension() -> void:
 			)
 
 
-func _attach_native_or_gdscript() -> void:
+func _attach_native_only() -> void:
 	_try_load_native_extension()
 	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
 		_backend = ClassDB.instantiate(NativeClassName)
 		if _backend != null:
 			_native_available = true
 			return
-		push_warning("Native simulation core failed to instantiate; using GDScript backend.")
-	else:
-		push_warning(
-			"Native class %s not registered; using GDScript teamfight_simulation_core.gd (slower; build native/bin DLL for release)."
+		push_warning("Native simulation core failed to instantiate.")
+	if not _logged_native_unavailable:
+		_logged_native_unavailable = true
+		push_error(
+			"Native class %s is unavailable. Build native/bin/teamfight_simulation_core.dll to run the production path."
 			% NativeClassName
 		)
-	_backend = TeamfightSimulationCoreScript.new()
-	_native_available = false
 
 
 func _init(validation_mode: bool = false) -> void:
 	_validation_mode = validation_mode
 	if validation_mode:
-		push_warning("Native simulation core unavailable; using reference-only GDScript backend for validation.")
+		push_warning("Validation mode: using reference-only GDScript backend.")
 		_backend = TeamfightSimulationCoreScript.new()
 		_native_available = false
 	else:
-		_attach_native_or_gdscript()
+		_attach_native_only()
 
 func _ensure_native_backend() -> bool:
 	if _backend != null:
@@ -80,20 +80,19 @@ func _ensure_native_backend() -> bool:
 				_backend = native_backend
 				_native_available = true
 				return true
-	_backend = TeamfightSimulationCoreScript.new()
-	_native_available = false
-	return true
+	if not _logged_native_unavailable:
+		_logged_native_unavailable = true
+		push_error(
+			"Native class %s is unavailable. Build native/bin/teamfight_simulation_core.dll to run the production path."
+			% NativeClassName
+		)
+	return false
 
 func is_available() -> bool:
-	if _backend != null:
-		return true
-	if _validation_mode:
-		return false
-	_try_load_native_extension()
-	return ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName)
+	return _ensure_native_backend()
 
 
-## True when GDExtension TeamfightSimulationCore is active (not GDScript fallback).
+## True when GDExtension TeamfightSimulationCore is active.
 func is_native_runtime() -> bool:
 	return _native_available
 
@@ -118,12 +117,12 @@ func run_matches(match_inputs: Array):
 	if _backend.has_method("run_matches"):
 		return _backend.call("run_matches", match_inputs)
 
-	var fallback: Array = []
-	fallback.resize(match_inputs.size())
+	var results: Array = []
+	results.resize(match_inputs.size())
 	for index in range(match_inputs.size()):
-		fallback[index] = run_match(match_inputs[index])
+		results[index] = run_match(match_inputs[index])
 		clear()
-	return fallback
+	return results
 
 func run_match_simulation_only(match_input: Variant) -> void:
 	if not _ensure_native_backend():
@@ -155,7 +154,6 @@ func begin_match(match_input: Variant) -> void:
 	if _backend.has_method("begin_match"):
 		_backend.call("begin_match", match_input)
 		return
-	# Fallback: GDScript backend doesn't support incremental API
 	push_error("Incremental API requires native backend.")
 
 func advance_one_tick() -> void:

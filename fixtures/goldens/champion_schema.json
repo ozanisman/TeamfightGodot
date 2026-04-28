@@ -489,7 +489,7 @@
 			"armor": 0.24,
 			"attack_damage": 32.0,
 			"attack_range": 0.3,
-			"attack_speed": 3.2,
+			"attack_speed": 1.2,
 			"life_steal": 0.0,
 			"magic_resist": 0.24,
 			"mana_per_attack": 10.0,
@@ -550,7 +550,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1000.5,
+							"damage_multiplier": 10000.5,
 							"reason": "Shadow Strike",
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
@@ -561,7 +561,7 @@
 					{
 						"kind": "stun",
 						"params": {
-							"duration": 5.5,
+							"duration": 0.5,
 							"reason": "Shadow Strike",
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
@@ -574,7 +574,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
+		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% damage and stun for 0.5s.",
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
 		"name": "Ninja",
 		"passive_desc": "Deals double damage to targets below 50% HP.",

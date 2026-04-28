@@ -248,7 +248,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
-		"ability_desc": "Dashes toward the target enemy for 200% damage and a short 1.0s stun.",
+		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% damage and stun for 0.5s.",
 		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"passive_desc": "Deals double damage to targets below 50% HP.",
 		"ability": {
@@ -256,8 +256,8 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{"kind": &"self_dash", "params": {"distance": 2.0}},
-					{"kind": &"damage", "params": {"damage_multiplier": 1000.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
-					{"kind": &"stun", "params": {"duration": 5.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
+					{"kind": &"damage", "params": {"damage_multiplier": 10000.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
+					{"kind": &"stun", "params": {"duration": 0.5, "reason": "Shadow Strike", "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true}},
 				],
 				"reason": "Shadow Strike",
 			},
@@ -616,7 +616,7 @@ const CHAMPION_DATA := {
 			"max_hp": 250.0,
 			"attack_damage": 32.0,
 			"attack_range": 0.3,
-			"attack_speed": 3.2,
+			"attack_speed": 1.2,
 			"move_speed": 0.76,
 			"armor": 0.24,
 			"magic_resist": 0.24,

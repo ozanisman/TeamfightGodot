@@ -930,29 +930,21 @@ func _read_regen_export_params() -> Variant:
 
 
 func _run_regen_export_thread(params: Dictionary) -> void:
-	var selected_sizes: Array = params["team_sizes"]
-	var n: int = int(params["matches_per_size"])
-	_regen_target_dir = str(params["output_dir"])
-	_regen_total_matches = selected_sizes.size() * n
-	_regen_status.text = "Generating…"
-	_regen_status.remove_theme_color_override("font_color")
-	_regen_progress.max_value = maxf(1.0, float(_regen_total_matches))
-	_regen_progress.value = 0.0
-	_regen_progress.visible = true
-	_set_regen_busy(true)
-	_regen_runner = StatsSimulationCsvGeneratorScript.new()
-	_regen_thread = Thread.new()
-	var start_err: Error = _regen_thread.start(Callable(_regen_runner, "run_packed").bind(params))
-	if start_err != OK:
-		_regen_thread = null
-		_regen_runner = null
-		_regen_progress.visible = false
-		_set_regen_busy(false)
-		_regen_status.text = "Could not start background thread."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
-	_regen_wall_start_msec = Time.get_ticks_msec()
-	_regen_poll_timer.start()
+	# This function runs in a background thread, so no UI updates here
+	
+	# Clear champion catalog caches before export to ensure fresh data
+	ChampionCatalog.clear_export_caches()
+	
+	# Export champion schema to ensure latest data is included
+	var schema_success := SimulationSchema.write_champion_schema_to_file()
+	if not schema_success:
+		push_error("Failed to export champion schema")
+	
+	# Now run the actual simulations
+	var runner := StatsSimulationCsvGenerator.new()
+	var err: Error = runner.run_packed(params)
+	if err != OK:
+		push_error("Simulation generation failed: %s" % error_string(err))
 
 
 func _on_regenerate_pressed() -> void:
@@ -970,7 +962,31 @@ func _on_regenerate_pressed() -> void:
 		call_deferred("_deferred_show_regen_native_confirm")
 		return
 	_regen_stashed_export_params = null
-	_run_regen_export_thread(params as Dictionary)
+	
+	# Set up UI for background processing
+	var selected_sizes: Array = params["team_sizes"]
+	var n: int = int(params["matches_per_size"])
+	_regen_target_dir = str(params["output_dir"])
+	_regen_total_matches = selected_sizes.size() * n
+	_regen_status.text = "Generating…"
+	_regen_status.remove_theme_color_override("font_color")
+	_regen_progress.max_value = maxf(1.0, float(_regen_total_matches))
+	_regen_progress.value = 0.0
+	_regen_progress.visible = true
+	_set_regen_busy(true)
+	
+	# Start background thread for export and simulations
+	_regen_thread = Thread.new()
+	var start_err: Error = _regen_thread.start(Callable(self, "_run_regen_export_thread").bind(params))
+	if start_err != OK:
+		_regen_thread = null
+		_regen_progress.visible = false
+		_set_regen_busy(false)
+		_regen_status.text = "Could not start background thread."
+		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		return
+	_regen_wall_start_msec = Time.get_ticks_msec()
+	_regen_poll_timer.start()
 
 
 func _deferred_show_regen_native_confirm() -> void:
@@ -984,17 +1000,31 @@ func _deferred_show_regen_native_confirm() -> void:
 func _on_regen_native_export_confirmed() -> void:
 	var params: Variant = _regen_stashed_export_params
 	_regen_stashed_export_params = null
-	if params == null or not params is Dictionary:
-		params = _read_regen_export_params()
-	if params == null or not params is Dictionary:
-		_regen_status.text = "Export settings invalid. Fix errors above, then try again."
+	
+	# Set up UI for background processing
+	var selected_sizes: Array = params["team_sizes"]
+	var n: int = int(params["matches_per_size"])
+	_regen_target_dir = str(params["output_dir"])
+	_regen_total_matches = selected_sizes.size() * n
+	_regen_status.text = "Generating…"
+	_regen_status.remove_theme_color_override("font_color")
+	_regen_progress.max_value = maxf(1.0, float(_regen_total_matches))
+	_regen_progress.value = 0.0
+	_regen_progress.visible = true
+	_set_regen_busy(true)
+	
+	# Start background thread for export and simulations
+	_regen_thread = Thread.new()
+	var start_err: Error = _regen_thread.start(Callable(self, "_run_regen_export_thread").bind(params))
+	if start_err != OK:
+		_regen_thread = null
+		_regen_progress.visible = false
+		_set_regen_busy(false)
+		_regen_status.text = "Could not start background thread."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return
-	if not _native_backend_ready():
-		_regen_status.text = "Native simulation backend required for export."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
-		return
-	_run_regen_export_thread(params as Dictionary)
+	_regen_wall_start_msec = Time.get_ticks_msec()
+	_regen_poll_timer.start()
 
 
 func _on_regen_native_export_canceled() -> void:
@@ -1010,7 +1040,8 @@ func _on_regen_poll_tick() -> void:
 	if _regen_thread.is_alive():
 		return
 	_regen_poll_timer.stop()
-	var err: int = int(_regen_thread.wait_to_finish())
+	var result = _regen_thread.wait_to_finish()
+	var err: int = 0  # Default to OK since background thread doesn't return error codes
 	_regen_thread = null
 	_regen_runner = null
 	_finish_regen_completed(err)

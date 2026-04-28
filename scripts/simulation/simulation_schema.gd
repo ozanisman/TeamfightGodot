@@ -56,9 +56,18 @@ static func export_champion_schema() -> Dictionary:
 	return {}
 
 static func generate_champion_schema_from_gdscript() -> Dictionary:
-	var catalog := ChampionCatalogScript.build_catalog()
-	var passives := ChampionCatalogScript.build_passive_registry()
-	var role_configs := ChampionCatalogScript.build_role_configs()
+	var script_path = "res://scripts/simulation/champion_catalog.gd"
+	
+	# Force reload from disk, bypassing cache to get fresh data
+	var script = ResourceLoader.load(script_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if script == null:
+		push_error("Failed to load fresh champion catalog script")
+		return {}
+	
+	# Call static methods on the fresh script with explicit types
+	var catalog: Dictionary = script.build_catalog()
+	var passives: Dictionary = script.build_passive_registry()
+	var role_configs: Dictionary = script.build_role_configs()
 	
 	# Start with champions at top level (for C++ compatibility)
 	var result: Dictionary = {}
@@ -88,16 +97,25 @@ static func write_champion_schema_to_file(output_path: String = GoldenChampionSc
 	
 	var file := FileAccess.open(output_path, FileAccess.WRITE)
 	if file == null:
-		push_error("Failed to open file for writing: %s" % output_path)
+		push_error("Failed to open schema file for writing.")
 		return false
 	
 	file.store_string(json_string)
 	file.close()
+	print("Champion schema exported successfully to: %s" % output_path)
 	return true
 
 static func export_role_config_schema() -> Dictionary:
 	var result: Dictionary = {}
-	var role_configs := ChampionCatalogScript.build_role_configs()
+	
+	# Force reload from disk, bypassing cache to get fresh data
+	var script_path = "res://scripts/simulation/champion_catalog.gd"
+	var script = ResourceLoader.load(script_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if script == null:
+		push_error("Failed to load fresh champion catalog script for role config export")
+		return {}
+	
+	var role_configs: Dictionary = script.build_role_configs()
 	for role_id in role_configs.keys():
 		var config = role_configs[role_id]
 		result[String(role_id)] = config.to_dict()

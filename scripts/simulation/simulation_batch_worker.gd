@@ -20,6 +20,7 @@ const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_i
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+const MatchupTrackerScript := preload("res://scripts/simulation/matchup_tracker.gd")
 
 static func _summary_object(summary_value: Variant):
 	if summary_value is Object:
@@ -84,8 +85,14 @@ static func flush_stdio_if_available() -> void:
 		_bench_flush_core.call(&"flush_stdio")
 
 func run_chunk(data: Dictionary) -> Array:
+	# Clear thread cache to ensure fresh data for each chunk
+	ChampionCatalogScript.clear_thread_cache()
+	
 	# Pre-initialize champion catalog in thread context
 	ChampionCatalogScript.build_catalog()
+	
+	# Initialize matchup tracker for this chunk
+	var matchup_tracker = MatchupTrackerScript.new()
 	
 	var start_index: int = int(data.get("start_index", 0))
 	var end_index: int = int(data.get("end_index", 0))
@@ -127,6 +134,24 @@ func run_chunk(data: Dictionary) -> Array:
 		else:
 			var summary = _summary_object(backend.run_match(batch_match_input))
 			results[result_index] = summary.to_dict() if summary is Object and summary.has_method("to_dict") else summary
+			
+			# Process matchup data from this match result
+			if summary is Object and summary.has_method("to_dict"):
+				var winners: Array[StringName] = []
+				var losers: Array[StringName] = []
+				
+				# Determine winners and losers based on winner_team
+				if summary.winner_team == &"player":
+					winners = summary.player_comp
+					losers = summary.enemy_comp
+				elif summary.winner_team == &"enemy":
+					winners = summary.enemy_comp
+					losers = summary.player_comp
+				
+				# Only process if we have valid winners and losers
+				if not winners.is_empty() and not losers.is_empty():
+					matchup_tracker.process_match_result(winners, losers)
+		
 		result_index += 1
 		if result_index % 1000 == 0:
 			record_benchmark_progress(1000)
@@ -136,5 +161,13 @@ func run_chunk(data: Dictionary) -> Array:
 	var tail: int = chunk_len % 1000
 	if tail != 0:
 		record_benchmark_progress(tail)
+
+	# Include matchup data in results if not in benchmark mode
+	if not bench_skip_summaries:
+		var chunk_result = {
+			"match_results": results,
+			"matchup_data": matchup_tracker.get_matchup_data()
+		}
+		return [chunk_result]
 
 	return results

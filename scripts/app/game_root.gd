@@ -67,3 +67,8 @@ func _export_champion_schema() -> void:
 		print("Champion schema exported successfully")
 	else:
 		push_error("Failed to export champion schema")
+	
+	# Test minimal kit generation
+	const MinimalKitTest := preload("res://scripts/tools/minimal_kit_test.gd")
+	var kit_success := MinimalKitTest.write_minimal_kit_json()
+	print("Minimal kit test success: %s" % kit_success)

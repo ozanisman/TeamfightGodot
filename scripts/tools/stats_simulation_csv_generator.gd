@@ -44,7 +44,7 @@ func run(
 		return ERR_UNAVAILABLE
 	var total_matches: int = team_sizes.size() * matches_per_size
 	SimulationBatchWorkerScript.reset_benchmark_progress(total_matches)
-	var aggregator := StatsCsvAggregatorScript.new()
+	var aggregator := StatsCsvAggregator.new()
 	aggregator.reset()
 	for sz in team_sizes:
 		var per_size_seed: int = base_seed + int(sz) * 1_009_033
@@ -53,7 +53,19 @@ func run(
 		)
 		if err_sz != OK:
 			return err_sz
-	return aggregator.write_to_dir(output_dir)
+	
+	# Write regular CSV files
+	var csv_err: Error = aggregator.write_to_dir(output_dir)
+	if csv_err != OK:
+		return csv_err
+	
+	# Write matchup data file
+	var matchup_success: bool = aggregator.write_matchup_file(output_dir)
+	if not matchup_success:
+		push_error("Failed to write matchup data file")
+		return ERR_FILE_CANT_WRITE
+	
+	return OK
 
 
 func _worker_count_for_export(matches_per_size: int, max_worker_threads: int) -> int:

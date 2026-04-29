@@ -20,56 +20,36 @@ func load_data() -> bool:
 	is_loaded = false
 	last_error = ""
 	
-	print("Loading matchup data from:")
-	print("VS file: ", VS_FILE_PATH)
-	print("WITH file: ", WITH_FILE_PATH)
-	
 	# Load vs matchups
-	print("Loading VS matchups...")
 	if not _load_csv_file(VS_FILE_PATH, vs_data, "vs"):
 		return false
 	
-	print("VS matchups loaded: ", vs_data.size(), " champions")
-	
 	# Load with matchups  
-	print("Loading WITH matchups...")
 	if not _load_csv_file(WITH_FILE_PATH, with_data, "with"):
 		return false
 	
-	print("WITH matchups loaded: ", with_data.size(), " champions")
-	
 	# Extract champion list
-	print("Extracting champion list...")
 	_extract_champion_list()
-	print("Final champion count: ", champions.size())
 	is_loaded = true
 	return true
 
 func _load_csv_file(file_path: String, target_dict: Dictionary, matchup_type: String) -> bool:
-	print("Opening file: ", file_path)
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
 		last_error = "Failed to open %s file: %s" % [matchup_type, file_path]
-		print("ERROR: ", last_error)
 		return false
-	
-	print("File opened successfully")
 	
 	# Skip header line
 	if file.get_position() < file.get_length():
-		var header = file.get_line()
-		print("Header: ", header)
+		file.get_line()
 	
-	var line_count = 0
 	while file.get_position() < file.get_length():
 		var line := file.get_line().strip_edges()
 		if line.is_empty():
 			continue
 		
-		line_count += 1
 		var parts := line.split(",", false)
 		if parts.size() != 5:
-			print("Skipping invalid line (", line_count, "): ", line)
 			continue
 		
 		var champion := parts[0]
@@ -87,7 +67,6 @@ func _load_csv_file(file_path: String, target_dict: Dictionary, matchup_type: St
 			"winrate": winrate
 		}
 	
-	print("Processed ", line_count, " lines for ", matchup_type)
 	file.close()
 	return true
 

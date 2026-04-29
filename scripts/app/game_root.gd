@@ -46,7 +46,67 @@ func _ready() -> void:
 		_start_headless_run()
 		return
 
-	# Presentation layer will attach here once the compiled simulation core exists.
+	# Default to main menu
+	_export_champion_schema()
+	call_deferred("_open_main_menu")
+
+
+func _open_main_menu() -> void:
+	# Create main menu programmatically
+	var main_menu := Control.new()
+	main_menu.name = "MainMenu"
+	
+	# Background
+	var background := ColorRect.new()
+	background.color = Color(0.078, 0.078, 0.102, 1.0)
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_menu.add_child(background)
+	
+	# Container for UI elements
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	vbox.add_theme_constant_override("separation", 20)
+	main_menu.add_child(vbox)
+	
+	# Title
+	var title := Label.new()
+	title.text = "Teamfight Tactics"
+	title.add_theme_color_override("font_color", Color.WHITE)
+	title.add_theme_font_size_override("font_size", 48)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	
+	# Spacer
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 100)
+	vbox.add_child(spacer)
+	
+	# Button container
+	var button_container := HBoxContainer.new()
+	button_container.add_theme_constant_override("separation", 30)
+	vbox.add_child(button_container)
+	
+	# Simulation Viewer button
+	var sim_button := Button.new()
+	sim_button.text = "Simulation Viewer"
+	sim_button.custom_minimum_size = Vector2(200, 80)
+	sim_button.add_theme_color_override("font_color", Color.WHITE)
+	sim_button.add_theme_font_size_override("font_size", 18)
+	sim_button.pressed.connect(_open_simulation_viewer)
+	button_container.add_child(sim_button)
+	
+	# Stats Dashboard button
+	var stats_button := Button.new()
+	stats_button.text = "Stats Dashboard"
+	stats_button.custom_minimum_size = Vector2(200, 80)
+	stats_button.add_theme_color_override("font_color", Color.WHITE)
+	stats_button.add_theme_font_size_override("font_size", 18)
+	stats_button.pressed.connect(_open_stats_dashboard)
+	button_container.add_child(stats_button)
+	
+	# Add to tree
+	get_tree().root.add_child(main_menu)
+	get_tree().current_scene = main_menu
 
 
 func _open_stats_dashboard() -> void:

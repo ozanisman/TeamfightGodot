@@ -1780,14 +1780,9 @@ func _build_export_ui_content() -> void:
 
 func _build_matchup_ui() -> void:
 	# Load matchup data
-	print("Loading matchup data...")
 	if not _matchup_loader.load_data():
-		print("Failed to load matchup data: " + _matchup_loader.last_error)
 		_show_matchup_error("Failed to load matchup data: " + _matchup_loader.last_error)
 		return
-	
-	print("Matchup data loaded successfully")
-	print("Champion count: ", _matchup_loader.champions.size())
 	
 	# Create main layout
 	var main_hb := HBoxContainer.new()
@@ -1820,8 +1815,6 @@ func _build_matchup_ui() -> void:
 	# Populate champion list
 	for champion in _matchup_loader.champions:
 		champion_list.add_item(champion)
-	
-	print("Added ", _matchup_loader.champions.size(), " champions to ItemList")
 	
 	# View mode
 	left_panel.add_child(_section_label("VIEW MODE"))
@@ -2198,6 +2191,7 @@ func _show_no_data(parent: Control, message: String) -> void:
 
 func _refresh_matchup_data() -> void:
 	if _matchup_loader.load_data():
-		print("Matchup data refreshed successfully")
+		# Data refreshed successfully
+		pass
 	else:
 		print("Failed to refresh matchup data: " + _matchup_loader.last_error)

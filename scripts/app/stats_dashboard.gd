@@ -303,10 +303,10 @@ func _build_ui() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
 	var quit := Button.new()
-	quit.text = "Quit"
-	quit.custom_minimum_size = Vector2(96, UI_MIN_CONTROL_H)
+	quit.text = "Back to Menu"
+	quit.custom_minimum_size = Vector2(120, UI_MIN_CONTROL_H)
 	quit.size_flags_horizontal = Control.SIZE_SHRINK_END
-	quit.pressed.connect(func(): get_tree().quit())
+	quit.pressed.connect(_on_back_to_menu)
 	top.add_child(quit)
 	_root_vb.add_child(top)
 
@@ -2195,3 +2195,7 @@ func _refresh_matchup_data() -> void:
 		pass
 	else:
 		print("Failed to refresh matchup data: " + _matchup_loader.last_error)
+
+
+func _on_back_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/game_root.tscn")

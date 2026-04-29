@@ -242,6 +242,19 @@ func _create_ui_structure() -> void:
 	_header_panel.size = screen_size
 	_header_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_header_panel)
+	
+	# Add back to menu button to draft panel
+	var menu_button := Button.new()
+	menu_button.text = "Back to Menu"
+	menu_button.custom_minimum_size = Vector2(120, 40)
+	menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	menu_button.offset_left = -130
+	menu_button.offset_top = 10
+	menu_button.offset_right = -10
+	menu_button.offset_bottom = 50
+	menu_button.pressed.connect(_on_back_to_menu)
+	_style_button(menu_button)
+	_header_panel.add_child(menu_button)
 
 	# Connect to window resize signal
 	get_tree().root.connect("size_changed", _on_window_resized)
@@ -1599,6 +1612,13 @@ func _setup_control_panel() -> void:
 	_style_button(restart_button)
 	hbox.add_child(restart_button)
 
+	var menu_button := Button.new()
+	menu_button.text = "Back to Menu"
+	menu_button.custom_minimum_size = Vector2(120, 40)
+	menu_button.pressed.connect(_on_back_to_menu)
+	_style_button(menu_button)
+	hbox.add_child(menu_button)
+
 
 func _style_button(button: Button) -> void:
 	button.add_theme_color_override("font_color", COLOR_BUTTON_TEXT)
@@ -1770,6 +1790,10 @@ func _can_start_match() -> bool:
 	if _draft_step_index < DRAFT_SEQUENCE.size() and not _debug_mode:
 		return false
 	return true
+
+
+func _on_back_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/game_root.tscn")
 
 
 func _show_world_and_hud_for_battle() -> void:

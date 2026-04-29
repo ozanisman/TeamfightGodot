@@ -1174,6 +1174,32 @@ func _refresh_chart() -> void:
 		return
 
 	var display_data: Dictionary = data_context.duplicate(true)
+	
+	# Calculate K/D/A for roles on-the-fly from champion data
+	if _view_mode == &"roles":
+		var unit_data: Dictionary = _loader.all_stats.get(_current_size, {}).get("units", {})
+		for role_key in display_data.keys():
+			var role_role: String = str(role_key).to_lower()
+			var total_kills: float = 0.0
+			var total_deaths: float = 0.0
+			var total_assists: float = 0.0
+			var champion_count: int = 0
+			
+			for champion_key in unit_data.keys():
+				var champion_role: String = str(_unit_roles.get(String(champion_key), "")).to_lower()
+				if champion_role == role_role:
+					var champ_data: Dictionary = unit_data[champion_key]
+					total_kills += float(champ_data.get("kills", 0.0))
+					total_deaths += float(champ_data.get("deaths", 0.0))
+					total_assists += float(champ_data.get("assists", 0.0))
+					champion_count += 1
+			
+			if champion_count > 0:
+				display_data[role_key]["kills"] = total_kills
+				display_data[role_key]["deaths"] = total_deaths
+				display_data[role_key]["assists"] = total_assists
+				display_data[role_key]["kda"] = (total_kills + total_assists) / maxf(1.0, total_deaths)
+	
 	if not _search_text.is_empty():
 		var q: String = _search_text.to_lower()
 		var filtered: Dictionary = {}
@@ -1361,7 +1387,7 @@ func _refresh_chart() -> void:
 		val_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		val_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		if _current_metric == &"winRate" or is_synergy:
-			val_lb.text = "%.0f%%" % (val * 100.0)
+			val_lb.text = "%.2f%%" % (val * 100.0)
 		elif _current_metric == &"kda":
 			val_lb.text = "%.2f" % val
 		else:
@@ -1524,7 +1550,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		var hd: Array = ci.get("healing_done", [u_data.get("healing_done", 0.0), u_data.get("healing_done", 0.0)])
 		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
 		lines.append("Samples: %d" % int(count))
-		lines.append("Win Rate: %.1f%% [%.1f%%, %.1f%%]" % [
+		lines.append("Win Rate: %.2f%% [%.2f%%, %.2f%%]" % [
 			float(u_data.get("winRate", 0.0)) * 100.0,
 			float(wr[0]) * 100.0,
 			float(wr[1]) * 100.0,
@@ -1553,7 +1579,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
 		lines.append("Games Played: %d" % int(count))
 		lines.append(
-			"Win Rate: %.1f%%" % (float(u_data.get("winRate", 0.0)) * 100.0)
+			"Win Rate: %.2f%%" % (float(u_data.get("winRate", 0.0)) * 100.0)
 		)
 		lines.append(
 			"Record: %d-%d-%d (W-L-D)"
@@ -1756,7 +1782,7 @@ func _build_export_ui_content() -> void:
 	export_inner.add_child(worker_block)
 
 	_regen_button = Button.new()
-	_regen_button.text = "Run export"
+	_regen_button.text = "Generate"
 	_regen_button.tooltip_text = "Regenerate stats CSVs (native sim)"
 	_regen_button.clip_text = true
 	_regen_button.custom_minimum_size = Vector2(0, 56)
@@ -2021,7 +2047,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 	if not best.is_empty():
 		for item in best:
 			var item_label := Label.new()
-			item_label.text = "  • %s (%.1f%%)" % [item.name, item.winrate * 100]
+			item_label.text = "  • %s (%.2f%%)" % [item.name, item.winrate * 100]
 			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
 			content.add_child(item_label)
 	else:
@@ -2039,7 +2065,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 	if not worst.is_empty():
 		for item in worst:
 			var item_label := Label.new()
-			item_label.text = "  • %s (%.1f%%)" % [item.name, item.winrate * 100]
+			item_label.text = "  • %s (%.2f%%)" % [item.name, item.winrate * 100]
 			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
 			content.add_child(item_label)
 	else:
@@ -2125,7 +2151,7 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 		row.add_child(data_losses_label)
 		
 		var data_winrate_label := Label.new()
-		data_winrate_label.text = "%.1f%%" % (item.winrate * 100)
+		data_winrate_label.text = "%.2f%%" % (item.winrate * 100)
 		data_winrate_label.custom_minimum_size.x = 100
 		var color = _get_winrate_color(item.winrate)
 		data_winrate_label.add_theme_color_override("font_color", color)

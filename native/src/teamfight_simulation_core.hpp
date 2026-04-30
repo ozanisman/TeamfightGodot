@@ -252,6 +252,9 @@ private:
 		bool needs_cluster_density = false;
 		std::vector<int64_t> player_backliner_indices;
 		std::vector<int64_t> enemy_backliner_indices;
+		/// Alive backliner count for team; reset in _prepare_tick_context, decremented in _handle_death (matches `other.alive` scans over backliner lists).
+		int player_backliner_alive_count = 0;
+		int enemy_backliner_alive_count = 0;
 		/// Alive tank+fighter per team (obscurance brute / spatial grid insert).
 		std::vector<int64_t> player_frontline_indices;
 		std::vector<int64_t> enemy_frontline_indices;

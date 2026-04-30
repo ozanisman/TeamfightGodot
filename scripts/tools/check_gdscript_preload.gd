@@ -1,5 +1,8 @@
 extends SceneTree
 
+## Minimal GDScript compile/preload gate for CI (--check-only).
+## Dashboard loader + stats_dashboard scene smoke: --check-stats-dashboard ([check_stats_dashboard_load.gd]).
+
 const AppGameRootScript := preload("res://scripts/app/game_root.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const ChampionSpecScript := preload("res://scripts/simulation/champion_spec.gd")
@@ -20,7 +23,6 @@ const SimulationSchemaScript := preload("res://scripts/simulation/simulation_sch
 const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const UnitReplaySummaryScript := preload("res://scripts/simulation/unit_replay_summary.gd")
 const GameRootScene := preload("res://scenes/game_root.tscn")
-const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
 const StatsDashboardScript := preload("res://scripts/app/stats_dashboard.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
 const StatsChartAxisGuidesScript := preload("res://scripts/app/stats_chart_axis_guides.gd")
@@ -29,47 +31,14 @@ const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggrega
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const GenerateSimulationStatsScript := preload("res://scripts/tools/generate_simulation_stats.gd")
 const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_stats_aggregator_roundtrip.gd")
+const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
+const CheckMatchTelemetryScript := preload("res://scripts/tools/check_match_telemetry.gd")
+
 
 func _init() -> void:
-	# Preload in this file can fail for this script; runtime load is enough for CI.
 	var champion_tooltip: Script = load("res://scripts/app/champion_catalog_tooltip.gd") as Script
 	if champion_tooltip == null:
 		push_error("champion_catalog_tooltip: load failed (parse or missing res://scripts/app/champion_catalog_tooltip.gd)")
 		call_deferred("quit", 1)
 		return
-	var _compile_bar := StatsBarControlScript
-	var _compile_axis_guides := StatsChartAxisGuidesScript
-	var _compile_balance_bar := StatsBalanceBarScript
-	var _compile_stats_dashboard := StatsDashboardScript
-	var _compile_agg := StatsCsvAggregatorScript
-	var _compile_gen := StatsSimulationCsvGeneratorScript
-	var _compile_export := GenerateSimulationStatsScript
-	var _compile_agg_rt := CheckStatsAggregatorRoundtripScript
-	var loader := StatsDashboardLoaderScript.new()
-	if loader.load_from_dir("res://fixtures/stats_dashboard") != OK:
-		push_error("StatsDashboardLoader fixture load failed")
-		call_deferred("quit", 1)
-		return
-	call_deferred("_stats_dashboard_enter_tree_smoke")
-
-
-func _stats_dashboard_enter_tree_smoke() -> void:
-	var sc: PackedScene = load("res://scenes/stats_dashboard.tscn") as PackedScene
-	if sc == null:
-		push_error("stats_dashboard: PackedScene load failed")
-		quit(1)
-		return
-	var inst: Node = sc.instantiate()
-	if inst == null:
-		push_error("stats_dashboard: instantiate failed")
-		quit(1)
-		return
-	root.add_child(inst)
-	await process_frame
-	await process_frame
-	if not is_instance_valid(inst):
-		push_error("stats_dashboard: node invalid after frames")
-		quit(1)
-		return
-	inst.queue_free()
-	quit(0)
+	call_deferred("quit", 0)

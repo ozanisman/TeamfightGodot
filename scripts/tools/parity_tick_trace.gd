@@ -2,8 +2,7 @@ extends SceneTree
 ## Headless: --parity-trace=<fixture_name> — prints one JSON line per tick (native get_tick_snapshot).
 
 const NativeClassName := "TeamfightSimulationCore"
-const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
-const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 
@@ -38,9 +37,8 @@ func _run() -> void:
 		push_error("missing --parity-trace=name")
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 2)
 		return
-	var load_status: int = GDExtensionManager.load_extension(ProjectSettings.globalize_path(NativeExtensionPath))
-	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
-		push_error("extension load %d" % load_status)
+	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
+		push_error("extension load failed")
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 	var core: Object = ClassDB.instantiate(NativeClassName)

@@ -326,6 +326,271 @@
 		"ultimate_desc": "Colossal impact for 460% damage and a 5.2s stun.",
 		"unit_id": "colossus"
 	},
+	"disarmer": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.3,
+							"reason": "Weapon Break",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "disarm",
+						"params": {
+							"duration": 1.5,
+							"reason": "Weapon Break"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Weapon Break"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Disarms target for 1.5s and deals 130% damage.",
+		"description": "A weapon specialist who can disarm enemies and prevent them from attacking.",
+		"name": "Disarmer",
+		"passive_desc": "Attacks against disarmed targets have 20% increased attack speed.",
+		"passive_ids": [
+			"weapon_breaker"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 5.0,
+			"armor": 0.28,
+			"attack_damage": 26.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.6,
+			"life_steal": 0.0,
+			"magic_resist": 0.18,
+			"mana_per_attack": 10.0,
+			"max_hp": 240.0,
+			"max_mana": 50.0,
+			"move_speed": 0.8,
+			"name": "Disarmer",
+			"passive_id": "weapon_breaker",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 16.0,
+			"unit_id": "disarmer"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 2.8,
+							"radius": 2.0,
+							"reason": "Suppression Field"
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_disarm",
+						"params": {
+							"duration": 3.0,
+							"radius": 2.0,
+							"reason": "Suppression Field"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Suppression Field"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Creates a weapon suppression field for 280% damage, disarming all enemies in 2.0 unit radius for 3.0s.",
+		"unit_id": "disarmer"
+	},
+	"earthbender": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.8,
+							"reason": "Ground Slam",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "root",
+						"params": {
+							"duration": 1.8,
+							"reason": "Ground Slam"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Ground Slam"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Slams the ground for 180% damage and roots target for 1.8s.",
+		"description": "A master of earth manipulation who can root enemies in place and control the battlefield.",
+		"name": "Earthbender",
+		"passive_desc": "Gains 15% bonus armor and magic resist.",
+		"passive_ids": [
+			"earth_resistance"
+		],
+		"role": "fighter",
+		"stats": {
+			"ability_cd": 6.0,
+			"armor": 0.35,
+			"attack_damage": 28.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.1,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 10.0,
+			"max_hp": 280.0,
+			"max_mana": 70.0,
+			"move_speed": 0.7,
+			"name": "Earthbender",
+			"passive_id": "earth_resistance",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "fighter",
+			"tenacity": 0.0,
+			"ultimate_cd": 18.0,
+			"unit_id": "earthbender"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 3.5,
+							"radius": 3.0,
+							"reason": "Earthquake"
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_root",
+						"params": {
+							"duration": 3.5,
+							"radius": 3.0,
+							"reason": "Earthquake"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Earthquake"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Causes an earthquake for 350% damage and roots all enemies in 3.0 unit radius for 3.5s.",
+		"unit_id": "earthbender"
+	},
+	"frost_mage": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.6,
+							"damage_type": "magic",
+							"reason": "Ice Bolt",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "slow",
+						"params": {
+							"duration": 2.5,
+							"reason": "Ice Bolt",
+							"slow_percentage": 0.4
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Ice Bolt"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Fires an ice bolt for 160% magic damage and slows target by 40% for 2.5s.",
+		"description": "A cryomancer who controls ice and frost, slowing enemies with every attack and freezing them with powerful spells.",
+		"name": "Frost Mage",
+		"passive_desc": "Auto-attacks slow targets by 20% for 1.5s.",
+		"passive_ids": [
+			"frost_aura"
+		],
+		"role": "mage",
+		"stats": {
+			"ability_cd": 7.0,
+			"armor": 0.05,
+			"attack_damage": 15.0,
+			"attack_range": 3.5,
+			"attack_speed": 0.85,
+			"life_steal": 0.0,
+			"magic_resist": 0.24,
+			"mana_per_attack": 10.0,
+			"max_hp": 85.0,
+			"max_mana": 80.0,
+			"move_speed": 0.5,
+			"name": "Frost Mage",
+			"passive_id": "frost_aura",
+			"projectile_radius": 0.03,
+			"projectile_speed": 6.0,
+			"respawn_time": 10.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"ultimate_cd": 25.0,
+			"unit_id": "frost_mage"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 3.2,
+							"damage_type": "magic",
+							"radius": 2.5,
+							"reason": "Blizzard"
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_slow",
+						"params": {
+							"duration": 4.0,
+							"radius": 2.5,
+							"reason": "Blizzard",
+							"slow_percentage": 0.6
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Blizzard"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 60% for 4.0s.",
+		"unit_id": "frost_mage"
+	},
 	"guardian": {
 		"ability": {
 			"kind": "shield",
@@ -448,6 +713,79 @@
 		},
 		"ultimate_desc": "Calls down a meteor for 500% magic damage and deals splash damage on impact.",
 		"unit_id": "mage"
+	},
+	"mirror_knight": {
+		"ability": {
+			"kind": "reflect",
+			"params": {
+				"duration": 3.0,
+				"reason": "Mirror Shield",
+				"reflect_percentage": 0.25,
+				"reflect_type": "all"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Gains a 25% damage reflect shield for 3.0s.",
+		"description": "A defensive warrior who reflects damage back at attackers and protects allies with mirrored shields.",
+		"name": "Mirror Knight",
+		"passive_desc": "Permanently reflects 10% of all damage taken back to attackers.",
+		"passive_ids": [
+			"reflective_armor"
+		],
+		"role": "tank",
+		"stats": {
+			"ability_cd": 9.0,
+			"armor": 0.48,
+			"attack_damage": 18.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.95,
+			"life_steal": 0.0,
+			"magic_resist": 0.42,
+			"mana_per_attack": 10.0,
+			"max_hp": 320.0,
+			"max_mana": 80.0,
+			"move_speed": 0.6,
+			"name": "Mirror Knight",
+			"passive_id": "reflective_armor",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "tank",
+			"tenacity": 0.0,
+			"ultimate_cd": 28.0,
+			"unit_id": "mirror_knight"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.8,
+							"reason": "Mirror Aura",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_reflect",
+						"params": {
+							"duration": 5.0,
+							"radius": 2.0,
+							"reason": "Mirror Aura",
+							"reflect_percentage": 0.4,
+							"reflect_type": "all"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Mirror Aura"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Creates a mirrored aura for 180% damage, granting 40% reflect to all allies in 2.0 unit radius for 5.0s.",
+		"unit_id": "mirror_knight"
 	},
 	"monk": {
 		"ability": {
@@ -747,6 +1085,18 @@
 				}
 			]
 		},
+		"arcane_focus": {
+			"on_attack": [
+				{
+					"kind": "target_status_multiplier",
+					"params": {
+						"multiplier": 1.25,
+						"status_kind": "silence"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"aura_damage": {
 			"on_tick": [
 				{
@@ -898,6 +1248,17 @@
 				}
 			]
 		},
+		"earth_resistance": {
+			"on_defense": [
+				{
+					"kind": "constant_multiplier",
+					"params": {
+						"multiplier": 0.85
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"enlightenment": {
 			"post_attack": [
 				{
@@ -941,6 +1302,30 @@
 				}
 			]
 		},
+		"frost_aura": {
+			"post_attack": [
+				{
+					"kind": "slow",
+					"params": {
+						"duration": 1.5,
+						"reason": "Frost Aura",
+						"slow_percentage": 0.2
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"gust_protection": {
+			"post_attack": [
+				{
+					"kind": "knockback_shield",
+					"params": {
+						"shield_ratio": 0.15
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"mana_font": {
 			"on_tick": [
 				{
@@ -959,6 +1344,18 @@
 					"params": {
 						"min_distance": 3.0,
 						"multiplier": 1.25
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"reflective_armor": {
+			"on_defense": [
+				{
+					"kind": "reflect_damage",
+					"params": {
+						"reflect_percentage": 0.1,
+						"reflect_type": "all"
 					},
 					"requires_target_in_range": true
 				}
@@ -1017,6 +1414,18 @@
 					"params": {
 						"flat_amount": 3.0,
 						"reason": "Vampirism"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"weapon_breaker": {
+			"on_attack": [
+				{
+					"kind": "target_status_multiplier",
+					"params": {
+						"multiplier": 1.2,
+						"status_kind": "disarm"
 					},
 					"requires_target_in_range": true
 				}
@@ -1146,6 +1555,97 @@
 
 			}
 		}
+	},
+	"silencer": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.4,
+							"reason": "Arcane Strike",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "silence",
+						"params": {
+							"block_abilities": true,
+							"block_ultimate": true,
+							"duration": 2.0,
+							"reason": "Arcane Strike"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Arcane Strike"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Strikes target for 140% damage and silences for 2.0s.",
+		"description": "A magical assassin who specializes in silencing mages and disrupting spellcasters.",
+		"name": "Silencer",
+		"passive_desc": "Deals 25% bonus damage to silenced targets.",
+		"passive_ids": [
+			"arcane_focus"
+		],
+		"role": "assassin",
+		"stats": {
+			"ability_cd": 4.0,
+			"armor": 0.18,
+			"attack_damage": 22.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.28,
+			"mana_per_attack": 10.0,
+			"max_hp": 200.0,
+			"max_mana": 60.0,
+			"move_speed": 0.85,
+			"name": "Silencer",
+			"passive_id": "arcane_focus",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 10.0,
+			"role": "assassin",
+			"tenacity": 0.0,
+			"ultimate_cd": 15.0,
+			"unit_id": "silencer"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 2.4,
+							"radius": 2.0,
+							"reason": "Silence Zone"
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_silence",
+						"params": {
+							"block_abilities": true,
+							"block_ultimate": true,
+							"duration": 4.0,
+							"radius": 2.0,
+							"reason": "Silence Zone"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Silence Zone"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Creates a silence zone for 240% damage, silencing all enemies in 2.0 unit radius for 4.0s.",
+		"unit_id": "silencer"
 	},
 	"siren": {
 		"ability": {
@@ -1491,6 +1991,97 @@
 		},
 		"ultimate_desc": "Rifts the ground for 260% magic damage and 0.5s stun.",
 		"unit_id": "warlock"
+	},
+	"windcaller": {
+		"ability": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "damage",
+						"params": {
+							"damage_multiplier": 1.2,
+							"damage_type": "magic",
+							"reason": "Wind Blast",
+							"trigger_on_hit": false
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "knockback",
+						"params": {
+							"direction": "away_from_source",
+							"distance": 1.5,
+							"reason": "Wind Blast"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Wind Blast"
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Blasts target with wind for 120% magic damage and knocks back 1.5 units.",
+		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
+		"name": "Windcaller",
+		"passive_desc": "Gains a shield when knocking back enemies worth 15% of damage dealt.",
+		"passive_ids": [
+			"gust_protection"
+		],
+		"role": "mage",
+		"stats": {
+			"ability_cd": 8.0,
+			"armor": 0.05,
+			"attack_damage": 14.0,
+			"attack_range": 3.5,
+			"attack_speed": 0.9,
+			"life_steal": 0.0,
+			"magic_resist": 0.28,
+			"mana_per_attack": 10.0,
+			"max_hp": 80.0,
+			"max_mana": 90.0,
+			"move_speed": 0.55,
+			"name": "Windcaller",
+			"passive_id": "gust_protection",
+			"projectile_radius": 0.03,
+			"projectile_speed": 7.0,
+			"respawn_time": 10.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"ultimate_cd": 22.0,
+			"unit_id": "windcaller"
+		},
+		"ultimate": {
+			"kind": "multi",
+			"params": {
+				"effects": [
+					{
+						"kind": "self_aoe_damage",
+						"params": {
+							"damage_multiplier": 3.0,
+							"damage_type": "magic",
+							"radius": 2.5,
+							"reason": "Tornado"
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "self_aoe_knockback",
+						"params": {
+							"direction": "away_from_source",
+							"distance": 2.5,
+							"radius": 2.5,
+							"reason": "Tornado"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"reason": "Tornado"
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in 2.5 unit radius by 2.5 units.",
+		"unit_id": "windcaller"
 	},
 	"wraith": {
 		"ability": {

@@ -628,7 +628,7 @@ func _on_window_resized() -> void:
 
 func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 	var start_y_ratio := 0.41  # 41% of screen height
-	var square_size_ratio := 0.10  # 10% of screen width
+	var square_size_ratio := 0.05  # 5% of screen width (was 10%)
 	var square_margin_ratio := 0.015  # 1.5% of screen width
 	var start_x_ratio := 0.025  # 2.5% of screen width
 
@@ -797,21 +797,28 @@ func _process(delta: float) -> void:
 		_arena_layer.refresh()
 
 
+## Advances simulation time; may run multiple ticks per frame (capped). Tick FX runs only when exactly one tick ran—burst catch-up skips intermediate FX.
 func _step_simulation(delta: float) -> void:
 	if _backend == null:
 		return
 	
 	_sim_time_accumulator += delta * _sim_speed
 	var tick_rate: float = SimConstantsScript.DEFAULT_TICK_RATE
+	var ticks_budget: int = SimConstantsScript.SIMULATION_VIEWER_MAX_TICKS_PER_FRAME
+	var ticks_advanced: int = 0
 	
-	while _sim_time_accumulator >= tick_rate:
+	while ticks_budget > 0 and _sim_time_accumulator >= tick_rate:
+		ticks_budget -= 1
 		_backend.advance_one_tick()
 		_sim_time_accumulator -= tick_rate
-		_update_visualization_from_snapshot()
+		ticks_advanced += 1
 		
 		if _backend.match_ticks_exhausted():
 			_end_match()
 			break
+	
+	if ticks_advanced > 0:
+		_update_visualization_from_snapshot(ticks_advanced == 1)
 
 
 func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:
@@ -1240,7 +1247,7 @@ func _setup_draft_ui() -> void:
 func _populate_champion_grid() -> void:
 	var screen_size := get_viewport_rect().size
 	var start_y_ratio := 0.41  # 41% of screen height
-	var square_size_ratio := 0.10  # 10% of screen width
+	var square_size_ratio := 0.05  # 5% of screen width (was 10%)
 	var square_margin_ratio := 0.015  # 1.5% of screen width
 	var start_x_ratio := 0.025  # 2.5% of screen width
 

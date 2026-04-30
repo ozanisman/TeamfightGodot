@@ -17,6 +17,14 @@ $checkBalancePatches = $Arguments -contains "--check-balance-patches"
 $checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
 $checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
 $generateStats = $Arguments -contains "--generate-stats"
+$checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
+$checkFixtureFile = $false
+foreach ($argument in $Arguments) {
+	if ($argument -like "--fixture-file=*") {
+		$checkFixtureFile = $true
+		break
+	}
+}
 if ($checkOnly) {
 	$timeoutSeconds = 15
 }
@@ -24,6 +32,9 @@ elseif ($checkStatsDashboard) {
 	$timeoutSeconds = 30
 }
 elseif ($checkNativeLoad) {
+	$timeoutSeconds = 15
+}
+elseif ($checkMatchTelemetry) {
 	$timeoutSeconds = 15
 }
 elseif ($checkDeterminism) {
@@ -36,6 +47,9 @@ if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkNativeLoad) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkMatchTelemetry) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkDeterminism) {
@@ -66,10 +80,13 @@ if ($isSimulationViewer) {
 	$godotArgs += @("--maximized")
 }
 if ($checkOnly) {
-	$godotArgs += @("--script", "res://scripts/tools/check_only.gd")
+	$godotArgs += @("--script", "res://scripts/tools/check_gdscript_preload.gd")
 }
 elseif ($checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/check_native_load.gd")
+}
+elseif ($checkMatchTelemetry) {
+	$godotArgs += @("--script", "res://scripts/tools/check_match_telemetry.gd")
 }
 elseif ($checkDeterminism) {
 	$godotArgs += @("--script", "res://scripts/tools/check_determinism.gd")
@@ -89,7 +106,7 @@ elseif ($checkStatsAggregator) {
 elseif ($generateStats) {
 	$godotArgs += @("--script", "res://scripts/tools/generate_simulation_stats.gd")
 }
-elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $isSimulationViewer) {
+elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {
@@ -146,6 +163,16 @@ try {
 	}
 
 	$process.Refresh()
+	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile) {
+		if (Test-Path $logFile) {
+			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
+			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad"
+			if ($tail -match $failurePattern) {
+				Write-Error "Godot check failed. See $logFile."
+				exit 1
+			}
+		}
+	}
 	exit $process.ExitCode
 }
 catch [System.TimeoutException] {

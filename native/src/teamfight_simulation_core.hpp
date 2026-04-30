@@ -53,6 +53,8 @@ private:
 		StringName action_kind;
 		double distance = 0.0;
 		Dictionary accumulated_results;
+		/// Prevents reflected damage from chaining into further reflects.
+		bool suppress_reflect_chain = false;
 	};
 
 	struct UnitState {
@@ -112,6 +114,23 @@ private:
 		double last_kite_timer = 0.0;
 		double current_target_score = 0.0;
 		double stun_remaining = 0.0;
+		/// Seconds alive during hard CC (stun_remaining > 0); incremented per tick by min(remaining, tick_rate).
+		double hard_cc_seconds = 0.0;
+		/// Movement slow: remaining duration and multiplier on base move speed (1.0 = no slow).
+		double slow_remaining = 0.0;
+		double slow_move_mult = 1.0;
+		/// Cannot move (separation / kite / chase) while > 0; can still cast and auto if in range.
+		double root_remaining = 0.0;
+		double silence_remaining = 0.0;
+		bool silence_blocks_abilities = false;
+		bool silence_blocks_ultimates = false;
+		double disarm_remaining = 0.0;
+		/// Passive `reflect_damage` (on_defense): portions by damage-type applicability.
+		double reflect_passive_pct_all = 0.0;
+		double reflect_passive_pct_physical = 0.0;
+		double reflect_buff_remaining = 0.0;
+		double reflect_buff_pct_all = 0.0;
+		double reflect_buff_pct_physical = 0.0;
 		double respawn_timer = 0.0;
 		bool respawned_this_tick = false;
 		bool alive = true;
@@ -156,6 +175,12 @@ private:
 		double last_hit_time = 0.0;
 		double regen_accumulator = 0.0;
 		int64_t respawn_slot_index = -1; // -1 = no assigned slot
+		bool is_tank_role = false;
+		bool is_fighter_role = false;
+		bool is_assassin_role = false;
+		bool is_marksman_role = false;
+		bool is_mage_role = false;
+		bool is_support_role = false;
 	};
 
 	struct UnitStrategy {
@@ -185,6 +210,7 @@ private:
 		double obscurance_weight = 0.0;
 		double flanking_weight = 0.0;
 		double threat_decay_rate = 2.0;
+		bool uses_ally_targeting = false;
 		std::map<StringName, double> role_priorities;
 	};
 
@@ -266,6 +292,22 @@ private:
 		EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER = 22,
 		EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER = 23,
 		EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER = 24,
+		// New effect opcodes
+		EFFECT_OPCODE_SLOW = 25,
+		EFFECT_OPCODE_ROOT = 26,
+		EFFECT_OPCODE_SILENCE = 27,
+		EFFECT_OPCODE_DISARM = 28,
+		EFFECT_OPCODE_KNOCKBACK = 29,
+		EFFECT_OPCODE_REFLECT = 30,
+		EFFECT_OPCODE_SELF_AOE_SLOW = 31,
+		EFFECT_OPCODE_SELF_AOE_ROOT = 32,
+		EFFECT_OPCODE_SELF_AOE_SILENCE = 33,
+		EFFECT_OPCODE_SELF_AOE_DISARM = 34,
+		EFFECT_OPCODE_SELF_AOE_KNOCKBACK = 35,
+		EFFECT_OPCODE_SELF_AOE_REFLECT = 36,
+		EFFECT_OPCODE_REFLECT_DAMAGE = 37,
+		EFFECT_OPCODE_KNOCKBACK_SHIELD = 38,
+		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -295,6 +337,8 @@ private:
 	static constexpr double KITE_SPEED_MODIFIER = 0.5;
 	static constexpr double KITE_DURATION = 1.0;
 	static constexpr double KITE_DANGER_THRESHOLD = 0.9;
+	/// Minimum effective slow multiplier so movement math stays stable at extreme slow percentages.
+	static constexpr double SLOW_MOVEMENT_MULTIPLIER_MIN = 0.05;
 	static constexpr double DRAFT_X_BASE = 0.9;
 	// Positions are stored as IEEE 754 double for deterministic arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
@@ -528,7 +572,7 @@ private:
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0, bool profile_score = false);
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
 	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
@@ -552,8 +596,25 @@ private:
 	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
 	void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
 	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
+	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
+	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
+	void _finalize_reflect_passives(UnitState &unit);
+	void _apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types);
+	void _apply_self_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types);
+	void _maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context);
+	void _apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source);
+	void _apply_self_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
+	void _apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration);
+	void _apply_root(UnitState &source, UnitState &target, double duration);
+	void _apply_silence(UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate);
+	void _apply_disarm(UnitState &source, UnitState &target, double duration);
+	void _apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration);
+	void _apply_self_aoe_root(UnitState &source, double radius, double duration);
+	void _apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate);
+	void _apply_self_aoe_disarm(UnitState &source, double radius, double duration);
+	double _movement_speed_multiplier(const UnitState &unit) const;
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
@@ -582,6 +643,58 @@ private:
 	Dictionary _effect_to_dict(const Variant &effect) const;
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
+	/// Parameters for circular AoE iteration over an alive-team index list (`_alive_*_indices`).
+	/// `spatial_team` must match `UnitState::team` for units referenced by `indices` (used by broad-phase stamp).
+	struct AoCircleIterationParams {
+		double center_x = 0.0;
+		double center_y = 0.0;
+		double radius = 0.0;
+		const std::vector<int64_t> *indices = nullptr;
+		StringName spatial_team;
+		int64_t exclude_instance_id = 0;
+	};
+
+	/// Inclusive disk: `dist_sq <= radius²`. Uses spatial broad-phase when enabled (threshold on alive counts).
+	template<typename Fn>
+	void _for_each_unit_in_circle(const AoCircleIterationParams &p, Fn &&fn) {
+		if (p.radius <= 0.0 || p.indices == nullptr) {
+			return;
+		}
+		const double r2 = p.radius * p.radius;
+		const std::vector<int64_t> &indices = *p.indices;
+		auto visit = [&](int64_t idx) {
+			if (idx < 0 || idx >= int64_t(_units.size())) {
+				return;
+			}
+			UnitState &u = _units[static_cast<size_t>(idx)];
+			if (!u.alive) {
+				return;
+			}
+			if (p.exclude_instance_id != 0 && u.instance_id == p.exclude_instance_id) {
+				return;
+			}
+			const double dx = u.pos_x - p.center_x;
+			const double dy = u.pos_y - p.center_y;
+			if (dx * dx + dy * dy <= r2) {
+				fn(u);
+			}
+		};
+		if (!_use_spatial_broad_phase()) {
+			for (int64_t idx : indices) {
+				visit(idx);
+			}
+			return;
+		}
+		_spatial_fill_buckets_for_indices(indices);
+		_spatial_stamp_circle(p.center_x, p.center_y, p.radius, p.spatial_team);
+		for (int64_t idx : indices) {
+			if (!_spatial_stamp_has(idx)) {
+				continue;
+			}
+			visit(idx);
+		}
+	}
+
 	void _spatial_ensure_stamp_size() const;
 	void _spatial_clear_buckets() const;
 	void _spatial_clear_buckets_aux() const;
@@ -609,6 +722,7 @@ public:
 	Array run_matches(const Array &match_inputs);
 	void run_match_simulation_only(const Variant &match_input);
 	void run_matches_simulation_only(const Array &match_inputs);
+	void run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size);
 
 	/// Incremental match API (used by gameplay loops and viewer stepping). Does not replace run_match for batch parity runs.
 	void begin_match(const Variant &match_input);

@@ -1,0 +1,1034 @@
+{
+	"fixture_signature": "459f9d03caa7ffcc9e5373f5e7831f2bdbd312a4548655620549806a3cd8340f",
+	"fixtures": [
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 5.0
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "player",
+						"x": 2.0,
+						"y": 5.0
+					}
+				],
+				"record_events": false,
+				"seed": 101.0,
+				"tick_rate": 0.1
+			},
+			"name": "duel_swordsman_vs_guardian",
+			"signature": "8e95c148b6192879b67831a221462c2b664d13836db21fad1d013fce90998df2",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"swordsman"
+				],
+				"seed": 101.0,
+				"sudden_death_ticks": 0.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 10.0,
+						"damage_dealt": 414.4896000000001,
+						"damage_dealt_ability": 130.63680000000002,
+						"damage_dealt_auto": 193.53600000000003,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 90.3168,
+						"damage_mitigated": 18.9,
+						"damage_received": 26.1,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 4.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 3.0,
+						"damage_dealt": 26.1,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 26.1,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 325.6704,
+						"damage_received": 330.4896000000001,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 84.00000000000001,
+						"shielding_done_ability": 84.00000000000001,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 5.4999999999999964,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 0.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 5.0
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "archer",
+						"team": "player",
+						"x": 2.0,
+						"y": 5.0
+					}
+				],
+				"record_events": false,
+				"seed": 202.0,
+				"tick_rate": 0.1
+			},
+			"name": "duel_archer_vs_guardian",
+			"signature": "579e6adcfb31633308d26078af9077035be27df8d88d30dc00a0bc941290798b",
+			"summary": {
+				"duration": 82.7,
+				"enemy_comp": [
+					"guardian"
+				],
+				"player_comp": [
+					"archer"
+				],
+				"seed": 202.0,
+				"sudden_death_ticks": 227.0,
+				"unit_stats": [
+					{
+						"abilities": 10.0,
+						"archetype": "archer",
+						"assists": 0.0,
+						"auto_attacks": 62.0,
+						"damage_dealt": 716.1840000000008,
+						"damage_dealt_ability": 88.90559999999999,
+						"damage_dealt_auto": 546.8399999999998,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 80.4384,
+						"damage_mitigated": 14.27999999999999,
+						"damage_received": 164.22000000000003,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 1.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 3.7999999999999994,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 3.0,
+						"won": false
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 9.0,
+						"damage_dealt": 164.22000000000003,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 124.2,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 40.02,
+						"damage_mitigated": 562.7159999999999,
+						"damage_received": 464.1839999999998,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 2.0,
+						"kills": 2.0,
+						"shielding_done": 336.00000000000006,
+						"shielding_done_ability": 336.00000000000006,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					}
+				],
+				"winner_team": "enemy"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "swordsman",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 4.5
+					},
+					{
+						"archetype_id": "archer",
+						"team": "enemy",
+						"x": 8.4,
+						"y": 5.5
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "player",
+						"x": 2.0,
+						"y": 4.5
+					},
+					{
+						"archetype_id": "cleric",
+						"team": "player",
+						"x": 1.6,
+						"y": 5.5
+					}
+				],
+				"record_events": false,
+				"seed": 303.0,
+				"tick_rate": 0.1
+			},
+			"name": "support_clash",
+			"signature": "0fa04e25cc7a8eb737ccc98f978063077b0257f66076460d881b0fff76cae13e",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"swordsman",
+					"archer"
+				],
+				"player_comp": [
+					"guardian",
+					"cleric"
+				],
+				"seed": 303.0,
+				"sudden_death_ticks": 0.0,
+				"unit_stats": [
+					{
+						"abilities": 2.0,
+						"archetype": "guardian",
+						"assists": 1.0,
+						"auto_attacks": 4.0,
+						"damage_dealt": 45.00000000000001,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 45.00000000000001,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 390.9311999999999,
+						"damage_received": 329.54880000000014,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 1.0,
+						"kills": 0.0,
+						"shielding_done": 168.00000000000003,
+						"shielding_done_ability": 168.00000000000003,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 4.799999999999999,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 0.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "cleric",
+						"assists": 0.0,
+						"auto_attacks": 43.0,
+						"damage_dealt": 334.36000000000007,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 334.36000000000007,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 3.402000000000005,
+						"damage_received": 53.29799999999999,
+						"deaths": 0.0,
+						"healing_done": 315.10000000000036,
+						"healing_done_ability": 92.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 135.69999999999993,
+						"healing_done_ultimate": 87.4,
+						"instance_id": 2.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 2.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 2.0,
+						"archetype": "swordsman",
+						"assists": 0.0,
+						"auto_attacks": 11.0,
+						"damage_dealt": 390.2976000000002,
+						"damage_dealt_ability": 87.09120000000001,
+						"damage_dealt_auto": 212.88960000000003,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 90.3168,
+						"damage_mitigated": 220.08000000000007,
+						"damage_received": 303.92,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 3.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 3.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 1.800000000000001,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "archer",
+						"assists": 1.0,
+						"auto_attacks": 10.0,
+						"damage_dealt": 160.54919999999998,
+						"damage_dealt_ability": 46.72639999999999,
+						"damage_dealt_auto": 87.00999999999999,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 26.8128,
+						"damage_mitigated": 6.559999999999995,
+						"damage_received": 75.44,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 4.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					}
+				],
+				"winner_team": "player"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "artillery",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 4.5
+					},
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 8.4,
+						"y": 5.5
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "rogue",
+						"team": "player",
+						"x": 2.0,
+						"y": 4.5
+					},
+					{
+						"archetype_id": "mage",
+						"team": "player",
+						"x": 1.6,
+						"y": 5.5
+					}
+				],
+				"record_events": false,
+				"seed": 404.0,
+				"tick_rate": 0.1
+			},
+			"name": "backline_skirmish",
+			"signature": "f6321dac1827f82a91ea169b0900b0909c33596bce3ee5401e00167d6f5061d8",
+			"summary": {
+				"duration": 64.9,
+				"enemy_comp": [
+					"artillery",
+					"guardian"
+				],
+				"player_comp": [
+					"rogue",
+					"mage"
+				],
+				"seed": 404.0,
+				"sudden_death_ticks": 49.0,
+				"unit_stats": [
+					{
+						"abilities": 0.0,
+						"archetype": "rogue",
+						"assists": 0.0,
+						"auto_attacks": 0.0,
+						"damage_dealt": 0.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 0.0,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 77.24640000000001,
+						"damage_received": 198.63359999999992,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 1.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 1.8000000000000005,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 0.0,
+						"won": false
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "mage",
+						"assists": 0.0,
+						"auto_attacks": 2.0,
+						"damage_dealt": 74.81700000000001,
+						"damage_dealt_ability": 15.146999999999998,
+						"damage_dealt_auto": 15.12,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 44.55,
+						"damage_mitigated": 0.0,
+						"damage_received": 0.0,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 2.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "artillery",
+						"assists": 0.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 198.63359999999992,
+						"damage_dealt_ability": 31.190399999999997,
+						"damage_dealt_auto": 131.328,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 36.115199999999994,
+						"damage_mitigated": 0.0,
+						"damage_received": 0.0,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 3.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 3.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 1.0,
+						"archetype": "guardian",
+						"assists": 0.0,
+						"auto_attacks": 0.0,
+						"damage_dealt": 0.0,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 0.0,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 42.633,
+						"damage_received": 74.81700000000001,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 4.0,
+						"kills": 0.0,
+						"shielding_done": 84.00000000000001,
+						"shielding_done_ability": 84.00000000000001,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 0.0,
+						"won": true
+					}
+				],
+				"winner_team": "enemy"
+			}
+		},
+		{
+			"input": {
+				"enemy_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "swordsman",
+						"team": "enemy",
+						"x": 8.0,
+						"y": 4.0
+					},
+					{
+						"archetype_id": "artillery",
+						"team": "enemy",
+						"x": 8.6,
+						"y": 5.0
+					},
+					{
+						"archetype_id": "warlock",
+						"team": "enemy",
+						"x": 8.6,
+						"y": 6.0
+					},
+					{
+						"archetype_id": "rogue",
+						"team": "enemy",
+						"x": 8.6,
+						"y": 7.0
+					}
+				],
+				"player_units": [
+					{
+						"archetype_id": "guardian",
+						"team": "player",
+						"x": 2.0,
+						"y": 3.0
+					},
+					{
+						"archetype_id": "swordsman",
+						"team": "player",
+						"x": 2.0,
+						"y": 4.0
+					},
+					{
+						"archetype_id": "cleric",
+						"team": "player",
+						"x": 1.4,
+						"y": 5.0
+					},
+					{
+						"archetype_id": "mage",
+						"team": "player",
+						"x": 1.4,
+						"y": 6.0
+					},
+					{
+						"archetype_id": "archer",
+						"team": "player",
+						"x": 1.4,
+						"y": 7.0
+					}
+				],
+				"record_events": false,
+				"seed": 505.0,
+				"tick_rate": 0.1
+			},
+			"name": "mixed_5v5",
+			"signature": "3f2a44128c7cf0b683d16d2a5a7f427621a563cac4232bce812ce77f43bce17d",
+			"summary": {
+				"duration": 60.0,
+				"enemy_comp": [
+					"guardian",
+					"swordsman",
+					"artillery",
+					"warlock",
+					"rogue"
+				],
+				"player_comp": [
+					"guardian",
+					"swordsman",
+					"cleric",
+					"mage",
+					"archer"
+				],
+				"seed": 505.0,
+				"sudden_death_ticks": 0.0,
+				"unit_stats": [
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 1.0,
+						"auto_attacks": 21.0,
+						"damage_dealt": 179.60400000000004,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 157.68000000000004,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 21.924000000000003,
+						"damage_mitigated": 360.244368,
+						"damage_received": 458.492832,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 1.0,
+						"kills": 0.0,
+						"shielding_done": 252.00000000000009,
+						"shielding_done_ability": 252.00000000000009,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 1.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 2.700000000000001,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "swordsman",
+						"assists": 1.0,
+						"auto_attacks": 9.0,
+						"damage_dealt": 537.696,
+						"damage_dealt_ability": 294.624,
+						"damage_dealt_auto": 243.07199999999995,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 349.8488,
+						"damage_received": 501.7912,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 2.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 6.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 4.999999999999998,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "cleric",
+						"assists": 1.0,
+						"auto_attacks": 26.0,
+						"damage_dealt": 181.79200000000003,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 181.79200000000003,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 13.548000000000014,
+						"damage_received": 212.25199999999995,
+						"deaths": 1.0,
+						"healing_done": 225.40000000000023,
+						"healing_done_ability": 69.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 112.6999999999999,
+						"healing_done_ultimate": 43.7,
+						"instance_id": 3.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 1.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 0.6,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": false
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "mage",
+						"assists": 4.0,
+						"auto_attacks": 24.0,
+						"damage_dealt": 433.2900000000001,
+						"damage_dealt_ability": 80.58,
+						"damage_dealt_auto": 234.21,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 118.5,
+						"damage_mitigated": 33.77800000000001,
+						"damage_received": 313.062,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 4.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 2.100000000000001,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 5.0,
+						"archetype": "archer",
+						"assists": 1.0,
+						"auto_attacks": 24.0,
+						"damage_dealt": 316.45039999999995,
+						"damage_dealt_ability": 65.34639999999999,
+						"damage_dealt_auto": 212.8,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 38.303999999999995,
+						"damage_mitigated": 24.53599999999999,
+						"damage_received": 278.664,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 5.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 0.0,
+						"team": "player",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 2.0,
+						"won": false
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "guardian",
+						"assists": 1.0,
+						"auto_attacks": 11.0,
+						"damage_dealt": 105.08400000000002,
+						"damage_dealt_ability": 0.0,
+						"damage_dealt_auto": 83.16000000000001,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 21.924000000000003,
+						"damage_mitigated": 238.0356,
+						"damage_received": 302.95439999999996,
+						"deaths": 1.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 6.0,
+						"kills": 0.0,
+						"shielding_done": 252.00000000000009,
+						"shielding_done_ability": 252.00000000000009,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 1.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 3.7999999999999994,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 3.0,
+						"archetype": "swordsman",
+						"assists": 3.0,
+						"auto_attacks": 7.0,
+						"damage_dealt": 350.4,
+						"damage_dealt_ability": 181.44,
+						"damage_dealt_auto": 168.96,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 0.0,
+						"damage_mitigated": 341.58600000000007,
+						"damage_received": 471.7139999999999,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 7.0,
+						"kills": 0.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 3.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 5.999999999999994,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 0.0,
+						"won": true
+					},
+					{
+						"abilities": 4.0,
+						"archetype": "artillery",
+						"assists": 3.0,
+						"auto_attacks": 11.0,
+						"damage_dealt": 220.318832,
+						"damage_dealt_ability": 35.666799999999995,
+						"damage_dealt_auto": 137.501632,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 47.1504,
+						"damage_mitigated": 0.0,
+						"damage_received": 0.0,
+						"deaths": 0.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 8.0,
+						"kills": 2.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 3.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 0.0,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					},
+					{
+						"abilities": 8.0,
+						"archetype": "warlock",
+						"assists": 6.0,
+						"auto_attacks": 24.0,
+						"damage_dealt": 349.8880000000001,
+						"damage_dealt_ability": 62.44,
+						"damage_dealt_auto": 235.03200000000007,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 52.416,
+						"damage_mitigated": 32.70000000000002,
+						"damage_received": 142.49999999999994,
+						"deaths": 1.0,
+						"healing_done": 93.0,
+						"healing_done_ability": 18.0,
+						"healing_done_auto": 69.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 6.0,
+						"instance_id": 9.0,
+						"kills": 1.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 2.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 1.3,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 2.0,
+						"won": true
+					},
+					{
+						"abilities": 9.0,
+						"archetype": "rogue",
+						"assists": 0.0,
+						"auto_attacks": 5.0,
+						"damage_dealt": 822.5712000000001,
+						"damage_dealt_ability": 515.7504,
+						"damage_dealt_auto": 133.848,
+						"damage_dealt_passive": 0.0,
+						"damage_dealt_ultimate": 172.9728,
+						"damage_mitigated": 186.5359999999999,
+						"damage_received": 479.6640000000002,
+						"deaths": 2.0,
+						"healing_done": 0.0,
+						"healing_done_ability": 0.0,
+						"healing_done_auto": 0.0,
+						"healing_done_passive": 0.0,
+						"healing_done_ultimate": 0.0,
+						"instance_id": 10.0,
+						"kills": 5.0,
+						"shielding_done": 0.0,
+						"shielding_done_ability": 0.0,
+						"shielding_done_auto": 0.0,
+						"shielding_done_passive": 0.0,
+						"shielding_done_ultimate": 0.0,
+						"stuns": 9.0,
+						"team": "enemy",
+						"telemetry": {
+							"hard_cc_seconds": 2.900000000000001,
+							"schema": "teamfight.telemetry.v1"
+						},
+						"ultimates": 1.0,
+						"won": true
+					}
+				],
+				"winner_team": "enemy"
+			}
+		}
+	],
+	"rules_version": 1,
+	"schema_signature": "4c73bda031ac7e5ae92a030739b252802647473b5cce6228308f99b4bbf15686"
+}

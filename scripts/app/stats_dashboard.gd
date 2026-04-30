@@ -2224,4 +2224,7 @@ func _refresh_matchup_data() -> void:
 
 
 func _on_back_to_menu() -> void:
-	get_tree().change_scene_to_file("res://scenes/game_root.tscn")
+	if ResourceLoader.exists("res://scenes/game_root.tscn"):
+		get_tree().change_scene_to_file("res://scenes/game_root.tscn")
+	else:
+		push_error("Cannot find game_root.tscn file")

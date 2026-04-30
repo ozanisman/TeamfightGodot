@@ -3,9 +3,9 @@ extends SceneTree
 ## get_balance_patches round-trip, and empty patch list (vanilla effective stats for overlays).
 
 const NativeClassName := "TeamfightSimulationCore"
-const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 var _failures: PackedStringArray = PackedStringArray()
@@ -26,10 +26,8 @@ func _assert(cond: bool, msg: String) -> void:
 
 
 func _load_native() -> Object:
-	var extension_path: String = ProjectSettings.globalize_path(NativeExtensionPath)
-	var load_status: int = GDExtensionManager.load_extension(extension_path)
-	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
-		_fail("GDExtension load failed (%d)" % load_status)
+	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
+		_fail("GDExtension load failed")
 		return null
 	if not ClassDB.class_exists(NativeClassName):
 		_fail("%s not registered" % NativeClassName)

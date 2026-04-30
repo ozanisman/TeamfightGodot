@@ -18,9 +18,10 @@ static func is_windows_native_dll_file_present() -> bool:
 	return FileAccess.file_exists(NativeWindowsDllResPath)
 
 
-func _try_load_native_extension() -> void:
+## Load GDExtension once when [NativeClassName] is not registered (idempotent). Returns false if load failed.
+static func ensure_gdextension_loaded() -> bool:
 	if ClassDB.class_exists(NativeClassName) and ClassDB.can_instantiate(NativeClassName):
-		return
+		return true
 	var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
 	# load_extension returns GDExtensionManager.LoadStatus, not Error. 2 == LOAD_STATUS_ALREADY_LOADED.
 	if (
@@ -33,6 +34,20 @@ func _try_load_native_extension() -> void:
 				"GDExtension load failed (status %s) for %s (e.g. missing DLL or bad binary)."
 				% [load_status, NativeExtensionPath]
 			)
+		return false
+	return true
+
+
+func _try_load_native_extension() -> void:
+	ensure_gdextension_loaded()
+
+
+func _detach_native_summary(result: Variant) -> Variant:
+	if result is Dictionary:
+		return (result as Dictionary).duplicate(true)
+	if result is Array:
+		return (result as Array).duplicate(true)
+	return result
 
 
 func _attach_native_only() -> void:
@@ -79,20 +94,21 @@ func is_available() -> bool:
 func clear() -> void:
 	if not _ensure_native_backend():
 		return
+	# Returned summaries from run_match/finish_and_summarize are deep-copied; safe after clear().
 	_backend.call("clear")
 
 func run_match(match_input):
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return {}
-	return _backend.call("run_match", match_input)
+	return _detach_native_summary(_backend.call("run_match", match_input))
 
 func run_matches(match_inputs: Array):
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
 	if _backend.has_method("run_matches"):
-		return _backend.call("run_matches", match_inputs)
+		return _detach_native_summary(_backend.call("run_matches", match_inputs))
 	push_error("Native simulation backend is missing run_matches().")
 	return []
 
@@ -114,6 +130,16 @@ func run_matches_simulation_only(match_inputs: Array) -> void:
 		_backend.call("run_matches_simulation_only", match_inputs)
 		return
 	push_error("Native simulation backend is missing run_matches_simulation_only().")
+
+## Benchmark-only fast path: native owns deterministic draft generation and skips summary allocation.
+func run_generated_matches_simulation_only(base_seed: int, batch_count: int, team_size: int) -> void:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return
+	if _backend.has_method("run_generated_matches_simulation_only"):
+		_backend.call("run_generated_matches_simulation_only", base_seed, batch_count, team_size)
+		return
+	push_error("Native simulation backend is missing run_generated_matches_simulation_only().")
 
 ## Incremental match API (used by simulation viewer and gameplay loops).
 func begin_match(match_input: Variant) -> void:
@@ -146,7 +172,14 @@ func finish_and_summarize() -> Dictionary:
 	if not _ensure_native_backend():
 		return {}
 	if _backend.has_method("finish_and_summarize"):
-		return _backend.call("finish_and_summarize")
+		var detached: Variant = _detach_native_summary(_backend.call("finish_and_summarize"))
+		if detached is Dictionary:
+			return detached
+		push_error(
+			"finish_and_summarize returned non-Dictionary after detach (typeof=%s)"
+			% typeof(detached)
+		)
+		return {}
 	push_error("Native simulation backend is missing finish_and_summarize().")
 	return {}
 

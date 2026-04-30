@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <mutex>
 #include <utility>
@@ -657,6 +658,10 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_trace_buffer.clear();
 	_debug_combat_trace = false;
 	_viewer_fx_events.clear();
+	_obscurance_aux_enemy_grid_tick = -1;
+	_obscurance_aux_enemy_grid_sig = 0;
+	_obscurance_aux_player_grid_tick = -1;
+	_obscurance_aux_player_grid_sig = 0;
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -1592,6 +1597,37 @@ void TeamfightSimulationCore::_spatial_fill_buckets_for_indices_aux(const std::v
 		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
 		_spatial_buckets_aux[static_cast<size_t>(fi)].push_back(idx);
 	}
+}
+
+namespace {
+// FNV-1a 64-bit: basis and prime (standard constants for string hashing).
+constexpr uint64_t kObscuranceAuxSigFnvOffsetBasis = UINT64_C(0xcbf29ce484222325);
+constexpr uint64_t kObscuranceAuxSigFnvPrime = UINT64_C(0x100000001b3);
+
+inline uint64_t obscurance_aux_sig_mix(uint64_t h, uint64_t word) {
+	h ^= word;
+	h *= kObscuranceAuxSigFnvPrime;
+	return h;
+}
+} // namespace
+
+uint64_t TeamfightSimulationCore::_obscurance_aux_frontline_signature(const std::vector<int64_t> &indices) const {
+	uint64_t h = kObscuranceAuxSigFnvOffsetBasis;
+	for (int64_t idx : indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive) {
+			continue;
+		}
+		h = obscurance_aux_sig_mix(h, static_cast<uint64_t>(u.instance_id));
+		uint64_t bits_x = 0;
+		uint64_t bits_y = 0;
+		static_assert(sizeof(double) == sizeof(uint64_t), "double bit pattern for signature");
+		std::memcpy(&bits_x, &u.pos_x, sizeof(double));
+		std::memcpy(&bits_y, &u.pos_y, sizeof(double));
+		h = obscurance_aux_sig_mix(h, bits_x);
+		h = obscurance_aux_sig_mix(h, bits_y);
+	}
+	return h;
 }
 
 double TeamfightSimulationCore::_spatial_cell_size() const {
@@ -3129,12 +3165,6 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const std::vector<int64_t> &frontline_indices = unit.team == sn_player() ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const StringName &enemy_team = unit.team == sn_player() ? sn_enemy() : sn_player();
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	if (score_ctx.use_spatial) {
-		if (strategy.obscurance_weight > 0.0) {
-			_spatial_fill_buckets_for_indices_aux(frontline_indices);
-			score_ctx.has_obscurance_cache = true;
-		}
-	}
 
 	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
 	bool assassin_pressuring_frontline = false;
@@ -3156,6 +3186,30 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		// Score is diagnostic-only; retarget cooldown means no gameplay decision needs recomputing.
 		_set_current_target(unit, *current_target);
 		return current_target;
+	}
+
+	// Obscurance aux: only needed when scoring enemies; reuse grid per tick when opposing frontline snapshot unchanged.
+	if (score_ctx.use_spatial && strategy.obscurance_weight > 0.0) {
+		const uint64_t sig = _obscurance_aux_frontline_signature(frontline_indices);
+		if (unit.team == sn_player()) {
+			if (_obscurance_aux_enemy_grid_tick == _tick && _obscurance_aux_enemy_grid_sig == sig) {
+				score_ctx.has_obscurance_cache = true;
+			} else {
+				_spatial_fill_buckets_for_indices_aux(frontline_indices);
+				score_ctx.has_obscurance_cache = true;
+				_obscurance_aux_enemy_grid_tick = _tick;
+				_obscurance_aux_enemy_grid_sig = sig;
+			}
+		} else {
+			if (_obscurance_aux_player_grid_tick == _tick && _obscurance_aux_player_grid_sig == sig) {
+				score_ctx.has_obscurance_cache = true;
+			} else {
+				_spatial_fill_buckets_for_indices_aux(frontline_indices);
+				score_ctx.has_obscurance_cache = true;
+				_obscurance_aux_player_grid_tick = _tick;
+				_obscurance_aux_player_grid_sig = sig;
+			}
+		}
 	}
 
 	// Python: whenever we do evaluate, we reset the retarget timer immediately (even if we end up keeping).

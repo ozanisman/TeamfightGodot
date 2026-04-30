@@ -71,8 +71,8 @@ Common flags (all after `--`):
 | `--team-size=N` | Roster size per side (e.g. `5` for 5v5). |
 | `--workers=N` / `--max-workers=N` | Thread count capping (default uses CPU count). |
 | `--base-seed=N` | Seeds are `N + match_index` for the chunk. |
-| `--bench-skip-summaries` | Skips building full replay summaries when possible; enables **native batch** path only when **`workers==1`** (safe on Windows). |
-| `--sim-profile` | Enables native sim profiling; stderr includes JSON with per-tick and **`score_enemy_ns`** breakdown (see native `TeamfightSimulationCore`). |
+| `--bench-skip-summaries` | Skips building full replay summaries when possible; with a native backend, [`check_benchmark.gd`](../scripts/tools/check_benchmark.gd) sets **`allow_native_batch`** so workers can use **`run_generated_matches_simulation_only`** whenever this flag is on (not restricted to `workers==1`). |
+| `--sim-profile` | Enables native sim profiling; **stderr** includes one JSON line **per match** with per-tick and **`score_enemy_ns`** breakdown. Prefer small `--batch-count` and `--workers=1` to limit output (see [Profiling](#profiling-benchmark-hot-path) below). |
 
 Example **primary 5v5 gate** (median of 3 runs on the same machine):
 
@@ -81,6 +81,13 @@ Example **primary 5v5 gate** (median of 3 runs on the same machine):
 ```
 
 Baseline numbers and methodology: [`logs/benchmark_rundown.md`](../logs/benchmark_rundown.md).
+
+### Profiling benchmark hot path
+
+- **`duration_sec`** in the benchmark JSON is the right quantity for **parallel speedup** vs `matches_per_sec` alone (total matches ÷ wall time for the whole run).
+- **`TEAMFIGHT_BENCH_PHASES=1`** (environment): native `run_generated_matches_simulation_only` prints **one** `bench_phases` JSON line **per worker chunk** to stderr — catalog ensure, chunk preamble, per-match setup vs **`_simulate`** totals and averages. Useful for `workers>1` (multiple lines; may interleave).
+- **`TEAMFIGHT_SIM_PROFILE=1`** or **`--sim-profile`**: per-tick counters; **one stderr line per match** when enabled — use a **small** `--batch-count` and **`workers=1`**.
+- Example recorded numbers and OS sampling pointers: [`logs/benchmark_profiling_notes.md`](../logs/benchmark_profiling_notes.md).
 
 **Multi-process wall-clock** (aggregate m/s = total matches ÷ outer wall time, not average of shard JSON):
 

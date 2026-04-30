@@ -238,6 +238,8 @@ const VIEWER_WIDTH: int = 1000
 const VIEWER_HEIGHT: int = 800
 const VIEWER_SIDEBAR_WIDTH: int = 280
 const VIEWER_TARGET_FPS: int = 120
+## Cap native ticks processed per displayed frame (avoids spiral-of-death when delta spikes).
+const SIMULATION_VIEWER_MAX_TICKS_PER_FRAME: int = 48
 const VIEWER_WORLD_GRID_DIVISIONS: int = 10
 const MELEE_HIT_EFFECT_RADIUS: float = 0.15
 const MELEE_HIT_EFFECT_DURATION: float = 0.1
@@ -278,6 +280,8 @@ const SIMULATION_PROGRESS_INTERVAL: int = 1000
 const SIMULATION_MAP_CHUNKSIZE: int = 100
 const CI_Z_95: float = 1.96
 const KDA_DEATHS_FLOOR: float = 0.1
+## Must match native summary [code]telemetry.schema[/code] for [member UnitReplaySummary.telemetry].
+const SIM_TELEMETRY_SCHEMA_V1: String = "teamfight.telemetry.v1"
 
 static func effective_attack_range(attack_range: float) -> float:
 	if attack_range <= RANGED_THRESHOLD:

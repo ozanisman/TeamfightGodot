@@ -166,6 +166,52 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("self_hp_threshold_multiplier")) {
 		return EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER;
 	}
+	// New effect kinds
+	if (kind == StringName("slow")) {
+		return EFFECT_OPCODE_SLOW;
+	}
+	if (kind == StringName("root")) {
+		return EFFECT_OPCODE_ROOT;
+	}
+	if (kind == StringName("silence")) {
+		return EFFECT_OPCODE_SILENCE;
+	}
+	if (kind == StringName("disarm")) {
+		return EFFECT_OPCODE_DISARM;
+	}
+	if (kind == StringName("knockback")) {
+		return EFFECT_OPCODE_KNOCKBACK;
+	}
+	if (kind == StringName("reflect")) {
+		return EFFECT_OPCODE_REFLECT;
+	}
+	if (kind == StringName("self_aoe_slow")) {
+		return EFFECT_OPCODE_SELF_AOE_SLOW;
+	}
+	if (kind == StringName("self_aoe_root")) {
+		return EFFECT_OPCODE_SELF_AOE_ROOT;
+	}
+	if (kind == StringName("self_aoe_silence")) {
+		return EFFECT_OPCODE_SELF_AOE_SILENCE;
+	}
+	if (kind == StringName("self_aoe_disarm")) {
+		return EFFECT_OPCODE_SELF_AOE_DISARM;
+	}
+	if (kind == StringName("self_aoe_knockback")) {
+		return EFFECT_OPCODE_SELF_AOE_KNOCKBACK;
+	}
+	if (kind == StringName("self_aoe_reflect")) {
+		return EFFECT_OPCODE_SELF_AOE_REFLECT;
+	}
+	if (kind == StringName("reflect_damage")) {
+		return EFFECT_OPCODE_REFLECT_DAMAGE;
+	}
+	if (kind == StringName("knockback_shield")) {
+		return EFFECT_OPCODE_KNOCKBACK_SHIELD;
+	}
+	if (kind == StringName("target_status_multiplier")) {
+		return EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER;
+	}
 	return EFFECT_OPCODE_UNKNOWN;
 }
 
@@ -219,6 +265,37 @@ StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return StringName("distance_threshold_multiplier");
 		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
 			return StringName("self_hp_threshold_multiplier");
+		// New effect opcodes
+		case EFFECT_OPCODE_SLOW:
+			return StringName("slow");
+		case EFFECT_OPCODE_ROOT:
+			return StringName("root");
+		case EFFECT_OPCODE_SILENCE:
+			return StringName("silence");
+		case EFFECT_OPCODE_DISARM:
+			return StringName("disarm");
+		case EFFECT_OPCODE_KNOCKBACK:
+			return StringName("knockback");
+		case EFFECT_OPCODE_REFLECT:
+			return StringName("reflect");
+		case EFFECT_OPCODE_SELF_AOE_SLOW:
+			return StringName("self_aoe_slow");
+		case EFFECT_OPCODE_SELF_AOE_ROOT:
+			return StringName("self_aoe_root");
+		case EFFECT_OPCODE_SELF_AOE_SILENCE:
+			return StringName("self_aoe_silence");
+		case EFFECT_OPCODE_SELF_AOE_DISARM:
+			return StringName("self_aoe_disarm");
+		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK:
+			return StringName("self_aoe_knockback");
+		case EFFECT_OPCODE_SELF_AOE_REFLECT:
+			return StringName("self_aoe_reflect");
+		case EFFECT_OPCODE_REFLECT_DAMAGE:
+			return StringName("reflect_damage");
+		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
+			return StringName("knockback_shield");
+		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER:
+			return StringName("target_status_multiplier");
 		default:
 			return StringName();
 	}
@@ -326,6 +403,75 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
 		compiled.scalar2 = double(params.get("on_hit_multiplier", 1.0));
 	}
+	// New effect compilation
+	else if (kind == StringName("slow")) {
+		compiled.scalar0 = double(params.get("slow_percentage", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "Slow"));
+	} else if (kind == StringName("root")) {
+		compiled.scalar0 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "Root"));
+	} else if (kind == StringName("silence")) {
+		compiled.scalar0 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
+		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Silence"));
+	} else if (kind == StringName("disarm")) {
+		compiled.scalar0 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "Disarm"));
+	} else if (kind == StringName("knockback")) {
+		compiled.scalar0 = double(params.get("distance", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Knockback"));
+	} else if (kind == StringName("reflect")) {
+		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Reflect"));
+	} else if (kind == StringName("self_aoe_slow")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
+		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "AOE Slow"));
+	} else if (kind == StringName("self_aoe_root")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "AOE Root"));
+	} else if (kind == StringName("self_aoe_silence")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
+		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
+		compiled.reason = String(params.get("reason", "AOE Silence"));
+	} else if (kind == StringName("self_aoe_disarm")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "AOE Disarm"));
+	} else if (kind == StringName("self_aoe_knockback")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("distance", 0.0));
+		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "AOE Knockback"));
+	} else if (kind == StringName("self_aoe_reflect")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("reflect_percentage", 0.0));
+		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "AOE Reflect"));
+	} else if (kind == StringName("reflect_damage")) {
+		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
+		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Reflect damage"));
+	} else if (kind == StringName("knockback_shield")) {
+		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
+		compiled.reason = String(params.get("reason", "Knockback shield"));
+	} else if (kind == StringName("target_status_multiplier")) {
+		compiled.scalar0 = double(params.get("multiplier", 1.0));
+		compiled.damage_type = StringName(String(params.get("status_kind", "")));
+		compiled.reason = String(params.get("reason", "Target status multiplier"));
+	}
 	
 	// Handle conditional execution parameters
 	compiled.requires_result_from = StringName(String(params.get("requires_result_from", "")));
@@ -345,6 +491,36 @@ std::vector<TeamfightSimulationCore::EffectRecord> TeamfightSimulationCore::_com
 		}
 	}
 	return compiled;
+}
+
+bool TeamfightSimulationCore::_effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const {
+	const int64_t want = static_cast<int64_t>(opcode);
+	if (effect.opcode == want) {
+		return true;
+	}
+	for (const EffectRecord &child : effect.children) {
+		if (_effect_record_contains_opcode(child, opcode)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit) {
+	unit.reflect_passive_pct_all = 0.0;
+	unit.reflect_passive_pct_physical = 0.0;
+	for (const EffectRecord &eff : unit.passive_effects[1]) {
+		if (eff.opcode == EFFECT_OPCODE_REFLECT_DAMAGE) {
+			double p = Math::clamp(eff.scalar0, 0.0, 1.0);
+			if (eff.int0 == 1) {
+				unit.reflect_passive_pct_all += p;
+			} else {
+				unit.reflect_passive_pct_physical += p;
+			}
+		}
+	}
+	unit.reflect_passive_pct_all = Math::clamp(unit.reflect_passive_pct_all, 0.0, 1.0);
+	unit.reflect_passive_pct_physical = Math::clamp(unit.reflect_passive_pct_physical, 0.0, 1.0);
 }
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
@@ -367,6 +543,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_matches", "match_inputs"), &TeamfightSimulationCore::run_matches);
 	ClassDB::bind_method(D_METHOD("run_match_simulation_only", "match_input"), &TeamfightSimulationCore::run_match_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_matches_simulation_only", "match_inputs"), &TeamfightSimulationCore::run_matches_simulation_only);
+	ClassDB::bind_method(D_METHOD("run_generated_matches_simulation_only", "base_seed", "batch_count", "team_size"), &TeamfightSimulationCore::run_generated_matches_simulation_only);
 	ClassDB::bind_method(D_METHOD("begin_match", "match_input"), &TeamfightSimulationCore::begin_match);
 	ClassDB::bind_method(D_METHOD("advance_one_tick"), &TeamfightSimulationCore::advance_one_tick);
 	ClassDB::bind_method(D_METHOD("match_ticks_exhausted"), &TeamfightSimulationCore::match_ticks_exhausted);
@@ -911,6 +1088,12 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.archetype_id = archetype_id;
 	unit.team = team;
 	unit.role_id = role_name;
+	unit.is_tank_role = role_name == StringName("tank");
+	unit.is_fighter_role = role_name == StringName("fighter");
+	unit.is_assassin_role = role_name == StringName("assassin");
+	unit.is_marksman_role = role_name == StringName("marksman");
+	unit.is_mage_role = role_name == StringName("mage");
+	unit.is_support_role = role_name == StringName("support");
 	unit.stats = stats;
 	unit.combat.max_hp = max_hp;
 	unit.combat.max_mana = max_mana;
@@ -966,6 +1149,14 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.last_kite_timer = 0.0;
 	unit.current_target_score = 0.0;
 	unit.stun_remaining = 0.0;
+	unit.hard_cc_seconds = 0.0;
+	unit.slow_remaining = 0.0;
+	unit.slow_move_mult = 1.0;
+	unit.root_remaining = 0.0;
+	unit.silence_remaining = 0.0;
+	unit.silence_blocks_abilities = false;
+	unit.silence_blocks_ultimates = false;
+	unit.disarm_remaining = 0.0;
 	unit.respawn_timer = 0.0;
 	unit.respawned_this_tick = false;
 	unit.alive = true;
@@ -1005,6 +1196,10 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.recent_benefactors.clear();
 	unit.last_hit_time = 0.0;
 	unit.regen_accumulator = 0.0;
+	unit.reflect_buff_remaining = 0.0;
+	unit.reflect_buff_pct_all = 0.0;
+	unit.reflect_buff_pct_physical = 0.0;
+	_finalize_reflect_passives(unit);
 	return unit;
 }
 
@@ -1049,6 +1244,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 0.0;
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_TANK;
+		s.uses_ally_targeting = true;
 		s.role_priorities[StringName("assassin")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.role_priorities[StringName("fighter")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.switch_margin = TARGET_SWITCH_MARGIN;
@@ -1076,6 +1272,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 0.0;
 		s.flanking_weight = FLANKING_WEIGHT_ASSASSIN;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
+		s.uses_ally_targeting = false;
 		s.role_priorities[StringName("marksman")] = -15.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.role_priorities[StringName("mage")] = -15.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.role_priorities[StringName("support")] = -10.0 * ROLE_PRIORITY_GLOBAL_SCALE;
@@ -1105,6 +1302,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 60.0;
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
+		s.uses_ally_targeting = false;
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_MARKSMAN;
@@ -1130,6 +1328,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 0.0;
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FIGHTER;
+		s.uses_ally_targeting = false;
 		s.role_priorities[StringName("marksman")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.role_priorities[StringName("mage")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.switch_margin = TARGET_SWITCH_MARGIN;
@@ -1190,6 +1389,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 0.0;
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
+		s.uses_ally_targeting = true;
 		s.role_priorities[StringName("assassin")] = -8.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.role_priorities[StringName("fighter")] = -4.0 * ROLE_PRIORITY_GLOBAL_SCALE;
 		s.switch_margin = TARGET_SWITCH_MARGIN;
@@ -1257,13 +1457,13 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		pcx += u.pos_x;
 		pcy += u.pos_y;
 		pc += 1;
-		if (u.role_id == StringName("marksman") || u.role_id == StringName("mage") || u.role_id == StringName("support")) {
+		if (u.is_marksman_role || u.is_mage_role || u.is_support_role) {
 			_tick_ctx.player_backliner_indices.push_back(idx);
 		}
-		if (u.role_id == sn_tank() || u.role_id == sn_fighter()) {
+		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.player_frontline_indices.push_back(idx);
 		}
-		if (u.role_id == sn_marksman() || u.role_id == sn_mage()) {
+		if (u.is_marksman_role || u.is_mage_role) {
 			_tick_ctx.player_carry_indices.push_back(idx);
 		}
 	}
@@ -1286,13 +1486,13 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		ecx += u.pos_x;
 		ecy += u.pos_y;
 		ec += 1;
-		if (u.role_id == StringName("marksman") || u.role_id == StringName("mage") || u.role_id == StringName("support")) {
+		if (u.is_marksman_role || u.is_mage_role || u.is_support_role) {
 			_tick_ctx.enemy_backliner_indices.push_back(idx);
 		}
-		if (u.role_id == sn_tank() || u.role_id == sn_fighter()) {
+		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.enemy_frontline_indices.push_back(idx);
 		}
-		if (u.role_id == sn_marksman() || u.role_id == sn_mage()) {
+		if (u.is_marksman_role || u.is_mage_role) {
 			_tick_ctx.enemy_carry_indices.push_back(idx);
 		}
 	}
@@ -1388,6 +1588,7 @@ void TeamfightSimulationCore::_spatial_stamp_circle(double cx, double cy, double
 	if (radius <= 0.0) {
 		return;
 	}
+	const double r2 = radius * radius;
 	double cs = _spatial_cell_size();
 	int icx = int(Math::floor((cx - WORLD_BOUNDARY_MIN) / cs));
 	int icy = int(Math::floor((cy - WORLD_BOUNDARY_MIN) / cs));
@@ -1407,8 +1608,9 @@ void TeamfightSimulationCore::_spatial_stamp_circle(double cx, double cy, double
 				}
 				double ox = u.pos_x - cx;
 				double oy = u.pos_y - cy;
-				double ally_dist = Math::sqrt(ox * ox + oy * oy);
-				if (ally_dist < radius) {
+				double dist_sq = ox * ox + oy * oy;
+				// Inclusive disk (parity with AoE `_distance_between(...) <= radius`); matches refined tests below.
+				if (dist_sq <= r2) {
 					_spatial_stamp[static_cast<size_t>(idx)] = _spatial_generation;
 				}
 			}
@@ -1618,7 +1820,7 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, double attacker_enemy_distance, bool profile_score) {
+double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const UnitState &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
 	}
@@ -1656,11 +1858,11 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			score -= strategy.execute_bonus_weight;
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy.role_id);
-		if (enemy.role_id == sn_tank()) {
+		if (enemy.is_tank_role) {
 			score += strategy.tank_penalty;
 			// Assassins apply an extra tank penalty if there are backliners alive.
-			if (attacker.role_id == sn_assassin()) {
-				int64_t enemy_self_idx = _unit_index_by_id(enemy.instance_id);
+			if (attacker.is_assassin_role) {
+				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
 				const std::vector<int64_t> &bl = enemy.team == sn_player() ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
 				bool has_backliner = false;
 				for (int64_t idx : bl) {
@@ -1692,7 +1894,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		if (attacker.target_id == enemy.instance_id) {
 			score -= Math::max(1.0, strategy.distance_weight) * strategy.stickiness_bonus;
 		}
-		if (attacker.role_id == sn_support()) {
+		if (attacker.is_support_role) {
 			int64_t ally_target_id = attacker.current_ally_target_id;
 			if (ally_target_id != 0) {
 				const UnitState *ally = _unit_by_id(ally_target_id);
@@ -1712,6 +1914,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		double bodyguard_weight = strategy.bodyguard_weight;
 		if (bodyguard_weight > 0.0) {
 			if (_use_spatial_broad_phase()) {
+				// Stamp uses inclusive disk (dist_sq <= r²); inner loop still applies strict `< BODYGUARD_RADIUS²`.
 				_spatial_stamp_circle(enemy.pos_x, enemy.pos_y, BODYGUARD_RADIUS, attacker.team);
 				const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
 				for (int64_t ally_index : carry_indices) {
@@ -1773,7 +1976,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		// Carry peel (for threatened carries).
 		double carry_peel_weight = strategy.carry_peel_weight;
 		if (carry_peel_weight > 0.0) {
-			if ((attacker.role_id == sn_marksman() || attacker.role_id == sn_mage()) && enemy.target_id == attacker.instance_id) {
+			if ((attacker.is_marksman_role || attacker.is_mage_role) && enemy.target_id == attacker.instance_id) {
 				double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
 				score -= carry_peel_weight * falloff;
 			}
@@ -2114,6 +2317,7 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 
 TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind) {
 	EffectContext context;
+	context.suppress_reflect_chain = false;
 	context.source = &source;
 	context.target = target;
 	context.target_ally = target_ally;
@@ -2157,6 +2361,28 @@ const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCor
 	return EMPTY_EFFECTS;
 }
 
+bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const StringName &status_kind) const {
+	if (status_kind == StringName("slow")) {
+		return target.slow_remaining > 0.0;
+	}
+	if (status_kind == StringName("root")) {
+		return target.root_remaining > 0.0;
+	}
+	if (status_kind == StringName("silence")) {
+		return target.silence_remaining > 0.0;
+	}
+	if (status_kind == StringName("disarm")) {
+		return target.disarm_remaining > 0.0;
+	}
+	if (status_kind == StringName("stun")) {
+		return target.stun_remaining > 0.0;
+	}
+	if (status_kind == StringName("reflect")) {
+		return target.reflect_buff_remaining > 0.0 || target.reflect_passive_pct_all > 0.0 || target.reflect_passive_pct_physical > 0.0;
+	}
+	return false;
+}
+
 double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value) {
 	(void)current_value;
 	switch (effect.opcode) {
@@ -2187,6 +2413,11 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 				return effect.scalar1;
 			}
 			return effect.scalar2;
+		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER:
+			if (context.target == nullptr) {
+				return 1.0;
+			}
+			return _target_has_status(*context.target, effect.damage_type) ? effect.scalar0 : 1.0;
 		default:
 			return 1.0;
 	}
@@ -2283,6 +2514,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (total_damage > 1e-9) {
 		_viewer_record_damage_fx(source, target, total_damage, action_kind);
 	}
+	_maybe_apply_reflect_damage(source, target, total_damage, damage_type, context);
 	if (target.hp <= 0.0) {
 		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
 		EffectContext post_context = context;
@@ -2310,6 +2542,41 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	return total_damage;
 }
 
+void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context) {
+	if (context.suppress_reflect_chain) {
+		return;
+	}
+	if (!attacker.alive || !defender.alive || attacker.instance_id == defender.instance_id) {
+		return;
+	}
+	if (total_damage_applied <= 1e-9) {
+		return;
+	}
+	double pct = defender.reflect_passive_pct_all;
+	if (damage_type == StringName("physical")) {
+		pct += defender.reflect_passive_pct_physical;
+	}
+	if (defender.reflect_buff_remaining > 0.0) {
+		pct += defender.reflect_buff_pct_all;
+		if (damage_type == StringName("physical")) {
+			pct += defender.reflect_buff_pct_physical;
+		}
+	}
+	pct = Math::clamp(pct, 0.0, 1.0);
+	if (pct <= 1e-9) {
+		return;
+	}
+	double reflected = total_damage_applied * pct;
+	if (reflected <= 1e-9) {
+		return;
+	}
+	EffectContext bounce = context;
+	bounce.suppress_reflect_chain = true;
+	bounce.source = &defender;
+	bounce.target = &attacker;
+	_apply_damage(defender, attacker, reflected, damage_type, StringName("passive"), bounce);
+}
+
 void TeamfightSimulationCore::_touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage) {
 	if (source_id <= 0 || incoming_damage <= 0.0) {
 		return;
@@ -2331,6 +2598,227 @@ void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, 
 	}
 	target.stun_remaining = Math::max(target.stun_remaining, effective_duration);
 	source.stuns += 1;
+}
+
+void TeamfightSimulationCore::_apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration) {
+	(void)source;
+	if (duration <= 0.0 || slow_percentage <= 0.0) {
+		return;
+	}
+	double tenacity = target.combat.tenacity;
+	double effective_duration = duration * (1.0 - tenacity);
+	if (effective_duration <= 0.0) {
+		return;
+	}
+	double pct = Math::clamp(slow_percentage, 0.0, 1.0);
+	double mult = Math::clamp(1.0 - pct, SLOW_MOVEMENT_MULTIPLIER_MIN, 1.0);
+	target.slow_remaining = Math::max(target.slow_remaining, effective_duration);
+	target.slow_move_mult = Math::min(target.slow_move_mult, mult);
+}
+
+void TeamfightSimulationCore::_apply_root(UnitState &source, UnitState &target, double duration) {
+	(void)source;
+	if (duration <= 0.0) {
+		return;
+	}
+	double tenacity = target.combat.tenacity;
+	double effective_duration = duration * (1.0 - tenacity);
+	if (effective_duration <= 0.0) {
+		return;
+	}
+	target.root_remaining = Math::max(target.root_remaining, effective_duration);
+}
+
+void TeamfightSimulationCore::_apply_silence(UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate) {
+	(void)source;
+	if (duration <= 0.0) {
+		return;
+	}
+	double tenacity = target.combat.tenacity;
+	double effective_duration = duration * (1.0 - tenacity);
+	if (effective_duration <= 0.0) {
+		return;
+	}
+	target.silence_remaining = Math::max(target.silence_remaining, effective_duration);
+	if (block_abilities) {
+		target.silence_blocks_abilities = true;
+	}
+	if (block_ultimate) {
+		target.silence_blocks_ultimates = true;
+	}
+}
+
+void TeamfightSimulationCore::_apply_disarm(UnitState &source, UnitState &target, double duration) {
+	(void)source;
+	if (duration <= 0.0) {
+		return;
+	}
+	double tenacity = target.combat.tenacity;
+	double effective_duration = duration * (1.0 - tenacity);
+	if (effective_duration <= 0.0) {
+		return;
+	}
+	target.disarm_remaining = Math::max(target.disarm_remaining, effective_duration);
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration) {
+	if (radius <= 0.0 || duration <= 0.0 || slow_percentage <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_slow"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_slow(source, unit, slow_percentage, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_root(UnitState &source, double radius, double duration) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_root"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_root(source, unit, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_silence"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_silence(source, unit, duration, block_abilities, block_ultimate);
+	});
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_disarm(UnitState &source, double radius, double duration) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_disarm"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_disarm(source, unit, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types) {
+	if (duration <= 0.0 || pct <= 0.0) {
+		return;
+	}
+	double p = Math::clamp(pct, 0.0, 1.0);
+	unit.reflect_buff_remaining = Math::max(unit.reflect_buff_remaining, duration);
+	if (all_damage_types) {
+		unit.reflect_buff_pct_all = Math::clamp(unit.reflect_buff_pct_all + p, 0.0, 1.0);
+	} else {
+		unit.reflect_buff_pct_physical = Math::clamp(unit.reflect_buff_pct_physical + p, 0.0, 1.0);
+	}
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
+	if (radius <= 0.0 || duration <= 0.0 || pct <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_reflect"));
+	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(source.team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &ally_indices;
+	cir.spatial_team = source.team;
+	_for_each_unit_in_circle(cir, [&](UnitState &ally) {
+		_apply_reflect_buff(ally, pct, duration, all_damage_types);
+	});
+}
+
+void TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source) {
+	if (distance <= 0.0 || !target.alive) {
+		return;
+	}
+	double tenacity = target.combat.tenacity;
+	double effective_distance = distance * (1.0 - tenacity);
+	if (effective_distance <= EPSILON) {
+		return;
+	}
+	double sx = source.pos_x;
+	double sy = source.pos_y;
+	double tx = target.pos_x;
+	double ty = target.pos_y;
+	double dx = tx - sx;
+	double dy = ty - sy;
+	double dist = Math::sqrt(dx * dx + dy * dy);
+	double nx = 0.0;
+	double ny = 0.0;
+	if (dist <= EPSILON) {
+		nx = (tx >= WORLD_SIZE * 0.5) ? 1.0 : -1.0;
+		ny = 0.0;
+	} else {
+		nx = dx / dist;
+		ny = dy / dist;
+	}
+	if (!away_from_source) {
+		nx = -nx;
+		ny = -ny;
+	}
+	double new_x = tx + nx * effective_distance;
+	double new_y = ty + ny * effective_distance;
+	Vector2 valid = _find_valid_dash_position(tx, ty, new_x, new_y, effective_distance, target.instance_id);
+	target.pos_x = Math::clamp(static_cast<double>(valid.x), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	target.pos_y = Math::clamp(static_cast<double>(valid.y), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+}
+
+void TeamfightSimulationCore::_apply_self_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source) {
+	if (radius <= 0.0 || distance <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_knockback"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_knockback(source, unit, distance, away_from_source);
+	});
+}
+
+double TeamfightSimulationCore::_movement_speed_multiplier(const UnitState &unit) const {
+	return Math::clamp(unit.slow_move_mult, SLOW_MOVEMENT_MULTIPLIER_MIN, 1.0);
 }
 
 void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
@@ -2413,17 +2901,18 @@ void TeamfightSimulationCore::_apply_splash_damage(UnitState &source, UnitState 
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	for (int64_t enemy_index : enemy_indices) {
-		UnitState &unit = _units[enemy_index];
-		if (unit.instance_id == target.instance_id) {
-			continue;
-		}
-		if (_distance_between(target, unit) <= radius) {
-			double splash_damage = damage * splash_ratio;
-			EffectContext context = _build_context(source, &unit, nullptr, splash_damage, action_kind);
-			_apply_damage(source, unit, splash_damage, damage_type, action_kind, context);
-		}
-	}
+	AoCircleIterationParams cir;
+	cir.center_x = target.pos_x;
+	cir.center_y = target.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	cir.exclude_instance_id = target.instance_id;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		double splash_damage = damage * splash_ratio;
+		EffectContext context = _build_context(source, &unit, nullptr, splash_damage, action_kind);
+		_apply_damage(source, unit, splash_damage, damage_type, action_kind, context);
+	});
 }
 
 void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius, double duration) {
@@ -2431,17 +2920,19 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	for (int64_t enemy_index : enemy_indices) {
-		UnitState &unit = _units[enemy_index];
-		if (_distance_between(source, unit) <= radius) {
-			unit.taunt_target_id = source.instance_id;
-			unit.taunt_remaining = Math::max(unit.taunt_remaining, duration);
-			// Python forced-target model: taunt is a forced target.
-			unit.forced_target_id = source.instance_id;
-			unit.forced_target_remaining = Math::max(unit.forced_target_remaining, duration);
-			unit.forced_target_kind = StringName("taunt");
-		}
-	}
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		unit.taunt_target_id = source.instance_id;
+		unit.taunt_remaining = Math::max(unit.taunt_remaining, duration);
+		unit.forced_target_id = source.instance_id;
+		unit.forced_target_remaining = Math::max(unit.forced_target_remaining, duration);
+		unit.forced_target_kind = StringName("taunt");
+	});
 }
 
 double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind) {
@@ -2451,13 +2942,16 @@ double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
 	double total_damage = 0.0;
-	for (int64_t enemy_index : enemy_indices) {
-		UnitState &unit = _units[enemy_index];
-		if (_distance_between(center_source, unit) <= radius) {
-			EffectContext context = _build_context(source, &unit, nullptr, damage, action_kind);
-			total_damage += _apply_damage(source, unit, damage, damage_type, action_kind, context);
-		}
-	}
+	AoCircleIterationParams cir;
+	cir.center_x = center_source.pos_x;
+	cir.center_y = center_source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		EffectContext context = _build_context(source, &unit, nullptr, damage, action_kind);
+		total_damage += _apply_damage(source, unit, damage, damage_type, action_kind, context);
+	});
 	return total_damage;
 }
 
@@ -2561,9 +3055,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 
 	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
 	bool assassin_pressuring_frontline = false;
-	if (!forced_reason && unit.role_id == sn_assassin() && current_target != nullptr) {
-		StringName cur_role = current_target->role_id;
-		if (cur_role == sn_tank() || cur_role == sn_fighter()) {
+	if (!forced_reason && unit.is_assassin_role && current_target != nullptr) {
+		if (current_target->is_tank_role || current_target->is_fighter_role) {
 			const std::vector<int64_t> &bl = enemy_team == sn_player() ? _tick_ctx.player_backliner_indices : _tick_ctx.enemy_backliner_indices;
 			for (int64_t idx : bl) {
 				const UnitState &enemy = _units[idx];
@@ -2577,9 +3070,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 
 	// Periodic keep path: if we are within retarget interval and no special conditions, just keep current target.
 	if (!forced_reason && unit.retarget_timer > 0.0 && !assassin_pressuring_frontline) {
-		// Match Python: skip evaluation entirely; just return current target score (no switching).
-		double keep_dist = _distance_between(unit, *current_target);
-		unit.current_target_score = _score_enemy_target(unit, *current_target, strategy, ctx, keep_dist, profile_sim);
+		// Score is diagnostic-only; retarget cooldown means no gameplay decision needs recomputing.
 		_set_current_target(unit, *current_target);
 		return current_target;
 	}
@@ -2590,7 +3081,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &candidate = _units[enemy_index];
 		double dist = _distance_between(unit, candidate);
-		double raw = _score_enemy_target(unit, candidate, strategy, ctx, dist, profile_sim);
+		double raw = _score_enemy_target(unit, candidate, strategy, ctx, dist, profile_sim, enemy_index);
 		StringName bucket = classify_bucket(candidate, dist, strategy);
 		int rank = bucket_rank_for(strategy, bucket);
 		double adjusted = raw + double(rank) * strategy.bucket_margin;
@@ -2625,16 +3116,16 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		return best;
 	}
 
-	double current_dist = _distance_between(unit, *current_target);
-	double current_score = _score_enemy_target(unit, *current_target, strategy, ctx, current_dist, profile_sim);
 	if (best->instance_id == current_target->instance_id) {
-		unit.current_target_score = current_score;
+		unit.current_target_score = best_raw;
 		_set_current_target(unit, *current_target);
 		return current_target;
 	}
+	double current_dist = _distance_between(unit, *current_target);
+	double current_score = _score_enemy_target(unit, *current_target, strategy, ctx, current_dist, profile_sim, _unit_index_by_id(current_target->instance_id));
 
 	if (assassin_pressuring_frontline) {
-		bool best_is_backliner = (best->role_id == sn_marksman() || best->role_id == sn_mage() || best->role_id == sn_support());
+		bool best_is_backliner = (best->is_marksman_role || best->is_mage_role || best->is_support_role);
 		if (best_is_backliner) {
 			_set_current_target(unit, *best);
 			unit.target_switch_lock_timer = 0.0;
@@ -2658,10 +3149,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target(UnitState &unit) {
 	// Python unit.py: only tanks/support run ally selection each tick.
 	const UnitStrategy &strat = _strategy_for_unit(unit);
-	String strategy_name = strat.display_name;
-	bool allow_ally = strategy_name == String("Enchanter") || strategy_name == String("Protector");
+	bool allow_ally = strat.uses_ally_targeting;
 	if (!allow_ally) {
-		allow_ally = (unit.role_id == sn_support() || unit.role_id == sn_tank());
+		allow_ally = unit.is_support_role || unit.is_tank_role;
 	}
 	if (!allow_ally) {
 		unit.current_ally_target_id = 0;
@@ -2993,6 +3483,16 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.ability_cooldown = unit.combat.ability_cd;
 	// Python parity: ultimate_timer is NOT reset on respawn (preserved across death like attack_cooldown).
 	unit.stun_remaining = 0.0;
+	unit.slow_remaining = 0.0;
+	unit.slow_move_mult = 1.0;
+	unit.root_remaining = 0.0;
+	unit.silence_remaining = 0.0;
+	unit.silence_blocks_abilities = false;
+	unit.silence_blocks_ultimates = false;
+	unit.disarm_remaining = 0.0;
+	unit.reflect_buff_remaining = 0.0;
+	unit.reflect_buff_pct_all = 0.0;
+	unit.reflect_buff_pct_physical = 0.0;
 	unit.taunt_remaining = 0.0;
 	unit.forced_target_remaining = 0.0;
 	unit.last_kite_timer = 0.0;
@@ -3230,7 +3730,29 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		unit.ultimate_cooldown = Math::max(0.0, unit.ultimate_cooldown - _tick_rate);
 		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
 		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+		if (unit.stun_remaining > 0.0) {
+			unit.hard_cc_seconds += Math::min(unit.stun_remaining, _tick_rate);
+		}
 		unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
+		unit.slow_remaining = Math::max(0.0, unit.slow_remaining - _tick_rate);
+		if (unit.slow_remaining <= 0.0) {
+			unit.slow_remaining = 0.0;
+			unit.slow_move_mult = 1.0;
+		}
+		unit.root_remaining = Math::max(0.0, unit.root_remaining - _tick_rate);
+		unit.silence_remaining = Math::max(0.0, unit.silence_remaining - _tick_rate);
+		if (unit.silence_remaining <= 0.0) {
+			unit.silence_remaining = 0.0;
+			unit.silence_blocks_abilities = false;
+			unit.silence_blocks_ultimates = false;
+		}
+		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
+		unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
+		if (unit.reflect_buff_remaining <= 0.0) {
+			unit.reflect_buff_remaining = 0.0;
+			unit.reflect_buff_pct_all = 0.0;
+			unit.reflect_buff_pct_physical = 0.0;
+		}
 		unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
 		unit.forced_target_remaining = Math::max(0.0, unit.forced_target_remaining - _tick_rate);
 		unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - _tick_rate);
@@ -3246,11 +3768,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		return s;
 	}();
 
-	// Separation (Python: after CC tick, before threat decay; skipped while stun remains after decrement).
+	// Separation (Python: after CC tick, before threat decay; skipped while stunned or rooted after decrement).
 	{
 		SimProfileAccScope _uu_sep(profile_sim, _sim_profile_uu_separation);
-		if (unit.stun_remaining <= 0.0) {
-			double move_speed = unit.combat.move_speed;
+		if (unit.stun_remaining <= 0.0 && unit.root_remaining <= 0.0) {
+			double move_speed = unit.combat.move_speed * _movement_speed_multiplier(unit);
 			if (move_speed > 0.0) {
 				double attack_range = unit.combat.attack_range;
 				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
@@ -3381,6 +3903,9 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_move(profile_sim, _sim_profile_uu_movement);
+		if (unit.root_remaining > 0.0) {
+			return;
+		}
 		// Movement: kite first if applicable, else move toward.
 		if (strategy.prefers_kiting && unit.attack_cooldown > 0.0 && unit.taunt_remaining <= 0.0) {
 			if (_kite_from_enemies(unit)) {
@@ -3393,6 +3918,12 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 bool TeamfightSimulationCore::_try_cast_ability(UnitState &unit, UnitState &target, double distance) {
 	(void)distance;
+	if (unit.silence_remaining > 0.0 && unit.silence_blocks_abilities) {
+		return false;
+	}
+	if (unit.root_remaining > 0.0 && unit.has_ability_effect && _effect_record_contains_opcode(unit.ability_effect, EFFECT_OPCODE_SELF_DASH)) {
+		return false;
+	}
 	if (unit.ability_cooldown > 0.0) {
 		return false;
 	}
@@ -3400,6 +3931,12 @@ bool TeamfightSimulationCore::_try_cast_ability(UnitState &unit, UnitState &targ
 }
 
 bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &target, double distance) {
+	if (unit.silence_remaining > 0.0 && unit.silence_blocks_ultimates) {
+		return false;
+	}
+	if (unit.root_remaining > 0.0 && unit.has_ultimate_effect && _effect_record_contains_opcode(unit.ultimate_effect, EFFECT_OPCODE_SELF_DASH)) {
+		return false;
+	}
 	double max_mana = unit.combat.max_mana;
 	if (unit.ultimate_cooldown > 0.0 || max_mana <= 0.0 || unit.mana < max_mana) {
 		return false;
@@ -3475,6 +4012,9 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 }
 
 void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &target, double distance) {
+	if (unit.disarm_remaining > 0.0) {
+		return;
+	}
 	unit.auto_attacks += 1;
 	unit.attack_count += 1;
 	// Python parity: damage + on_attack modifiers first, then projectile/hit,
@@ -3518,7 +4058,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 }
 
 void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
-	double speed = unit.combat.move_speed * _tick_rate;
+	double speed = unit.combat.move_speed * _movement_speed_multiplier(unit) * _tick_rate;
 	if (unit.last_kite_timer > 0.0) {
 		speed *= KITE_SPEED_MODIFIER;
 	}
@@ -3636,7 +4176,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	vel_x /= new_mag;
 	vel_y /= new_mag;
 	unit.last_kite_timer = KITE_DURATION;
-	double move_speed = unit.combat.move_speed;
+	double move_speed = unit.combat.move_speed * _movement_speed_multiplier(unit);
 	double step = move_speed * KITE_SPEED_MODIFIER * _tick_rate;
 	unit.pos_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	unit.pos_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
@@ -3937,10 +4477,116 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			return stun_result;
 		}
+		case EFFECT_OPCODE_SLOW: {
+			Dictionary slow_result;
+			slow_result["success"] = true;
+			if (target != nullptr) {
+				_apply_slow(source, *target, effect.scalar0, effect.scalar1);
+			}
+			return slow_result;
+		}
+		case EFFECT_OPCODE_ROOT: {
+			Dictionary root_result;
+			root_result["success"] = true;
+			if (target != nullptr) {
+				_apply_root(source, *target, effect.scalar0);
+			}
+			return root_result;
+		}
+		case EFFECT_OPCODE_SILENCE: {
+			Dictionary silence_result;
+			silence_result["success"] = true;
+			if (target != nullptr) {
+				_apply_silence(source, *target, effect.scalar0, effect.int0 != 0, effect.int1 != 0);
+			}
+			return silence_result;
+		}
+		case EFFECT_OPCODE_DISARM: {
+			Dictionary disarm_result;
+			disarm_result["success"] = true;
+			if (target != nullptr) {
+				_apply_disarm(source, *target, effect.scalar0);
+			}
+			return disarm_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_SLOW: {
+			Dictionary aoe_slow_result;
+			aoe_slow_result["success"] = true;
+			_apply_self_aoe_slow(source, effect.scalar0, effect.scalar1, effect.scalar2);
+			return aoe_slow_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_ROOT: {
+			Dictionary aoe_root_result;
+			aoe_root_result["success"] = true;
+			_apply_self_aoe_root(source, effect.scalar0, effect.scalar1);
+			return aoe_root_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_SILENCE: {
+			Dictionary aoe_silence_result;
+			aoe_silence_result["success"] = true;
+			_apply_self_aoe_silence(source, effect.scalar0, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
+			return aoe_silence_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_DISARM: {
+			Dictionary aoe_disarm_result;
+			aoe_disarm_result["success"] = true;
+			_apply_self_aoe_disarm(source, effect.scalar0, effect.scalar1);
+			return aoe_disarm_result;
+		}
+		case EFFECT_OPCODE_KNOCKBACK_SHIELD: {
+			Dictionary ks_result;
+			ks_result["success"] = false;
+			Dictionary knockback_result = Dictionary(context.accumulated_results.get(StringName("knockback"), Dictionary()));
+			if (bool(knockback_result.get("knockback_applied", false))) {
+				double shield_amt = context.damage * effect.scalar0;
+				_add_shield(source, source, shield_amt, context.action_kind);
+				ks_result["success"] = true;
+				ks_result["shield_applied"] = true;
+				ks_result["amount"] = shield_amt;
+			}
+			return ks_result;
+		}
+		case EFFECT_OPCODE_KNOCKBACK: {
+			Dictionary kb_result;
+			kb_result["success"] = false;
+			if (target != nullptr) {
+				_apply_knockback(source, *target, effect.scalar0, effect.int0 != 0);
+				kb_result["success"] = true;
+				kb_result["knockback_applied"] = true;
+			}
+			return kb_result;
+		}
+		case EFFECT_OPCODE_REFLECT: {
+			Dictionary rf_result;
+			rf_result["success"] = true;
+			_apply_reflect_buff(source, effect.scalar0, effect.scalar1, effect.int0 == 1);
+			return rf_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK: {
+			Dictionary aoe_kb_result;
+			aoe_kb_result["success"] = true;
+			_apply_self_aoe_knockback(source, effect.scalar0, effect.scalar1, effect.int0 != 0);
+			return aoe_kb_result;
+		}
+		case EFFECT_OPCODE_SELF_AOE_REFLECT: {
+			Dictionary aoe_rf_result;
+			aoe_rf_result["success"] = true;
+			_apply_self_aoe_reflect(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.int0 == 1);
+			return aoe_rf_result;
+		}
+		case EFFECT_OPCODE_REFLECT_DAMAGE: {
+			Dictionary rd_noop;
+			rd_noop["success"] = true;
+			return rd_noop;
+		}
 		case EFFECT_OPCODE_SELF_DASH: {
 			Dictionary dash_result;
 			dash_result["success"] = true;
 			dash_result["reached_target"] = false;
+			if (source.root_remaining > 0.0) {
+				dash_result["distance_traveled"] = 0.0;
+				return dash_result;
+			}
 			
 			double dash_distance = effect.scalar0;
 			double dir_x = effect.scalar1;
@@ -4019,6 +4665,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
 		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
 		default: {
+			// Opcodes without runtime execution resolve here (unknown kinds compile to UNKNOWN).
 			Dictionary default_result;
 			default_result["success"] = true;
 			return default_result;
@@ -4109,6 +4756,10 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 		unit_summary["kills"] = unit.kills;
 		unit_summary["deaths"] = unit.deaths;
 		unit_summary["assists"] = unit.assists;
+		Dictionary telemetry;
+		telemetry["schema"] = String("teamfight.telemetry.v1");
+		telemetry["hard_cc_seconds"] = unit.hard_cc_seconds;
+		unit_summary["telemetry"] = telemetry;
 		_summary_unit_stats.append(unit_summary);
 	}
 	_summary_cache["unit_stats"] = _summary_unit_stats;
@@ -4153,6 +4804,83 @@ void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inp
 	const int64_t tail = total % 1000;
 	if (tail != 0) {
 		benchmark_progress_add(tail);
+	}
+}
+
+void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size) {
+	if (batch_count <= 0) {
+		return;
+	}
+	_ensure_catalog_loaded();
+	Array champion_keys = _effective_champion_by_archetype.keys();
+	const int64_t champion_count = champion_keys.size();
+	if (champion_count <= 0) {
+		UtilityFunctions::push_error("TeamfightSimulationCore.run_generated_matches_simulation_only() requires champion catalog.");
+		return;
+	}
+	const int64_t units_per_team = Math::max(int64_t(1), team_size);
+	std::vector<StringName> archetypes;
+	archetypes.reserve(static_cast<size_t>(champion_count));
+	for (int64_t index = 0; index < champion_count; ++index) {
+		archetypes.push_back(StringName(String(champion_keys[index])));
+	}
+	Dictionary spawn_spec;
+	int64_t next_progress = 0;
+	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
+		const int64_t seed = base_seed + match_index;
+		_reset_runtime_state();
+		_seed = seed;
+		_tick_rate = DEFAULT_TICK_RATE;
+		_record_events = false;
+		_debug_combat_trace = false;
+		_trace_buffer.clear();
+		_rng.seed_int64(_seed);
+		CPythonRandom draft_rng;
+		draft_rng.seed_int64(seed);
+		int64_t next_instance_id = 1;
+		for (int64_t slot = 0; slot < units_per_team; ++slot) {
+			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(champion_count));
+			spawn_spec.clear();
+			spawn_spec["archetype_id"] = archetypes[archetype_index];
+			UnitState unit = _build_unit_state(spawn_spec, sn_player(), next_instance_id);
+			if (unit.instance_id == 0) {
+				continue;
+			}
+			const int64_t unit_index = int64_t(_units.size());
+			_units.push_back(unit);
+			_unit_index_map[next_instance_id] = unit_index;
+			_add_alive_index(sn_player(), unit_index);
+			_player_comp.append(unit.archetype_id);
+			next_instance_id += 1;
+		}
+		for (int64_t slot = 0; slot < units_per_team; ++slot) {
+			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(champion_count));
+			spawn_spec.clear();
+			spawn_spec["archetype_id"] = archetypes[archetype_index];
+			UnitState unit = _build_unit_state(spawn_spec, sn_enemy(), next_instance_id);
+			if (unit.instance_id == 0) {
+				continue;
+			}
+			const int64_t unit_index = int64_t(_units.size());
+			_units.push_back(unit);
+			_unit_index_map[next_instance_id] = unit_index;
+			_add_alive_index(sn_enemy(), unit_index);
+			_enemy_comp.append(unit.archetype_id);
+			next_instance_id += 1;
+		}
+		_build_role_strategy_cache();
+		_prepare_tick_context();
+		_refresh_target_pressure();
+		_simulate();
+		_reset_runtime_state();
+		next_progress += 1;
+		if (next_progress == 1000) {
+			benchmark_progress_add(1000);
+			next_progress = 0;
+		}
+	}
+	if (next_progress != 0) {
+		benchmark_progress_add(next_progress);
 	}
 }
 
@@ -4271,6 +4999,21 @@ String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const
 	if (p_u.stun_remaining > 0.0) {
 		return String("STUNNED");
 	}
+	if (p_u.root_remaining > 0.0) {
+		return String("ROOTED");
+	}
+	if (p_u.silence_remaining > 0.0 && (p_u.silence_blocks_abilities || p_u.silence_blocks_ultimates)) {
+		return String("SILENCED");
+	}
+	if (p_u.reflect_buff_remaining > 0.0) {
+		return String("REFLECTING");
+	}
+	if (p_u.disarm_remaining > 0.0) {
+		return String("DISARMED");
+	}
+	if (p_u.slow_remaining > 0.0) {
+		return String("SLOWED");
+	}
 	if (p_u.casting_remaining > 0.0) {
 		return String("CASTING");
 	}
@@ -4309,6 +5052,11 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["target_id"] = u.target_id;
 		d["stun"] = u.stun_remaining;
 		d["stun_remaining"] = u.stun_remaining;
+		d["slow_remaining"] = u.slow_remaining;
+		d["root_remaining"] = u.root_remaining;
+		d["silence_remaining"] = u.silence_remaining;
+		d["disarm_remaining"] = u.disarm_remaining;
+		d["reflect_buff_remaining"] = u.reflect_buff_remaining;
 		d["alive"] = u.alive;
 		d["state"] = _viewer_state_string(u);
 		d["acd"] = u.attack_cooldown;

@@ -20,8 +20,9 @@ Special **first-flag** modes (select a different `--script` and shorter timeouts
 
 | Flag | Script | Purpose |
 |------|--------|--------|
-| `--check-only` | [`scripts/tools/check_only.gd`](../scripts/tools/check_only.gd) | Fast compile/load check: preloads core simulation scripts and exits. |
+| `--check-only` | [`scripts/tools/check_gdscript_preload.gd`](../scripts/tools/check_gdscript_preload.gd) | Minimal preload/compile gate: resolves core simulation + tooling scripts (no scene instantiate). |
 | `--check-native-load` | [`scripts/tools/check_native_load.gd`](../scripts/tools/check_native_load.gd) | Loads `teamfight_simulation_core.gdextension` and instantiates `TeamfightSimulationCore`. |
+| `--check-match-telemetry` | [`scripts/tools/check_match_telemetry.gd`](../scripts/tools/check_match_telemetry.gd) | Runs one native match and asserts each `unit_stats` row includes versioned `telemetry` from the native summary. |
 | `--check-determinism` | [`scripts/tools/check_determinism.gd`](../scripts/tools/check_determinism.gd) | Runs a **subset** of golden inputs twice per case; fails if canonical payloads/signatures differ. |
 | `--check-benchmark` | [`scripts/tools/check_benchmark.gd`](../scripts/tools/check_benchmark.gd) | Throughput benchmark (prints JSON to stdout). |
 | `--check-balance-patches` | [`scripts/tools/check_balance_patches.gd`](../scripts/tools/check_balance_patches.gd) | Native balance-patch API and overlay behavior smoke suite. |

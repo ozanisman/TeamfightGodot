@@ -89,34 +89,7 @@ func _consume_individual_summary(team_size: int, summary_value: Variant) -> void
 
 func _coerce_unit(item: Variant) -> Object:
 	if item is Dictionary:
-		var ud := Dictionary(item)
-		var u: Object = UnitReplaySummaryScript.new()
-		var archetype_value = ud.get("archetype", ud.get("archetype_id", ""))
-		u.archetype_id = StringName(String(archetype_value))
-		u.team = StringName(String(ud.get("team", "")))
-		u.won = bool(ud.get("won", false))
-		u.damage_dealt = float(ud.get("damage_dealt", 0.0))
-		u.damage_dealt_auto = float(ud.get("damage_dealt_auto", 0.0))
-		u.damage_dealt_ability = float(ud.get("damage_dealt_ability", 0.0))
-		u.damage_dealt_ultimate = float(ud.get("damage_dealt_ultimate", 0.0))
-		u.damage_dealt_passive = float(ud.get("damage_dealt_passive", 0.0))
-		u.damage_received = float(ud.get("damage_received", 0.0))
-		u.damage_mitigated = float(ud.get("damage_mitigated", 0.0))
-		u.healing_done = float(ud.get("healing_done", 0.0))
-		u.healing_done_auto = float(ud.get("healing_done_auto", 0.0))
-		u.healing_done_ability = float(ud.get("healing_done_ability", 0.0))
-		u.healing_done_ultimate = float(ud.get("healing_done_ultimate", 0.0))
-		u.healing_done_passive = float(ud.get("healing_done_passive", 0.0))
-		u.shielding_done = float(ud.get("shielding_done", 0.0))
-		u.shielding_done_auto = float(ud.get("shielding_done_auto", 0.0))
-		u.shielding_done_ability = float(ud.get("shielding_done_ability", 0.0))
-		u.shielding_done_ultimate = float(ud.get("shielding_done_ultimate", 0.0))
-		u.shielding_done_passive = float(ud.get("shielding_done_passive", 0.0))
-		u.stuns = int(ud.get("stuns", 0))
-		u.kills = int(ud.get("kills", 0))
-		u.deaths = int(ud.get("deaths", 0))
-		u.assists = int(ud.get("assists", 0))
-		return u
+		return UnitReplaySummaryScript.from_dict(Dictionary(item))
 	if item is Object:
 		return item as Object
 	return null

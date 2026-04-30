@@ -3,6 +3,7 @@ extends Node
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const HeadlessRunnerScript := preload("res://scripts/simulation/headless_runner.gd")
 const SimulationSchemaScript := preload("res://scripts/simulation/simulation_schema.gd")
+const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
 
 ## True if `flag` was passed after `--` (user args) or anywhere on the command line.
@@ -27,21 +28,15 @@ func _ready() -> void:
 		return
 	if _argv_has_flag("--simulation-viewer"):
 		_export_champion_schema()
-		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-		if (
-			load_status != GDExtensionManager.LOAD_STATUS_OK
-			and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
-		):
+		if not NativeSimulationBackendScript.ensure_gdextension_loaded():
 			push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
+			return
 		call_deferred("_open_simulation_viewer")
 		return
 	if _argv_has_flag("--headless-run"):
-		var load_status: int = GDExtensionManager.load_extension(NativeExtensionPath)
-		if (
-			load_status != GDExtensionManager.LOAD_STATUS_OK
-			and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED
-		):
+		if not NativeSimulationBackendScript.ensure_gdextension_loaded():
 			push_error("Failed to load native simulation extension: %s" % NativeExtensionPath)
+			return
 		await get_tree().process_frame
 		_start_headless_run()
 		return

@@ -100,7 +100,10 @@ func run_chunk(data: Dictionary) -> Array:
 	var base_seed: int = int(data.get("base_seed", 0))
 	var bench_skip_summaries: bool = bool(data.get("bench_skip_summaries", false))
 	var allow_native_batch: bool = bool(data.get("allow_native_batch", false))
+	
+	# Match summaries come from native only (telemetry lives under unit_stats[].telemetry).
 	var backend: Object = NativeSimulationBackendScript.new()
+	
 	if not backend.is_available():
 		return []
 
@@ -110,6 +113,13 @@ func run_chunk(data: Dictionary) -> Array:
 	var enemies: Array[StringName] = []
 	var results: Array = []
 	results.resize(chunk_len)
+
+	if bench_skip_summaries and allow_native_batch and backend.has_method("run_generated_matches_simulation_only"):
+		backend.run_generated_matches_simulation_only(base_seed + start_index, chunk_len, team_size)
+		for i in range(chunk_len):
+			results[i] = true
+		backend.clear()
+		return results
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_matches_simulation_only"):
 		var inputs: Array = []
@@ -121,8 +131,7 @@ func run_chunk(data: Dictionary) -> Array:
 		backend.run_matches_simulation_only(inputs)
 		for i in range(chunk_len):
 			results[i] = true
-		if backend.has_method("clear"):
-			backend.call("clear")
+		backend.clear()
 		return results
 
 	var result_index: int = 0
@@ -133,7 +142,9 @@ func run_chunk(data: Dictionary) -> Array:
 			results[result_index] = true
 		else:
 			var summary = _summary_object(backend.run_match(batch_match_input))
-			results[result_index] = summary.to_dict() if summary is Object and summary.has_method("to_dict") else summary
+			var summary_dict = summary.to_dict() if summary is Object and summary.has_method("to_dict") else summary
+			
+			results[result_index] = summary_dict
 			
 			# Process matchup data from this match result
 			if summary is Object and summary.has_method("to_dict"):

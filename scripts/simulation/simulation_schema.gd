@@ -141,6 +141,11 @@ static func export_contract_schema() -> Dictionary:
 			"player_comp": "array<string>",
 			"enemy_comp": "array<string>",
 		},
+		## Native adds optional per-unit [code]telemetry[/code]; dashboards may consume later without parity coupling.
+		"match_summary_unit_telemetry_v1": {
+			"schema": SimConstantsScript.SIM_TELEMETRY_SCHEMA_V1,
+			"hard_cc_seconds": "float>=0",
+		},
 		"champions": export_champion_schema(),
 		"role_configs": export_role_config_schema(),
 	}

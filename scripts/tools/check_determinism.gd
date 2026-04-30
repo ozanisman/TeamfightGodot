@@ -1,6 +1,5 @@
 extends SceneTree
 
-const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
@@ -48,10 +47,8 @@ func _load_fixture_inputs() -> Array:
 	return selected
 
 func _probe_determinism() -> void:
-	var extension_path: String = ProjectSettings.globalize_path(NativeExtensionPath)
-	var load_status: int = GDExtensionManager.load_extension(extension_path)
-	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
-		push_error("Failed to load %s (status %d)" % [NativeExtensionPath, load_status])
+	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
+		push_error("Failed to load %s" % NativeExtensionPath)
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 

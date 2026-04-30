@@ -1,6 +1,7 @@
 extends SceneTree
 
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
+const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
@@ -23,10 +24,8 @@ func _flag_enabled(prefix: String) -> bool:
 	return false
 
 func _run_benchmark() -> void:
-	var extension_path: String = ProjectSettings.globalize_path(NativeExtensionPath)
-	var load_status: int = GDExtensionManager.load_extension(extension_path)
-	if load_status != GDExtensionManager.LOAD_STATUS_OK and load_status != GDExtensionManager.LOAD_STATUS_ALREADY_LOADED:
-		push_error("Failed to load %s (status %d)" % [NativeExtensionPath, load_status])
+	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
+		push_error("Failed to load %s" % NativeExtensionPath)
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 
@@ -71,8 +70,8 @@ func _run_benchmark() -> void:
 			"team_size": team_size,
 			"base_seed": base_seed,
 			"bench_skip_summaries": bench_skip_summaries,
-			# run_matches_simulation_only is only safe on one worker today (native shared state); otherwise use run_match_simulation_only per match.
-			"allow_native_batch": bench_skip_summaries and worker_count == 1,
+			# Each worker owns its NativeSimulationBackend instance; simulation-only chunks can stay fully native.
+			"allow_native_batch": bench_skip_summaries,
 		}
 		var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))
 		if start_error != OK:

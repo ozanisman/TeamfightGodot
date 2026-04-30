@@ -22,6 +22,17 @@ using namespace godot;
 class TeamfightSimulationCore : public RefCounted {
 	GDCLASS(TeamfightSimulationCore, RefCounted);
 
+public:
+	enum RoleSlot : int64_t {
+		ROLE_SLOT_TANK = 0,
+		ROLE_SLOT_FIGHTER = 1,
+		ROLE_SLOT_ASSASSIN = 2,
+		ROLE_SLOT_MARKSMAN = 3,
+		ROLE_SLOT_MAGE = 4,
+		ROLE_SLOT_SUPPORT = 5,
+		ROLE_SLOT_COUNT = 6,
+	};
+
 protected:
 	static void _bind_methods();
 
@@ -62,6 +73,7 @@ private:
 		StringName archetype_id;
 		StringName team;
 		StringName role_id;
+		int64_t role_slot = -1;
 		/// Numeric combat fields copied from `stats` at spawn; use in hot paths instead of Dictionary::get.
 		struct CombatStats {
 			double max_hp = 0.0;
@@ -190,7 +202,7 @@ private:
 		double ally_distance_weight = 1.0;
 		double ally_hp_weight = 0.0;
 		double ally_threat_weight = 0.0;
-		std::map<StringName, double> ally_role_priorities;
+		std::array<double, ROLE_SLOT_COUNT> ally_role_priorities{};
 		double stickiness_bonus = 2.0;
 		bool prefers_kiting = false;
 		double bucket_margin = 0.75;
@@ -211,7 +223,7 @@ private:
 		double flanking_weight = 0.0;
 		double threat_decay_rate = 2.0;
 		bool uses_ally_targeting = false;
-		std::map<StringName, double> role_priorities;
+		std::array<double, ROLE_SLOT_COUNT> role_priorities{};
 	};
 
 	struct TickContext {
@@ -475,7 +487,7 @@ private:
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
 	bool _catalog_loaded = false;
-	std::map<StringName, UnitStrategy> _role_strategy_cache;
+	std::array<UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};
 	UnitStrategy _default_strategy;
 	TickContext _tick_ctx;
 	std::vector<TraceEvent> _trace_buffer;

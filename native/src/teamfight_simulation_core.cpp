@@ -81,9 +81,33 @@ struct SimProfileAccScope {
 };
 } // namespace
 
-static double strategy_role_prio(const std::map<StringName, double> &m, const StringName &key) {
-	auto it = m.find(key);
-	return it == m.end() ? 0.0 : it->second;
+static int64_t role_slot_for_name(const StringName &role) {
+	if (role == sn_tank()) {
+		return TeamfightSimulationCore::ROLE_SLOT_TANK;
+	}
+	if (role == sn_fighter()) {
+		return TeamfightSimulationCore::ROLE_SLOT_FIGHTER;
+	}
+	if (role == sn_assassin()) {
+		return TeamfightSimulationCore::ROLE_SLOT_ASSASSIN;
+	}
+	if (role == sn_marksman()) {
+		return TeamfightSimulationCore::ROLE_SLOT_MARKSMAN;
+	}
+	if (role == sn_mage()) {
+		return TeamfightSimulationCore::ROLE_SLOT_MAGE;
+	}
+	if (role == sn_support()) {
+		return TeamfightSimulationCore::ROLE_SLOT_SUPPORT;
+	}
+	return -1;
+}
+
+static double strategy_role_prio(const std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, int64_t role_slot) {
+	if (role_slot < 0 || role_slot >= TeamfightSimulationCore::ROLE_SLOT_COUNT) {
+		return 0.0;
+	}
+	return slots[static_cast<size_t>(role_slot)];
 }
 
 static Dictionary effect_dict(const StringName &kind, const Dictionary &params = Dictionary()) {
@@ -613,7 +637,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_unit_index_map.clear();
 	_alive_player_indices.clear();
 	_alive_enemy_indices.clear();
-	_role_strategy_cache.clear();
+	_role_strategy_cache_by_slot.fill(UnitStrategy());
 	_default_strategy = UnitStrategy();
 	_tick_ctx.density_by_unit_index.clear();
 	_tick_ctx.player_backliner_indices.clear();
@@ -1088,6 +1112,7 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 	unit.archetype_id = archetype_id;
 	unit.team = team;
 	unit.role_id = role_name;
+	unit.role_slot = role_slot_for_name(role_name);
 	unit.is_tank_role = role_name == StringName("tank");
 	unit.is_fighter_role = role_name == StringName("fighter");
 	unit.is_assassin_role = role_name == StringName("assassin");
@@ -1204,9 +1229,12 @@ TeamfightSimulationCore::UnitState TeamfightSimulationCore::_build_unit_state(co
 }
 
 void TeamfightSimulationCore::_build_role_strategy_cache() {
-	_role_strategy_cache.clear();
+	_role_strategy_cache_by_slot.fill(UnitStrategy());
 	auto put = [&](const StringName &role, UnitStrategy s) {
-		_role_strategy_cache.emplace(role, std::move(s));
+		int64_t slot = role_slot_for_name(role);
+		if (slot >= 0) {
+			_role_strategy_cache_by_slot[static_cast<size_t>(slot)] = std::move(s);
+		}
 	};
 	auto fill_buckets = [](UnitStrategy &s, std::initializer_list<const char *> names) {
 		int i = 0;
@@ -1218,6 +1246,12 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		}
 		s.bucket_order_len = i;
 	};
+	auto set_role_prio = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const StringName &role, double value) {
+		int64_t slot = role_slot_for_name(role);
+		if (slot >= 0) {
+			slots[static_cast<size_t>(slot)] = value;
+		}
+	};
 
 	{
 		UnitStrategy s;
@@ -1227,9 +1261,9 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.ally_distance_weight = 1.0;
 		s.ally_hp_weight = 0.0;
 		s.ally_threat_weight = SCORE_THREAT_WEIGHT_SCALE * SCORE_THREAT_WEIGHT_SCALE;
-		s.ally_role_priorities[StringName("marksman")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.ally_role_priorities[StringName("mage")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.ally_role_priorities[StringName("support")] = -3.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.ally_role_priorities, StringName("marksman"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.ally_role_priorities, StringName("mage"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.ally_role_priorities, StringName("support"), -3.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.stickiness_bonus = STICKINESS_DEFAULT;
 		s.in_range_bonus = IN_RANGE_BONUS_TANK;
 		s.tank_penalty = TANK_PENALTY_TANK;
@@ -1245,8 +1279,8 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_TANK;
 		s.uses_ally_targeting = true;
-		s.role_priorities[StringName("assassin")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("fighter")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.role_priorities, StringName("assassin"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("fighter"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = 0.0;
@@ -1273,10 +1307,10 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.flanking_weight = FLANKING_WEIGHT_ASSASSIN;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
 		s.uses_ally_targeting = false;
-		s.role_priorities[StringName("marksman")] = -15.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("mage")] = -15.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("support")] = -10.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("fighter")] = 10.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.role_priorities, StringName("marksman"), -15.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("mage"), -15.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("support"), -10.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("fighter"), 10.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = 0.0;
@@ -1329,8 +1363,8 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FIGHTER;
 		s.uses_ally_targeting = false;
-		s.role_priorities[StringName("marksman")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("mage")] = -1.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.role_priorities, StringName("marksman"), -1.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("mage"), -1.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = 0.0;
@@ -1356,8 +1390,8 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.carry_peel_weight = 60.0;
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
-		s.role_priorities[StringName("marksman")] = -4.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("support")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.role_priorities, StringName("marksman"), -4.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("support"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_MAGE;
@@ -1372,9 +1406,9 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.ally_distance_weight = 1.0;
 		s.ally_hp_weight = HP_WEIGHT_SUPPORT;
 		s.ally_threat_weight = SCORE_THREAT_WEIGHT_SCALE * SCORE_THREAT_WEIGHT_SCALE;
-		s.ally_role_priorities[StringName("marksman")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.ally_role_priorities[StringName("mage")] = -5.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.ally_role_priorities[StringName("fighter")] = -2.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.ally_role_priorities, StringName("marksman"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.ally_role_priorities, StringName("mage"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.ally_role_priorities, StringName("fighter"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.stickiness_bonus = STICKINESS_SUPPORT;
 		s.in_range_bonus = IN_RANGE_BONUS_SUPPORT;
 		s.tank_penalty = TANK_PENALTY_SUPPORT;
@@ -1390,8 +1424,8 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 		s.flanking_weight = 0.0;
 		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
 		s.uses_ally_targeting = true;
-		s.role_priorities[StringName("assassin")] = -8.0 * ROLE_PRIORITY_GLOBAL_SCALE;
-		s.role_priorities[StringName("fighter")] = -4.0 * ROLE_PRIORITY_GLOBAL_SCALE;
+		set_role_prio(s.role_priorities, StringName("assassin"), -8.0 * ROLE_PRIORITY_GLOBAL_SCALE);
+		set_role_prio(s.role_priorities, StringName("fighter"), -4.0 * ROLE_PRIORITY_GLOBAL_SCALE);
 		s.switch_margin = TARGET_SWITCH_MARGIN;
 		s.bucket_margin = TARGET_BUCKET_MARGIN;
 		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_SUPPORT;
@@ -1420,10 +1454,9 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 }
 
 const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) const {
-	StringName role = unit.role_id;
-	auto it = _role_strategy_cache.find(role);
-	if (it != _role_strategy_cache.end()) {
-		return it->second;
+	int64_t slot = unit.role_slot;
+	if (slot >= 0 && slot < ROLE_SLOT_COUNT) {
+		return _role_strategy_cache_by_slot[static_cast<size_t>(slot)];
 	}
 	return _default_strategy;
 }
@@ -1809,7 +1842,7 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	double score = dist * strategy.ally_distance_weight;
 	score += hp_ratio * strategy.ally_hp_weight * SCORE_HP_WEIGHT_SCALE;
 	score -= ally.perceived_threat * strategy.ally_threat_weight;
-	score += strategy_role_prio(strategy.ally_role_priorities, ally.role_id);
+	score += strategy_role_prio(strategy.ally_role_priorities, ally.role_slot);
 	return score;
 }
 
@@ -1819,6 +1852,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	}
 	const std::vector<int64_t> &carry_indices = attacker.team == sn_player() ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = enemy.team == sn_player() ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
+	const int64_t enemy_role_slot = enemy.role_slot;
 
 	double score = 0.0;
 	double dist = 0.0;
@@ -1848,7 +1882,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		if (strategy.execute_bonus_weight > 0.0 && in_range && hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
 			score -= strategy.execute_bonus_weight;
 		}
-		score += strategy_role_prio(strategy.role_priorities, enemy.role_id);
+		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
 		if (enemy.is_tank_role) {
 			score += strategy.tank_penalty;
 			// Assassins apply an extra tank penalty if there are backliners alive.

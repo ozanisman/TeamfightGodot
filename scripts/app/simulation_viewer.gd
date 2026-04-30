@@ -134,6 +134,7 @@ var _lbl_timer: Label
 var _lbl_score: Label
 var _lbl_combat_state: Label
 var _hud_pause: Label
+var _resize_debounce_timer: Timer
 var _speed_button: Button
 var _p1_roster_labels: VBoxContainer
 var _p2_roster_labels: VBoxContainer
@@ -159,6 +160,7 @@ func _ready() -> void:
 	_setup_draft_ui()
 	_setup_control_panel()
 	_setup_inspection_panel()
+	_setup_resize_debounce_timer()
 	_update_turn_display()
 	_update_team_rosters()
 	_update_start_match_enabled()
@@ -510,6 +512,14 @@ func _build_combat_overlay_hud() -> void:
 	side_r.add_child(_p2_roster_labels)
 
 
+func _setup_resize_debounce_timer() -> void:
+	_resize_debounce_timer = Timer.new()
+	_resize_debounce_timer.wait_time = 0.1  # 100ms debounce
+	_resize_debounce_timer.one_shot = true
+	_resize_debounce_timer.timeout.connect(_on_resize_debounce_timeout)
+	add_child(_resize_debounce_timer)
+
+
 func _build_match_over_overlay() -> void:
 	_match_overlay = ColorRect.new()
 	_match_overlay.name = "MatchOver"
@@ -561,10 +571,17 @@ func _build_preparation_controls() -> void:
 
 
 func _on_window_resized() -> void:
+	# Debounce resize events to avoid stuttering during window resizing
+	if _resize_debounce_timer != null:
+		_resize_debounce_timer.stop()
+		_resize_debounce_timer.start()
+
+
+func _on_resize_debounce_timeout() -> void:
 	var screen_size := get_viewport_rect().size
 	if _ui_layer != null and is_instance_valid(_ui_layer):
 		_ui_layer.size = screen_size
-	_update_battle_layer_layout()
+		_update_battle_layer_layout()
 
 	# Update panel size
 	if _header_panel != null:
@@ -830,7 +847,7 @@ func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:
 	for unit_data in units:
 		if unit_data is not Dictionary:
 			continue
-		var unit_dict: Dictionary = Dictionary(unit_data)
+		var unit_dict: Dictionary = unit_data as Dictionary
 		_update_unit_node(unit_dict)
 	_sync_target_lines_from_snapshot(units)
 	# Selection rings
@@ -878,7 +895,7 @@ func _sync_target_lines_from_snapshot(units: Array) -> void:
 	for unit_data in units:
 		if unit_data is not Dictionary:
 			continue
-		var ud: Dictionary = Dictionary(unit_data)
+		var ud: Dictionary = unit_data as Dictionary
 		var iid: int = int(ud.get("instance_id", 0))
 		if iid != 0:
 			by_id[iid] = ud
@@ -934,7 +951,9 @@ func _update_projectiles(projectiles: Array) -> void:
 
 	# Create new projectiles
 	for proj_data in projectiles:
-		var proj_dict: Dictionary = Dictionary(proj_data)
+		if proj_data is not Dictionary:
+			continue
+		var proj_dict: Dictionary = proj_data as Dictionary
 		var proj_id: int = int(proj_dict.get("id", 0))
 		var pos_x: float = float(proj_dict.get("pos_x", 0.0))
 		var pos_y: float = float(proj_dict.get("pos_y", 0.0))
@@ -1090,7 +1109,7 @@ func _reflow_one_roster_column(vb: VBoxContainer) -> void:
 
 
 func _apply_tick_fx(snapshot: Dictionary) -> void:
-	var evs: Array = Array(snapshot.get("tick_fx", []))
+	var evs: Array = snapshot.get("tick_fx", [])
 	for e in evs:
 		if e is not Dictionary:
 			continue
@@ -1847,6 +1866,10 @@ func _end_match() -> void:
 	_game_state = MATCH_OVER
 	var summary: Dictionary = _backend.finish_and_summarize()
 	_combat_paused = false
+	
+	# Clean up unit nodes to prevent memory leaks
+	_clear_units()
+	
 	_show_match_results(summary)
 
 

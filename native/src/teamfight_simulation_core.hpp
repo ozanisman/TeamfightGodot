@@ -34,6 +34,16 @@ public:
 		ROLE_SLOT_COUNT = 6,
 	};
 
+	/// Targeting bucket tags matching Python `classify_bucket` outputs.
+	enum class TargetBucketTag : uint8_t {
+		Commit = 0,
+		Peel,
+		Burst,
+		Kite,
+		Objective,
+		TagCount
+	};
+
 protected:
 	static void _bind_methods();
 
@@ -255,6 +265,9 @@ private:
 		double effective_range = 0.0;
 		bool use_spatial = false;
 		bool has_obscurance_cache = false;
+		bool has_kite_bounds = false;
+		double kite_min_w = 0.0;
+		double kite_max_w = 0.0;
 	};
 
 	struct TraceEvent {

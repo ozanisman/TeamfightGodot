@@ -54,6 +54,49 @@ inline const StringName &sn_assassin() {
 	static const StringName s("assassin");
 	return s;
 }
+inline const StringName &sn_commit() {
+	static const StringName s("commit");
+	return s;
+}
+inline const StringName &sn_peel() {
+	static const StringName s("peel");
+	return s;
+}
+inline const StringName &sn_burst() {
+	static const StringName s("burst");
+	return s;
+}
+inline const StringName &sn_kite() {
+	static const StringName s("kite");
+	return s;
+}
+inline const StringName &sn_objective() {
+	static const StringName s("objective");
+	return s;
+}
+} // namespace
+
+namespace {
+using TargetBucketTag = TeamfightSimulationCore::TargetBucketTag;
+
+TargetBucketTag tag_for_bucket_order_string(const StringName &nm) {
+	if (nm == sn_commit()) {
+		return TargetBucketTag::Commit;
+	}
+	if (nm == sn_peel()) {
+		return TargetBucketTag::Peel;
+	}
+	if (nm == sn_burst()) {
+		return TargetBucketTag::Burst;
+	}
+	if (nm == sn_kite()) {
+		return TargetBucketTag::Kite;
+	}
+	if (nm == sn_objective()) {
+		return TargetBucketTag::Objective;
+	}
+	return TargetBucketTag::TagCount;
+}
 } // namespace
 
 namespace {
@@ -2110,9 +2153,9 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 
 		// Kiting tempo bonus inside preferred window.
 		// Python parity: kite tempo scoring applies whenever prefers_kiting is true.
-		if (strategy.prefers_kiting) {
-			double min_w = effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
-			double max_w = effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
+		if (strategy.prefers_kiting && score_ctx.has_kite_bounds) {
+			double min_w = score_ctx.kite_min_w;
+			double max_w = score_ctx.kite_max_w;
 			if (dist >= min_w && dist <= max_w && max_w > min_w) {
 				double kite_ratio = (dist - min_w) / (max_w - min_w);
 				score -= kite_ratio * SCORE_KITING_WEIGHT_SCALE;
@@ -3066,57 +3109,6 @@ double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &
 }
 
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
-	auto bucket_rank_for = [&](const UnitStrategy &strat, const StringName &bucket) -> int {
-		for (int i = 0; i < strat.bucket_order_len; ++i) {
-			if (strat.bucket_order[static_cast<size_t>(i)] == bucket) {
-				return i;
-			}
-		}
-		return strat.bucket_order_len;
-	};
-	auto is_under_threat = [&](const UnitState &u) -> bool {
-		return double(u.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || u.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
-	};
-	auto classify_bucket = [&](const UnitState &candidate, double dist, const UnitStrategy &strat) -> StringName {
-		// Python forced-target model: forced target is the COMMIT bucket.
-		if (unit.forced_target_id != 0 && unit.forced_target_remaining > 0.0 && candidate.instance_id == unit.forced_target_id) {
-			return StringName("commit");
-		}
-		StringName bucket = StringName("objective");
-		double carry_peel_weight = strat.carry_peel_weight;
-		// Self-peel for carries: if the enemy is targeting me, bucket as peel.
-		if (carry_peel_weight > 0.0 && candidate.target_id == unit.instance_id) {
-			return StringName("peel");
-		}
-		// Ally peel: if our selected ally is under threat and being focused by this enemy.
-		// (Python: applies when unit.current_ally_target is set; tanks and supports can do this.)
-		int64_t ally_id = unit.current_ally_target_id;
-		if (ally_id != 0) {
-			const UnitState *ally = _unit_by_id(ally_id);
-			if (ally != nullptr && ally->alive && candidate.target_id == ally_id && is_under_threat(*ally)) {
-				return StringName("peel");
-			}
-		}
-		// Burst bucket (execute-ish).
-		if (strat.execute_bonus_weight > 0.0) {
-			double hp_ratio = candidate.hp / Math::max(0.0001, candidate.combat.max_hp);
-			double atk_dmg = unit.combat.attack_damage;
-			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
-				return StringName("burst");
-			}
-		}
-		// Kite bucket.
-		if (strat.prefers_kiting && !is_under_threat(unit)) {
-			double effective_range = _effective_attack_range(unit);
-			double min_w = effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
-			double max_w = effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
-			if (dist >= min_w && dist <= max_w) {
-				return StringName("kite");
-			}
-		}
-		return bucket;
-	};
-
 	// Python forced-target model: if a forced target is active, selection collapses to it.
 	int64_t forced_target_id = unit.forced_target_id;
 	if (forced_target_id != 0 && unit.forced_target_remaining > 0.0) {
@@ -3157,6 +3149,13 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	score_ctx.attack_range = _attack_range(unit);
 	score_ctx.effective_range = _effective_attack_range(unit);
 	score_ctx.use_spatial = _use_spatial_broad_phase();
+	if (strategy.prefers_kiting) {
+		score_ctx.has_kite_bounds = true;
+		score_ctx.kite_min_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
+		score_ctx.kite_max_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
+	} else {
+		score_ctx.has_kite_bounds = false;
+	}
 	UnitState *best = nullptr;
 	double best_adjusted = std::numeric_limits<double>::infinity();
 	double best_raw = std::numeric_limits<double>::infinity();
@@ -3212,15 +3211,67 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 	}
 
+	const UnitState *ally_for_peel = nullptr;
+	if (unit.current_ally_target_id != 0) {
+		ally_for_peel = _unit_by_id(unit.current_ally_target_id);
+	}
+	auto is_under_threat = [&](const UnitState &u) -> bool {
+		return double(u.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || u.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
+	};
+	auto classify_bucket = [&](const UnitState &candidate, double dist, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
+		if (unit.forced_target_id != 0 && unit.forced_target_remaining > 0.0 && candidate.instance_id == unit.forced_target_id) {
+			return TeamfightSimulationCore::TargetBucketTag::Commit;
+		}
+		TeamfightSimulationCore::TargetBucketTag bucket_tag = TeamfightSimulationCore::TargetBucketTag::Objective;
+		double carry_peel_weight = strat.carry_peel_weight;
+		if (carry_peel_weight > 0.0 && candidate.target_id == unit.instance_id) {
+			return TeamfightSimulationCore::TargetBucketTag::Peel;
+		}
+		int64_t ally_id = unit.current_ally_target_id;
+		if (ally_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive && candidate.target_id == ally_id && is_under_threat(*ally_for_peel)) {
+			return TeamfightSimulationCore::TargetBucketTag::Peel;
+		}
+		if (strat.execute_bonus_weight > 0.0) {
+			double hp_ratio = candidate.hp / Math::max(0.0001, candidate.combat.max_hp);
+			double atk_dmg = unit.combat.attack_damage;
+			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
+				return TeamfightSimulationCore::TargetBucketTag::Burst;
+			}
+		}
+		if (strat.prefers_kiting && !is_under_threat(unit) && score_ctx.has_kite_bounds) {
+			if (dist >= score_ctx.kite_min_w && dist <= score_ctx.kite_max_w) {
+				return TeamfightSimulationCore::TargetBucketTag::Kite;
+			}
+		}
+		return bucket_tag;
+	};
+	std::array<int, static_cast<size_t>(TeamfightSimulationCore::TargetBucketTag::TagCount)> bucket_rank_by_tag{};
+	for (size_t ti = 0; ti < bucket_rank_by_tag.size(); ++ti) {
+		bucket_rank_by_tag[ti] = strategy.bucket_order_len;
+	}
+	for (int i = 0; i < strategy.bucket_order_len; ++i) {
+		TeamfightSimulationCore::TargetBucketTag tt = tag_for_bucket_order_string(strategy.bucket_order[static_cast<size_t>(i)]);
+		if (tt != TeamfightSimulationCore::TargetBucketTag::TagCount) {
+			size_t idx = static_cast<size_t>(tt);
+			bucket_rank_by_tag[idx] = std::min(bucket_rank_by_tag[idx], i);
+		}
+	}
+
 	// Python: whenever we do evaluate, we reset the retarget timer immediately (even if we end up keeping).
 	unit.retarget_timer = RETARGET_INTERVAL;
 
+	bool current_target_raw_valid = false;
+	double current_target_raw = 0.0;
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &candidate = _units[enemy_index];
 		double dist = _distance_between(unit, candidate);
 		double raw = _score_enemy_target(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
-		StringName bucket = classify_bucket(candidate, dist, strategy);
-		int rank = bucket_rank_for(strategy, bucket);
+		if (current_target_index >= 0 && enemy_index == current_target_index) {
+			current_target_raw = raw;
+			current_target_raw_valid = true;
+		}
+		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
+		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
 		double adjusted = raw + double(rank) * strategy.bucket_margin;
 		// Python parity: strict lexicographic ordering on key:
 		// (adjusted_score, raw_score, bucket_rank, distance, instance_id)
@@ -3258,8 +3309,13 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		_set_current_target(unit, *current_target);
 		return current_target;
 	}
-	double current_dist = _distance_between(unit, *current_target);
-	double current_score = _score_enemy_target(unit, *current_target, strategy, ctx, score_ctx, current_dist, profile_sim, current_target_index);
+	double current_score = 0.0;
+	if (current_target_raw_valid) {
+		current_score = current_target_raw;
+	} else {
+		double current_dist = _distance_between(unit, *current_target);
+		current_score = _score_enemy_target(unit, *current_target, strategy, ctx, score_ctx, current_dist, profile_sim, current_target_index);
+	}
 
 	if (assassin_pressuring_frontline) {
 		bool best_is_backliner = (best->is_marksman_role || best->is_mage_role || best->is_support_role);

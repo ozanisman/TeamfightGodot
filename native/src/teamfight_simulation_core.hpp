@@ -263,6 +263,26 @@ private:
 		std::vector<int64_t> enemy_carry_indices;
 	};
 
+	struct TargetingFrameEntry {
+		int64_t instance_id = 0;
+		bool is_player_team = true;
+		int64_t role_slot = -1;
+		bool is_tank_role = false;
+		bool is_fighter_role = false;
+		bool is_assassin_role = false;
+		bool is_marksman_role = false;
+		bool is_mage_role = false;
+		bool is_support_role = false;
+		double pos_x = 0.0;
+		double pos_y = 0.0;
+		double hp = 0.0;
+		double max_hp = 0.0;
+		bool alive = true;
+		int64_t target_id = 0;
+		int64_t incoming_target_count = 0;
+		double perceived_threat = 0.0;
+	};
+
 	struct TargetScoreContext {
 		double attack_range = 0.0;
 		double effective_range = 0.0;
@@ -513,6 +533,7 @@ private:
 	std::unordered_map<int64_t, int64_t> _unit_index_map;
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
+	std::vector<TargetingFrameEntry> _targeting_frame;
 	bool _catalog_loaded = false;
 	std::array<UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};
 	UnitStrategy _default_strategy;
@@ -603,6 +624,8 @@ private:
 	void _populate_runtime_state(const Dictionary &match_input);
 	void _append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp);
 	std::pair<UnitState, UnitStateCold> _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
+	TargetingFrameEntry _make_targeting_frame_entry(const UnitState &unit) const;
+	void _sync_targeting_frame_unit(const UnitState &unit);
 	UnitStateCold &_uc(UnitState &u);
 	const UnitStateCold &_uc(const UnitState &u) const;
 	std::vector<int64_t> &_alive_indices_for_team(const StringName &team);
@@ -624,9 +647,9 @@ private:
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
+	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
+	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
 	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy, double current_target_distance = -1.0) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);

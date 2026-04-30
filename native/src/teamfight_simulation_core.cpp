@@ -123,6 +123,14 @@ struct SimProfileAccScope {
 	SimProfileAccScope(const SimProfileAccScope &) = delete;
 	SimProfileAccScope &operator=(const SimProfileAccScope &) = delete;
 };
+
+static bool bench_phases_env_enabled() {
+	const char *v = std::getenv("TEAMFIGHT_BENCH_PHASES");
+	if (v == nullptr || v[0] == '\0') {
+		return false;
+	}
+	return !(v[0] == '0' && v[1] == '\0');
+}
 } // namespace
 
 static int64_t role_slot_for_name(const StringName &role) {
@@ -5018,7 +5026,17 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 	if (batch_count <= 0) {
 		return;
 	}
+	const bool bench_phases = bench_phases_env_enabled();
+	uint64_t ns_catalog_ensure = 0;
+	uint64_t ns_chunk_preamble = 0;
+	uint64_t ns_match_setup_total = 0;
+	uint64_t ns_simulate_total = 0;
+	auto t_catalog0 = std::chrono::steady_clock::now();
 	_ensure_catalog_loaded();
+	if (bench_phases) {
+		ns_catalog_ensure = sim_profile_elapsed_ns(t_catalog0);
+	}
+	auto t_preamble0 = std::chrono::steady_clock::now();
 	Array champion_keys = _effective_champion_by_archetype.keys();
 	const int64_t champion_count = champion_keys.size();
 	if (champion_count <= 0) {
@@ -5033,7 +5051,11 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 	}
 	Dictionary spawn_spec;
 	int64_t next_progress = 0;
+	if (bench_phases) {
+		ns_chunk_preamble = sim_profile_elapsed_ns(t_preamble0);
+	}
 	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
+		auto t_match0 = std::chrono::steady_clock::now();
 		const int64_t seed = base_seed + match_index;
 		_reset_runtime_state();
 		_seed = seed;
@@ -5080,7 +5102,14 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 		_build_role_strategy_cache();
 		_prepare_tick_context();
 		_refresh_target_pressure();
+		if (bench_phases) {
+			ns_match_setup_total += sim_profile_elapsed_ns(t_match0);
+		}
+		auto t_sim0 = std::chrono::steady_clock::now();
 		_simulate();
+		if (bench_phases) {
+			ns_simulate_total += sim_profile_elapsed_ns(t_sim0);
+		}
 		_reset_runtime_state();
 		next_progress += 1;
 		if (next_progress == 1000) {
@@ -5090,6 +5119,21 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 	}
 	if (next_progress != 0) {
 		benchmark_progress_add(next_progress);
+	}
+	if (bench_phases) {
+		const double inv_bc = batch_count > 0 ? 1.0 / double(batch_count) : 0.0;
+		std::fprintf(stderr,
+				"{\"bench_phases\":{\"batch_count\":%lld,\"ns_catalog_ensure\":%llu,\"ns_chunk_preamble\":%llu,"
+				"\"ns_match_setup_total\":%llu,\"ns_simulate_total\":%llu,"
+				"\"avg_ns_per_match_setup\":%.0f,\"avg_ns_per_match_simulate\":%.0f}}\n",
+				static_cast<long long>(batch_count),
+				static_cast<unsigned long long>(ns_catalog_ensure),
+				static_cast<unsigned long long>(ns_chunk_preamble),
+				static_cast<unsigned long long>(ns_match_setup_total),
+				static_cast<unsigned long long>(ns_simulate_total),
+				double(ns_match_setup_total) * inv_bc,
+				double(ns_simulate_total) * inv_bc);
+		std::fflush(stderr);
 	}
 }
 

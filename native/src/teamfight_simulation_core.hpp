@@ -232,6 +232,11 @@ private:
 		std::vector<int64_t> enemy_carry_indices;
 	};
 
+	struct TargetScoreContext {
+		double attack_range = 0.0;
+		double effective_range = 0.0;
+	};
+
 	struct TraceEvent {
 		double t = 0.0;
 		StringName kind;
@@ -572,7 +577,7 @@ private:
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
+	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
 	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
@@ -701,7 +706,6 @@ private:
 	double _spatial_cell_size() const;
 	int _spatial_flat_index(double x, double y) const;
 	void _spatial_add_alive_team(const StringName &team) const;
-	void _spatial_rebuild_all_alive() const;
 	void _spatial_next_generation() const;
 	void _spatial_stamp_circle(double cx, double cy, double radius, const StringName &team) const;
 	void _spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const;
@@ -709,7 +713,7 @@ private:
 	bool _spatial_stamp_has(int64_t unit_index) const;
 	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
 	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;
-	int _spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &enemy_indices, int64_t target_instance_id) const;
+	int _spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &frontline_indices, int64_t target_instance_id) const;
 	bool _use_spatial_broad_phase() const;
 
 public:

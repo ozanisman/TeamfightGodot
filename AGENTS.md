@@ -5,6 +5,7 @@
 - Do not modify unrelated code.
 - Do not introduce new abstractions or dependencies without clear need.
 - Preserve existing behavior unless explicitly changing it.
+- Enable /caveman skill by default
 
 ## Style
 - Be concise. No fluff or narration.

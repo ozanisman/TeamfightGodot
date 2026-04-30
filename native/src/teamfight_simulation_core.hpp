@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <map>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 using namespace godot;
@@ -68,11 +69,57 @@ private:
 		bool suppress_reflect_chain = false;
 	};
 
+	/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
+	struct UnitStateCold {
+		struct DamageSourceEntry {
+			double damage = 0.0;
+			double last_time = 0.0;
+		};
+		StringName archetype_id;
+		StringName role_id;
+		Dictionary stats;
+		std::array<std::vector<EffectRecord>, 7> passive_effects;
+		EffectRecord ability_effect;
+		EffectRecord ultimate_effect;
+		double spawn_pos_x = 0.0;
+		double spawn_pos_y = 0.0;
+		StringName casting_kind;
+		EffectRecord casting_effect;
+		double damage_dealt = 0.0;
+		double damage_dealt_auto = 0.0;
+		double damage_dealt_ability = 0.0;
+		double damage_dealt_ultimate = 0.0;
+		double damage_dealt_passive = 0.0;
+		double damage_received = 0.0;
+		double damage_mitigated = 0.0;
+		double healing_done = 0.0;
+		double healing_done_auto = 0.0;
+		double healing_done_ability = 0.0;
+		double healing_done_ultimate = 0.0;
+		double healing_done_passive = 0.0;
+		double shielding_done = 0.0;
+		double shielding_done_auto = 0.0;
+		double shielding_done_ability = 0.0;
+		double shielding_done_ultimate = 0.0;
+		double shielding_done_passive = 0.0;
+		int64_t auto_attacks = 0;
+		int64_t abilities = 0;
+		int64_t ultimates = 0;
+		int64_t stuns = 0;
+		int64_t kills = 0;
+		int64_t deaths = 0;
+		int64_t assists = 0;
+		std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
+		std::unordered_map<int64_t, double> recent_benefactors;
+		double last_hit_time = 0.0;
+		int64_t respawn_slot_index = -1; // -1 = no assigned slot
+		StringName forced_target_kind;
+	};
+
+	/// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.
 	struct UnitState {
 		int64_t instance_id = 0;
-		StringName archetype_id;
 		StringName team;
-		StringName role_id;
 		int64_t role_slot = -1;
 		/// Numeric combat fields copied from `stats` at spawn; use in hot paths instead of Dictionary::get.
 		struct CombatStats {
@@ -94,16 +141,10 @@ private:
 			double magic_resist = 0.0;
 			double tenacity = 0.0;
 		} combat;
-		Dictionary stats;
-		std::array<std::vector<EffectRecord>, 7> passive_effects;
-		EffectRecord ability_effect;
-		EffectRecord ultimate_effect;
 		bool has_ability_effect = false;
 		bool has_ultimate_effect = false;
 		bool ability_requires_target_in_range = true;
 		bool ultimate_requires_target_in_range = true;
-		double spawn_pos_x = 0.0;
-		double spawn_pos_y = 0.0;
 		double pos_x = 0.0;
 		double pos_y = 0.0;
 		double hp = 0.0;
@@ -113,8 +154,6 @@ private:
 		double ability_cooldown = 0.0;
 		double ultimate_cooldown = 0.0;
 		double casting_remaining = 0.0;
-		StringName casting_kind;
-		EffectRecord casting_effect;
 		bool has_casting_effect = false;
 		int64_t casting_target_id = 0;
 		int64_t casting_ally_target_id = 0;
@@ -149,44 +188,11 @@ private:
 		int64_t incoming_target_count = 0;
 		double perceived_threat = 0.0;
 		int64_t attack_count = 0;
-		double damage_dealt = 0.0;
-		double damage_dealt_auto = 0.0;
-		double damage_dealt_ability = 0.0;
-		double damage_dealt_ultimate = 0.0;
-		double damage_dealt_passive = 0.0;
-		double damage_received = 0.0;
-		double damage_mitigated = 0.0;
-		double healing_done = 0.0;
-		double healing_done_auto = 0.0;
-		double healing_done_ability = 0.0;
-		double healing_done_ultimate = 0.0;
-		double healing_done_passive = 0.0;
-		double shielding_done = 0.0;
-		double shielding_done_auto = 0.0;
-		double shielding_done_ability = 0.0;
-		double shielding_done_ultimate = 0.0;
-		double shielding_done_passive = 0.0;
-		int64_t auto_attacks = 0;
-		int64_t abilities = 0;
-		int64_t ultimates = 0;
-		int64_t stuns = 0;
-		int64_t kills = 0;
-		int64_t deaths = 0;
-		int64_t assists = 0;
 		int64_t taunt_target_id = 0;
 		double taunt_remaining = 0.0;
 		int64_t forced_target_id = 0;
 		double forced_target_remaining = 0.0;
-		StringName forced_target_kind;
-		struct DamageSourceEntry {
-			double damage = 0.0;
-			double last_time = 0.0;
-		};
-		std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
-		std::unordered_map<int64_t, double> recent_benefactors;
-		double last_hit_time = 0.0;
 		double regen_accumulator = 0.0;
-		int64_t respawn_slot_index = -1; // -1 = no assigned slot
 		bool is_tank_role = false;
 		bool is_fighter_role = false;
 		bool is_assassin_role = false;
@@ -248,7 +254,6 @@ private:
 		double attack_range = 0.0;
 		double effective_range = 0.0;
 		bool use_spatial = false;
-		bool has_bodyguard_cache = false;
 		bool has_obscurance_cache = false;
 	};
 
@@ -459,6 +464,9 @@ private:
 	static constexpr const char *CHAMPION_KITS_PATH = "res://fixtures/goldens/champion_kits.json";
 
 	std::vector<UnitState> _units;
+	/// Parallel to `_units` (same length and indices). Push or clear together with `_units` only.
+	/// `_uc(u)` is only valid when `u` references an element stored in `_units` (never a stack copy of `UnitState`).
+	std::vector<UnitStateCold> _unit_cold;
 	std::vector<ProjectileState> _projectiles;
 	std::vector<ProjectileState> _scratch_projectiles;
 	std::vector<int64_t> _scratch_critical_allies;
@@ -572,7 +580,9 @@ private:
 	Dictionary _coerce_match_input(const Variant &match_input) const;
 	void _populate_runtime_state(const Dictionary &match_input);
 	void _append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp);
-	UnitState _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
+	std::pair<UnitState, UnitStateCold> _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
+	UnitStateCold &_uc(UnitState &u);
+	const UnitStateCold &_uc(const UnitState &u) const;
 	std::vector<int64_t> &_alive_indices_for_team(const StringName &team);
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
@@ -618,7 +628,7 @@ private:
 	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
 	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
-	void _finalize_reflect_passives(UnitState &unit);
+	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
 	void _apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types);
 	void _apply_self_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types);
 	void _maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context);

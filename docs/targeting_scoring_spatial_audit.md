@@ -25,7 +25,7 @@ The current local batch logs in this checkout are older artifacts, but they are 
 | Drift | Evidence | Why it matters |
 |---|---|---|
 | Broad-phase threshold mismatch | Header comment says 5v5 stays brute, but the constant is `4` in `native/src/teamfight_simulation_core.hpp:360-363`. The same 6+ wording appears in `docs/simulation_and_testing.md:160-165` and `logs/benchmark_rundown.md:1-5,47-48`. | This can mislead anyone trying to optimize 5v5, because the documented path and the executed path are not the same. |
-| Benchmark baseline mismatch | `logs/benchmark_rundown.md` still records a 290 m/s primary baseline, but the local raw batch logs in this checkout are closer to 190-193 m/s for the same gate (`logs/bench_0.txt:6-17`, `logs/bench_1.txt:6-17`, `logs/bench_2.txt:6-17`). | Do not treat the older baseline as current without rerunning the exact gate on the same machine and build. |
+| Benchmark baseline mismatch | `logs/benchmark_rundown.md` records **301** m/s (`workers=1`) and **338** m/s (`workers=8`) reference baselines (ten-run means; prior doc **260** / **290**); older raw batch logs may still read ~190–193 m/s on other gates (`logs/bench_0.txt:6-17`, etc.). | Do not mix batch sizes or worker counts when comparing; rerun the exact gate on the same machine and build. |
 | Threshold comment vs current code path | `_use_spatial_broad_phase()` is called from target selection and movement helpers (`native/src/teamfight_simulation_core.cpp:2393-2395`, `2981-2993`, `3256-3258`). | Even if the threshold stays at 4, the comment/docs need to match the executed path so future profiling work is not built on stale assumptions. |
 
 ## Decision log for severe blockers

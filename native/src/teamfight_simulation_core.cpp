@@ -695,6 +695,8 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_tick_ctx.density_by_unit_index.clear();
 	_tick_ctx.player_backliner_indices.clear();
 	_tick_ctx.enemy_backliner_indices.clear();
+	_tick_ctx.player_backliner_alive_count = 0;
+	_tick_ctx.enemy_backliner_alive_count = 0;
 	_tick_ctx.has_player_center = false;
 	_tick_ctx.has_enemy_center = false;
 	_tick_ctx.needs_cluster_density = false;
@@ -1594,6 +1596,8 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	if (ec > 0) {
 		_tick_ctx.enemy_team_center = Vector2(ecx / double(ec), ecy / double(ec));
 	}
+	_tick_ctx.player_backliner_alive_count = int(_tick_ctx.player_backliner_indices.size());
+	_tick_ctx.enemy_backliner_alive_count = int(_tick_ctx.enemy_backliner_indices.size());
 }
 
 void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id, int64_t tgt_id, double val) {
@@ -2047,18 +2051,16 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			if (attacker.is_assassin_role) {
 				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
 				const std::vector<int64_t> &bl = enemy.team == sn_player() ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
-				bool has_backliner = false;
+				int n_alive = enemy.team == sn_player() ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
+				bool self_in_bl = false;
 				for (int64_t idx : bl) {
 					if (idx == enemy_self_idx) {
-						continue;
-					}
-					const UnitState &other = _units[idx];
-					if (other.alive) {
-						has_backliner = true;
+						self_in_bl = true;
 						break;
 					}
 				}
-				if (has_backliner) {
+				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
+				if (n_alive - subtract > 0) {
 					score += ASSASSIN_TANK_CONTEXT_PENALTY;
 				}
 			}
@@ -3574,6 +3576,13 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	int64_t target_index = _unit_index_by_id(target_id);
 	if (target_index >= 0) {
 		_remove_alive_index(target.team, target_index);
+	}
+	if (target.is_marksman_role || target.is_mage_role || target.is_support_role) {
+		if (target.team == sn_player()) {
+			_tick_ctx.player_backliner_alive_count = Math::max(0, _tick_ctx.player_backliner_alive_count - 1);
+		} else if (target.team == sn_enemy()) {
+			_tick_ctx.enemy_backliner_alive_count = Math::max(0, _tick_ctx.enemy_backliner_alive_count - 1);
+		}
 	}
 	target.alive = false;
 	target.respawn_timer = target.combat.respawn_time;

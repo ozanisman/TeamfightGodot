@@ -3212,12 +3212,18 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		score_ctx.has_kite_bounds = false;
 	}
 	const bool unit_is_player = unit.team == sn_player();
+	const int64_t unit_instance_id = unit.instance_id;
+	const int64_t unit_forced_target_id = unit.forced_target_id;
+	const double unit_forced_target_remaining = unit.forced_target_remaining;
+	const int64_t unit_current_ally_target_id = unit.current_ally_target_id;
+	const bool unit_is_assassin_role = unit.is_assassin_role;
+	const double unit_attack_damage = unit.combat.attack_damage;
 	const std::vector<int64_t> &frontline_indices = unit_is_player ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const std::vector<int64_t> &enemy_indices = unit_is_player ? _alive_enemy_indices : _alive_player_indices;
 
 	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
 	bool assassin_pressuring_frontline = false;
-	if (!forced_reason && unit.is_assassin_role && current_target != nullptr) {
+	if (!forced_reason && unit_is_assassin_role && current_target != nullptr) {
 		if (current_target->is_tank_role || current_target->is_fighter_role) {
 			const int bl_alive = unit_is_player ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
 			assassin_pressuring_frontline = bl_alive > 0;
@@ -3258,8 +3264,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	}
 
 	const TargetingFrameEntry *ally_for_peel = nullptr;
-	if (unit.current_ally_target_id != 0) {
-		int64_t ally_index = _unit_index_by_id(unit.current_ally_target_id);
+	if (unit_current_ally_target_id != 0) {
+		int64_t ally_index = _unit_index_by_id(unit_current_ally_target_id);
 		if (ally_index >= 0 && ally_index < int64_t(_targeting_frame.size())) {
 			ally_for_peel = &_targeting_frame[static_cast<size_t>(ally_index)];
 		}
@@ -3269,21 +3275,21 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	};
 	const bool unit_under_threat = double(unit.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || unit.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
 	auto classify_bucket = [&](const TargetingFrameEntry &candidate, double dist, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
-		if (unit.forced_target_id != 0 && unit.forced_target_remaining > 0.0 && candidate.instance_id == unit.forced_target_id) {
+		if (unit_forced_target_id != 0 && unit_forced_target_remaining > 0.0 && candidate.instance_id == unit_forced_target_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Commit;
 		}
 		TeamfightSimulationCore::TargetBucketTag bucket_tag = TeamfightSimulationCore::TargetBucketTag::Objective;
 		double carry_peel_weight = strat.carry_peel_weight;
-		if (carry_peel_weight > 0.0 && candidate.target_id == unit.instance_id) {
+		if (carry_peel_weight > 0.0 && candidate.target_id == unit_instance_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Peel;
 		}
-		int64_t ally_id = unit.current_ally_target_id;
+		int64_t ally_id = unit_current_ally_target_id;
 		if (ally_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive && candidate.target_id == ally_id && is_under_threat(*ally_for_peel)) {
 			return TeamfightSimulationCore::TargetBucketTag::Peel;
 		}
 		if (strat.execute_bonus_weight > 0.0) {
 			double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
-			double atk_dmg = unit.combat.attack_damage;
+			double atk_dmg = unit_attack_damage;
 			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
 				return TeamfightSimulationCore::TargetBucketTag::Burst;
 			}

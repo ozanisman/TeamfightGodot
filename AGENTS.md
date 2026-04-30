@@ -11,6 +11,7 @@
 - Output code by default. Explain only if necessary or requested.
 
 ## Code
+- Native hot/cold units: keep `_unit_cold` in lockstep with `_units` (same push/clear pairs); use `_uc(u)` only when `u` references an element inside `_units`, never a local `UnitState` copy.
 - No magic numbers
 - Use reusable effect classes
 - Prefer composition over complex logic.

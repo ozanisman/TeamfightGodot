@@ -1571,6 +1571,18 @@ void TeamfightSimulationCore::_spatial_clear_buckets_aux() const {
 	}
 }
 
+void TeamfightSimulationCore::_spatial_fill_buckets_for_indices_aux(const std::vector<int64_t> &indices) const {
+	_spatial_clear_buckets_aux();
+	for (int64_t idx : indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive) {
+			continue;
+		}
+		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
+		_spatial_buckets_aux[static_cast<size_t>(fi)].push_back(idx);
+	}
+}
+
 double TeamfightSimulationCore::_spatial_cell_size() const {
 	return (WORLD_BOUNDARY_MAX - WORLD_BOUNDARY_MIN) / double(SPATIAL_GRID_DIM);
 }
@@ -1729,6 +1741,62 @@ void TeamfightSimulationCore::_spatial_fill_buckets_for_indices(const std::vecto
 		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
 		_spatial_buckets[static_cast<size_t>(fi)].push_back(idx);
 	}
+}
+
+int TeamfightSimulationCore::_spatial_count_obscurance_blockers_cached(double ux, double uy, double tx, double ty, int64_t target_instance_id) const {
+	double pad = OBSCURANCE_LINE_RADIUS;
+	double minx = Math::min(ux, tx) - pad;
+	double maxx = Math::max(ux, tx) + pad;
+	double miny = Math::min(uy, ty) - pad;
+	double maxy = Math::max(uy, ty) + pad;
+	double cs = _spatial_cell_size();
+	int ix0 = int(Math::floor((minx - WORLD_BOUNDARY_MIN) / cs));
+	int ix1 = int(Math::floor((maxx - WORLD_BOUNDARY_MIN) / cs));
+	int iy0 = int(Math::floor((miny - WORLD_BOUNDARY_MIN) / cs));
+	int iy1 = int(Math::floor((maxy - WORLD_BOUNDARY_MIN) / cs));
+	ix0 = CLAMP(ix0, 0, SPATIAL_GRID_DIM - 1);
+	ix1 = CLAMP(ix1, 0, SPATIAL_GRID_DIM - 1);
+	iy0 = CLAMP(iy0, 0, SPATIAL_GRID_DIM - 1);
+	iy1 = CLAMP(iy1, 0, SPATIAL_GRID_DIM - 1);
+	double segx = tx - ux;
+	double segy = ty - uy;
+	double seg_len_sq = segx * segx + segy * segy;
+	int blockers = 0;
+	for (int iy = iy0; iy <= iy1; ++iy) {
+		for (int ix = ix0; ix <= ix1; ++ix) {
+			int fi = iy * SPATIAL_GRID_DIM + ix;
+			for (int64_t idx : _spatial_buckets_aux[static_cast<size_t>(fi)]) {
+				const UnitState &other = _units[idx];
+				if (other.instance_id == target_instance_id) {
+					continue;
+				}
+				double ox = other.pos_x;
+				double oy = other.pos_y;
+				double odx = ox - ux;
+				double ody = oy - uy;
+				double other_dist_sq = odx * odx + ody * ody;
+				if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
+					continue;
+				}
+				double dist_sq = 0.0;
+				if (seg_len_sq <= EPSILON) {
+					dist_sq = other_dist_sq;
+				} else {
+					double t = (odx * segx + ody * segy) / seg_len_sq;
+					t = Math::clamp(t, 0.0, 1.0);
+					double px = ux + segx * t;
+					double py = uy + segy * t;
+					double ddx = ox - px;
+					double ddy = oy - py;
+					dist_sq = ddx * ddx + ddy * ddy;
+				}
+				if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
+					blockers += 1;
+				}
+			}
+		}
+	}
+	return blockers;
 }
 
 int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const {
@@ -1937,9 +2005,8 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		SimProfileAccScope _se_bg(profile_score, _sim_profile_se_bodyguard);
 		double bodyguard_weight = strategy.bodyguard_weight;
 		if (bodyguard_weight > 0.0) {
-			if (_use_spatial_broad_phase()) {
+			if (score_ctx.use_spatial && score_ctx.has_bodyguard_cache) {
 				// Stamp uses inclusive disk (dist_sq <= r²); inner loop still applies strict `< BODYGUARD_RADIUS²`.
-				_spatial_fill_buckets_for_indices(carry_indices);
 				_spatial_stamp_circle(enemy.pos_x, enemy.pos_y, BODYGUARD_RADIUS, attacker.team);
 				const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
 				for (int64_t ally_index : carry_indices) {
@@ -2035,8 +2102,8 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		double obscurance_weight = strategy.obscurance_weight;
 		if (obscurance_weight > 0.0) {
 			int blockers = 0;
-			if (_use_spatial_broad_phase()) {
-				blockers = _spatial_count_obscurance_blockers(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, frontline_indices, enemy.instance_id);
+			if (score_ctx.use_spatial && score_ctx.has_obscurance_cache) {
+				blockers = _spatial_count_obscurance_blockers_cached(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, enemy.instance_id);
 			} else {
 				double ux = attacker.pos_x;
 				double uy = attacker.pos_y;
@@ -3065,13 +3132,26 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	TargetScoreContext score_ctx;
 	score_ctx.attack_range = _attack_range(unit);
 	score_ctx.effective_range = _effective_attack_range(unit);
+	score_ctx.use_spatial = _use_spatial_broad_phase();
 	UnitState *best = nullptr;
 	double best_adjusted = std::numeric_limits<double>::infinity();
 	double best_raw = std::numeric_limits<double>::infinity();
 	int best_bucket_rank = 0;
 	double best_dist = std::numeric_limits<double>::infinity();
+	const std::vector<int64_t> &carry_indices = unit.team == sn_player() ? ctx.player_carry_indices : ctx.enemy_carry_indices;
+	const std::vector<int64_t> &frontline_indices = unit.team == sn_player() ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const StringName &enemy_team = unit.team == sn_player() ? sn_enemy() : sn_player();
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	if (score_ctx.use_spatial) {
+		if (strategy.bodyguard_weight > 0.0) {
+			_spatial_fill_buckets_for_indices(carry_indices);
+			score_ctx.has_bodyguard_cache = true;
+		}
+		if (strategy.obscurance_weight > 0.0) {
+			_spatial_fill_buckets_for_indices_aux(frontline_indices);
+			score_ctx.has_obscurance_cache = true;
+		}
+	}
 
 	// Assassin frontline pressure bypass: evaluate even if retarget_timer > 0.
 	bool assassin_pressuring_frontline = false;

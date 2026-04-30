@@ -247,6 +247,9 @@ private:
 	struct TargetScoreContext {
 		double attack_range = 0.0;
 		double effective_range = 0.0;
+		bool use_spatial = false;
+		bool has_bodyguard_cache = false;
+		bool has_obscurance_cache = false;
 	};
 
 	struct TraceEvent {
@@ -723,8 +726,10 @@ private:
 	void _spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const;
 	void _spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const;
 	bool _spatial_stamp_has(int64_t unit_index) const;
+	void _spatial_fill_buckets_for_indices_aux(const std::vector<int64_t> &indices) const;
 	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
 	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;
+	int _spatial_count_obscurance_blockers_cached(double ux, double uy, double tx, double ty, int64_t target_instance_id) const;
 	int _spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &frontline_indices, int64_t target_instance_id) const;
 	bool _use_spatial_broad_phase() const;
 

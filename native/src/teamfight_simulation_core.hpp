@@ -530,6 +530,12 @@ private:
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets_aux;
 	mutable std::vector<uint32_t> _spatial_stamp;
 	mutable uint32_t _spatial_generation = 1;
+	/// Aux spatial grid last filled from enemy frontline (player-side targeting); signature invalidates on tick or position drift.
+	int64_t _obscurance_aux_enemy_grid_tick = -1;
+	uint64_t _obscurance_aux_enemy_grid_sig = 0;
+	/// Aux grid last filled from player frontline (enemy-side targeting).
+	int64_t _obscurance_aux_player_grid_tick = -1;
+	uint64_t _obscurance_aux_player_grid_sig = 0;
 
 	/// TEAMFIGHT_SIM_PROFILE env: per-_simulate() wall time (nanoseconds) by _step_tick section.
 	uint64_t _sim_profile_ns_projectiles = 0;
@@ -737,6 +743,7 @@ private:
 	void _spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const;
 	bool _spatial_stamp_has(int64_t unit_index) const;
 	void _spatial_fill_buckets_for_indices_aux(const std::vector<int64_t> &indices) const;
+	uint64_t _obscurance_aux_frontline_signature(const std::vector<int64_t> &indices) const;
 	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
 	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;
 	int _spatial_count_obscurance_blockers_cached(double ux, double uy, double tx, double ty, int64_t target_instance_id) const;

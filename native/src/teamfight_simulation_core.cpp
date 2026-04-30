@@ -2252,11 +2252,13 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 				double ay = attacker.pos_y;
 				double to_ax = ax - ex;
 				double to_ay = ay - ey;
-				double len_t = Math::sqrt(to_tx * to_tx + to_ty * to_ty);
-				double len_a = Math::sqrt(to_ax * to_ax + to_ay * to_ay);
-				if (len_t > EPSILON && len_a > EPSILON) {
-					double align = (to_tx * to_ax + to_ty * to_ay) / (len_t * len_a);
+				double len_t_sq = to_tx * to_tx + to_ty * to_ty;
+				double len_a_sq = to_ax * to_ax + to_ay * to_ay;
+				if (len_t_sq > EPSILON * EPSILON && len_a_sq > EPSILON * EPSILON) {
+					double len_prod = Math::sqrt(len_t_sq * len_a_sq);
+					double align = (to_tx * to_ax + to_ty * to_ay) / len_prod;
 					align = Math::max(0.0, align);
+					double len_t = Math::sqrt(len_t_sq);
 					double isolation = Math::min(1.0, len_t * FLANKING_TEAM_CENTER_SCALE);
 					score -= align * isolation * flanking_weight;
 				}
@@ -2270,7 +2272,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	return score;
 }
 
-bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double current_score, double new_score, const TeamfightSimulationCore::UnitStrategy &strategy) const {
+bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double current_score, double new_score, const TeamfightSimulationCore::UnitStrategy &strategy, double current_target_distance) const {
 	// Respect post-switch lock + commit window to avoid last-moment target flip.
 	if (unit.target_switch_lock_timer > 0.0) {
 		return false;
@@ -2279,7 +2281,7 @@ bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double curre
 	// We approximate "in_range" using current target distance if available.
 	const UnitState *current_target = _unit_by_id(unit.target_id);
 	if (current_target != nullptr && current_target->alive && current_target->team != unit.team) {
-		double dist = _distance_between(unit, *current_target);
+		double dist = current_target_distance >= 0.0 ? current_target_distance : _distance_between(unit, *current_target);
 		double attack_range = _attack_range(unit);
 		double effective_range = _effective_attack_range(unit);
 		bool in_range = false;
@@ -3179,14 +3181,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	bool assassin_pressuring_frontline = false;
 	if (!forced_reason && unit.is_assassin_role && current_target != nullptr) {
 		if (current_target->is_tank_role || current_target->is_fighter_role) {
-			const std::vector<int64_t> &bl = enemy_team == sn_player() ? _tick_ctx.player_backliner_indices : _tick_ctx.enemy_backliner_indices;
-			for (int64_t idx : bl) {
-				const UnitState &enemy = _units[idx];
-				if (enemy.alive) {
-					assassin_pressuring_frontline = true;
-					break;
-				}
-			}
+			const int bl_alive = enemy_team == sn_player() ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
+			assassin_pressuring_frontline = bl_alive > 0;
 		}
 	}
 
@@ -3272,13 +3268,19 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 
 	bool current_target_raw_valid = false;
 	double current_target_raw = 0.0;
+	double current_target_dist_for_switch = -1.0;
+	const double unit_x = unit.pos_x;
+	const double unit_y = unit.pos_y;
 	for (int64_t enemy_index : enemy_indices) {
 		UnitState &candidate = _units[enemy_index];
-		double dist = _distance_between(unit, candidate);
+		double dx = candidate.pos_x - unit_x;
+		double dy = candidate.pos_y - unit_y;
+		double dist = Math::sqrt(dx * dx + dy * dy);
 		double raw = _score_enemy_target(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
 		if (current_target_index >= 0 && enemy_index == current_target_index) {
 			current_target_raw = raw;
 			current_target_raw_valid = true;
+			current_target_dist_for_switch = dist;
 		}
 		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
 		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
@@ -3337,7 +3339,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 	}
 
-	if (!_should_switch(unit, current_score, best_raw, strategy)) {
+	if (!_should_switch(unit, current_score, best_raw, strategy, current_target_dist_for_switch)) {
 		unit.current_target_score = current_score;
 		_set_current_target(unit, *current_target);
 		return current_target;

@@ -627,7 +627,8 @@ private:
 	double _score_enemy_target(const UnitState &attacker, const UnitState &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
 	double _score_ally_target(const UnitState &unit, const UnitState &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
-	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy) const;
+	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
+	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy, double current_target_distance = -1.0) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
 	bool _try_cast_ultimate(UnitState &unit, UnitState &target, double distance);
 	bool _start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind);

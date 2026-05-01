@@ -42,6 +42,28 @@ static func clear_thread_cache() -> void:
 	_thread_local_caches.erase(thread_id)
 	_cache_mutex.unlock()
 
+# Array pool for effect building optimization
+static var _array_pool: Array[Array] = []
+static var _pool_mutex: Mutex = Mutex.new()
+
+static func _get_pooled_array() -> Array:
+	_pool_mutex.lock()
+	if _array_pool.is_empty():
+		_pool_mutex.unlock()
+		return []
+	var pooled_array: Array = _array_pool.pop_back()
+	_pool_mutex.unlock()
+	pooled_array.clear()
+	return pooled_array
+
+static func _return_pooled_array(array: Array) -> void:
+	if array.size() > 32:  # Don't pool oversized arrays
+		return
+	_pool_mutex.lock()
+	if _array_pool.size() < 16:  # Limit pool size
+		_array_pool.push_back(array)
+	_pool_mutex.unlock()
+
 static func clear_all_caches() -> void:
 	_cache_mutex.lock()
 	_catalog_cache.clear()
@@ -50,6 +72,11 @@ static func clear_all_caches() -> void:
 	_champion_ids_cache.clear()
 	_thread_local_caches.clear()
 	_cache_mutex.unlock()
+	
+	# Clear array pool
+	_pool_mutex.lock()
+	_array_pool.clear()
+	_pool_mutex.unlock()
 
 static func clear_export_caches() -> void:
 	# Clear caches before export to ensure fresh data
@@ -58,18 +85,26 @@ static func clear_export_caches() -> void:
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
 	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
+	var pooled_arrays: Array[Array] = []
 	
 	for key in params:
 		var value = params[key]
 		if key == "effects" and value is Array:
-			var built_effects: Array = []
+			var built_effects: Array = _get_pooled_array()
+			pooled_arrays.append(built_effects)
 			for effect_data in value:
 				built_effects.append(_build_effect(effect_data))
 			params[key] = built_effects
 		elif key == "splash" and value is Dictionary:
 			params[key] = _build_effect(value)
 	
-	return EffectSpecScript.new(data["kind"], params, requires_target_in_range)
+	var result = EffectSpecScript.new(data["kind"], params, requires_target_in_range)
+	
+	# Return arrays to pool after effect is created
+	for pooled_array in pooled_arrays:
+		_return_pooled_array(pooled_array)
+	
+	return result
 
 static func _build_stats(data: Dictionary) -> ChampionStatsScript:
 	var stats := ChampionStatsScript.new()

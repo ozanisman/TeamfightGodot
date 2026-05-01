@@ -46,12 +46,14 @@ static func _build_batch_input_for_seed(
 		for _i in range(team_size):
 			enemies.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
 	else:
-		var pool := archetypes.duplicate()
-		pool.shuffle()
+		var indices: Array[int] = []
+		for i in range(archetypes.size()):
+			indices.append(i)
+		indices.shuffle()
 		for i in range(team_size):
-			players.append(pool[i])
+			players.append(archetypes[indices[i]])
 		for i in range(team_size, team_size * 2):
-			enemies.append(pool[i])
+			enemies.append(archetypes[indices[i]])
 	return MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.DEFAULT_TICK_RATE)
 
 static func reset_benchmark_progress(total_matches: int) -> void:

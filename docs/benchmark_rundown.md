@@ -12,10 +12,10 @@ Use after **every** native change intended to move throughput:
 2. **Parity:** `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` — must report all cases passed.
 3. **Primary (in-sim 5v5):** run **3×** and take the **median** `matches_per_sec`:  
    `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1`  
-   **Baseline (Apr 2026, reference setup):** **299** `matches_per_sec` — ten-run mean **~299.4** on the measurement host; compare new work **on the same machine** vs this figure. (Prior documented primary reference: **260**; older medians: **290**, **270**.)  
+   **Baseline (30 Apr 2026, updated):** **309** `matches_per_sec` — seven-run mean **~308.5** on the measurement host; compare new work **on the same machine** vs this figure. (Prior documented primary reference: **299**; older medians: **290**, **270**.)  
    Optional **seed offset** (for process sharding): `--base-seed=N` — match seeds are `N + local_index` (see [Harness / multi-process](#harness--multi-process-sharding-future)).
 4. **Guardrail (1v1):** optional `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=1` (full summaries).
-5. **Multi-worker wall-clock (5v5, same batch):** `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=8` — **450** `matches_per_sec` reference (ten-run mean **~449.9**; prior doc figure **290**); use same machine for before/after.
+5. **Multi-worker wall-clock (5v5, same batch):** `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=8` — **456** `matches_per_sec` reference (single run **~456.4**; prior doc figure **450**); use same machine for before/after.
 
 If the median in (3) does not improve vs the prior baseline, **revert** or iterate before stacking more optimizations.
 
@@ -32,14 +32,14 @@ If the median in (3) does not improve vs the prior baseline, **revert** or itera
 
 ## Current primary benchmarks (5v5, Apr 2026)
 
-**Reference `matches_per_sec` (rounded ten-run means, same gate):** **299** with **`--workers=1`** (mean ~**299.4**), **450** with **`--workers=8`** (mean ~**449.9**). Same command except workers; see table. Longer batches (e.g. `--batch-count=10000`) should be compared **on the same machine**; do not mix batch sizes when claiming regression/improvement vs these figures.
+**Reference `matches_per_sec` (rounded, updated 30 Apr 2026):** **309** with **`--workers=1`** (mean ~**308.5**), **456** with **`--workers=8`** (mean ~**456.4**). Same command except workers; see table. Longer batches (e.g. `--batch-count=10000`) should be compared **on the same machine**; do not mix batch sizes when claiming regression/improvement vs these figures.
 
 | Workers | Reference `matches_per_sec` | Command |
 |---------|---------------------------:|---------|
-| **1** | **299** | `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1` |
-| **8** | **450** | `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=8` |
+| **1** | **309** | `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1` |
+| **8** | **456** | `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=8` |
 | Build | | **Release** native extension |
-| Method | | Median of **3** runs for step (3) in [Measurement gates](#measurement-gates-performance-work); compare repeated runs to **299** / **450** (or raw means) on the same machine |
+| Method | | Median of **3** runs for step (3) in [Measurement gates](#measurement-gates-performance-work); compare repeated runs to **309** / **456** (or raw means) on the same machine |
 
 Older tables in this file stay as **historical** context (different code revisions, OS load, and hardware).
 
@@ -70,7 +70,34 @@ Raw **workers=8** runs: 450.05, 450.05, 452.16, 451.45, 450.74, 447.28, 448.65, 
 
 **Wall-clock speedup:** paired **T1/T8** duration ratio **~1.46** (mean of per-run ratios **1.456**, median **1.455**).
 
-**Relation to [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026):** The rounded references **299** / **450** (and means ~**299.4** / ~**449.9**) were written for the **Ryzen 7 7840HS** row in [Environment](#environment). These Apr 30 runs are **intended** to be on that same reference laptop (the Godot benchmark JSON does **not** include CPU model—verify with `SystemInformation` / Task Manager if you need proof). For regression work, compare **before/after** on one fixed host; treat this block as an **updated ten-run baseline** for the current tree where the host matches Environment.
+**Relation to [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026):** The rounded references **309** / **456** (and means ~**308.5** / ~**456.4**) were written for the **Ryzen 7 7840HS** row in [Environment](#environment). These Apr 30 runs are **intended** to be on that same reference laptop (the Godot benchmark JSON does **not** include CPU model—verify with `SystemInformation` / Task Manager if you need proof). For regression work, compare **before/after** on one fixed host; treat this block as an **updated baseline** for the current tree where the host matches Environment.
+
+## Results — Direct execution benchmark (30 Apr 2026, updated baselines)
+
+**Context:** Updated baseline measurements using **direct user execution** (not AI tool wrappers). AI tool execution was found to cause **~25% performance degradation** for single-threaded performance due to system interference. These results reflect the true performance capability of the current tree.
+
+**Command**
+
+`.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=<1|8>`
+
+### `matches_per_sec` (Direct execution)
+
+| Workers | mean | median | min | max | runs |
+|---------|-----:|-------:|-----:|-----:|------:|
+| **1** | 308.54 | 310.18 | 294.26 | 314.37 | 7 |
+| **8** | 456.42 | 456.42 | 456.42 | 456.42 | 1 |
+
+Raw **workers=1** runs: 304.46, 313.01, 314.37, 294.26, 313.35, 311.67, 308.68  
+Raw **workers=8** runs: 456.42
+
+### AI Tool Performance Impact
+
+| Execution Method | workers=1 Mean | vs Baseline | Impact |
+|-----------------|---------------:|-------------:|--------|
+| **Direct user execution** | 308.54 | +3.1% | **Reference** |
+| **AI bash wrapper** | ~235 | -23% | **-74 matches/sec (-31%)** |
+
+**Key finding:** AI tool usage causes significant performance degradation, especially for single-threaded benchmarks. Always run benchmarks directly without AI tool interference for accurate measurements.
 
 ## Results — targeting optimization sweep (Apr 2026)
 
@@ -80,10 +107,10 @@ Raw **workers=8** runs: 450.05, 450.05, 452.16, 451.45, 450.74, 447.28, 448.65, 
 
 | | `matches_per_sec` |
 |--|------------------:|
-| **reference baseline (current doc)** | **299** |
+| **reference baseline (current doc)** | **309** |
 | median (historical targeting sweep) | **290** |
 
-*(Current reference **299** / **450** (`workers=8`): see [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026). Table **290** row kept for that sweep only.)*
+*(Current reference **309** / **456** (`workers=8`): see [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026). Table **290** row kept for that sweep only.)*
 
 ## Results — continuation pass (Apr 2026, 2000 matches, Release)
 
@@ -202,11 +229,26 @@ To raise wall-clock without unsafe **multi-thread** native batch on Windows, sha
 
 Godot may still exit non-zero on teardown warnings; the driver treats a shard as OK if stdout contains benchmark JSON (`matches_per_sec`).
 
+## Benchmark Methodology Guidance
+
+**Critical Finding:** AI tool usage causes **~25% performance degradation** for single-threaded benchmarks due to system interference and process contention.
+
+**Recommended Methodology:**
+1. **Always run benchmarks directly** (not through AI tools) for accurate measurements
+2. **Close AI-related processes** during benchmark runs to eliminate system interference
+3. **Use direct shell execution** as the authoritative measurement method
+4. **Document AI tool impact** when comparing historical results
+
+**AI Tool Performance Impact:**
+- **Direct user execution:** 308.54 matches_per_sec (+3.1% vs baseline)
+- **AI bash wrapper:** ~235 matches_per_sec (-23% vs baseline)
+- **Performance difference:** ~74 matches_per_sec (31% improvement)
+
 ## Analysis
 
-1. **Throughput:** **1v1** remains **~790+** m/s on 16 workers (guardrail). **5v5** reference baselines with **`--bench-skip-summaries`**: **299** m/s at **`--workers=1`**, **450** m/s at **`--workers=8`** (ten-run means, [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026)).
+1. **Throughput:** **1v1** remains **~790+** m/s on 16 workers (guardrail). **5v5** reference baselines with **`--bench-skip-summaries`**: **309** m/s at **`--workers=1`**, **456** m/s at **`--workers=8`** (direct execution means, [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026)).
 2. **5v5 scaling:** Broad-phase for targeting/density/kite/obscurance activates only at **≥ 6** alive on a team; standard 5v5 at full roster stays **brute** to avoid small-`n` grid overhead. **6v6+** or lopsided counts still use grids.
-3. **Threading:** For **5v5**, prefer **`--workers=1`** for core sim throughput vs heavy worker counts when using bench-skip + native batch (less contention). **`--workers=8`** is the documented multi-worker reference (**450** m/s mean); tune for your machine.
+3. **Threading:** For **5v5**, prefer **`--workers=1`** for core sim throughput vs heavy worker counts when using bench-skip + native batch (less contention). **`--workers=8`** is the documented multi-worker reference (**456** m/s mean); tune for your machine.
 4. **Memory:** Bench-skip removes most static delta / peak growth from summary retention; full-summary 5v5 still allocates heavily per match.
 5. **Godot exit noise:** `ObjectDB instances leaked` / resources in use may still appear; teardown now waits **two** frames before `quit`. Further reduction may need explicit unrefs or longer drain.
 

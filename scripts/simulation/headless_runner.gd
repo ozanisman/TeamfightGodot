@@ -411,6 +411,14 @@ static func run_from_cli(tree: SceneTree) -> void:
 				input_data["debug_fixture_name"] = debug_fixture_name
 				var match_obj: Object = MatchReplayInputScript.from_dict(input_data)
 				backend.run_match(match_obj)
+				if bool(input_data.get("debug_targeting", false)) or bool(input_data.get("debug_combat_trace", false)):
+					var trace_events: Array = Array(backend.get_trace_events())
+					for event in trace_events:
+						if event is Dictionary:
+							var trace_event: Dictionary = Dictionary(event)
+							var kind: String = String(trace_event.get("kind", ""))
+							if kind.begins_with("target_choice"):
+								print(JSON.stringify(trace_event))
 				print("Debug fixture run complete: %s" % debug_fixture_name)
 				await HeadlessShutdownScript.teardown_extension_then_quit(tree, 0)
 				return

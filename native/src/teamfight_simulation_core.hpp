@@ -378,6 +378,8 @@ private:
 	static constexpr double ASSIST_WINDOW = 5.0;
 	static constexpr double RETARGET_INTERVAL = 0.5;
 	static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
+	static constexpr double TARGET_STICKINESS_THRESHOLD = 20.0;
+	static constexpr double STICKINESS_RETARGET_BONUS = 0.5;
 	static constexpr double REGEN_TICK_INTERVAL = 1.0;
 	static constexpr double CASTING_WINDUP = 0.5;
 	static constexpr double RANGED_THRESHOLD = 1.0;

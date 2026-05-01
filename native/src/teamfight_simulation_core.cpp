@@ -3395,6 +3395,15 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 	}
 
+	// Target stickiness optimization: extend retarget_timer if current target is "good enough"
+	if (current_target_live != nullptr && current_score <= best_raw + TARGET_STICKINESS_THRESHOLD) {
+		// Current target is good enough - extend timer instead of resetting
+		unit.retarget_timer = RETARGET_INTERVAL + STICKINESS_RETARGET_BONUS;
+		unit.current_target_score = current_score;
+		_set_current_target(unit, *current_target_live);
+		return current_target_live;
+	}
+
 	if (current_target_live == nullptr || !_should_switch(unit, current_score, best_raw, strategy, current_target_dist_for_switch)) {
 		unit.current_target_score = current_score;
 		if (current_target_live != nullptr) {

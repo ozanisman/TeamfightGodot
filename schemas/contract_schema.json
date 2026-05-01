@@ -690,9 +690,9 @@
 				}
 			},
 			"ability_desc": "Deals 80% magic damage and stuns for 2.0s.",
-			"description": "An evasive melee fighter who relies on high dodge chance and speed to survive encounters.",
+			"description": "An evasive melee fighter who relies on high auto-dodge chance and speed to survive encounters.",
 			"name": "Rogue",
-			"passive_desc": "Grants a 25% chance to dodge incoming damage.",
+			"passive_desc": "Grants a 25% chance to auto-dodge incoming auto attacks.",
 			"passive_ids": [
 				"agility"
 			],

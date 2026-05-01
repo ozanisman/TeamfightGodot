@@ -1229,7 +1229,7 @@ const PASSIVE_DATA := {
 		&"on_tick": [{"kind": &"heal", "params": {"flat_amount": 5.0, "reason": "Rejuvenation"}}],
 	},
 	&"agility": {
-		&"on_defense": [{"kind": &"dodge", "params": {"dodge_chance": 0.25, "on_dodge_multiplier": 0.0, "on_hit_multiplier": 1.0}}],
+		&"on_defense": [{"kind": &"auto_dodge", "params": {"dodge_chance": 0.25, "on_dodge_multiplier": 0.0, "on_hit_multiplier": 1.0}}],
 	},
 	&"enlightenment": {
 		&"post_attack": [{"kind": &"mana_restore_on_hit", "params": {"flat_amount": 5.0}}],

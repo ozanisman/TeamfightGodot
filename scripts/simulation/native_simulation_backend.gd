@@ -237,3 +237,13 @@ func get_tick_snapshot() -> Dictionary:
 			te["r"] = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
 	s["tick_fx"] = tfx
 	return s
+
+func get_trace_events() -> Array:
+	if not _ensure_native_backend():
+		return []
+	if not _backend.has_method("get_trace_events"):
+		return []
+	var trace_events: Variant = _backend.call("get_trace_events")
+	if trace_events is Array:
+		return trace_events
+	return []

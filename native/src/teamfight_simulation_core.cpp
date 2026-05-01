@@ -227,8 +227,8 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("self_dash")) {
 		return EFFECT_OPCODE_SELF_DASH;
 	}
-	if (kind == StringName("dodge")) {
-		return EFFECT_OPCODE_DODGE;
+	if (kind == StringName("auto_dodge")) {
+		return EFFECT_OPCODE_AUTO_DODGE;
 	}
 	if (kind == StringName("constant_multiplier")) {
 		return EFFECT_OPCODE_CONSTANT_MULTIPLIER;
@@ -331,8 +331,8 @@ StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return StringName("every_n_attacks_stun");
 		case EFFECT_OPCODE_SELF_DASH:
 			return StringName("self_dash");
-		case EFFECT_OPCODE_DODGE:
-			return StringName("dodge");
+		case EFFECT_OPCODE_AUTO_DODGE:
+			return StringName("auto_dodge");
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 			return StringName("constant_multiplier");
 		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
@@ -474,7 +474,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
-	} else if (kind == StringName("dodge")) {
+	} else if (kind == StringName("auto_dodge")) {
 		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
 		compiled.scalar2 = double(params.get("on_hit_multiplier", 1.0));
@@ -2610,7 +2610,7 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 			double hp_ratio = context.source->hp / Math::max(0.0001, context.source->combat.max_hp);
 			return hp_ratio > effect.scalar0 ? effect.scalar1 : 1.0;
 		}
-		case EFFECT_OPCODE_DODGE:
+		case EFFECT_OPCODE_AUTO_DODGE:
 			if (_randf() < effect.scalar0) {
 				return effect.scalar1;
 			}
@@ -2630,6 +2630,22 @@ double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState
 	EffectContext context = _build_context(source, &target, nullptr, damage, action_kind);
 	const std::vector<EffectRecord> &effects = _collect_effects(target, StringName("on_defense"));
 	for (const EffectRecord &effect : effects) {
+		if (effect.opcode == EFFECT_OPCODE_AUTO_DODGE) {
+			continue;
+		}
+		multiplier *= _evaluate_multiplier_effect(effect, context, multiplier);
+	}
+	return multiplier;
+}
+
+double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitState &source, double damage) {
+	double multiplier = 1.0;
+	EffectContext context = _build_context(source, &target, nullptr, damage, StringName("auto"));
+	const std::vector<EffectRecord> &effects = _collect_effects(target, StringName("on_defense"));
+	for (const EffectRecord &effect : effects) {
+		if (effect.opcode != EFFECT_OPCODE_AUTO_DODGE) {
+			continue;
+		}
 		multiplier *= _evaluate_multiplier_effect(effect, context, multiplier);
 	}
 	return multiplier;
@@ -2671,6 +2687,9 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		return 0.0;
 	}
 	double pre_res = damage * _defense_multiplier(target, source, damage, action_kind);
+	if (action_kind == StringName("auto")) {
+		pre_res *= _auto_dodge_multiplier(target, source, damage);
+	}
 	double final_damage = pre_res;
 	if (damage_type == StringName("physical")) {
 		double armor = target.combat.armor;
@@ -4948,7 +4967,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			
 			return dash_result;
 		}
-		case EFFECT_OPCODE_DODGE:
+		case EFFECT_OPCODE_AUTO_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:

@@ -348,7 +348,7 @@ private:
 		EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT = 17,
 		EFFECT_OPCODE_EVERY_N_ATTACKS_STUN = 18,
 		EFFECT_OPCODE_SELF_DASH = 19,
-		EFFECT_OPCODE_DODGE = 20,
+		EFFECT_OPCODE_AUTO_DODGE = 20,
 		EFFECT_OPCODE_CONSTANT_MULTIPLIER = 21,
 		EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER = 22,
 		EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER = 23,
@@ -668,6 +668,7 @@ private:
 	double _apply_ultimate_modifiers(UnitState &unit, UnitState *target, double damage);
 	double _apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context);
 	double _defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind);
+	double _auto_dodge_multiplier(UnitState &target, UnitState &source, double damage);
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
 	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
 	Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);

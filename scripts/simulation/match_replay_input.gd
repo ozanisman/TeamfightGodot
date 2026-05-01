@@ -26,14 +26,20 @@ func _init(
 	_player_units: Array = [],
 	_enemy_units: Array = [],
 	_record_events: bool = false,
+	_debug_targeting: bool = false,
+	_debug_combat_trace: bool = false,
+	_debug_fixture_name: String = "",
 	_rules_version: int = SimConstantsScript.SIMULATION_RULES_VERSION,
 	_balance_version: StringName = &"default"
 ) -> void:
 	seed = _seed
 	tick_rate = _tick_rate
-	player_units = _player_units.duplicate()
-	enemy_units = _enemy_units.duplicate()
+	player_units = _player_units
+	enemy_units = _enemy_units
 	record_events = _record_events
+	debug_targeting = _debug_targeting
+	debug_combat_trace = _debug_combat_trace
+	debug_fixture_name = _debug_fixture_name
 	rules_version = _rules_version
 	balance_version = _balance_version
 
@@ -47,8 +53,8 @@ func to_dict() -> Dictionary:
 	return {
 		"seed": seed,
 		"tick_rate": tick_rate,
-		"player_units": player_units.map(func(value): return value.to_dict()),
-		"enemy_units": enemy_units.map(func(value): return value.to_dict()),
+		"player_units": player_units.duplicate().map(func(value): return value.to_dict()),
+		"enemy_units": enemy_units.duplicate().map(func(value): return value.to_dict()),
 		"record_events": record_events,
 		"debug_targeting": debug_targeting,
 		"debug_combat_trace": debug_combat_trace,

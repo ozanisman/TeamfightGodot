@@ -109,18 +109,19 @@
 				"params": {
 					"effects": [
 						{
-							"kind": "self_damage",
+							"kind": "damage",
 							"params": {
-								"damage_ratio": 0.05,
+								"max_hp_ratio": 0.05,
+								"target_self": true,
 								"reason": "Blood Price"
 							},
 							"requires_target_in_range": true
 						},
 						{
-							"kind": "self_shield",
+							"kind": "shield",
 							"params": {
-								"reason": "Blood Price",
-								"shield_ratio": 0.24
+								"max_hp_ratio": 0.24,
+								"reason": "Blood Price"
 							},
 							"requires_target_in_range": true
 						}
@@ -1152,9 +1153,9 @@
 			"bravery": {
 				"on_attack": [
 					{
-						"kind": "self_hp_threshold_multiplier",
+						"kind": "hp_threshold_damage_multiplier",
 						"params": {
-							"min_hp_ratio": 0.8,
+							"above_hp_ratio": 0.8,
 							"multiplier": 1.2
 						},
 						"requires_target_in_range": true
@@ -1274,9 +1275,9 @@
 			"executioner": {
 				"on_ability": [
 					{
-						"kind": "target_hp_threshold_multiplier",
+						"kind": "hp_threshold_damage_multiplier",
 						"params": {
-							"hp_ratio_threshold": 0.3,
+							"below_hp_ratio": 0.3,
 							"multiplier": 2.0
 						},
 						"requires_target_in_range": true
@@ -1284,9 +1285,9 @@
 				],
 				"on_attack": [
 					{
-						"kind": "target_hp_threshold_multiplier",
+						"kind": "hp_threshold_damage_multiplier",
 						"params": {
-							"hp_ratio_threshold": 0.3,
+							"below_hp_ratio": 0.3,
 							"multiplier": 2.0
 						},
 						"requires_target_in_range": true
@@ -1294,9 +1295,9 @@
 				],
 				"on_ultimate": [
 					{
-						"kind": "target_hp_threshold_multiplier",
+						"kind": "hp_threshold_damage_multiplier",
 						"params": {
-							"hp_ratio_threshold": 0.3,
+							"below_hp_ratio": 0.3,
 							"multiplier": 2.0
 						},
 						"requires_target_in_range": true

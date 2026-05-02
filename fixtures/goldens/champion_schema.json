@@ -3,7 +3,7 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 1.4,
+				"damage_ratio": 1.4,
 				"reason": "Volley"
 			},
 			"requires_target_in_range": true
@@ -41,7 +41,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 3.8,
+				"damage_ratio": 3.8,
 				"radius_override": 0.06,
 				"reason": "Rain of Arrows"
 			},
@@ -54,7 +54,7 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 0.95,
+				"damage_ratio": 0.95,
 				"reason": "Shell Shock",
 				"stun_duration": 0.6
 			},
@@ -93,7 +93,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 3.3,
+				"damage_ratio": 3.3,
 				"radius_override": 0.08,
 				"reason": "Big Bertha"
 			},
@@ -108,18 +108,20 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_damage",
+						"kind": "damage",
 						"params": {
-							"damage_ratio": 0.05,
-							"reason": "Blood Price"
+							"max_hp_ratio": 0.05,
+							"reason": "Blood Price",
+							"target_self": true
 						},
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_shield",
+						"kind": "shield",
 						"params": {
+							"max_hp_ratio": 0.24,
 							"reason": "Blood Price",
-							"shield_ratio": 0.24
+							"target_self": true
 						},
 						"requires_target_in_range": true
 					}
@@ -161,7 +163,7 @@
 		"ultimate": {
 			"kind": "damage",
 			"params": {
-				"damage_multiplier": 4.2,
+				"damage_ratio": 4.2,
 				"damage_type": "true",
 				"reason": "Berserker Rage",
 				"trigger_on_hit": false
@@ -255,7 +257,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 1.65,
+							"damage_ratio": 1.65,
 							"damage_type": "physical",
 							"radius": 1.0,
 							"reason": "Seismic Slam"
@@ -304,7 +306,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 4.6,
+							"damage_ratio": 4.6,
 							"reason": "Earthshaker",
 							"trigger_on_hit": false
 						},
@@ -334,7 +336,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.3,
+							"damage_ratio": 1.3,
 							"reason": "Weapon Break",
 							"trigger_on_hit": false
 						},
@@ -390,7 +392,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 2.8,
+							"damage_ratio": 2.8,
 							"radius": 2.0,
 							"reason": "Suppression Field"
 						},
@@ -421,7 +423,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.8,
+							"damage_ratio": 1.8,
 							"reason": "Ground Slam",
 							"trigger_on_hit": false
 						},
@@ -477,7 +479,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 3.5,
+							"damage_ratio": 3.5,
 							"radius": 3.0,
 							"reason": "Earthquake"
 						},
@@ -508,7 +510,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.6,
+							"damage_ratio": 1.6,
 							"damage_type": "magic",
 							"reason": "Ice Bolt",
 							"trigger_on_hit": false
@@ -566,7 +568,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 3.2,
+							"damage_ratio": 3.2,
 							"damage_type": "magic",
 							"radius": 2.5,
 							"reason": "Blizzard"
@@ -637,7 +639,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.9,
+							"damage_ratio": 2.9,
 							"reason": "Aegis Crash",
 							"trigger_on_hit": false
 						},
@@ -663,7 +665,7 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 1.7,
+				"damage_ratio": 1.7,
 				"damage_type": "magic",
 				"reason": "Arcane Bolt",
 				"speed_override": 7.0
@@ -703,7 +705,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 5.0,
+				"damage_ratio": 5.0,
 				"damage_type": "magic",
 				"radius_override": 0.07,
 				"reason": "Meteor Bombardment",
@@ -762,7 +764,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.8,
+							"damage_ratio": 1.8,
 							"reason": "Mirror Aura",
 							"trigger_on_hit": false
 						},
@@ -795,7 +797,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.1,
+							"damage_ratio": 2.1,
 							"reason": "Pressure Point",
 							"trigger_on_hit": false
 						},
@@ -851,7 +853,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 4.1,
+							"damage_ratio": 4.1,
 							"reason": "Hundred-Hand Slap",
 							"trigger_on_hit": false
 						},
@@ -888,7 +890,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.5,
+							"damage_ratio": 1.5,
 							"reason": "Shadow Strike",
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
@@ -945,7 +947,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 9.0,
+				"damage_ratio": 9.0,
 				"reason": "Assassinate"
 			},
 			"requires_target_in_range": true
@@ -1057,7 +1059,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 3.6,
+							"damage_ratio": 3.6,
 							"reason": "Divine Judgment",
 							"trigger_on_hit": false
 						},
@@ -1151,9 +1153,9 @@
 		"bravery": {
 			"on_attack": [
 				{
-					"kind": "self_hp_threshold_multiplier",
+					"kind": "hp_threshold_damage_multiplier",
 					"params": {
-						"min_hp_ratio": 0.8,
+						"above_hp_ratio": 0.8,
 						"multiplier": 1.2
 					},
 					"requires_target_in_range": true
@@ -1273,9 +1275,9 @@
 		"executioner": {
 			"on_ability": [
 				{
-					"kind": "target_hp_threshold_multiplier",
+					"kind": "hp_threshold_damage_multiplier",
 					"params": {
-						"hp_ratio_threshold": 0.3,
+						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
 					},
 					"requires_target_in_range": true
@@ -1283,9 +1285,9 @@
 			],
 			"on_attack": [
 				{
-					"kind": "target_hp_threshold_multiplier",
+					"kind": "hp_threshold_damage_multiplier",
 					"params": {
-						"hp_ratio_threshold": 0.3,
+						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
 					},
 					"requires_target_in_range": true
@@ -1293,9 +1295,9 @@
 			],
 			"on_ultimate": [
 				{
-					"kind": "target_hp_threshold_multiplier",
+					"kind": "hp_threshold_damage_multiplier",
 					"params": {
-						"hp_ratio_threshold": 0.3,
+						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
 					},
 					"requires_target_in_range": true
@@ -1432,7 +1434,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.2,
+							"damage_ratio": 2.2,
 							"reason": "Backstab",
 							"trigger_on_hit": false
 						},
@@ -1484,7 +1486,7 @@
 		"ultimate": {
 			"kind": "damage",
 			"params": {
-				"damage_multiplier": 7.8,
+				"damage_ratio": 7.8,
 				"reason": "Eviscerate"
 			},
 			"requires_target_in_range": true
@@ -1556,7 +1558,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.4,
+							"damage_ratio": 1.4,
 							"reason": "Arcane Strike",
 							"trigger_on_hit": false
 						},
@@ -1614,7 +1616,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 2.4,
+							"damage_ratio": 2.4,
 							"radius": 2.0,
 							"reason": "Silence Zone"
 						},
@@ -1685,7 +1687,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.8,
+							"damage_ratio": 2.8,
 							"damage_type": "magic",
 							"reason": "Banshee Wail",
 							"trigger_on_hit": false
@@ -1712,7 +1714,7 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 1.5,
+				"damage_ratio": 1.5,
 				"reason": "Headshot"
 			},
 			"requires_target_in_range": true
@@ -1750,7 +1752,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 2.8,
+				"damage_ratio": 2.8,
 				"reason": "ULTIMATE",
 				"speed_override": 15.0
 			},
@@ -1767,7 +1769,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.7,
+							"damage_ratio": 2.7,
 							"reason": "Cleave",
 							"trigger_on_hit": false
 						},
@@ -1823,7 +1825,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 5.6,
+							"damage_ratio": 5.6,
 							"reason": "Whirlwind",
 							"trigger_on_hit": false
 						},
@@ -1853,7 +1855,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.2,
+							"damage_ratio": 2.2,
 							"reason": "Shield Slam",
 							"trigger_on_hit": false
 						},
@@ -1909,7 +1911,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 4.3,
+							"damage_ratio": 4.3,
 							"reason": "Valhalla Call",
 							"trigger_on_hit": false
 						},
@@ -1935,7 +1937,7 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 1.0,
+				"damage_ratio": 1.0,
 				"damage_type": "magic",
 				"reason": "Soul Siphon"
 			},
@@ -1974,7 +1976,7 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 2.6,
+				"damage_ratio": 2.6,
 				"damage_type": "magic",
 				"reason": "Chaos Rift",
 				"stun_duration": 0.5
@@ -1992,7 +1994,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 1.2,
+							"damage_ratio": 1.2,
 							"damage_type": "magic",
 							"reason": "Wind Blast",
 							"trigger_on_hit": false
@@ -2070,7 +2072,7 @@
 					{
 						"kind": "self_aoe_damage",
 						"params": {
-							"damage_multiplier": 3.0,
+							"damage_ratio": 3.0,
 							"damage_type": "magic",
 							"radius": 2.5,
 							"reason": "Tornado"
@@ -2114,7 +2116,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 2.2,
+							"damage_ratio": 2.2,
 							"damage_type": "magic",
 							"reason": "Spectral Touch",
 							"trigger_on_hit": false
@@ -2171,7 +2173,7 @@
 					{
 						"kind": "damage",
 						"params": {
-							"damage_multiplier": 4.8,
+							"damage_ratio": 4.8,
 							"damage_type": "magic",
 							"reason": "Phantom Strike",
 							"trigger_on_hit": false

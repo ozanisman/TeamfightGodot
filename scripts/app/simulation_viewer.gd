@@ -64,7 +64,7 @@ const PREPARATION := "PREPARATION"
 const COMBAT := "COMBAT"
 const MATCH_OVER := "MATCH_OVER"
 
-# Draft configuration
+# Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
 const DRAFT_SEQUENCE := [
 	"P1_PICK", "P2_PICK",
@@ -265,8 +265,8 @@ func _create_ui_structure() -> void:
 	# Create TitleLabel (centered at top)
 	_title_label = Label.new()
 	_title_label.name = "TitleLabel"
-	_title_label.text = "HERO SELECTION"
-	_title_label.position = Vector2(screen_size.x / 2.0 - 70.0, 14.0)
+	_title_label.text = "MANUAL TEAM SELECTION"
+	_title_label.position = Vector2(screen_size.x / 2.0 - 100.0, 14.0)
 	_header_panel.add_child(_title_label)
 
 	# Create TurnLabel (centered below title)
@@ -1414,19 +1414,21 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 func _update_turn_display() -> void:
 	if _turn_label == null:
 		return
-
 	var screen_size := get_viewport_rect().size
 	var center_x := screen_size.x / 2.0
 
 	if _draft_step_index < DRAFT_SEQUENCE.size():
 		var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
-		_turn_label.text = "TURN: %s" % current_turn.replace("_", " ")
-		# Center the turn label horizontally
-		_turn_label.position = Vector2(center_x - _turn_label.get_size().x / 2.0, 50.0)
+		if current_turn == "P1_PICK":
+			_turn_label.text = "SELECT PLAYER 1 CHAMPION (%d/%d)" % [_player_picks.size() + 1, MAX_TEAM_SIZE]
+		elif current_turn == "P2_PICK":
+			_turn_label.text = "SELECT PLAYER 2 CHAMPION (%d/%d)" % [_enemy_picks.size() + 1, MAX_TEAM_SIZE]
+		else:
+			_turn_label.text = "TURN: %s" % current_turn.replace("_", " ")
 	else:
-		_turn_label.text = "TURN: Draft Complete"
-		# Center the turn label horizontally
-		_turn_label.position = Vector2(center_x - _turn_label.get_size().x / 2.0, 50.0)
+		_turn_label.text = "TEAMS READY - START MATCH"
+	# Center the turn label horizontally
+	_turn_label.position = Vector2(center_x - _turn_label.get_size().x / 2.0, 50.0)
 
 
 func _update_team_rosters() -> void:
@@ -1492,30 +1494,9 @@ func _power_score_for_pick(hero_id: StringName) -> float:
 
 
 func _try_enemy_draft_ai() -> void:
-	while _draft_step_index < DRAFT_SEQUENCE.size():
-		var step: String = DRAFT_SEQUENCE[_draft_step_index]
-		if not step.begins_with("P2"):
-			break
-		if step.contains("BAN"):
-			break
-		var taken: Array[StringName] = _player_picks + _enemy_picks + _banned_heroes
-		var ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-		var available: Array[StringName] = []
-		for cid in ids:
-			if cid not in taken:
-				available.append(cid)
-		if available.is_empty():
-			break
-		var chosen: StringName = _pick_p2_hero(available)
-		if chosen == StringName():
-			break
-		if _enemy_picks.size() < MAX_TEAM_SIZE:
-			_enemy_picks.append(chosen)
-		_draft_step_index += 1
-		_update_turn_display()
-		_update_team_rosters()
-		_update_champion_button_style(chosen)
-	_update_start_match_enabled()
+	# AI disabled - manual selection for both teams
+	# This function is intentionally left empty to allow manual team selection
+	pass
 
 
 func _pick_p2_hero(available: Array[StringName]) -> StringName:

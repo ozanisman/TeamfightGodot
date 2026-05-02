@@ -284,10 +284,10 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
-		"ability_desc": "Grants a shield worth 28% max HP to self or an ally.",
+		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
 		"ultimate_desc": "Slams the ground for 290% damage and a 3.8s stun.",
 		"passive_desc": "Reduces incoming damage by 19%.",
-		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 0.28, "reason": "Guardian Shield"}},
+		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 0.20, "reason": "Guardian Shield"}},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {

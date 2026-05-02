@@ -3643,7 +3643,8 @@ double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) c
 	if (attack_range <= RANGED_THRESHOLD) {
 		return attack_range + MELEE_CONTACT_BUFFER;
 	}
-	return attack_range;
+	// Add ranged contact buffer for ranged units
+	return attack_range + RANGED_CONTACT_BUFFER;
 }
 
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_unit_by_id(int64_t instance_id) {
@@ -4246,12 +4247,8 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		
 		// Move if not at actual attack range yet (allows movement while attacking at effective range)
 		if (distance > actual_attack_range) {
-			// For melee champions: use actual attack range for movement target
-			if (actual_attack_range <= RANGED_THRESHOLD) {
-				_move_toward_target_with_range(unit, *target, actual_attack_range);
-			} else {
-				_move_toward_target(unit, *target);
-			}
+			// Use actual attack range for movement target (allows closing gap while attacking)
+			_move_toward_target_with_range(unit, *target, actual_attack_range);
 		}
 	}
 }
@@ -5255,10 +5252,23 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 		CPythonRandom draft_rng;
 		draft_rng.seed_int64(seed);
 		int64_t next_instance_id = 1;
+		
+		// Create a mutable copy of archetypes for selection
+		std::vector<StringName> available_archetypes = archetypes;
+		
+		// Generate player team
 		for (int64_t slot = 0; slot < units_per_team; ++slot) {
-			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(champion_count));
+			if (available_archetypes.empty()) {
+				break; // No more champions available
+			}
+			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(available_archetypes.size()));
+			StringName selected_archetype = available_archetypes[archetype_index];
+			
+			// Remove selected archetype from available pool
+			available_archetypes.erase(available_archetypes.begin() + archetype_index);
+			
 			spawn_spec.clear();
-			spawn_spec["archetype_id"] = archetypes[archetype_index];
+			spawn_spec["archetype_id"] = selected_archetype;
 			std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, sn_player(), next_instance_id);
 			if (built.first.instance_id == 0) {
 				continue;
@@ -5272,10 +5282,20 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 			_player_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
 			next_instance_id += 1;
 		}
+		
+		// Generate enemy team from remaining champions
 		for (int64_t slot = 0; slot < units_per_team; ++slot) {
-			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(champion_count));
+			if (available_archetypes.empty()) {
+				break; // No more champions available
+			}
+			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(available_archetypes.size()));
+			StringName selected_archetype = available_archetypes[archetype_index];
+			
+			// Remove selected archetype from available pool
+			available_archetypes.erase(available_archetypes.begin() + archetype_index);
+			
 			spawn_spec.clear();
-			spawn_spec["archetype_id"] = archetypes[archetype_index];
+			spawn_spec["archetype_id"] = selected_archetype;
 			std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, sn_enemy(), next_instance_id);
 			if (built.first.instance_id == 0) {
 				continue;

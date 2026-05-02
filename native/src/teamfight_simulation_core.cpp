@@ -188,12 +188,6 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("heal")) {
 		return EFFECT_OPCODE_HEAL;
 	}
-	if (kind == StringName("self_damage")) {
-		return EFFECT_OPCODE_SELF_DAMAGE;
-	}
-	if (kind == StringName("self_shield")) {
-		return EFFECT_OPCODE_SELF_SHIELD;
-	}
 	if (kind == StringName("self_aoe_taunt")) {
 		return EFFECT_OPCODE_SELF_AOE_TAUNT;
 	}
@@ -233,14 +227,11 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("constant_multiplier")) {
 		return EFFECT_OPCODE_CONSTANT_MULTIPLIER;
 	}
-	if (kind == StringName("target_hp_threshold_multiplier")) {
-		return EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER;
+	if (kind == StringName("hp_threshold_damage_multiplier")) {
+		return EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER;
 	}
 	if (kind == StringName("distance_threshold_multiplier")) {
 		return EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER;
-	}
-	if (kind == StringName("self_hp_threshold_multiplier")) {
-		return EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER;
 	}
 	// New effect kinds
 	if (kind == StringName("slow")) {
@@ -305,10 +296,6 @@ StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return StringName("shield");
 		case EFFECT_OPCODE_HEAL:
 			return StringName("heal");
-		case EFFECT_OPCODE_SELF_DAMAGE:
-			return StringName("self_damage");
-		case EFFECT_OPCODE_SELF_SHIELD:
-			return StringName("self_shield");
 		case EFFECT_OPCODE_SELF_AOE_TAUNT:
 			return StringName("self_aoe_taunt");
 		case EFFECT_OPCODE_SELF_AOE_DAMAGE:
@@ -335,12 +322,10 @@ StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return StringName("auto_dodge");
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 			return StringName("constant_multiplier");
-		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
-			return StringName("target_hp_threshold_multiplier");
+		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
+			return StringName("hp_threshold_damage_multiplier");
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
 			return StringName("distance_threshold_multiplier");
-		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
-			return StringName("self_hp_threshold_multiplier");
 		// New effect opcodes
 		case EFFECT_OPCODE_SLOW:
 			return StringName("slow");
@@ -390,18 +375,19 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	}
 	if (kind == StringName("constant_multiplier")) {
 		compiled.scalar0 = double(params.get("multiplier", 1.0));
-	} else if (kind == StringName("target_hp_threshold_multiplier")) {
-		compiled.scalar0 = double(params.get("hp_ratio_threshold", 0.0));
-		compiled.scalar1 = double(params.get("multiplier", 1.0));
+	} else if (kind == StringName("hp_threshold_damage_multiplier")) {
+		compiled.scalar0 = double(params.get("above_hp_ratio", 0.0));
+		compiled.scalar1 = double(params.get("below_hp_ratio", 0.0));
+		compiled.scalar2 = double(params.get("multiplier", 1.0));
 	} else if (kind == StringName("distance_threshold_multiplier")) {
 		compiled.scalar0 = double(params.get("min_distance", 0.0));
 		compiled.scalar1 = double(params.get("multiplier", 1.0));
-	} else if (kind == StringName("self_hp_threshold_multiplier")) {
-		compiled.scalar0 = double(params.get("min_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("multiplier", 1.0));
 	} else if (kind == StringName("damage")) {
-		compiled.scalar0 = double(params.get("damage_multiplier", 1.0));
-		compiled.scalar1 = bool(params.get("trigger_on_hit", true)) ? 1.0 : 0.0;
+		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(params.get("flat_amount", 0.0));
+		compiled.scalar3 = bool(params.get("trigger_on_hit", true)) ? 1.0 : 0.0;
+		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("projectile")) {
@@ -420,18 +406,15 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("shield")) {
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(params.get("flat_amount", 0.0));
+		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("heal")) {
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
-		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("self_damage")) {
-		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-		compiled.damage_type = StringName(String(params.get("damage_type", "true")));
-		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("self_shield")) {
-		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
+		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("self_aoe_taunt")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
@@ -474,10 +457,6 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
-	} else if (kind == StringName("shield")) {
-		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
-		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
-		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 	} else if (kind == StringName("auto_dodge")) {
 		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
@@ -2600,26 +2579,26 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 	switch (effect.opcode) {
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 			return effect.scalar0;
-		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER: {
-			if (context.target == nullptr) {
-				return 1.0;
+		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER: {
+			// Check source HP ratio for above_threshold
+			if (effect.scalar0 > 0.0) {
+				double hp_ratio = context.source->hp / Math::max(0.0001, context.source->combat.max_hp);
+				if (hp_ratio > effect.scalar0) {
+					return effect.scalar2;
+				}
 			}
-			double target_hp = context.target->hp;
-			double target_max_hp = Math::max(0.0001, context.target->combat.max_hp);
-			if (target_hp / target_max_hp <= effect.scalar0) {
-				return effect.scalar1;
+			// Check target HP ratio for below_threshold
+			if (effect.scalar1 > 0.0 && context.target != nullptr) {
+				double target_hp = context.target->hp;
+				double target_max_hp = Math::max(0.0001, context.target->combat.max_hp);
+				if (target_hp / target_max_hp <= effect.scalar1) {
+					return effect.scalar2;
+				}
 			}
 			return 1.0;
 		}
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
 			return context.distance > effect.scalar0 ? effect.scalar1 : 1.0;
-		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER: {
-			if (context.source == nullptr) {
-				return 1.0;
-			}
-			double hp_ratio = context.source->hp / Math::max(0.0001, context.source->combat.max_hp);
-			return hp_ratio > effect.scalar0 ? effect.scalar1 : 1.0;
-		}
 		case EFFECT_OPCODE_AUTO_DODGE:
 			if (_randf() < effect.scalar0) {
 				return effect.scalar1;
@@ -4645,26 +4624,34 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_DAMAGE: {
 			Dictionary damage_result;
 			damage_result["success"] = false;
-			if (target == nullptr) {
+			
+			// Target resolution with self-targeting support
+			UnitState *damage_target = (effect.int0 == 1) ? &source : target;
+			if (damage_target == nullptr) {
 				return damage_result;
 			}
-			double damage = source.combat.attack_damage * effect.scalar0;
+			
+			// Unified damage calculation
+			double damage = source.combat.max_hp * effect.scalar0;  // max_hp_ratio
+			damage += source.combat.attack_damage * effect.scalar1;  // damage_ratio
+			damage += effect.scalar2;  // flat_amount
 			
 			// Apply ability/ultimate modifiers if applicable
 			if (context.action_kind == StringName("ability")) {
-				damage = _apply_ability_modifiers(source, target, damage);
+				damage = _apply_ability_modifiers(source, damage_target, damage);
 			} else if (context.action_kind == StringName("ultimate")) {
-				damage = _apply_ultimate_modifiers(source, target, damage);
+				damage = _apply_ultimate_modifiers(source, damage_target, damage);
 			}
 			
-			double dealt = _apply_damage(source, *target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
+			double dealt = _apply_damage(source, *damage_target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
 			context.damage = dealt;
-			if (effect.scalar1 > 0.5) {
-				_run_post_attack_effects(source, *target, dealt, context);
+			// trigger_on_hit logic
+			if (effect.scalar3 > 0.5) {
+				_run_post_attack_effects(source, *damage_target, dealt, context);
 			}
 			damage_result["success"] = true;
 			damage_result["damage_dealt"] = dealt;
-			damage_result["target_killed"] = !target->alive;
+			damage_result["target_killed"] = !damage_target->alive;
 			return damage_result;
 		}
 		case EFFECT_OPCODE_PROJECTILE: {
@@ -4720,22 +4707,20 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_SHIELD: {
 			Dictionary shield_result;
 			shield_result["success"] = true;
-			UnitState &shield_target = target_ally == nullptr ? source : *target_ally;
+			UnitState &shield_target = (effect.int0 == 1) ? source : (target_ally == nullptr ? source : *target_ally);
 			double amount = source.combat.max_hp * effect.scalar0;
-			amount += context.damage * effect.scalar1;
-			amount += effect.scalar2;
 			
-			// Fix for Gust Protection: use damage from previous damage effect in multi-effect chain
-			if (effect.reason == "Gust Protection" && amount <= 0.0) {
-				// Look for damage result in accumulated results
-				if (context.accumulated_results.has("damage")) {
-					Dictionary damage_result = context.accumulated_results["damage"];
-					if (damage_result.has("damage_dealt")) {
-						double damage_dealt = damage_result["damage_dealt"];
-						amount = damage_dealt * 0.15;  // 15% of damage dealt
-					}
+			// Use context.damage, but fall back to accumulated damage if needed
+			double damage_for_ratio = context.damage;
+			if (damage_for_ratio <= 0.0 && context.accumulated_results.has("damage")) {
+				Dictionary damage_result = context.accumulated_results["damage"];
+				if (damage_result.has("damage_dealt")) {
+					damage_for_ratio = damage_result["damage_dealt"];
 				}
 			}
+			amount += damage_for_ratio * effect.scalar1;
+			
+			amount += effect.scalar2;
 			
 			if (amount <= 0.0) {
 				shield_result["shield_applied"] = false;
@@ -4752,27 +4737,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			heal_result["success"] = true;
 			UnitState &heal_target = target_ally == nullptr ? source : *target_ally;
 			double heal_amount = source.combat.max_hp * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
+			// Add missing HP scaling
+			double missing_hp = heal_target.combat.max_hp - heal_target.hp;
+			heal_amount += missing_hp * effect.scalar3;
 			_heal_unit(source, heal_target, heal_amount, context.action_kind);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_amount;
 			return heal_result;
-		}
-		case EFFECT_OPCODE_SELF_DAMAGE: {
-			Dictionary self_damage_result;
-			self_damage_result["success"] = true;
-			double self_damage = source.combat.max_hp * effect.scalar0;
-			double dealt = _apply_damage(source, source, self_damage, effect.damage_type.is_empty() ? StringName("true") : effect.damage_type, context.action_kind, context);
-			self_damage_result["damage_dealt"] = dealt;
-			return self_damage_result;
-		}
-		case EFFECT_OPCODE_SELF_SHIELD: {
-			Dictionary self_shield_result;
-			self_shield_result["success"] = true;
-			double self_shield = source.combat.max_hp * effect.scalar0;
-			_add_shield(source, source, self_shield, context.action_kind);
-			self_shield_result["shield_applied"] = true;
-			self_shield_result["amount"] = self_shield;
-			return self_shield_result;
 		}
 		case EFFECT_OPCODE_SELF_AOE_TAUNT: {
 			Dictionary taunt_result;
@@ -5051,9 +5022,8 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		}
 		case EFFECT_OPCODE_AUTO_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
-		case EFFECT_OPCODE_TARGET_HP_THRESHOLD_MULTIPLIER:
+		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
-		case EFFECT_OPCODE_SELF_HP_THRESHOLD_MULTIPLIER:
 		default: {
 			// Opcodes without runtime execution resolve here (unknown kinds compile to UNKNOWN).
 			Dictionary default_result;

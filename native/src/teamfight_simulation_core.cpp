@@ -4645,6 +4645,12 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			
 			double dealt = _apply_damage(source, *damage_target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
 			context.damage = dealt;
+			
+			// Minimum health check for self-damage
+			if (effect.int0 == 1 && damage_target->alive && damage_target->hp <= 1.0) {
+				damage_target->hp = 1.0;
+			}
+			
 			// trigger_on_hit logic
 			if (effect.scalar3 > 0.5) {
 				_run_post_attack_effects(source, *damage_target, dealt, context);

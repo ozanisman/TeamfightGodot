@@ -698,6 +698,7 @@ private:
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
+	String _join_team_names(const Array &team) const;
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);

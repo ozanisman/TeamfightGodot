@@ -1113,15 +1113,18 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
-		"ability_desc": "Blasts target with wind for 120% magic damage and knocks back 1.5 units.",
-		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in 2.5 unit radius by 2.5 units.",
-		"passive_desc": "Gains a shield when knocking back enemies worth 15% of damage dealt.",
+		"ability_desc": "Blasts target with wind for 120% magic damage, knocks back 1.5 tiles, and slows by 20% for 1 second.",
+		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in a 3 tile radius by 2.5 units.",
+		"passive_desc": "When knocking back enemies, gain a shield equal to 15% max hp.",
+		"passive_ids": [&"gust_protection"],
 		"ability": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
 					{"kind": &"damage", "params": {"damage_multiplier": 1.2, "damage_type": "magic", "reason": "Wind Blast", "trigger_on_hit": false}},
 					{"kind": &"knockback", "params": {"distance": 1.5, "direction": "away_from_source", "reason": "Wind Blast"}},
+					{"kind": &"slow", "params": {"slow_percentage": 0.20, "duration": 1.0, "reason": "Wind Blast"}},
+					{"kind": &"shield", "params": {"max_hp_ratio": 0.15, "requires_result_from": "knockback", "requires_field": "knockback_applied", "requires_value": true, "reason": "Gust Protection"}},
 				],
 				"reason": "Wind Blast",
 			},
@@ -1132,11 +1135,11 @@ const CHAMPION_DATA := {
 				"effects": [
 					{"kind": &"self_aoe_damage", "params": {"radius": 2.5, "damage_multiplier": 3.0, "damage_type": "magic", "reason": "Tornado"}},
 					{"kind": &"self_aoe_knockback", "params": {"radius": 2.5, "distance": 2.5, "direction": "away_from_source", "reason": "Tornado"}},
+					{"kind": &"shield", "params": {"max_hp_ratio": 0.15, "requires_result_from": "self_aoe_knockback", "requires_field": "knockback_applied", "requires_value": true, "reason": "Gust Protection"}},
 				],
 				"reason": "Tornado",
 			},
 		},
-		"passive_ids": [&"gust_protection"],
 	},
 	&"mirror_knight": {
 		"stats": {
@@ -1281,8 +1284,8 @@ const PASSIVE_DATA := {
 	&"weapon_breaker": {
 		&"on_attack": [{"kind": &"target_status_multiplier", "params": {"status_kind": "disarm", "multiplier": 1.2}}],
 	},
+	# Gust Protection passive is implemented in the ability effects of Windcaller, so no hooks are needed here
 	&"gust_protection": {
-		&"post_attack": [{"kind": &"knockback_shield", "params": {"shield_ratio": 0.15}}],
 	},
 	&"reflective_armor": {
 		&"on_defense": [{"kind": &"reflect_damage", "params": {"reflect_percentage": 0.1, "reflect_type": "all"}}],

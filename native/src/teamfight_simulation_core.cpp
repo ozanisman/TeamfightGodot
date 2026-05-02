@@ -3989,20 +3989,22 @@ void TeamfightSimulationCore::_simulate() {
 	
 	// Sudden death: continue simulation until kills are unequal
 	if (_player_kills == _enemy_kills) {
-		int64_t max_sudden_death_ticks = 1000000; // Safety limit
-		
-		while (_player_kills == _enemy_kills && _sudden_death_ticks < max_sudden_death_ticks) {
+		while (_player_kills == _enemy_kills && _sudden_death_ticks < SUDDEN_DEATH_MAX_TICKS) {
 			_step_tick(profile);
 			_sudden_death_ticks++;
 		}
 		
 		// Log only when safety limit is reached (indicating a draw)
-		if (_sudden_death_ticks >= max_sudden_death_ticks) {
-			UtilityFunctions::push_error(vformat(
-				"SUDDEN DEATH SAFETY LIMIT REACHED - Player: %s, Enemy: %s",
-				_join_team_names(_player_comp),
-				_join_team_names(_enemy_comp)
-			));
+		if (_sudden_death_ticks >= SUDDEN_DEATH_MAX_TICKS) {
+			String player_team = _join_team_names(_player_comp);
+			String enemy_team = _join_team_names(_enemy_comp);
+			UtilityFunctions::push_error("==============================================");
+			UtilityFunctions::push_error("!!! SUDDEN DEATH SAFETY LIMIT REACHED !!!");
+			UtilityFunctions::push_error("!!! MATCH ENDED IN DRAW AFTER MAX TICKS !!!");
+			UtilityFunctions::push_error(vformat("!!! PLAYER TEAM: %s !!!", player_team));
+			UtilityFunctions::push_error(vformat("!!! ENEMY TEAM: %s !!!", enemy_team));
+			UtilityFunctions::push_error("!!! THIS MATCHUP CREATED A STALEMATE !!!");
+			UtilityFunctions::push_error("==============================================");
 		}
 	}
 	
@@ -5369,14 +5371,16 @@ void TeamfightSimulationCore::advance_one_tick() {
 	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
 	if (_tick >= max_ticks) {
 		// Log only when safety limit is reached (indicating a draw)
-		if (_sudden_death_ticks == 100000) {
+		if (_sudden_death_ticks == SUDDEN_DEATH_MAX_TICKS) {
 			String player_team = _join_team_names(_player_comp);
 			String enemy_team = _join_team_names(_enemy_comp);
-			UtilityFunctions::push_error(vformat(
-				"SUDDEN DEATH SAFETY LIMIT REACHED - Player: %s, Enemy: %s",
-				player_team,
-				enemy_team
-			));
+			UtilityFunctions::push_error("==============================================");
+			UtilityFunctions::push_error("!!! SUDDEN DEATH SAFETY LIMIT REACHED !!!");
+			UtilityFunctions::push_error("!!! MATCH ENDED IN DRAW AFTER MAX TICKS !!!");
+			UtilityFunctions::push_error(vformat("!!! PLAYER TEAM: %s !!!", player_team));
+			UtilityFunctions::push_error(vformat("!!! ENEMY TEAM: %s !!!", enemy_team));
+			UtilityFunctions::push_error("!!! THIS MATCHUP CREATED A STALEMATE !!!");
+			UtilityFunctions::push_error("==============================================");
 		}
 		_sudden_death_ticks++;
 	}
@@ -5391,8 +5395,8 @@ bool TeamfightSimulationCore::match_ticks_exhausted() const {
 		if (_player_kills != _enemy_kills) {
 			return true;
 		}
-		// Use same sudden death limit as main simulation: 100,000 ticks
-		if (_sudden_death_ticks >= 100000) {
+		// Use same sudden death limit as main simulation: SUDDEN_DEATH_MAX_TICKS ticks
+		if (_sudden_death_ticks >= SUDDEN_DEATH_MAX_TICKS) {
 			return true;
 		}
 		return false;

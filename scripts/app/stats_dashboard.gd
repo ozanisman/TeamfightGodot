@@ -1490,6 +1490,12 @@ func _sort_less(
 		if wa != wb:
 			return wa > wb if rev else wa < wb
 		return a.to_lower() > b.to_lower() if rev else a.to_lower() < b.to_lower()
+	if _current_sort == &"kda":
+		var ka: float = float(ua.get("kda", 0.0))
+		var kb: float = float(ub.get("kda", 0.0))
+		if ka != kb:
+			return ka > kb if rev else ka < kb
+		return a.to_lower() > b.to_lower() if rev else a.to_lower() < b.to_lower()
 	var va: float = (
 		StatsDashboardLoaderScript.get_display_val_ci(ua, _current_metric)
 		if use_ci

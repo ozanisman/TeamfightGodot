@@ -908,6 +908,12 @@ void TeamfightSimulationCore::_rebuild_effective_champion_cache() {
 	for (int64_t ki = 0; ki < archetype_keys.size(); ++ki) {
 		Variant key_var = archetype_keys[ki];
 		String key_str = String(key_var);
+		
+		// Skip non-champion entries like "passives" and "role_configs"
+		if (key_str == "passives" || key_str == "role_configs") {
+			continue;
+		}
+		
 		StringName archetype_id = StringName(key_str);
 		Dictionary base = Dictionary(_champion_catalog[key_var]);
 		if (base.is_empty()) {
@@ -2687,9 +2693,10 @@ double TeamfightSimulationCore::_apply_ultimate_modifiers(UnitState &unit, UnitS
 }
 
 double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context) {
-	if (!target.alive) {
+	if (damage <= 0.0) {
 		return 0.0;
 	}
+	double old_hp = target.hp;
 	double pre_res = damage * _defense_multiplier(target, source, damage, action_kind);
 	if (action_kind == StringName("auto")) {
 		pre_res *= _auto_dodge_multiplier(target, source, damage);
@@ -2703,6 +2710,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		final_damage *= Math::clamp(1.0 - mr, 0.05, 1.0);
 	}
 	double incoming = Math::max(0.0, final_damage);
+	
 	if (incoming <= 0.0) {
 		return 0.0;
 	}
@@ -3075,9 +3083,11 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 	if (amount <= 0.0) {
 		return;
 	}
+	
 	double max_hp = target.combat.max_hp;
 	double old_hp = target.hp;
 	double new_hp = Math::min(max_hp, old_hp + amount);
+	
 	target.hp = new_hp;
 	double gained = new_hp - old_hp;
 	if (gained > 1e-9) {
@@ -3978,11 +3988,20 @@ void TeamfightSimulationCore::_simulate() {
 	
 	// Sudden death: continue simulation until kills are unequal
 	if (_player_kills == _enemy_kills) {
-		int64_t max_sudden_death_ticks = 100000; // Safety limit
+		int64_t max_sudden_death_ticks = 1000000; // Safety limit
 		
 		while (_player_kills == _enemy_kills && _sudden_death_ticks < max_sudden_death_ticks) {
 			_step_tick(profile);
 			_sudden_death_ticks++;
+		}
+		
+		// Log only when safety limit is reached (indicating a draw)
+		if (_sudden_death_ticks >= max_sudden_death_ticks) {
+			UtilityFunctions::push_error(vformat(
+				"SUDDEN DEATH SAFETY LIMIT REACHED - Player: %s, Enemy: %s",
+				_join_team_names(_player_comp),
+				_join_team_names(_enemy_comp)
+			));
 		}
 	}
 	
@@ -5291,6 +5310,16 @@ void TeamfightSimulationCore::advance_one_tick() {
 	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
 	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
 	if (_tick >= max_ticks) {
+		// Log only when safety limit is reached (indicating a draw)
+		if (_sudden_death_ticks == 100000) {
+			String player_team = _join_team_names(_player_comp);
+			String enemy_team = _join_team_names(_enemy_comp);
+			UtilityFunctions::push_error(vformat(
+				"SUDDEN DEATH SAFETY LIMIT REACHED - Player: %s, Enemy: %s",
+				player_team,
+				enemy_team
+			));
+		}
 		_sudden_death_ticks++;
 	}
 }
@@ -5300,12 +5329,12 @@ bool TeamfightSimulationCore::match_ticks_exhausted() const {
 	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
 	// Allow sudden death: continue ticking if kills are tied
 	if (_tick >= max_ticks) {
-		// After regulation, only stop if kills are unequal or safety limit reached
+		// After regulation, only stop if kills are unequal or sudden death limit reached
 		if (_player_kills != _enemy_kills) {
 			return true;
 		}
-		// Safety limit: 100M ticks after regulation
-		if (_sudden_death_ticks >= 100000000) {
+		// Use same sudden death limit as main simulation: 100,000 ticks
+		if (_sudden_death_ticks >= 100000) {
 			return true;
 		}
 		return false;
@@ -5589,6 +5618,17 @@ Array TeamfightSimulationCore::get_balance_patches() const {
 			pd["passive_ids"] = patch.passive_ids_override;
 		}
 		result.append(pd);
+	}
+	return result;
+}
+
+String TeamfightSimulationCore::_join_team_names(const Array &team) const {
+	String result = "";
+	for (int64_t i = 0; i < team.size(); ++i) {
+		if (i > 0) {
+			result += ", ";
+		}
+		result += String(team[i]);
 	}
 	return result;
 }

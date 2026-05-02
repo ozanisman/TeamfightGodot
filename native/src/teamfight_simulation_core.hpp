@@ -383,7 +383,7 @@ private:
 	static constexpr double REGEN_TICK_INTERVAL = 1.0;
 	static constexpr double CASTING_WINDUP = 0.5;
 	static constexpr double RANGED_THRESHOLD = 1.0;
-	static constexpr double MELEE_CONTACT_BUFFER = 0.01;
+	static constexpr double MELEE_CONTACT_BUFFER = 0.1;
 	static constexpr double DEFAULT_PROJECTILE_SPEED = 5.0;
 	static constexpr double DEFAULT_PROJECTILE_RADIUS = 0.03;
 	static constexpr double DEFAULT_PROJECTILE_STUN_DURATION = 0.0;
@@ -660,6 +660,7 @@ private:
 	void _resolve_cast(UnitState &unit);
 	void _perform_auto_attack(UnitState &unit, UnitState &target, double distance);
 	void _move_toward_target(UnitState &unit, UnitState &target);
+	void _move_toward_target_with_range(UnitState &unit, UnitState &target, double target_range);
 	void _resolve_projectile(const ProjectileState &projectile);
 	EffectContext _build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind);
 	const std::vector<EffectRecord> &_collect_effects(const UnitState &unit, const StringName &kind);

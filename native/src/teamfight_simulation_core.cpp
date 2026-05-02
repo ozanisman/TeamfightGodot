@@ -4239,7 +4239,20 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				return;
 			}
 		}
-		_move_toward_target(unit, *target);
+		// For melee champions: move while attacking until reaching actual attack range
+		double distance = _distance_between(unit, *target);
+		double effective_range = _effective_attack_range(unit);
+		double actual_attack_range = _attack_range(unit);
+		
+		// Move if not at actual attack range yet (allows movement while attacking at effective range)
+		if (distance > actual_attack_range) {
+			// For melee champions: use actual attack range for movement target
+			if (actual_attack_range <= RANGED_THRESHOLD) {
+				_move_toward_target_with_range(unit, *target, actual_attack_range);
+			} else {
+				_move_toward_target(unit, *target);
+			}
+		}
 	}
 }
 
@@ -4402,6 +4415,31 @@ void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &ta
 	}
 	double effective_range = _effective_attack_range(unit);
 	double desired_step = Math::max(0.0, distance - effective_range);
+	double max_step = Math::min(speed, desired_step);
+	if (max_step <= 0.0) {
+		return;
+	}
+	double nx = dx / distance;
+	double ny = dy / distance;
+	unit.pos_x = Math::clamp(unit.pos_x + nx * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	unit.pos_y = Math::clamp(unit.pos_y + ny * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+}
+
+void TeamfightSimulationCore::_move_toward_target_with_range(UnitState &unit, UnitState &target, double target_range) {
+	double speed = unit.combat.move_speed * _movement_speed_multiplier(unit) * _tick_rate;
+	if (unit.last_kite_timer > 0.0) {
+		speed *= KITE_SPEED_MODIFIER;
+	}
+	if (speed <= 0.0) {
+		return;
+	}
+	double dx = target.pos_x - unit.pos_x;
+	double dy = target.pos_y - unit.pos_y;
+	double distance = Math::sqrt(dx * dx + dy * dy);
+	if (distance <= EPSILON) {
+		return;
+	}
+	double desired_step = Math::max(0.0, distance - target_range);
 	double max_step = Math::min(speed, desired_step);
 	if (max_step <= 0.0) {
 		return;
@@ -5493,7 +5531,9 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 			double dy = target->pos_y - u.pos_y;
 			double distance = Math::sqrt(dx * dx + dy * dy);
 			d["target_distance"] = distance;
-			in_range = distance <= u.combat.attack_range;
+			// Use effective attack range for in_range determination (allows melee to attack while closing gap)
+			double effective_range = _effective_attack_range(u);
+			in_range = distance <= effective_range;
 		}
 	} else {
 		d["target_distance"] = -1.0;  // No target

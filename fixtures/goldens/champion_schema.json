@@ -595,12 +595,12 @@
 		"ability": {
 			"kind": "shield",
 			"params": {
-				"max_hp_ratio": 0.28,
+				"max_hp_ratio": 0.2,
 				"reason": "Guardian Shield"
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Grants a shield worth 28% max HP to self or an ally.",
+		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
 		"name": "Guardian",
 		"passive_desc": "Reduces incoming damage by 19%.",

@@ -373,6 +373,7 @@ private:
 
 	static constexpr double MATCH_DURATION = 60.0;
 	static constexpr double DEFAULT_TICK_RATE = 0.1;
+	static constexpr int64_t SUDDEN_DEATH_MAX_TICKS = 10000;
 	static constexpr double EPSILON = 0.000001;
 	static constexpr double RESPAWN_TIME = 10.0;
 	static constexpr double ASSIST_WINDOW = 5.0;

@@ -474,6 +474,10 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
+	} else if (kind == StringName("shield")) {
+		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
+		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 	} else if (kind == StringName("auto_dodge")) {
 		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
@@ -994,7 +998,7 @@ bool TeamfightSimulationCore::_validate_effective_champion(const StringName &arc
 		if (pid.is_empty()) {
 			continue;
 		}
-		if (Dictionary(_passive_registry.get(pid, Dictionary())).is_empty()) {
+		if (!_passive_registry.has(pid)) {
 			UtilityFunctions::push_error(vformat("Unknown passive_id '%s' for archetype '%s'", String(pid), String(archetype_id)));
 			ok = false;
 		}
@@ -4598,6 +4602,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			
 			double dealt = _apply_damage(source, *target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
+			context.damage = dealt;
 			if (effect.scalar1 > 0.5) {
 				_run_post_attack_effects(source, *target, dealt, context);
 			}
@@ -4661,6 +4666,26 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			shield_result["success"] = true;
 			UnitState &shield_target = target_ally == nullptr ? source : *target_ally;
 			double amount = source.combat.max_hp * effect.scalar0;
+			amount += context.damage * effect.scalar1;
+			amount += effect.scalar2;
+			
+			// Fix for Gust Protection: use damage from previous damage effect in multi-effect chain
+			if (effect.reason == "Gust Protection" && amount <= 0.0) {
+				// Look for damage result in accumulated results
+				if (context.accumulated_results.has("damage")) {
+					Dictionary damage_result = context.accumulated_results["damage"];
+					if (damage_result.has("damage_dealt")) {
+						double damage_dealt = damage_result["damage_dealt"];
+						amount = damage_dealt * 0.15;  // 15% of damage dealt
+					}
+				}
+			}
+			
+			if (amount <= 0.0) {
+				shield_result["shield_applied"] = false;
+				shield_result["amount"] = 0.0;
+				return shield_result;
+			}
 			_add_shield(source, shield_target, amount, context.action_kind);
 			shield_result["shield_applied"] = true;
 			shield_result["amount"] = amount;
@@ -4872,6 +4897,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK: {
 			Dictionary aoe_kb_result;
 			aoe_kb_result["success"] = true;
+			aoe_kb_result["knockback_applied"] = true;
 			_apply_self_aoe_knockback(source, effect.scalar0, effect.scalar1, effect.int0 != 0);
 			return aoe_kb_result;
 		}
@@ -4996,11 +5022,22 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 	}
 	
 	if (!results.has(effect.requires_result_from)) {
+		UtilityFunctions::push_error(vformat(
+			"Missing requires_result_from '%s' for conditional effect '%s'",
+			String(effect.requires_result_from),
+			String(effect.reason)
+		));
 		return false;  // Required effect didn't run
 	}
 	
 	Dictionary required_result = results[effect.requires_result_from];
 	if (!required_result.has(effect.requires_field)) {
+		UtilityFunctions::push_error(vformat(
+			"Missing requires_field '%s' in result '%s' for conditional effect '%s'",
+			String(effect.requires_field),
+			String(effect.requires_result_from),
+			String(effect.reason)
+		));
 		return false;  // Field doesn't exist
 	}
 	

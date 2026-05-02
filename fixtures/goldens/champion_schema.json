@@ -1080,7 +1080,8 @@
 						"dodge_chance": 0.25,
 						"on_dodge_multiplier": 0.0,
 						"on_hit_multiplier": 1.0
-					}
+					},
+					"requires_target_in_range": true
 				}
 			]
 		},
@@ -1315,15 +1316,7 @@
 			]
 		},
 		"gust_protection": {
-			"post_attack": [
-				{
-					"kind": "knockback_shield",
-					"params": {
-						"shield_ratio": 0.15
-					},
-					"requires_target_in_range": true
-				}
-			]
+
 		},
 		"mana_font": {
 			"on_tick": [
@@ -2014,16 +2007,36 @@
 							"reason": "Wind Blast"
 						},
 						"requires_target_in_range": true
+					},
+					{
+						"kind": "slow",
+						"params": {
+							"duration": 1.0,
+							"reason": "Wind Blast",
+							"slow_percentage": 0.2
+						},
+						"requires_target_in_range": true
+					},
+					{
+						"kind": "shield",
+						"params": {
+							"max_hp_ratio": 0.15,
+							"reason": "Gust Protection",
+							"requires_field": "knockback_applied",
+							"requires_result_from": "knockback",
+							"requires_value": true
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Wind Blast"
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Blasts target with wind for 120% magic damage and knocks back 1.5 units.",
+		"ability_desc": "Blasts target with wind for 120% magic damage, knocks back 1.5 tiles, and slows by 20% for 1 second.",
 		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
 		"name": "Windcaller",
-		"passive_desc": "Gains a shield when knocking back enemies worth 15% of damage dealt.",
+		"passive_desc": "When knocking back enemies, gain a shield equal to 15% max hp.",
 		"passive_ids": [
 			"gust_protection"
 		],
@@ -2073,13 +2086,24 @@
 							"reason": "Tornado"
 						},
 						"requires_target_in_range": true
+					},
+					{
+						"kind": "shield",
+						"params": {
+							"max_hp_ratio": 0.15,
+							"reason": "Gust Protection",
+							"requires_field": "knockback_applied",
+							"requires_result_from": "self_aoe_knockback",
+							"requires_value": true
+						},
+						"requires_target_in_range": true
 					}
 				],
 				"reason": "Tornado"
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in 2.5 unit radius by 2.5 units.",
+		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in a 3 tile radius by 2.5 units.",
 		"unit_id": "windcaller"
 	},
 	"wraith": {

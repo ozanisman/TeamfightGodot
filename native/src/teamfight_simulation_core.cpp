@@ -2802,6 +2802,10 @@ void TeamfightSimulationCore::_touch_damage_source(UnitState &target, int64_t so
 	if (source_id <= 0 || incoming_damage <= 0.0) {
 		return;
 	}
+	// Don't track self-damage for assist tracking
+	if (source_id == target.instance_id) {
+		return;
+	}
 	UnitStateCold::DamageSourceEntry &entry = _uc(target).damage_sources[source_id];
 	entry.damage += incoming_damage;
 	entry.last_time = _time;

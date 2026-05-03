@@ -161,6 +161,7 @@ var _tt_label: RichTextLabel
 var _right_panel: VBoxContainer
 var _tt_style: StyleBoxFlat
 var _error_label: Label
+var _refresh_btn: Button
 var _team_button_group: ButtonGroup
 var _team_size_buttons: Dictionary = {}
 var _regen_checks: Dictionary = {}
@@ -223,14 +224,16 @@ func _ready() -> void:
 	_apply_dashboard_window_settings()
 	_team_button_group = ButtonGroup.new()
 	_build_unit_roles()
+	_setup_regen_timer()  # Initialize timer before potential early return
 	if not _try_load_stats():
-		_build_fatal_error_ui()
+		_build_ui()  # Load normal UI with red border on generate button
+		_wire_controls()  # Wire controls even without data
+		_setup_regen_native_confirm_dialog()
 		return
 	_clamp_current_size_to_loaded()
 	_build_ui()
 	_wire_controls()
 	_setup_regen_native_confirm_dialog()
-	_setup_regen_timer()
 	_refresh_all()
 
 
@@ -269,10 +272,7 @@ func _try_load_stats() -> bool:
 	if _loader.load_from_dir(primary) == OK:
 		_stats_path = primary
 		return true
-	if _loader.load_from_dir("res://fixtures/stats_dashboard") == OK:
-		_stats_path = "res://fixtures/stats_dashboard"
-		return true
-	push_error("StatsDashboard: no CSV bundle (need res://stats_output or fixtures)")
+	push_error("StatsDashboard: no CSV bundle (need res://stats_output)")
 	return false
 
 
@@ -296,6 +296,30 @@ func _build_ui() -> void:
 	theme.default_font_size = UI_FONT_BODY
 	theme.set_font_size("font_size", "TabBar", UI_FONT_TAB)
 	_root_vb.theme = theme
+	
+	# When no data available, highlight Generate Stats button in bright red
+	if _regen_button != null and _stats_path.is_empty():
+		_regen_button.add_theme_color_override("font_color", Color.RED)
+		_regen_button.add_theme_stylebox_override("normal", StyleBoxFlat.new())
+		var red_border_style := _regen_button.get_theme_stylebox("normal") as StyleBoxFlat
+		red_border_style.border_color = Color.RED
+		red_border_style.border_width_left = 2
+		red_border_style.border_width_right = 2
+		red_border_style.border_width_top = 2
+		red_border_style.border_width_bottom = 2
+		_regen_button.add_theme_stylebox_override("normal", red_border_style)
+	
+	# When no data available, highlight Generate Stats button in bright red
+	if _regen_button != null and _stats_path.is_empty():
+		_regen_button.add_theme_color_override("font_color", Color.RED)
+		_regen_button.add_theme_stylebox_override("normal", StyleBoxFlat.new())
+		var red_border_style := _regen_button.get_theme_stylebox("normal") as StyleBoxFlat
+		red_border_style.border_color = Color.RED
+		red_border_style.border_width_left = 2
+		red_border_style.border_width_right = 2
+		red_border_style.border_width_top = 2
+		red_border_style.border_width_bottom = 2
+		_regen_button.add_theme_stylebox_override("normal", red_border_style)
 
 	var top := HBoxContainer.new()
 	top.custom_minimum_size.y = UI_TOP_BAR_H
@@ -351,7 +375,7 @@ func _build_ui() -> void:
 
 	# Add New Data button to top bar (after spacer, before Quit)
 	var new_data_button := Button.new()
-	new_data_button.text = "New Data"
+	new_data_button.text = "Generate Data"
 	new_data_button.custom_minimum_size = Vector2(120, UI_MIN_CONTROL_H)
 	new_data_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	new_data_button.pressed.connect(_on_new_data_pressed)
@@ -1068,6 +1092,10 @@ func _refresh_all() -> void:
 	_sync_sort_from_ui()
 	_update_sidebar_buttons()
 	_refresh_chart()
+	# Refresh matchups tab when data is updated
+	_refresh_matchup_data()
+	if not _current_champion.is_empty():
+		_update_matchup_display()
 
 
 func _update_sidebar_buttons() -> void:
@@ -1812,9 +1840,7 @@ func _build_export_ui_content() -> void:
 
 func _build_matchup_ui() -> void:
 	# Load matchup data
-	if not _matchup_loader.load_data():
-		_show_matchup_error("Failed to load matchup data: " + _matchup_loader.last_error)
-		return
+	_matchup_loader.load_data()
 	
 	# Create main layout
 	var main_hb := HBoxContainer.new()
@@ -1873,12 +1899,12 @@ func _build_matchup_ui() -> void:
 	left_panel.add_child(sort_mode)
 	
 	# Refresh button
-	var refresh_btn := Button.new()
-	refresh_btn.text = "Refresh Data"
-	refresh_btn.custom_minimum_size.y = UI_MIN_CONTROL_H
-	refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	refresh_btn.pressed.connect(_refresh_matchup_data)
-	left_panel.add_child(refresh_btn)
+	_refresh_btn = Button.new()
+	_refresh_btn.text = "Refresh Data"
+	_refresh_btn.custom_minimum_size.y = UI_MIN_CONTROL_H
+	_refresh_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_refresh_btn.pressed.connect(_refresh_matchup_data)
+	left_panel.add_child(_refresh_btn)
 	
 	# Right content area
 	var right_panel := VBoxContainer.new()
@@ -1935,6 +1961,10 @@ func _on_sort_mode_changed(index: int) -> void:
 func _update_matchup_display() -> void:
 	if _current_champion.is_empty():
 		return
+	
+	# Ensure UI structure exists
+	if _matchup_vb.get_child_count() == 0:
+		_build_matchup_ui()
 	
 	# Clear existing content
 	var right_panel = _matchup_vb.get_child(0).get_child(1)  # Get right panel
@@ -2222,11 +2252,15 @@ func _show_no_data(parent: Control, message: String) -> void:
 
 
 func _refresh_matchup_data() -> void:
-	if _matchup_loader.load_data():
-		# Data refreshed successfully
-		pass
-	else:
-		print("Failed to refresh matchup data: " + _matchup_loader.last_error)
+	var loaded = _matchup_loader.load_data()
+	
+	# Rebuild the matchup UI to update champion dropdown
+	if loaded and _matchup_vb != null:
+		# Clear existing UI
+		for child in _matchup_vb.get_children():
+			child.queue_free()
+		# Rebuild with new data
+		_build_matchup_ui()
 
 
 func _on_back_to_menu() -> void:

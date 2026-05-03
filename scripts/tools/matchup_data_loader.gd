@@ -36,7 +36,7 @@ func load_data() -> bool:
 func _load_csv_file(file_path: String, target_dict: Dictionary, matchup_type: String) -> bool:
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
-		last_error = "Failed to open %s file: %s" % [matchup_type, file_path]
+		last_error = ""
 		return false
 	
 	# Skip header line

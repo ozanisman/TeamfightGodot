@@ -53,13 +53,13 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 0.95,
+				"damage_ratio": 1.5,
 				"reason": "Shell Shock",
 				"stun_duration": 0.6
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Explosive shell dealing 95% damage and 0.6s stun.",
+		"ability_desc": "Explosive shell dealing 150% damage and 0.6s stun.",
 		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
 		"name": "Artillery",
 		"passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
@@ -70,7 +70,7 @@
 		"stats": {
 			"ability_cd": 5.0,
 			"armor": 0.05,
-			"attack_damage": 20.0,
+			"attack_damage": 23.0,
 			"attack_range": 6.0,
 			"attack_speed": 0.5,
 			"life_steal": 0.0,
@@ -92,12 +92,12 @@
 			"kind": "projectile",
 			"params": {
 				"damage_ratio": 3.3,
-				"radius_override": 0.08,
+				"radius_override": 0.1,
 				"reason": "Big Bertha"
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Fires a massive artillery shell for 330% damage.",
+		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"unit_id": "artillery"
 	},
 	"berserker": {

@@ -2676,10 +2676,18 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		return 0.0;
 	}
 	double old_hp = target.hp;
-	double pre_res = damage * _defense_multiplier(target, source, damage, action_kind);
+	double pre_res = damage;
+	
+	// Apply defense multipliers only for non-true damage
+	if (damage_type != StringName("true")) {
+		pre_res *= _defense_multiplier(target, source, damage, action_kind);
+	}
+	
+	// Auto-dodge applies to all damage types (including true) for auto-attacks
 	if (action_kind == StringName("auto")) {
 		pre_res *= _auto_dodge_multiplier(target, source, damage);
 	}
+	
 	double final_damage = pre_res;
 	if (damage_type == StringName("physical")) {
 		double armor = target.combat.armor;

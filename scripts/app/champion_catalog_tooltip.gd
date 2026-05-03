@@ -152,9 +152,10 @@ func _build_champion_bbcode(hero_id: StringName) -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(title_line)
 	lines.append(_escape_bbcode_plain(str(d.get("description", ""))))
+	lines.append("")  # Line break before abilities
 	lines.append(
 		_escape_bbcode_plain(
-			"HP %.0f | AD %.1f | AS %.2f | Range %.1f"
+			"Health: %.0f | AD: %.0f | AS: %.2f | Range: %.1f"
 			% [
 				float(st.get("max_hp", 0.0)),
 				float(st.get("attack_damage", 0.0)),
@@ -163,14 +164,26 @@ func _build_champion_bbcode(hero_id: StringName) -> String:
 			]
 		)
 	)
-	lines.append(_escape_bbcode_plain("Passive: %s" % str(d.get("passive_desc", ""))))
-	lines.append(
-		_escape_bbcode_plain("Ability (%ss): %s" % [str(st.get("ability_cd", 0.0)), str(d.get("ability_desc", ""))])
-	)
 	lines.append(
 		_escape_bbcode_plain(
-			"Ultimate (%ss): %s" % [str(st.get("ultimate_cd", 0.0)), str(d.get("ultimate_desc", ""))]
+			"MS: %.1f | Armor: %.0f%% | MR: %.0f%% | Tenacity: %.0f%%"
+			% [
+				float(st.get("move_speed", 0.0)),
+				float(st.get("armor", 0.0)) * 100,
+				float(st.get("magic_resist", 0.0)) * 100,
+				float(st.get("tenacity", 0.0)) * 100,
+			]
 		)
+	)
+	lines.append("")  # Line break before passive
+	lines.append("Passive: %s" % _escape_bbcode_plain(str(d.get("passive_desc", ""))))
+	lines.append("")  # Line break before ability
+	lines.append(
+		"Ability (%ss): %s" % [str(st.get("ability_cd", 0.0)), _escape_bbcode_plain(str(d.get("ability_desc", "")))]
+	)
+	lines.append("")  # Line break before ultimate
+	lines.append(
+		"Ultimate (%.0f mana): %s" % [float(st.get("max_mana", 0.0)), _escape_bbcode_plain(str(d.get("ultimate_desc", "")))]
 	)
 	return "\n".join(lines)
 

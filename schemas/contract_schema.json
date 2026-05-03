@@ -36,7 +36,6 @@
 				"respawn_time": 10.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"ultimate_cd": 20.0,
 				"unit_id": "archer"
 			},
 			"ultimate": {
@@ -88,7 +87,6 @@
 				"respawn_time": 10.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"ultimate_cd": 65.0,
 				"unit_id": "artillery"
 			},
 			"ultimate": {
@@ -157,7 +155,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 13.0,
 				"unit_id": "berserker"
 			},
 			"ultimate": {
@@ -209,7 +206,6 @@
 				"respawn_time": 10.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"ultimate_cd": 42.0,
 				"unit_id": "cleric"
 			},
 			"ultimate": {
@@ -296,7 +292,6 @@
 				"respawn_time": 10.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"ultimate_cd": 30.0,
 				"unit_id": "colossus"
 			},
 			"ultimate": {
@@ -382,7 +377,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 16.0,
 				"unit_id": "disarmer"
 			},
 			"ultimate": {
@@ -469,7 +463,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 18.0,
 				"unit_id": "earthbender"
 			},
 			"ultimate": {
@@ -558,7 +551,6 @@
 				"respawn_time": 10.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"ultimate_cd": 25.0,
 				"unit_id": "frost_mage"
 			},
 			"ultimate": {
@@ -629,7 +621,6 @@
 				"respawn_time": 10.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"ultimate_cd": 33.0,
 				"unit_id": "guardian"
 			},
 			"ultimate": {
@@ -699,7 +690,6 @@
 				"respawn_time": 10.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"ultimate_cd": 26.0,
 				"unit_id": "mage"
 			},
 			"ultimate": {
@@ -754,7 +744,6 @@
 				"respawn_time": 10.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"ultimate_cd": 28.0,
 				"unit_id": "mirror_knight"
 			},
 			"ultimate": {
@@ -843,7 +832,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 9.0,
 				"unit_id": "monk"
 			},
 			"ultimate": {
@@ -941,7 +929,6 @@
 				"respawn_time": 10.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"ultimate_cd": 12.0,
 				"unit_id": "ninja"
 			},
 			"ultimate": {
@@ -991,7 +978,6 @@
 				"respawn_time": 10.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"ultimate_cd": 32.0,
 				"unit_id": "oracle"
 			},
 			"ultimate": {
@@ -1041,7 +1027,6 @@
 				"respawn_time": 10.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"ultimate_cd": 22.0,
 				"unit_id": "paladin"
 			},
 			"ultimate": {
@@ -1477,7 +1462,6 @@
 				"respawn_time": 10.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"ultimate_cd": 7.5,
 				"unit_id": "rogue"
 			},
 			"ultimate": {
@@ -1603,7 +1587,6 @@
 				"respawn_time": 10.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"ultimate_cd": 15.0,
 				"unit_id": "silencer"
 			},
 			"ultimate": {
@@ -1674,7 +1657,6 @@
 				"respawn_time": 10.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"ultimate_cd": 37.0,
 				"unit_id": "siren"
 			},
 			"ultimate": {
@@ -1743,7 +1725,6 @@
 				"respawn_time": 10.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"ultimate_cd": 55.0,
 				"unit_id": "sniper"
 			},
 			"ultimate": {
@@ -1812,7 +1793,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 15.0,
 				"unit_id": "swordsman"
 			},
 			"ultimate": {
@@ -1898,7 +1878,6 @@
 				"respawn_time": 10.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"ultimate_cd": 20.0,
 				"unit_id": "valkyrie"
 			},
 			"ultimate": {
@@ -1967,7 +1946,6 @@
 				"respawn_time": 10.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"ultimate_cd": 32.0,
 				"unit_id": "warlock"
 			},
 			"ultimate": {
@@ -2047,7 +2025,6 @@
 				"respawn_time": 10.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"ultimate_cd": 22.0,
 				"unit_id": "windcaller"
 			},
 			"ultimate": {
@@ -2147,7 +2124,6 @@
 				"respawn_time": 10.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"ultimate_cd": 10.0,
 				"unit_id": "wraith"
 			},
 			"ultimate": {

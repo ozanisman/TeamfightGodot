@@ -18,7 +18,6 @@ var life_steal: float = 0.0
 var max_mana: float = 50.0
 var mana_per_attack: float = 10.0
 var ability_cd: float = 5.0
-var ultimate_cd: float = 20.0
 var projectile_speed: float = SimConstantsScript.DEFAULT_PROJECTILE_SPEED
 var projectile_radius: float = SimConstantsScript.DEFAULT_PROJECTILE_RADIUS
 var passive_id: StringName = &""
@@ -41,7 +40,6 @@ func to_dict() -> Dictionary:
 		"max_mana": max_mana,
 		"mana_per_attack": mana_per_attack,
 		"ability_cd": ability_cd,
-		"ultimate_cd": ultimate_cd,
 		"projectile_speed": projectile_speed,
 		"projectile_radius": projectile_radius,
 		"passive_id": String(passive_id),
@@ -65,7 +63,6 @@ static func from_dict(data: Dictionary):
 	stats.max_mana = float(data.get("max_mana", 50.0))
 	stats.mana_per_attack = float(data.get("mana_per_attack", 10.0))
 	stats.ability_cd = float(data.get("ability_cd", 5.0))
-	stats.ultimate_cd = float(data.get("ultimate_cd", 20.0))
 	stats.projectile_speed = float(data.get("projectile_speed", SimConstantsScript.DEFAULT_PROJECTILE_SPEED))
 	stats.projectile_radius = float(data.get("projectile_radius", SimConstantsScript.DEFAULT_PROJECTILE_RADIUS))
 	stats.passive_id = StringName(String(data.get("passive_id", "")))

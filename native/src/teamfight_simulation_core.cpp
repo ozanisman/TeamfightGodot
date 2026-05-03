@@ -1213,7 +1213,6 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.combat.max_hp = max_hp;
 	unit.combat.max_mana = max_mana;
 	unit.combat.ability_cd = double(stats.get("ability_cd", 0.0));
-	unit.combat.ultimate_cd = double(stats.get("ultimate_cd", 0.0));
 	unit.combat.attack_range = double(stats.get("attack_range", 0.0));
 	unit.combat.cast_range = double(stats.get("cast_range", 0.0));
 	unit.combat.move_speed = double(stats.get("move_speed", 0.0));
@@ -1249,8 +1248,6 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.mana = 0.0;
 	unit.attack_cooldown = 0.0;
 	unit.ability_cooldown = unit.combat.ability_cd;
-	// Match golden fixtures: ultimates start ready (mana-gated), not on their full cooldown.
-	unit.ultimate_cooldown = 0.0;
 	unit.casting_remaining = 0.0;
 	cold.casting_kind = StringName();
 	cold.casting_effect = EffectRecord();
@@ -4047,7 +4044,6 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 		unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
 		unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
-		unit.ultimate_cooldown = Math::max(0.0, unit.ultimate_cooldown - _tick_rate);
 		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
 		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
 		if (unit.stun_remaining > 0.0) {
@@ -4268,7 +4264,7 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 		return false;
 	}
 	double max_mana = unit.combat.max_mana;
-	if (unit.ultimate_cooldown > 0.0 || max_mana <= 0.0 || unit.mana < max_mana) {
+	if (max_mana <= 0.0 || unit.mana < max_mana) {
 		return false;
 	}
 	return _start_cast(unit, target, distance, StringName("ultimate"));
@@ -4285,7 +4281,6 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 		unit.ability_cooldown = unit.combat.ability_cd;
 		_uc(unit).abilities += 1;
 	} else {
-		unit.ultimate_cooldown = unit.combat.ultimate_cd;
 		_uc(unit).ultimates += 1;
 		unit.mana = Math::max(0.0, unit.mana - unit.combat.max_mana);
 	}
@@ -4334,7 +4329,6 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
-			unit.ultimate_cooldown = 0.0;
 			unit.mana = Math::min(unit.combat.max_mana, unit.mana + unit.combat.max_mana);
 		}
 		return;
@@ -5527,7 +5521,6 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["state"] = _viewer_state_string(u);
 		d["acd"] = u.attack_cooldown;
 		d["abi"] = u.ability_cooldown;
-		d["ult"] = u.ultimate_cooldown;
 		d["attack_cooldown"] = u.attack_cooldown;
 		d["attack_range"] = u.combat.attack_range;
 		d["attack_speed"] = u.combat.attack_speed;

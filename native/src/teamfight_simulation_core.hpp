@@ -136,7 +136,6 @@ private:
 			double max_hp = 0.0;
 			double max_mana = 0.0;
 			double ability_cd = 0.0;
-			double ultimate_cd = 0.0;
 			double attack_range = 0.0;
 			double cast_range = 0.0;
 			double move_speed = 0.0;
@@ -162,7 +161,6 @@ private:
 		double mana = 0.0;
 		double attack_cooldown = 0.0;
 		double ability_cooldown = 0.0;
-		double ultimate_cooldown = 0.0;
 		double casting_remaining = 0.0;
 		bool has_casting_effect = false;
 		int64_t casting_target_id = 0;

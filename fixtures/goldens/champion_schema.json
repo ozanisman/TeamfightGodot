@@ -25,7 +25,7 @@
 			"life_steal": 0.0,
 			"magic_resist": 0.1,
 			"mana_per_attack": 10.0,
-			"max_hp": 75.0,
+			"max_hp": 150.0,
 			"max_mana": 60.0,
 			"move_speed": 0.6,
 			"name": "Archer",
@@ -35,7 +35,6 @@
 			"respawn_time": 10.0,
 			"role": "marksman",
 			"tenacity": 0.0,
-			"ultimate_cd": 20.0,
 			"unit_id": "archer"
 		},
 		"ultimate": {
@@ -77,7 +76,7 @@
 			"life_steal": 0.0,
 			"magic_resist": 0.05,
 			"mana_per_attack": 10.0,
-			"max_hp": 60.0,
+			"max_hp": 150.0,
 			"max_mana": 40.0,
 			"move_speed": 0.1,
 			"name": "Artillery",
@@ -87,7 +86,6 @@
 			"respawn_time": 10.0,
 			"role": "marksman",
 			"tenacity": 0.0,
-			"ultimate_cd": 15.0,
 			"unit_id": "artillery"
 		},
 		"ultimate": {
@@ -110,6 +108,7 @@
 					{
 						"kind": "damage",
 						"params": {
+							"damage_type": "true",
 							"max_hp_ratio": 0.15,
 							"reason": "Blood Price",
 							"target_self": true
@@ -128,7 +127,7 @@
 				],
 				"reason": "Blood Price"
 			},
-			"requires_target_in_range": true
+			"requires_target_in_range": false
 		},
 		"ability_desc": "Damages self for 15% max HP and gains a 30% max HP shield.",
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
@@ -139,7 +138,7 @@
 		],
 		"role": "fighter",
 		"stats": {
-			"ability_cd": 4.0,
+			"ability_cd": 6.0,
 			"armor": 0.24,
 			"attack_damage": 23.0,
 			"attack_range": 0.3,
@@ -157,7 +156,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 13.0,
 			"unit_id": "berserker"
 		},
 		"ultimate": {
@@ -209,7 +207,6 @@
 			"respawn_time": 10.0,
 			"role": "support",
 			"tenacity": 0.0,
-			"ultimate_cd": 42.0,
 			"unit_id": "cleric"
 		},
 		"ultimate": {
@@ -286,7 +283,7 @@
 			"life_steal": 0.0,
 			"magic_resist": 0.46,
 			"mana_per_attack": 10.0,
-			"max_hp": 520.0,
+			"max_hp": 450.0,
 			"max_mana": 100.0,
 			"move_speed": 0.66,
 			"name": "Colossus",
@@ -296,7 +293,6 @@
 			"respawn_time": 10.0,
 			"role": "tank",
 			"tenacity": 0.0,
-			"ultimate_cd": 30.0,
 			"unit_id": "colossus"
 		},
 		"ultimate": {
@@ -315,7 +311,7 @@
 					{
 						"kind": "stun",
 						"params": {
-							"duration": 5.2,
+							"duration": 4,
 							"reason": "Earthshaker"
 						},
 						"requires_target_in_range": true
@@ -325,7 +321,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Colossal impact for 460% damage and a 5.2s stun.",
+		"ultimate_desc": "Colossal impact for 460% damage and a 4s stun.",
 		"unit_id": "colossus"
 	},
 	"disarmer": {
@@ -382,7 +378,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 16.0,
 			"unit_id": "disarmer"
 		},
 		"ultimate": {
@@ -469,7 +464,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 18.0,
 			"unit_id": "earthbender"
 		},
 		"ultimate": {
@@ -558,7 +552,6 @@
 			"respawn_time": 10.0,
 			"role": "mage",
 			"tenacity": 0.0,
-			"ultimate_cd": 25.0,
 			"unit_id": "frost_mage"
 		},
 		"ultimate": {
@@ -629,7 +622,6 @@
 			"respawn_time": 10.0,
 			"role": "tank",
 			"tenacity": 0.0,
-			"ultimate_cd": 33.0,
 			"unit_id": "guardian"
 		},
 		"ultimate": {
@@ -699,7 +691,6 @@
 			"respawn_time": 10.0,
 			"role": "tank",
 			"tenacity": 0.0,
-			"ultimate_cd": 28.0,
 			"unit_id": "mirror_knight"
 		},
 		"ultimate": {
@@ -788,7 +779,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 12.0,
 			"unit_id": "monk"
 		},
 		"ultimate": {
@@ -886,7 +876,6 @@
 			"respawn_time": 10.0,
 			"role": "assassin",
 			"tenacity": 0.0,
-			"ultimate_cd": 12.0,
 			"unit_id": "ninja"
 		},
 		"ultimate": {
@@ -936,7 +925,6 @@
 			"respawn_time": 10.0,
 			"role": "support",
 			"tenacity": 0.0,
-			"ultimate_cd": 32.0,
 			"unit_id": "oracle"
 		},
 		"ultimate": {
@@ -1003,7 +991,6 @@
 			"respawn_time": 10.0,
 			"role": "tank",
 			"tenacity": 0.0,
-			"ultimate_cd": 22.0,
 			"unit_id": "paladin"
 		},
 		"ultimate": {
@@ -1091,6 +1078,18 @@
 					"params": {
 						"above_hp_ratio": 0.8,
 						"multiplier": 1.2
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"deadeye": {
+			"on_attack": [
+				{
+					"kind": "distance_threshold_multiplier",
+					"params": {
+						"min_distance": 3.0,
+						"multiplier": 1.25
 					},
 					"requires_target_in_range": true
 				}
@@ -1259,19 +1258,7 @@
 				{
 					"kind": "mana_regen",
 					"params": {
-						"flat_amount": 3.0
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"marksman": {
-			"on_attack": [
-				{
-					"kind": "distance_threshold_multiplier",
-					"params": {
-						"min_distance": 3.0,
-						"multiplier": 1.25
+						"flat_amount": 5.0
 					},
 					"requires_target_in_range": true
 				}
@@ -1313,7 +1300,7 @@
 			]
 		},
 		"sweeping_strikes": {
-			"on_attack": [
+			"post_attack": [
 				{
 					"kind": "multi",
 					"params": {
@@ -1443,7 +1430,6 @@
 			"respawn_time": 10.0,
 			"role": "assassin",
 			"tenacity": 0.0,
-			"ultimate_cd": 7.5,
 			"unit_id": "rogue"
 		},
 		"ultimate": {
@@ -1569,7 +1555,6 @@
 			"respawn_time": 10.0,
 			"role": "assassin",
 			"tenacity": 0.0,
-			"ultimate_cd": 15.0,
 			"unit_id": "silencer"
 		},
 		"ultimate": {
@@ -1616,7 +1601,7 @@
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
 		"name": "Siren",
-		"passive_desc": "Drains 5 mana from the target on each auto-attack.",
+		"passive_desc": "Auto-attacks drain 5 mana from the target.",
 		"passive_ids": [
 			"siphon"
 		],
@@ -1640,7 +1625,6 @@
 			"respawn_time": 10.0,
 			"role": "support",
 			"tenacity": 0.0,
-			"ultimate_cd": 37.0,
 			"unit_id": "siren"
 		},
 		"ultimate": {
@@ -1683,11 +1667,11 @@
 			"requires_target_in_range": true
 		},
 		"ability_desc": "High-precision strike for 150% damage.",
-		"description": "An elite marksman with extreme range, specializing in devastating single-target ultimate shots.",
+		"description": "An elite marksman specializing in devastating single-target shots.",
 		"name": "Sniper",
 		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
 		"passive_ids": [
-			"marksman"
+			"deadeye"
 		],
 		"role": "marksman",
 		"stats": {
@@ -1699,17 +1683,16 @@
 			"life_steal": 0.0,
 			"magic_resist": 0.05,
 			"mana_per_attack": 10.0,
-			"max_hp": 60.0,
+			"max_hp": 150.0,
 			"max_mana": 60.0,
 			"move_speed": 0.4,
 			"name": "Sniper",
-			"passive_id": "marksman",
+			"passive_id": "deadeye",
 			"projectile_radius": 0.03,
 			"projectile_speed": 12.0,
 			"respawn_time": 10.0,
 			"role": "marksman",
 			"tenacity": 0.0,
-			"ultimate_cd": 15.0,
 			"unit_id": "sniper"
 		},
 		"ultimate": {
@@ -1778,7 +1761,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 15.0,
 			"unit_id": "swordsman"
 		},
 		"ultimate": {
@@ -1864,7 +1846,6 @@
 			"respawn_time": 10.0,
 			"role": "fighter",
 			"tenacity": 0.0,
-			"ultimate_cd": 20.0,
 			"unit_id": "valkyrie"
 		},
 		"ultimate": {
@@ -1950,7 +1931,6 @@
 			"respawn_time": 10.0,
 			"role": "mage",
 			"tenacity": 0.0,
-			"ultimate_cd": 32.0,
 			"unit_id": "warlock"
 		},
 		"ultimate": {
@@ -2042,7 +2022,6 @@
 			"respawn_time": 10.0,
 			"role": "mage",
 			"tenacity": 0.0,
-			"ultimate_cd": 22.0,
 			"unit_id": "windcaller"
 		},
 		"ultimate": {
@@ -2102,7 +2081,7 @@
 		"ability_desc": "Fires a magical projectile dealing 170% magic damage.",
 		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
 		"name": "Wizard",
-		"passive_desc": "Restores 3 mana every second.",
+		"passive_desc": "Gains 5 mana every second.",
 		"passive_ids": [
 			"mana_font"
 		],
@@ -2126,7 +2105,6 @@
 			"respawn_time": 10.0,
 			"role": "mage",
 			"tenacity": 0.0,
-			"ultimate_cd": 26.0,
 			"unit_id": "wizard"
 		},
 		"ultimate": {
@@ -2198,7 +2176,6 @@
 			"respawn_time": 10.0,
 			"role": "assassin",
 			"tenacity": 0.0,
-			"ultimate_cd": 10.0,
 			"unit_id": "wraith"
 		},
 		"ultimate": {

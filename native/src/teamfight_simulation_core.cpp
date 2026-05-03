@@ -386,7 +386,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
-		compiled.scalar3 = bool(params.get("trigger_on_hit", true)) ? 1.0 : 0.0;
+		compiled.scalar3 = bool(params.get("trigger_on_hit", false)) ? 1.0 : 0.0;
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));

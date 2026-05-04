@@ -4981,7 +4981,7 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 	double dealt = _apply_damage(*source, *target, damage, damage_type, action_kind, context);
 	_run_post_attack_effects(*source, *target, dealt, context);
 	if (projectile.action_kind == StringName("auto")) {
-		double life_steal = source->combat.life_steal;
+		double life_steal = get_effective_life_steal(*source);
 		if (life_steal > 0.0) {
 			_heal_unit(*source, *source, dealt * life_steal, StringName("auto"));
 		}

@@ -32,7 +32,7 @@
 			"passive_id": "eagle_eye",
 			"projectile_radius": 0.03,
 			"projectile_speed": 8.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "marksman",
 			"tenacity": 0.0,
 			"unit_id": "archer"
@@ -83,7 +83,7 @@
 			"passive_id": "demolition",
 			"projectile_radius": 0.05,
 			"projectile_speed": 3.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "marksman",
 			"tenacity": 0.0,
 			"unit_id": "artillery"
@@ -153,7 +153,7 @@
 			"passive_id": "bloodlust",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "berserker"
@@ -204,7 +204,7 @@
 			"passive_id": "devotion",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "support",
 			"tenacity": 0.0,
 			"unit_id": "cleric"
@@ -290,7 +290,7 @@
 			"passive_id": "durability",
 			"projectile_radius": 0.05,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "tank",
 			"tenacity": 0.0,
 			"unit_id": "colossus"
@@ -375,7 +375,7 @@
 			"passive_id": "weapon_breaker",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "disarmer"
@@ -461,7 +461,7 @@
 			"passive_id": "earth_resistance",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "earthbender"
@@ -549,7 +549,7 @@
 			"passive_id": "frost_aura",
 			"projectile_radius": 0.03,
 			"projectile_speed": 6.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "mage",
 			"tenacity": 0.0,
 			"unit_id": "frost_mage"
@@ -619,7 +619,7 @@
 			"passive_id": "bastion",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "tank",
 			"tenacity": 0.0,
 			"unit_id": "guardian"
@@ -688,7 +688,7 @@
 			"passive_id": "reflective_armor",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "tank",
 			"tenacity": 0.0,
 			"unit_id": "mirror_knight"
@@ -776,7 +776,7 @@
 			"passive_id": "technique",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "monk"
@@ -873,7 +873,7 @@
 			"passive_id": "executioner",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "assassin",
 			"tenacity": 0.0,
 			"unit_id": "ninja"
@@ -922,7 +922,7 @@
 			"passive_id": "enlightenment",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "support",
 			"tenacity": 0.0,
 			"unit_id": "oracle"
@@ -988,7 +988,7 @@
 			"passive_id": "rejuvenation",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "tank",
 			"tenacity": 0.0,
 			"unit_id": "paladin"
@@ -1552,7 +1552,7 @@
 			"passive_id": "arcane_focus",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "assassin",
 			"tenacity": 0.0,
 			"unit_id": "silencer"
@@ -1622,7 +1622,7 @@
 			"passive_id": "siphon",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "support",
 			"tenacity": 0.0,
 			"unit_id": "siren"
@@ -1690,7 +1690,7 @@
 			"passive_id": "deadeye",
 			"projectile_radius": 0.03,
 			"projectile_speed": 12.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "marksman",
 			"tenacity": 0.0,
 			"unit_id": "sniper"
@@ -1758,7 +1758,7 @@
 			"passive_id": "duelist",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "swordsman"
@@ -1843,7 +1843,7 @@
 			"passive_id": "sweeping_strikes",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "fighter",
 			"tenacity": 0.0,
 			"unit_id": "valkyrie"
@@ -1928,7 +1928,7 @@
 			"passive_id": "vampirism",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "mage",
 			"tenacity": 0.0,
 			"unit_id": "warlock"
@@ -2019,7 +2019,7 @@
 			"passive_id": "gust_protection",
 			"projectile_radius": 0.03,
 			"projectile_speed": 7.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "mage",
 			"tenacity": 0.0,
 			"unit_id": "windcaller"
@@ -2102,7 +2102,7 @@
 			"passive_id": "mana_font",
 			"projectile_radius": 0.03,
 			"projectile_speed": 6.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "mage",
 			"tenacity": 0.0,
 			"unit_id": "wizard"
@@ -2173,7 +2173,7 @@
 			"passive_id": "swiftness",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
-			"respawn_time": 10.0,
+			"respawn_time": 5.0,
 			"role": "assassin",
 			"tenacity": 0.0,
 			"unit_id": "wraith"

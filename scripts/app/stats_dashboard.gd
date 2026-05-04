@@ -1998,7 +1998,7 @@ func _show_vs_matchups(parent: Control, matchups: Dictionary) -> void:
 		return
 	
 	# Summary section
-	var summary_card := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
+	var summary_card := _create_summary_card("MATCHUP ANALYSIS", _current_champion, "vs")
 	parent.add_child(summary_card)
 	
 	# Matchup table

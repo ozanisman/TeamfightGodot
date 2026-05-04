@@ -1284,6 +1284,39 @@ const PASSIVE_DATA := {
 	&"reflective_armor": {
 		&"on_defense": [{"kind": &"reflect_damage", "params": {"reflect_percentage": 0.1, "reflect_type": "all"}}],
 	},
+	# Stat modifier example passives
+	&"berserk": {
+		&"on_attack": [{"kind": &"stat_modifier", "params": {
+			"stat_name": "attack_damage", 
+			"additive": 10.0, 
+			"duration": 5.0, 
+			"duration_type": "respawn"
+		}}],
+	},
+	&"weaken": {
+		&"on_attack": [{"kind": &"stat_modifier", "params": {
+			"stat_name": "attack_damage", 
+			"multiplicative": 0.8, 
+			"duration": 3.0, 
+			"duration_type": "respawn"
+		}}],
+	},
+	&"tank_boost": {
+		&"on_tick": [{"kind": &"stat_modifier", "params": {
+			"stat_name": "armor", 
+			"additive": 5.0, 
+			"duration": 0.0, 
+			"duration_type": "match"
+		}}],
+	},
+	&"speed_burst": {
+		&"on_attack": [{"kind": &"stat_modifier", "params": {
+			"stat_name": "move_speed", 
+			"multiplicative": 1.2, 
+			"duration": 2.0, 
+			"duration_type": "respawn"
+		}}],
+	},
 }
 
 const ROLE_CONFIG_DATA := {

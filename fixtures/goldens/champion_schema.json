@@ -1060,6 +1060,20 @@
 				}
 			]
 		},
+		"berserk": {
+			"on_attack": [
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"additive": 10.0,
+						"duration": 5.0,
+						"duration_type": "respawn",
+						"stat_name": "attack_damage"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"bloodlust": {
 			"post_attack": [
 				{
@@ -1299,6 +1313,20 @@
 				}
 			]
 		},
+		"speed_burst": {
+			"on_attack": [
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"duration": 2.0,
+						"duration_type": "respawn",
+						"multiplicative": 1.2,
+						"stat_name": "move_speed"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"sweeping_strikes": {
 			"post_attack": [
 				{
@@ -1339,6 +1367,20 @@
 				}
 			]
 		},
+		"tank_boost": {
+			"on_tick": [
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"additive": 5.0,
+						"duration": 0.0,
+						"duration_type": "match",
+						"stat_name": "armor"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"technique": {
 			"post_attack": [
 				{
@@ -1358,6 +1400,20 @@
 					"params": {
 						"flat_amount": 5.0,
 						"reason": "Vampirism"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"weaken": {
+			"on_attack": [
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"duration": 3.0,
+						"duration_type": "respawn",
+						"multiplicative": 0.8,
+						"stat_name": "attack_damage"
 					},
 					"requires_target_in_range": true
 				}

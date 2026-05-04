@@ -279,6 +279,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("target_status_multiplier")) {
 		return EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER;
 	}
+	if (kind == StringName("stat_modifier")) {
+		return EFFECT_OPCODE_STAT_MODIFIER;
+	}
 	return EFFECT_OPCODE_UNKNOWN;
 }
 
@@ -357,6 +360,8 @@ StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return StringName("knockback_shield");
 		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER:
 			return StringName("target_status_multiplier");
+		case EFFECT_OPCODE_STAT_MODIFIER:
+			return StringName("stat_modifier");
 		default:
 			return StringName();
 	}
@@ -415,6 +420,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
+		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == StringName("self_aoe_taunt")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
@@ -530,6 +536,20 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(params.get("multiplier", 1.0));
 		compiled.damage_type = StringName(String(params.get("status_kind", "")));
 		compiled.reason = String(params.get("reason", "Target status multiplier"));
+	} else if (kind == StringName("stat_modifier")) {
+		// Validate stat name
+		StringName stat_name = StringName(String(params.get("stat_name", "")));
+		if (!_is_valid_stat_name(stat_name)) {
+			compiled.opcode = EFFECT_OPCODE_UNKNOWN;
+			return compiled;
+		}
+		
+		compiled.damage_type = stat_name;
+		compiled.scalar0 = double(params.get("additive", 0.0));
+		compiled.scalar1 = double(params.get("multiplicative", 1.0));
+		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Stat modifier"));
 	}
 	
 	// Handle conditional execution parameters
@@ -655,6 +675,11 @@ double TeamfightSimulationCore::_randf() {
 }
 
 void TeamfightSimulationCore::_reset_runtime_state() {
+	// Clear stat modifiers for all units before clearing the vectors
+	for (UnitState &unit : _units) {
+		_clear_all_stat_modifiers(unit);
+	}
+	
 	_units.clear();
 	_unit_cold.clear();
 	_projectiles.clear();
@@ -1090,7 +1115,7 @@ TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targ
 	frame.pos_x = unit.pos_x;
 	frame.pos_y = unit.pos_y;
 	frame.hp = unit.hp;
-	frame.max_hp = unit.combat.max_hp;
+	frame.max_hp = get_effective_max_hp(unit);
 	frame.alive = unit.alive;
 	frame.target_id = unit.target_id;
 	frame.incoming_target_count = unit.incoming_target_count;
@@ -1275,6 +1300,64 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.incoming_target_count = 0;
 	unit.perceived_threat = 0.0;
 	unit.attack_count = 0;
+	
+	// Initialize stat modifier fields
+	unit.stat_additive_max_hp = 0.0;
+	unit.stat_multiplicative_max_hp = 1.0;
+	unit.stat_temp_max_hp = 0.0;
+	unit.stat_perm_max_hp = 0.0;
+	unit.stat_additive_attack_damage = 0.0;
+	unit.stat_multiplicative_attack_damage = 1.0;
+	unit.stat_temp_attack_damage = 0.0;
+	unit.stat_perm_attack_damage = 0.0;
+	unit.stat_additive_attack_speed = 0.0;
+	unit.stat_multiplicative_attack_speed = 1.0;
+	unit.stat_temp_attack_speed = 0.0;
+	unit.stat_perm_attack_speed = 0.0;
+	unit.stat_additive_move_speed = 0.0;
+	unit.stat_multiplicative_move_speed = 1.0;
+	unit.stat_temp_move_speed = 0.0;
+	unit.stat_perm_move_speed = 0.0;
+	unit.stat_additive_armor = 0.0;
+	unit.stat_multiplicative_armor = 1.0;
+	unit.stat_temp_armor = 0.0;
+	unit.stat_perm_armor = 0.0;
+	unit.stat_additive_magic_resist = 0.0;
+	unit.stat_multiplicative_magic_resist = 1.0;
+	unit.stat_temp_magic_resist = 0.0;
+	unit.stat_perm_magic_resist = 0.0;
+	unit.stat_additive_tenacity = 0.0;
+	unit.stat_multiplicative_tenacity = 1.0;
+	unit.stat_temp_tenacity = 0.0;
+	unit.stat_perm_tenacity = 0.0;
+	unit.stat_additive_life_steal = 0.0;
+	unit.stat_multiplicative_life_steal = 1.0;
+	unit.stat_temp_life_steal = 0.0;
+	unit.stat_perm_life_steal = 0.0;
+	unit.stat_additive_max_mana = 0.0;
+	unit.stat_multiplicative_max_mana = 1.0;
+	unit.stat_temp_max_mana = 0.0;
+	unit.stat_perm_max_mana = 0.0;
+	unit.stat_additive_mana_per_attack = 0.0;
+	unit.stat_multiplicative_mana_per_attack = 1.0;
+	unit.stat_temp_mana_per_attack = 0.0;
+	unit.stat_perm_mana_per_attack = 0.0;
+	unit.stat_additive_ability_cd = 0.0;
+	unit.stat_multiplicative_ability_cd = 1.0;
+	unit.stat_temp_ability_cd = 0.0;
+	unit.stat_perm_ability_cd = 0.0;
+	unit.stat_additive_projectile_speed = 0.0;
+	unit.stat_multiplicative_projectile_speed = 1.0;
+	unit.stat_temp_projectile_speed = 0.0;
+	unit.stat_perm_projectile_speed = 0.0;
+	unit.stat_additive_projectile_radius = 0.0;
+	unit.stat_multiplicative_projectile_radius = 1.0;
+	unit.stat_temp_projectile_radius = 0.0;
+	unit.stat_perm_projectile_radius = 0.0;
+	unit.stat_additive_respawn_time = 0.0;
+	unit.stat_multiplicative_respawn_time = 1.0;
+	unit.stat_temp_respawn_time = 0.0;
+	unit.stat_perm_respawn_time = 0.0;
 	cold.damage_dealt = 0.0;
 	cold.damage_dealt_auto = 0.0;
 	cold.damage_dealt_ability = 0.0;
@@ -2309,7 +2392,7 @@ bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double curre
 			in_range = (dist <= effective_range); // No buffer for testing
 		}
 		if (in_range) {
-			double attack_speed = Math::max(0.0001, unit.combat.attack_speed);
+			double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
 			double swing = 1.0 / attack_speed;
 			double commit_window = Math::min(SWITCH_COMMIT_WINDOW_SECONDS, swing * SWITCH_COMMIT_WINDOW_SWING_FRACTION);
 			if (unit.attack_cooldown <= commit_window) {
@@ -2687,10 +2770,10 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	
 	double final_damage = pre_res;
 	if (damage_type == StringName("physical")) {
-		double armor = target.combat.armor;
+		double armor = get_effective_armor(target);
 		final_damage *= Math::clamp(1.0 - armor, 0.05, 1.0);
 	} else if (damage_type == StringName("magic")) {
-		double mr = target.combat.magic_resist;
+		double mr = get_effective_magic_resist(target);
 		final_damage *= Math::clamp(1.0 - mr, 0.05, 1.0);
 	}
 	double incoming = Math::max(0.0, final_damage);
@@ -2706,7 +2789,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	_uc(target).damage_received += hp_loss;
 	_uc(target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	double total_damage = absorbed + hp_loss;
-	double max_hp = target.combat.max_hp;
+	double max_hp = get_effective_max_hp(target);
 	// Python parity: threat burst uses post-shield hp_loss (final_damage after absorption).
 	if (max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD) {
 		target.perceived_threat += (hp_loss / max_hp) * THREAT_BURST_MULTIPLIER;
@@ -3106,6 +3189,341 @@ void TeamfightSimulationCore::_restore_mana(UnitState &source, UnitState &target
 	(void)source;
 }
 
+void TeamfightSimulationCore::_apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration) {
+	if (additive == 0.0 && multiplicative == 1.0) {
+		return;
+	}
+	
+	// Validate and clamp dangerous values
+	if (additive < -10000.0) {
+		additive = -10000.0; // Prevent extreme negative additive values
+	}
+	if (multiplicative < 0.0) {
+		multiplicative = 0.0; // Prevent negative multiplication
+	}
+	if (multiplicative > 1000.0) {
+		multiplicative = 1000.0; // Prevent extreme values
+	}
+	if (multiplicative == 0.0) {
+		multiplicative = 0.0001; // Prevent permanent stat zeroing
+	}
+	if (duration < 0.0) {
+		duration = 0.0; // Prevent negative durations
+	}
+	
+	// Apply modifiers based on stat name
+	if (stat_name == StringName("max_hp")) {
+		target.stat_additive_max_hp += additive;
+		target.stat_multiplicative_max_hp *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_max_hp = Math::max(target.stat_perm_max_hp, duration);
+			} else {
+				target.stat_temp_max_hp = Math::max(target.stat_temp_max_hp, duration);
+			}
+		}
+	} else if (stat_name == StringName("attack_damage")) {
+		target.stat_additive_attack_damage += additive;
+		target.stat_multiplicative_attack_damage *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_attack_damage = Math::max(target.stat_perm_attack_damage, duration);
+			} else {
+				target.stat_temp_attack_damage = Math::max(target.stat_temp_attack_damage, duration);
+			}
+		}
+	} else if (stat_name == StringName("attack_speed")) {
+		target.stat_additive_attack_speed += additive;
+		target.stat_multiplicative_attack_speed *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_attack_speed = Math::max(target.stat_perm_attack_speed, duration);
+			} else {
+				target.stat_temp_attack_speed = Math::max(target.stat_temp_attack_speed, duration);
+			}
+		}
+	} else if (stat_name == StringName("move_speed")) {
+		target.stat_additive_move_speed += additive;
+		target.stat_multiplicative_move_speed *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_move_speed = Math::max(target.stat_perm_move_speed, duration);
+			} else {
+				target.stat_temp_move_speed = Math::max(target.stat_temp_move_speed, duration);
+			}
+		}
+	} else if (stat_name == StringName("armor")) {
+		target.stat_additive_armor += additive;
+		target.stat_multiplicative_armor *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_armor = Math::max(target.stat_perm_armor, duration);
+			} else {
+				target.stat_temp_armor = Math::max(target.stat_temp_armor, duration);
+			}
+		}
+	} else if (stat_name == StringName("magic_resist")) {
+		target.stat_additive_magic_resist += additive;
+		target.stat_multiplicative_magic_resist *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_magic_resist = Math::max(target.stat_perm_magic_resist, duration);
+			} else {
+				target.stat_temp_magic_resist = Math::max(target.stat_temp_magic_resist, duration);
+			}
+		}
+	} else if (stat_name == StringName("tenacity")) {
+		target.stat_additive_tenacity += additive;
+		target.stat_multiplicative_tenacity *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_tenacity = Math::max(target.stat_perm_tenacity, duration);
+			} else {
+				target.stat_temp_tenacity = Math::max(target.stat_temp_tenacity, duration);
+			}
+		}
+	} else if (stat_name == StringName("life_steal")) {
+		target.stat_additive_life_steal += additive;
+		target.stat_multiplicative_life_steal *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_life_steal = Math::max(target.stat_perm_life_steal, duration);
+			} else {
+				target.stat_temp_life_steal = Math::max(target.stat_temp_life_steal, duration);
+			}
+		}
+	} else if (stat_name == StringName("max_mana")) {
+		target.stat_additive_max_mana += additive;
+		target.stat_multiplicative_max_mana *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_max_mana = Math::max(target.stat_perm_max_mana, duration);
+			} else {
+				target.stat_temp_max_mana = Math::max(target.stat_temp_max_mana, duration);
+			}
+		}
+	} else if (stat_name == StringName("mana_per_attack")) {
+		target.stat_additive_mana_per_attack += additive;
+		target.stat_multiplicative_mana_per_attack *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_mana_per_attack = Math::max(target.stat_perm_mana_per_attack, duration);
+			} else {
+				target.stat_temp_mana_per_attack = Math::max(target.stat_temp_mana_per_attack, duration);
+			}
+		}
+	} else if (stat_name == StringName("ability_cd")) {
+		target.stat_additive_ability_cd += additive;
+		target.stat_multiplicative_ability_cd *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_ability_cd = Math::max(target.stat_perm_ability_cd, duration);
+			} else {
+				target.stat_temp_ability_cd = Math::max(target.stat_temp_ability_cd, duration);
+			}
+		}
+	} else if (stat_name == StringName("projectile_speed")) {
+		target.stat_additive_projectile_speed += additive;
+		target.stat_multiplicative_projectile_speed *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_projectile_speed = Math::max(target.stat_perm_projectile_speed, duration);
+			} else {
+				target.stat_temp_projectile_speed = Math::max(target.stat_temp_projectile_speed, duration);
+			}
+		}
+	} else if (stat_name == StringName("projectile_radius")) {
+		target.stat_additive_projectile_radius += additive;
+		target.stat_multiplicative_projectile_radius *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_projectile_radius = Math::max(target.stat_perm_projectile_radius, duration);
+			} else {
+				target.stat_temp_projectile_radius = Math::max(target.stat_temp_projectile_radius, duration);
+			}
+		}
+	} else if (stat_name == StringName("respawn_time")) {
+		target.stat_additive_respawn_time += additive;
+		target.stat_multiplicative_respawn_time *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_respawn_time = Math::max(target.stat_perm_respawn_time, duration);
+			} else {
+				target.stat_temp_respawn_time = Math::max(target.stat_temp_respawn_time, duration);
+			}
+		}
+	}
+}
+
+void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
+	// Clear all stat modifier fields to defaults
+	unit.stat_additive_max_hp = 0.0;
+	unit.stat_multiplicative_max_hp = 1.0;
+	unit.stat_temp_max_hp = 0.0;
+	unit.stat_perm_max_hp = 0.0;
+	
+	unit.stat_additive_attack_damage = 0.0;
+	unit.stat_multiplicative_attack_damage = 1.0;
+	unit.stat_temp_attack_damage = 0.0;
+	unit.stat_perm_attack_damage = 0.0;
+	
+	unit.stat_additive_attack_speed = 0.0;
+	unit.stat_multiplicative_attack_speed = 1.0;
+	unit.stat_temp_attack_speed = 0.0;
+	unit.stat_perm_attack_speed = 0.0;
+	
+	unit.stat_additive_move_speed = 0.0;
+	unit.stat_multiplicative_move_speed = 1.0;
+	unit.stat_temp_move_speed = 0.0;
+	unit.stat_perm_move_speed = 0.0;
+	
+	unit.stat_additive_armor = 0.0;
+	unit.stat_multiplicative_armor = 1.0;
+	unit.stat_temp_armor = 0.0;
+	unit.stat_perm_armor = 0.0;
+	
+	unit.stat_additive_magic_resist = 0.0;
+	unit.stat_multiplicative_magic_resist = 1.0;
+	unit.stat_temp_magic_resist = 0.0;
+	unit.stat_perm_magic_resist = 0.0;
+	
+	unit.stat_additive_tenacity = 0.0;
+	unit.stat_multiplicative_tenacity = 1.0;
+	unit.stat_temp_tenacity = 0.0;
+	unit.stat_perm_tenacity = 0.0;
+	
+	unit.stat_additive_life_steal = 0.0;
+	unit.stat_multiplicative_life_steal = 1.0;
+	unit.stat_temp_life_steal = 0.0;
+	unit.stat_perm_life_steal = 0.0;
+	
+	unit.stat_additive_max_mana = 0.0;
+	unit.stat_multiplicative_max_mana = 1.0;
+	unit.stat_temp_max_mana = 0.0;
+	unit.stat_perm_max_mana = 0.0;
+	
+	unit.stat_additive_mana_per_attack = 0.0;
+	unit.stat_multiplicative_mana_per_attack = 1.0;
+	unit.stat_temp_mana_per_attack = 0.0;
+	unit.stat_perm_mana_per_attack = 0.0;
+	
+	unit.stat_additive_ability_cd = 0.0;
+	unit.stat_multiplicative_ability_cd = 1.0;
+	unit.stat_temp_ability_cd = 0.0;
+	unit.stat_perm_ability_cd = 0.0;
+	
+	unit.stat_additive_projectile_speed = 0.0;
+	unit.stat_multiplicative_projectile_speed = 1.0;
+	unit.stat_temp_projectile_speed = 0.0;
+	unit.stat_perm_projectile_speed = 0.0;
+	
+	unit.stat_additive_projectile_radius = 0.0;
+	unit.stat_multiplicative_projectile_radius = 1.0;
+	unit.stat_temp_projectile_radius = 0.0;
+	unit.stat_perm_projectile_radius = 0.0;
+	
+	unit.stat_additive_respawn_time = 0.0;
+	unit.stat_multiplicative_respawn_time = 1.0;
+	unit.stat_temp_respawn_time = 0.0;
+	unit.stat_perm_respawn_time = 0.0;
+}
+
+bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) const {
+	// List of all valid stat names
+	return stat_name == StringName("max_hp") ||
+		   stat_name == StringName("attack_damage") ||
+		   stat_name == StringName("attack_speed") ||
+		   stat_name == StringName("move_speed") ||
+		   stat_name == StringName("armor") ||
+		   stat_name == StringName("magic_resist") ||
+		   stat_name == StringName("tenacity") ||
+		   stat_name == StringName("life_steal") ||
+		   stat_name == StringName("max_mana") ||
+		   stat_name == StringName("mana_per_attack") ||
+		   stat_name == StringName("ability_cd") ||
+		   stat_name == StringName("projectile_speed") ||
+		   stat_name == StringName("projectile_radius") ||
+		   stat_name == StringName("respawn_time");
+}
+
+void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, double delta) {
+	// Update temporary modifier durations
+	unit.stat_temp_max_hp = Math::max(0.0, unit.stat_temp_max_hp - delta);
+	unit.stat_temp_attack_damage = Math::max(0.0, unit.stat_temp_attack_damage - delta);
+	unit.stat_temp_attack_speed = Math::max(0.0, unit.stat_temp_attack_speed - delta);
+	unit.stat_temp_move_speed = Math::max(0.0, unit.stat_temp_move_speed - delta);
+	unit.stat_temp_armor = Math::max(0.0, unit.stat_temp_armor - delta);
+	unit.stat_temp_magic_resist = Math::max(0.0, unit.stat_temp_magic_resist - delta);
+	unit.stat_temp_tenacity = Math::max(0.0, unit.stat_temp_tenacity - delta);
+	unit.stat_temp_life_steal = Math::max(0.0, unit.stat_temp_life_steal - delta);
+	unit.stat_temp_max_mana = Math::max(0.0, unit.stat_temp_max_mana - delta);
+	unit.stat_temp_mana_per_attack = Math::max(0.0, unit.stat_temp_mana_per_attack - delta);
+	unit.stat_temp_ability_cd = Math::max(0.0, unit.stat_temp_ability_cd - delta);
+	unit.stat_temp_projectile_speed = Math::max(0.0, unit.stat_temp_projectile_speed - delta);
+	unit.stat_temp_projectile_radius = Math::max(0.0, unit.stat_temp_projectile_radius - delta);
+	unit.stat_temp_respawn_time = Math::max(0.0, unit.stat_temp_respawn_time - delta);
+}
+
+void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
+	// Clear expired temporary modifiers
+	if (unit.stat_temp_max_hp <= 0.0) {
+		unit.stat_additive_max_hp = 0.0;
+		unit.stat_multiplicative_max_hp = 1.0;
+	}
+	if (unit.stat_temp_attack_damage <= 0.0) {
+		unit.stat_additive_attack_damage = 0.0;
+		unit.stat_multiplicative_attack_damage = 1.0;
+	}
+	if (unit.stat_temp_attack_speed <= 0.0) {
+		unit.stat_additive_attack_speed = 0.0;
+		unit.stat_multiplicative_attack_speed = 1.0;
+	}
+	if (unit.stat_temp_move_speed <= 0.0) {
+		unit.stat_additive_move_speed = 0.0;
+		unit.stat_multiplicative_move_speed = 1.0;
+	}
+	if (unit.stat_temp_armor <= 0.0) {
+		unit.stat_additive_armor = 0.0;
+		unit.stat_multiplicative_armor = 1.0;
+	}
+	if (unit.stat_temp_magic_resist <= 0.0) {
+		unit.stat_additive_magic_resist = 0.0;
+		unit.stat_multiplicative_magic_resist = 1.0;
+	}
+	if (unit.stat_temp_tenacity <= 0.0) {
+		unit.stat_additive_tenacity = 0.0;
+		unit.stat_multiplicative_tenacity = 1.0;
+	}
+	if (unit.stat_temp_life_steal <= 0.0) {
+		unit.stat_additive_life_steal = 0.0;
+		unit.stat_multiplicative_life_steal = 1.0;
+	}
+	if (unit.stat_temp_max_mana <= 0.0) {
+		unit.stat_additive_max_mana = 0.0;
+		unit.stat_multiplicative_max_mana = 1.0;
+	}
+	if (unit.stat_temp_mana_per_attack <= 0.0) {
+		unit.stat_additive_mana_per_attack = 0.0;
+		unit.stat_multiplicative_mana_per_attack = 1.0;
+	}
+	if (unit.stat_temp_ability_cd <= 0.0) {
+		unit.stat_additive_ability_cd = 0.0;
+		unit.stat_multiplicative_ability_cd = 1.0;
+	}
+	if (unit.stat_temp_projectile_speed <= 0.0) {
+		unit.stat_additive_projectile_speed = 0.0;
+		unit.stat_multiplicative_projectile_speed = 1.0;
+	}
+	if (unit.stat_temp_projectile_radius <= 0.0) {
+		unit.stat_additive_projectile_radius = 0.0;
+		unit.stat_multiplicative_projectile_radius = 1.0;
+	}
+	if (unit.stat_temp_respawn_time <= 0.0) {
+		unit.stat_additive_respawn_time = 0.0;
+		unit.stat_multiplicative_respawn_time = 1.0;
+	}
+}
+
 void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
 	const std::vector<EffectRecord> &post_attack_effects = _collect_effects(source, StringName("post_attack"));
 	if (post_attack_effects.empty()) {
@@ -3238,7 +3656,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const double unit_forced_target_remaining = unit.forced_target_remaining;
 	const int64_t unit_current_ally_target_id = unit.current_ally_target_id;
 	const bool unit_is_assassin_role = unit.is_assassin_role;
-	const double unit_attack_damage = unit.combat.attack_damage;
+	const double unit_attack_damage = get_effective_attack_damage(unit);
 	const std::vector<int64_t> &frontline_indices = unit_is_player ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const std::vector<int64_t> &enemy_indices = unit_is_player ? _alive_enemy_indices : _alive_player_indices;
 
@@ -3684,7 +4102,7 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 		}
 	}
 	target.alive = false;
-	target.respawn_timer = target.combat.respawn_time;
+	target.respawn_timer = get_effective_respawn_time(target);
 	_uc(target).deaths += 1;
 	_sync_targeting_frame_unit(target);
 
@@ -3780,11 +4198,11 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	int64_t unit_index = _unit_index_by_id(unit.instance_id);
 	UnitStateCold &c = _uc(unit);
 	unit.alive = true;
-	unit.hp = unit.combat.max_hp;
+	unit.hp = get_effective_max_hp(unit);
 	unit.mana = 0.0;
 	unit.shield = 0.0;
 	unit.perceived_threat = 0.0;
-	unit.ability_cooldown = unit.combat.ability_cd;
+	unit.ability_cooldown = get_effective_ability_cd(unit);
 	// Python parity: ultimate_timer is NOT reset on respawn (preserved across death like attack_cooldown).
 	unit.stun_remaining = 0.0;
 	unit.slow_remaining = 0.0;
@@ -3802,6 +4220,10 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.last_kite_timer = 0.0;
 	unit.target_switch_lock_timer = 0.0;
 	unit.respawn_timer = 0.0;
+	
+	// Clear respawn-duration stat modifiers
+	_clear_all_stat_modifiers(unit);
+		
 	c.damage_sources.clear();
 	c.recent_benefactors.clear();
 	c.last_hit_time = 0.0;
@@ -4076,6 +4498,10 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			unit.taunt_remaining = 0.0;
 			unit.taunt_target_id = 0;
 		}
+		
+		// Stat modifier duration management
+		_update_stat_modifier_durations(unit, _tick_rate);
+		_clear_expired_stat_modifiers(unit);
 		if (unit.forced_target_remaining <= 0.0) {
 			unit.forced_target_remaining = 0.0;
 			unit.forced_target_id = 0;
@@ -4087,7 +4513,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	{
 		SimProfileAccScope _uu_sep(profile_sim, _sim_profile_uu_separation);
 		if (unit.stun_remaining <= 0.0 && unit.root_remaining <= 0.0) {
-			double move_speed = unit.combat.move_speed * _movement_speed_multiplier(unit);
+			double move_speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit);
 			if (move_speed > 0.0) {
 				double attack_range = unit.combat.attack_range;
 				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
@@ -4263,7 +4689,7 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 	if (unit.root_remaining > 0.0 && unit.has_ultimate_effect && _effect_record_contains_opcode(_uc(unit).ultimate_effect, EFFECT_OPCODE_SELF_DASH)) {
 		return false;
 	}
-	double max_mana = unit.combat.max_mana;
+	double max_mana = get_effective_max_mana(unit);
 	if (max_mana <= 0.0 || unit.mana < max_mana) {
 		return false;
 	}
@@ -4278,11 +4704,9 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 	}
 	UnitState *target_ally = _select_ally_target(unit);
 	if (action_kind == StringName("ability")) {
-		unit.ability_cooldown = unit.combat.ability_cd;
 		_uc(unit).abilities += 1;
 	} else {
-		_uc(unit).ultimates += 1;
-		unit.mana = Math::max(0.0, unit.mana - unit.combat.max_mana);
+		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
 	}
 	unit.casting_remaining = CASTING_WINDUP;
 	UnitStateCold &ucast = _uc(unit);
@@ -4313,6 +4737,12 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	if (!had_effect) {
 		return;
 	}
+	
+	// Start cooldown after cast resolves
+	if (action_kind == StringName("ability")) {
+		unit.ability_cooldown = get_effective_ability_cd(unit);
+	}
+	
 	// Python parity: only fail the cast for projectile abilities when the enemy target is gone.
 	// Self-targeting abilities (shield, heal) always succeed using source as fallback.
 	// Matches Python's execute_ability which returns False only for use_projectile with dead target.
@@ -4329,7 +4759,8 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
-			unit.mana = Math::min(unit.combat.max_mana, unit.mana + unit.combat.max_mana);
+			double effective_max_mana = get_effective_max_mana(unit);
+			unit.mana = Math::min(effective_max_mana, unit.mana + effective_max_mana);
 		}
 		return;
 	}
@@ -4345,7 +4776,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 	unit.attack_count += 1;
 	// Python parity: damage + on_attack modifiers first, then projectile/hit,
 	// then mana gain, then attack cooldown (resolve_attack → mana → cooldown).
-	double damage = unit.combat.attack_damage;
+	double damage = get_effective_attack_damage(unit);
 	damage = _apply_attack_modifiers(unit, target, distance, damage);
 	if (unit.combat.attack_range > RANGED_THRESHOLD) {
 		ProjectileState projectile;
@@ -4354,8 +4785,8 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		projectile.damage = damage;
 		projectile.damage_type = StringName("physical");
 		projectile.stun_duration = DEFAULT_PROJECTILE_STUN_DURATION;
-		projectile.radius = unit.combat.projectile_radius;
-		projectile.speed = Math::max(0.0001, unit.combat.projectile_speed);
+		projectile.radius = get_effective_projectile_radius(unit);
+		projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
 		projectile.pos_x = unit.pos_x;
 		projectile.pos_y = unit.pos_y;
 		projectile.action_kind = StringName("auto");
@@ -4367,24 +4798,24 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		double dealt = _apply_damage(unit, target, damage, StringName("physical"), StringName("auto"), context);
 		_emit_trace(StringName("auto_melee"), unit.instance_id, target.instance_id, dealt);
 		_run_post_attack_effects(unit, target, dealt, context);
-		double life_steal = unit.combat.life_steal;
+		double life_steal = get_effective_life_steal(unit);
 		if (life_steal > 0.0) {
 			_heal_unit(unit, unit, dealt * life_steal, StringName("auto"));
 		}
 	}
 	// Python parity: mana gain happens after attack resolution.
-	double mana_gain = unit.combat.mana_per_attack;
+	double mana_gain = get_effective_mana_per_attack(unit);
 	if (mana_gain > 0.0) {
-		double max_mana = unit.combat.max_mana;
+		double max_mana = get_effective_max_mana(unit);
 		unit.mana = Math::min(max_mana, unit.mana + mana_gain);
 	}
 	// Python parity: attack cooldown set after mana gain.
-	double attack_speed = Math::max(0.0001, unit.combat.attack_speed);
+	double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
 	unit.attack_cooldown = 1.0 / attack_speed;
 }
 
 void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
-	double speed = unit.combat.move_speed * _movement_speed_multiplier(unit) * _tick_rate;
+	double speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit) * _tick_rate;
 	if (unit.last_kite_timer > 0.0) {
 		speed *= KITE_SPEED_MODIFIER;
 	}
@@ -4410,7 +4841,7 @@ void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &ta
 }
 
 void TeamfightSimulationCore::_move_toward_target_with_range(UnitState &unit, UnitState &target, double target_range) {
-	double speed = unit.combat.move_speed * _movement_speed_multiplier(unit) * _tick_rate;
+	double speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit) * _tick_rate;
 	if (unit.last_kite_timer > 0.0) {
 		speed *= KITE_SPEED_MODIFIER;
 	}
@@ -4527,7 +4958,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	vel_x /= new_mag;
 	vel_y /= new_mag;
 	unit.last_kite_timer = KITE_DURATION;
-	double move_speed = unit.combat.move_speed * _movement_speed_multiplier(unit);
+	double move_speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit);
 	double step = move_speed * KITE_SPEED_MODIFIER * _tick_rate;
 	unit.pos_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	unit.pos_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
@@ -4747,7 +5178,9 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_HEAL: {
 			Dictionary heal_result;
 			heal_result["success"] = true;
-			UnitState &heal_target = target_ally == nullptr ? source : *target_ally;
+			UnitState &heal_target = (effect.int0 == 1) ? 
+				source : 
+				(target_ally == nullptr ? source : *target_ally);
 			double heal_amount = source.combat.max_hp * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
 			// Add missing HP scaling
 			double missing_hp = heal_target.combat.max_hp - heal_target.hp;
@@ -5036,6 +5469,20 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
+		case EFFECT_OPCODE_STAT_MODIFIER: {
+			Dictionary stat_result;
+			stat_result["success"] = true;
+			if (target != nullptr) {
+				_apply_stat_modifier(source, *target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int0 != 0);
+				stat_result["stat_modifier_applied"] = true;
+				stat_result["stat_name"] = String(effect.damage_type);
+				stat_result["additive"] = effect.scalar0;
+				stat_result["multiplicative"] = effect.scalar1;
+				stat_result["duration"] = effect.scalar2;
+				stat_result["is_match_duration"] = effect.int0 != 0;
+			}
+			return stat_result;
+		}
 		default: {
 			// Opcodes without runtime execution resolve here (unknown kinds compile to UNKNOWN).
 			Dictionary default_result;

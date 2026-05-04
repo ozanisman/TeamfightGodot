@@ -207,6 +207,77 @@ private:
 		bool is_marksman_role = false;
 		bool is_mage_role = false;
 		bool is_support_role = false;
+		
+		// Stat modifier system - additive and multiplicative modifiers for each stat
+		double stat_additive_max_hp = 0.0;
+		double stat_multiplicative_max_hp = 1.0;
+		double stat_temp_max_hp = 0.0;      // Temporary modifier duration
+		double stat_perm_max_hp = 0.0;      // Permanent modifier duration
+
+		double stat_additive_attack_damage = 0.0;
+		double stat_multiplicative_attack_damage = 1.0;
+		double stat_temp_attack_damage = 0.0;
+		double stat_perm_attack_damage = 0.0;
+
+		double stat_additive_attack_speed = 0.0;
+		double stat_multiplicative_attack_speed = 1.0;
+		double stat_temp_attack_speed = 0.0;
+		double stat_perm_attack_speed = 0.0;
+
+		double stat_additive_move_speed = 0.0;
+		double stat_multiplicative_move_speed = 1.0;
+		double stat_temp_move_speed = 0.0;
+		double stat_perm_move_speed = 0.0;
+
+		double stat_additive_armor = 0.0;
+		double stat_multiplicative_armor = 1.0;
+		double stat_temp_armor = 0.0;
+		double stat_perm_armor = 0.0;
+
+		double stat_additive_magic_resist = 0.0;
+		double stat_multiplicative_magic_resist = 1.0;
+		double stat_temp_magic_resist = 0.0;
+		double stat_perm_magic_resist = 0.0;
+
+		double stat_additive_tenacity = 0.0;
+		double stat_multiplicative_tenacity = 1.0;
+		double stat_temp_tenacity = 0.0;
+		double stat_perm_tenacity = 0.0;
+
+		double stat_additive_life_steal = 0.0;
+		double stat_multiplicative_life_steal = 1.0;
+		double stat_temp_life_steal = 0.0;
+		double stat_perm_life_steal = 0.0;
+
+		double stat_additive_max_mana = 0.0;
+		double stat_multiplicative_max_mana = 1.0;
+		double stat_temp_max_mana = 0.0;
+		double stat_perm_max_mana = 0.0;
+
+		double stat_additive_mana_per_attack = 0.0;
+		double stat_multiplicative_mana_per_attack = 1.0;
+		double stat_temp_mana_per_attack = 0.0;
+		double stat_perm_mana_per_attack = 0.0;
+
+		double stat_additive_ability_cd = 0.0;
+		double stat_multiplicative_ability_cd = 1.0;
+		double stat_temp_ability_cd = 0.0;
+		double stat_perm_ability_cd = 0.0;
+
+		double stat_additive_projectile_speed = 0.0;
+		double stat_multiplicative_projectile_speed = 1.0;
+		double stat_temp_projectile_speed = 0.0;
+		double stat_perm_projectile_speed = 0.0;
+
+		double stat_additive_projectile_radius = 0.0;
+		double stat_multiplicative_projectile_radius = 1.0;
+		double stat_temp_projectile_radius = 0.0;
+		double stat_perm_projectile_radius = 0.0;
+
+		double stat_additive_respawn_time = 0.0;
+		double stat_multiplicative_respawn_time = 1.0;
+		double stat_temp_respawn_time = 0.0;
+		double stat_perm_respawn_time = 0.0;
 	};
 
 	struct UnitStrategy {
@@ -325,6 +396,63 @@ private:
 		String reason;
 	};
 
+	// Stat getter functions with modifier application
+	static inline double get_effective_max_hp(const UnitState& unit) {
+		return Math::max(1.0, (unit.combat.max_hp + unit.stat_additive_max_hp) * unit.stat_multiplicative_max_hp);
+	}
+
+	static inline double get_effective_attack_damage(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.attack_damage + unit.stat_additive_attack_damage) * unit.stat_multiplicative_attack_damage);
+	}
+
+	static inline double get_effective_attack_speed(const UnitState& unit) {
+		return Math::max(0.1, (unit.combat.attack_speed + unit.stat_additive_attack_speed) * unit.stat_multiplicative_attack_speed);
+	}
+
+	static inline double get_effective_move_speed(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.move_speed + unit.stat_additive_move_speed) * unit.stat_multiplicative_move_speed);
+	}
+
+	static inline double get_effective_armor(const UnitState& unit) {
+		return (unit.combat.armor + unit.stat_additive_armor) * unit.stat_multiplicative_armor;
+	}
+
+	static inline double get_effective_magic_resist(const UnitState& unit) {
+		return (unit.combat.magic_resist + unit.stat_additive_magic_resist) * unit.stat_multiplicative_magic_resist;
+	}
+
+	static inline double get_effective_tenacity(const UnitState& unit) {
+		return (unit.combat.tenacity + unit.stat_additive_tenacity) * unit.stat_multiplicative_tenacity;
+	}
+
+	static inline double get_effective_life_steal(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.life_steal + unit.stat_additive_life_steal) * unit.stat_multiplicative_life_steal);
+	}
+
+	static inline double get_effective_max_mana(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.max_mana + unit.stat_additive_max_mana) * unit.stat_multiplicative_max_mana);
+	}
+
+	static inline double get_effective_mana_per_attack(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.mana_per_attack + unit.stat_additive_mana_per_attack) * unit.stat_multiplicative_mana_per_attack);
+	}
+
+	static inline double get_effective_ability_cd(const UnitState& unit) {
+		return Math::max(1.0, (unit.combat.ability_cd + unit.stat_additive_ability_cd) * unit.stat_multiplicative_ability_cd);
+	}
+
+	static inline double get_effective_projectile_speed(const UnitState& unit) {
+		return Math::max(0.1, (unit.combat.projectile_speed + unit.stat_additive_projectile_speed) * unit.stat_multiplicative_projectile_speed);
+	}
+
+	static inline double get_effective_projectile_radius(const UnitState& unit) {
+		return Math::max(0.1, (unit.combat.projectile_radius + unit.stat_additive_projectile_radius) * unit.stat_multiplicative_projectile_radius);
+	}
+
+	static inline double get_effective_respawn_time(const UnitState& unit) {
+		return Math::max(0.1, (unit.combat.respawn_time + unit.stat_additive_respawn_time) * unit.stat_multiplicative_respawn_time);
+	}
+
 	enum EffectOpcode : int64_t {
 		EFFECT_OPCODE_UNKNOWN = 0,
 		EFFECT_OPCODE_MULTI = 1,
@@ -364,6 +492,7 @@ private:
 		EFFECT_OPCODE_REFLECT_DAMAGE = 37,
 		EFFECT_OPCODE_KNOCKBACK_SHIELD = 38,
 		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
+		EFFECT_OPCODE_STAT_MODIFIER = 40,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -696,6 +825,11 @@ private:
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
+	void _apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
+	void _clear_all_stat_modifiers(UnitState &unit);
+	void _update_stat_modifier_durations(UnitState &unit, double delta);
+	void _clear_expired_stat_modifiers(UnitState &unit);
+	bool _is_valid_stat_name(const StringName &stat_name) const;
 	String _join_team_names(const Array &team) const;
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);

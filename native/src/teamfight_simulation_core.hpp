@@ -278,6 +278,16 @@ private:
 		double stat_multiplicative_respawn_time = 1.0;
 		double stat_temp_respawn_time = 0.0;
 		double stat_perm_respawn_time = 0.0;
+
+		double stat_additive_attack_range = 0.0;
+		double stat_multiplicative_attack_range = 1.0;
+		double stat_temp_attack_range = 0.0;
+		double stat_perm_attack_range = 0.0;
+
+		double stat_additive_cast_range = 0.0;
+		double stat_multiplicative_cast_range = 1.0;
+		double stat_temp_cast_range = 0.0;
+		double stat_perm_cast_range = 0.0;
 	};
 
 	struct UnitStrategy {
@@ -451,6 +461,14 @@ private:
 
 	static inline double get_effective_respawn_time(const UnitState& unit) {
 		return Math::max(0.1, (unit.combat.respawn_time + unit.stat_additive_respawn_time) * unit.stat_multiplicative_respawn_time);
+	}
+
+	static inline double get_effective_attack_range(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.attack_range + unit.stat_additive_attack_range) * unit.stat_multiplicative_attack_range);
+	}
+
+	static inline double get_effective_cast_range(const UnitState& unit) {
+		return Math::max(0.0, (unit.combat.cast_range + unit.stat_additive_cast_range) * unit.stat_multiplicative_cast_range);
 	}
 
 	enum EffectOpcode : int64_t {

@@ -282,6 +282,82 @@ inline const StringName &sn_cast_start() {
 	static const StringName s("cast_start");
 	return s;
 }
+inline const StringName &sn_success() {
+	static const StringName s("success");
+	return s;
+}
+inline const StringName &sn_condition_failed() {
+	static const StringName s("condition_failed");
+	return s;
+}
+inline const StringName &sn_damage_dealt() {
+	static const StringName s("damage_dealt");
+	return s;
+}
+inline const StringName &sn_target_killed() {
+	static const StringName s("target_killed");
+	return s;
+}
+inline const StringName &sn_projectile_created() {
+	static const StringName s("projectile_created");
+	return s;
+}
+inline const StringName &sn_stun_applied() {
+	static const StringName s("stun_applied");
+	return s;
+}
+inline const StringName &sn_shield_applied() {
+	static const StringName s("shield_applied");
+	return s;
+}
+inline const StringName &sn_heal_applied() {
+	static const StringName s("heal_applied");
+	return s;
+}
+inline const StringName &sn_taunt_applied() {
+	static const StringName s("taunt_applied");
+	return s;
+}
+inline const StringName &sn_splash_applied() {
+	static const StringName s("splash_applied");
+	return s;
+}
+inline const StringName &sn_splash_triggered() {
+	static const StringName s("splash_triggered");
+	return s;
+}
+inline const StringName &sn_knockback_applied() {
+	static const StringName s("knockback_applied");
+	return s;
+}
+inline const StringName &sn_reached_target() {
+	static const StringName s("reached_target");
+	return s;
+}
+inline const StringName &sn_amount() {
+	static const StringName s("amount");
+	return s;
+}
+inline const StringName &sn_duration() {
+	static const StringName s("duration");
+	return s;
+}
+inline const StringName &sn_radius() {
+	static const StringName s("radius");
+	return s;
+}
+inline const StringName &sn_mana_restored() {
+	static const StringName s("mana_restored");
+	return s;
+}
+inline const StringName &sn_mana_drained() {
+	static const StringName s("mana_drained");
+	return s;
+}
+inline const StringName &sn_distance_traveled() {
+	static const StringName s("distance_traveled");
+	return s;
+}
 constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
 constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
 constexpr size_t EFFECT_BUCKET_ON_TICK = 2;
@@ -4373,27 +4449,30 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		return double(u.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || u.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
 	};
 	const bool unit_under_threat = double(unit.incoming_target_count) >= SUPPORT_PEEL_THREAT_THRESHOLD || unit.perceived_threat >= SUPPORT_PEEL_THREAT_THRESHOLD;
+	const bool unit_has_forced_target = unit_forced_target_id != 0 && unit_forced_target_remaining > 0.0;
+	const bool ally_for_peel_under_threat = ally_for_peel != nullptr && ally_for_peel->alive && is_under_threat(*ally_for_peel);
+	const bool unit_can_peel_for_ally = unit_current_ally_target_id != 0 && ally_for_peel_under_threat;
+	const bool prefers_kiting = strategy.prefers_kiting && !unit_under_threat && score_ctx.has_kite_bounds;
+	const bool has_execute_bonus = strategy.execute_bonus_weight > 0.0;
 	auto classify_bucket = [&](const TargetingFrameEntry &candidate, double dist, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
-		if (unit_forced_target_id != 0 && unit_forced_target_remaining > 0.0 && candidate.instance_id == unit_forced_target_id) {
+		if (unit_has_forced_target && candidate.instance_id == unit_forced_target_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Commit;
 		}
 		TeamfightSimulationCore::TargetBucketTag bucket_tag = TeamfightSimulationCore::TargetBucketTag::Objective;
-		double carry_peel_weight = strat.carry_peel_weight;
-		if (carry_peel_weight > 0.0 && candidate.target_id == unit_instance_id) {
+		if (strat.carry_peel_weight > 0.0 && candidate.target_id == unit_instance_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Peel;
 		}
-		int64_t ally_id = unit_current_ally_target_id;
-		if (ally_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive && candidate.target_id == ally_id && is_under_threat(*ally_for_peel)) {
+		if (unit_can_peel_for_ally && candidate.target_id == unit_current_ally_target_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Peel;
 		}
-		if (strat.execute_bonus_weight > 0.0) {
+		if (has_execute_bonus) {
 			double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
 			double atk_dmg = unit_attack_damage;
 			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
 				return TeamfightSimulationCore::TargetBucketTag::Burst;
 			}
 		}
-		if (strat.prefers_kiting && !unit_under_threat && score_ctx.has_kite_bounds) {
+		if (prefers_kiting) {
 			if (dist >= score_ctx.kite_min_w && dist <= score_ctx.kite_max_w) {
 				return TeamfightSimulationCore::TargetBucketTag::Kite;
 			}
@@ -4410,7 +4489,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double current_target_dist_for_switch = -1.0;
 	const double unit_x = unit.pos_x;
 	const double unit_y = unit.pos_y;
-	const double bodyguard_bonus_bound = strategy.bodyguard_weight > 0.0 ? strategy.bodyguard_weight * double(carry_indices.size()) : 0.0;
+	const bool has_bodyguard_weight = strategy.bodyguard_weight > 0.0;
+	const double bodyguard_bonus_bound = has_bodyguard_weight ? strategy.bodyguard_weight * double(carry_indices.size()) : 0.0;
 	UnitState *best_live = nullptr;
 	int64_t best_index = -1;
 	double best_adjusted = std::numeric_limits<double>::infinity();
@@ -6203,7 +6283,7 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 	if (effect.requires_result_from.is_empty()) {
 		return true;  // No condition
 	}
-	
+
 	if (!results.has(effect.requires_result_from)) {
 		UtilityFunctions::push_error(vformat(
 			"Missing requires_result_from '%s' for conditional effect '%s'",
@@ -6212,7 +6292,7 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 		));
 		return false;  // Required effect didn't run
 	}
-	
+
 	Dictionary required_result = results[effect.requires_result_from];
 	if (!required_result.has(effect.requires_field)) {
 		UtilityFunctions::push_error(vformat(
@@ -6223,7 +6303,7 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 		));
 		return false;  // Field doesn't exist
 	}
-	
+
 	Variant actual_value = required_result[effect.requires_field];
 	return actual_value == effect.requires_value;
 }

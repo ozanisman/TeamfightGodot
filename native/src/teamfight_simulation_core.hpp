@@ -79,6 +79,101 @@ private:
 		double damage = 0.0;
 		StringName action_kind;
 		double distance = 0.0;
+		struct EffectExecResult {
+			bool present = false;
+			bool success_set = false;
+			bool success = false;
+			bool condition_failed_set = false;
+			bool condition_failed = false;
+			bool target_killed_set = false;
+			bool target_killed = false;
+			bool projectile_created_set = false;
+			bool projectile_created = false;
+			bool stun_applied_set = false;
+			bool stun_applied = false;
+			bool shield_applied_set = false;
+			bool shield_applied = false;
+			bool heal_applied_set = false;
+			bool heal_applied = false;
+			bool taunt_applied_set = false;
+			bool taunt_applied = false;
+			bool splash_applied_set = false;
+			bool splash_applied = false;
+			bool splash_triggered_set = false;
+			bool splash_triggered = false;
+			bool knockback_applied_set = false;
+			bool knockback_applied = false;
+			bool reached_target_set = false;
+			bool reached_target = false;
+			bool damage_dealt_set = false;
+			double damage_dealt = 0.0;
+			bool damage_set = false;
+			double damage = 0.0;
+			bool amount_set = false;
+			double amount = 0.0;
+			bool duration_set = false;
+			double duration = 0.0;
+			bool radius_set = false;
+			double radius = 0.0;
+			bool mana_restored_set = false;
+			double mana_restored = 0.0;
+			bool mana_drained_set = false;
+			double mana_drained = 0.0;
+			bool distance_traveled_set = false;
+			double distance_traveled = 0.0;
+
+			void clear() {
+				*this = EffectExecResult();
+			}
+		};
+
+		struct EffectExecStore {
+			static constexpr size_t SLOT_COUNT = 64;
+			std::array<EffectExecResult, SLOT_COUNT> by_opcode{};
+			std::array<bool, SLOT_COUNT> present{};
+
+			static inline bool opcode_to_slot(int64_t opcode, size_t &slot) {
+				if (opcode <= 0 || opcode >= int64_t(SLOT_COUNT)) {
+					return false;
+				}
+				slot = static_cast<size_t>(opcode);
+				return true;
+			}
+
+			void clear() {
+				present.fill(false);
+				for (EffectExecResult &result : by_opcode) {
+					result.clear();
+				}
+			}
+
+			EffectExecResult *ensure(int64_t opcode) {
+				size_t slot = 0;
+				if (!opcode_to_slot(opcode, slot)) {
+					return nullptr;
+				}
+				present[slot] = true;
+				by_opcode[slot].present = true;
+				return &by_opcode[slot];
+			}
+
+			const EffectExecResult *get(int64_t opcode) const {
+				size_t slot = 0;
+				if (!opcode_to_slot(opcode, slot) || !present[slot]) {
+					return nullptr;
+				}
+				return &by_opcode[slot];
+			}
+
+			EffectExecResult *get(int64_t opcode) {
+				size_t slot = 0;
+				if (!opcode_to_slot(opcode, slot) || !present[slot]) {
+					return nullptr;
+				}
+				return &by_opcode[slot];
+			}
+		};
+
 		Dictionary accumulated_results;
 		/// Prevents reflected damage from chaining into further reflects.
 		bool suppress_reflect_chain = false;
@@ -891,10 +986,10 @@ private:
 	double _auto_dodge_multiplier(UnitState &target, UnitState &source, double damage);
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
 	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
-	Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
-	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
-	void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
-	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
+		Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
+		void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
+		bool _check_condition(const EffectRecord &effect, const Dictionary &results);
+		void _merge_result(Dictionary &target_result, const Dictionary &source_result);
 	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);

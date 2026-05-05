@@ -1358,6 +1358,14 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.stat_multiplicative_respawn_time = 1.0;
 	unit.stat_temp_respawn_time = 0.0;
 	unit.stat_perm_respawn_time = 0.0;
+	unit.stat_additive_attack_range = 0.0;
+	unit.stat_multiplicative_attack_range = 1.0;
+	unit.stat_temp_attack_range = 0.0;
+	unit.stat_perm_attack_range = 0.0;
+	unit.stat_additive_cast_range = 0.0;
+	unit.stat_multiplicative_cast_range = 1.0;
+	unit.stat_temp_cast_range = 0.0;
+	unit.stat_perm_cast_range = 0.0;
 	cold.damage_dealt = 0.0;
 	cold.damage_dealt_auto = 0.0;
 	cold.damage_dealt_ability = 0.0;
@@ -3352,6 +3360,26 @@ void TeamfightSimulationCore::_apply_stat_modifier(UnitState &source, UnitState 
 				target.stat_temp_respawn_time = Math::max(target.stat_temp_respawn_time, duration);
 			}
 		}
+	} else if (stat_name == StringName("attack_range")) {
+		target.stat_additive_attack_range += additive;
+		target.stat_multiplicative_attack_range *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_attack_range = Math::max(target.stat_perm_attack_range, duration);
+			} else {
+				target.stat_temp_attack_range = Math::max(target.stat_temp_attack_range, duration);
+			}
+		}
+	} else if (stat_name == StringName("cast_range")) {
+		target.stat_additive_cast_range += additive;
+		target.stat_multiplicative_cast_range *= multiplicative;
+		if (duration > 0.0) {
+			if (is_match_duration) {
+				target.stat_perm_cast_range = Math::max(target.stat_perm_cast_range, duration);
+			} else {
+				target.stat_temp_cast_range = Math::max(target.stat_temp_cast_range, duration);
+			}
+		}
 	}
 }
 
@@ -3426,6 +3454,16 @@ void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
 	unit.stat_multiplicative_respawn_time = 1.0;
 	unit.stat_temp_respawn_time = 0.0;
 	unit.stat_perm_respawn_time = 0.0;
+	
+	unit.stat_additive_attack_range = 0.0;
+	unit.stat_multiplicative_attack_range = 1.0;
+	unit.stat_temp_attack_range = 0.0;
+	unit.stat_perm_attack_range = 0.0;
+	
+	unit.stat_additive_cast_range = 0.0;
+	unit.stat_multiplicative_cast_range = 1.0;
+	unit.stat_temp_cast_range = 0.0;
+	unit.stat_perm_cast_range = 0.0;
 }
 
 bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) const {
@@ -3443,7 +3481,9 @@ bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) c
 		   stat_name == StringName("ability_cd") ||
 		   stat_name == StringName("projectile_speed") ||
 		   stat_name == StringName("projectile_radius") ||
-		   stat_name == StringName("respawn_time");
+		   stat_name == StringName("respawn_time") ||
+		   stat_name == StringName("attack_range") ||
+		   stat_name == StringName("cast_range");
 }
 
 void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, double delta) {
@@ -3462,6 +3502,8 @@ void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, d
 	unit.stat_temp_projectile_speed = Math::max(0.0, unit.stat_temp_projectile_speed - delta);
 	unit.stat_temp_projectile_radius = Math::max(0.0, unit.stat_temp_projectile_radius - delta);
 	unit.stat_temp_respawn_time = Math::max(0.0, unit.stat_temp_respawn_time - delta);
+	unit.stat_temp_attack_range = Math::max(0.0, unit.stat_temp_attack_range - delta);
+	unit.stat_temp_cast_range = Math::max(0.0, unit.stat_temp_cast_range - delta);
 }
 
 void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
@@ -3521,6 +3563,14 @@ void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
 	if (unit.stat_temp_respawn_time <= 0.0) {
 		unit.stat_additive_respawn_time = 0.0;
 		unit.stat_multiplicative_respawn_time = 1.0;
+	}
+	if (unit.stat_temp_attack_range <= 0.0) {
+		unit.stat_additive_attack_range = 0.0;
+		unit.stat_multiplicative_attack_range = 1.0;
+	}
+	if (unit.stat_temp_cast_range <= 0.0) {
+		unit.stat_additive_cast_range = 0.0;
+		unit.stat_multiplicative_cast_range = 1.0;
 	}
 }
 
@@ -4040,7 +4090,7 @@ void TeamfightSimulationCore::_release_spawn_slot(const StringName &team, int64_
 }
 
 double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
-	return unit.combat.attack_range;
+	return get_effective_attack_range(unit);
 }
 
 double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) const {
@@ -4515,7 +4565,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		if (unit.stun_remaining <= 0.0 && unit.root_remaining <= 0.0) {
 			double move_speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit);
 			if (move_speed > 0.0) {
-				double attack_range = unit.combat.attack_range;
+				double attack_range = get_effective_attack_range(unit);
 				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
 				double r2 = radius * radius;
 				double ux = unit.pos_x;
@@ -4778,7 +4828,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 	// then mana gain, then attack cooldown (resolve_attack → mana → cooldown).
 	double damage = get_effective_attack_damage(unit);
 	damage = _apply_attack_modifiers(unit, target, distance, damage);
-	if (unit.combat.attack_range > RANGED_THRESHOLD) {
+	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
 		ProjectileState projectile;
 		projectile.source_id = unit.instance_id;
 		projectile.target_id = target.instance_id;
@@ -5450,7 +5500,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 					double final_dy = target_y - new_y;
 					double final_dist = Math::sqrt(final_dx * final_dx + final_dy * final_dy);
 					// Consider target reached if we're within attack range (with melee buffer)
-					bool reached = (final_dist <= source.combat.attack_range + 0.1);
+					bool reached = (final_dist <= get_effective_attack_range(source) + 0.1);
 					dash_result["reached_target"] = reached;
 				}
 			}
@@ -5854,7 +5904,7 @@ void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source
 	ev.pos_y = p_target.pos_y;
 	ev.val = p_total_damage;
 	_viewer_fx_push(ev);
-	if (p_action_kind == StringName("auto") && p_source.combat.attack_range <= RANGED_THRESHOLD) {
+	if (p_action_kind == StringName("auto") && get_effective_attack_range(p_source) <= RANGED_THRESHOLD) {
 		ViewerFxEvent slash;
 		slash.kind = StringName("melee_slash");
 		slash.pos_x = p_target.pos_x;
@@ -5969,7 +6019,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["acd"] = u.attack_cooldown;
 		d["abi"] = u.ability_cooldown;
 		d["attack_cooldown"] = u.attack_cooldown;
-		d["attack_range"] = u.combat.attack_range;
+		d["attack_range"] = get_effective_attack_range(u);
 		d["attack_speed"] = u.combat.attack_speed;
 		d["casting_remaining"] = u.casting_remaining;
 		d["casting_kind"] = String(uc.casting_kind);

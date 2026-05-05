@@ -500,85 +500,86 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	return EFFECT_OPCODE_UNKNOWN;
 }
 
-StringName TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
+const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
+	static const StringName empty_kind;
 	switch (opcode) {
 		case EFFECT_OPCODE_MULTI:
-			return StringName("multi");
+			return sn_multi();
 		case EFFECT_OPCODE_DAMAGE:
-			return StringName("damage");
+			return sn_damage();
 		case EFFECT_OPCODE_PROJECTILE:
-			return StringName("projectile");
+			return sn_projectile();
 		case EFFECT_OPCODE_STUN:
-			return StringName("stun");
+			return sn_stun();
 		case EFFECT_OPCODE_SHIELD:
-			return StringName("shield");
+			return sn_shield();
 		case EFFECT_OPCODE_HEAL:
-			return StringName("heal");
+			return sn_heal();
 		case EFFECT_OPCODE_SELF_AOE_TAUNT:
-			return StringName("self_aoe_taunt");
+			return sn_self_aoe_taunt();
 		case EFFECT_OPCODE_SELF_AOE_DAMAGE:
-			return StringName("self_aoe_damage");
+			return sn_self_aoe_damage();
 		case EFFECT_OPCODE_SPLASH_DAMAGE:
-			return StringName("splash_damage");
+			return sn_splash_damage();
 		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE:
-			return StringName("threshold_splash_damage");
+			return sn_threshold_splash_damage();
 		case EFFECT_OPCODE_MANA_REGEN:
-			return StringName("mana_regen");
+			return sn_mana_regen();
 		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
-			return StringName("post_damage_mana_gain");
+			return sn_post_damage_mana_gain();
 		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
-			return StringName("damage_based_heal");
+			return sn_damage_based_heal();
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
-			return StringName("mana_restore_on_hit");
+			return sn_mana_restore_on_hit();
 		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
-			return StringName("drain_target_mana_on_hit");
+			return sn_drain_target_mana_on_hit();
 		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
-			return StringName("every_n_attacks_stun");
+			return sn_every_n_attacks_stun();
 		case EFFECT_OPCODE_SELF_DASH:
-			return StringName("self_dash");
+			return sn_self_dash();
 		case EFFECT_OPCODE_AUTO_DODGE:
-			return StringName("auto_dodge");
+			return sn_auto_dodge();
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
-			return StringName("constant_multiplier");
+			return sn_constant_multiplier();
 		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
-			return StringName("hp_threshold_damage_multiplier");
+			return sn_hp_threshold_damage_multiplier();
 		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
-			return StringName("distance_threshold_multiplier");
+			return sn_distance_threshold_multiplier();
 		// New effect opcodes
 		case EFFECT_OPCODE_SLOW:
-			return StringName("slow");
+			return sn_slow();
 		case EFFECT_OPCODE_ROOT:
-			return StringName("root");
+			return sn_root();
 		case EFFECT_OPCODE_SILENCE:
-			return StringName("silence");
+			return sn_silence();
 		case EFFECT_OPCODE_DISARM:
-			return StringName("disarm");
+			return sn_disarm();
 		case EFFECT_OPCODE_KNOCKBACK:
-			return StringName("knockback");
+			return sn_knockback();
 		case EFFECT_OPCODE_REFLECT:
-			return StringName("reflect");
+			return sn_reflect();
 		case EFFECT_OPCODE_SELF_AOE_SLOW:
-			return StringName("self_aoe_slow");
+			return sn_self_aoe_slow();
 		case EFFECT_OPCODE_SELF_AOE_ROOT:
-			return StringName("self_aoe_root");
+			return sn_self_aoe_root();
 		case EFFECT_OPCODE_SELF_AOE_SILENCE:
-			return StringName("self_aoe_silence");
+			return sn_self_aoe_silence();
 		case EFFECT_OPCODE_SELF_AOE_DISARM:
-			return StringName("self_aoe_disarm");
+			return sn_self_aoe_disarm();
 		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK:
-			return StringName("self_aoe_knockback");
+			return sn_self_aoe_knockback();
 		case EFFECT_OPCODE_SELF_AOE_REFLECT:
-			return StringName("self_aoe_reflect");
+			return sn_self_aoe_reflect();
 		case EFFECT_OPCODE_REFLECT_DAMAGE:
-			return StringName("reflect_damage");
+			return sn_reflect_damage();
 		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
-			return StringName("knockback_shield");
+			return sn_knockback_shield();
 		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER:
-			return StringName("target_status_multiplier");
+			return sn_target_status_multiplier();
 		case EFFECT_OPCODE_STAT_MODIFIER:
-			return StringName("stat_modifier");
+			return sn_stat_modifier();
 		default:
-			return StringName();
+			return empty_kind;
 	}
 }
 
@@ -5707,7 +5708,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				context.accumulated_results = combined_results;
 				Dictionary child_result = _execute_effect(child, context);
 				// Store the result under the effect's kind name for conditional access
-				StringName child_kind = _kind_for_opcode(child.opcode);
+				const StringName &child_kind = _kind_for_opcode(child.opcode);
 				if (!child_kind.is_empty()) {
 					combined_results[child_kind] = child_result;
 					// Also update the accumulated_results for subsequent children
@@ -6184,11 +6185,17 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 }
 
 void TeamfightSimulationCore::_merge_accumulated_results(Dictionary &target, const Dictionary &source) {
-	Array keys = source.keys();
-	for (int64_t index = 0; index < keys.size(); ++index) {
-		Variant key = keys[index];
+	Variant source_variant = source;
+	Variant iter;
+	bool valid = false;
+	if (!source_variant.iter_init(iter, valid)) {
+		return;
+	}
+	while (valid) {
+		Variant key = source_variant.iter_get(iter, valid);
 		Variant source_value = source[key];
 		target[key] = source_value;
+		source_variant.iter_next(iter, valid);
 	}
 }
 
@@ -6222,9 +6229,14 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 }
 
 void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dictionary &source_result) {
-	Array keys = source_result.keys();
-	for (int64_t index = 0; index < keys.size(); ++index) {
-		Variant key = keys[index];
+	Variant source_variant = source_result;
+	Variant iter;
+	bool valid = false;
+	if (!source_variant.iter_init(iter, valid)) {
+		return;
+	}
+	while (valid) {
+		Variant key = source_variant.iter_get(iter, valid);
 		Variant source_value = source_result[key];
 		if (target_result.has(key) && source_value.get_type() == Variant::FLOAT && target_result[key].get_type() == Variant::FLOAT) {
 			target_result[key] = double(target_result[key]) + double(source_value);
@@ -6233,6 +6245,7 @@ void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dic
 		} else {
 			target_result[key] = source_value;
 		}
+		source_variant.iter_next(iter, valid);
 	}
 }
 

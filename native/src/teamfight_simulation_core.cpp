@@ -282,6 +282,13 @@ inline const StringName &sn_cast_start() {
 	static const StringName s("cast_start");
 	return s;
 }
+constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
+constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
+constexpr size_t EFFECT_BUCKET_ON_TICK = 2;
+constexpr size_t EFFECT_BUCKET_POST_ATTACK = 3;
+constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 4;
+constexpr size_t EFFECT_BUCKET_ON_ABILITY = 5;
+constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 6;
 } // namespace
 
 namespace {
@@ -3090,7 +3097,7 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind) {
 	double multiplier = 1.0;
 	EffectContext context = _build_context(source, &target, nullptr, damage, action_kind);
-	const std::vector<EffectRecord> &effects = _collect_effects(target, sn_on_defense());
+	const std::vector<EffectRecord> &effects = _uc(target).passive_effects[EFFECT_BUCKET_ON_DEFENSE];
 	for (const EffectRecord &effect : effects) {
 		if (effect.opcode == EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
@@ -3103,7 +3110,7 @@ double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState
 double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitState &source, double damage) {
 	double multiplier = 1.0;
 	EffectContext context = _build_context(source, &target, nullptr, damage, sn_auto());
-	const std::vector<EffectRecord> &effects = _collect_effects(target, sn_on_defense());
+	const std::vector<EffectRecord> &effects = _uc(target).passive_effects[EFFECT_BUCKET_ON_DEFENSE];
 	for (const EffectRecord &effect : effects) {
 		if (effect.opcode != EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
@@ -3116,7 +3123,7 @@ double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitSt
 double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage) {
 	(void)distance;
 	EffectContext context = _build_context(unit, &target, nullptr, damage, sn_auto());
-	const std::vector<EffectRecord> &effects = _collect_effects(unit, sn_on_attack());
+	const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_ATTACK];
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
 		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
@@ -3125,8 +3132,8 @@ double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitSta
 }
 
 double TeamfightSimulationCore::_apply_ability_modifiers(UnitState &unit, UnitState *target, double damage) {
-	EffectContext context = _build_context(unit, target, nullptr, damage, StringName("ability"));
-	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_ability"));
+	EffectContext context = _build_context(unit, target, nullptr, damage, sn_ability());
+	const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_ABILITY];
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
 		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
@@ -3135,8 +3142,8 @@ double TeamfightSimulationCore::_apply_ability_modifiers(UnitState &unit, UnitSt
 }
 
 double TeamfightSimulationCore::_apply_ultimate_modifiers(UnitState &unit, UnitState *target, double damage) {
-	EffectContext context = _build_context(unit, target, nullptr, damage, StringName("ultimate"));
-	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_ultimate"));
+	EffectContext context = _build_context(unit, target, nullptr, damage, sn_ultimate());
+	const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_ULTIMATE];
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
 		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
@@ -3216,7 +3223,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	}
 	_maybe_apply_reflect_damage(source, target, total_damage, damage_type, context);
 	if (target.hp <= 0.0) {
-		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, sn_post_take_damage());
+		const std::vector<EffectRecord> &post_take_damage_effects = _uc(target).passive_effects[EFFECT_BUCKET_POST_TAKE_DAMAGE];
 		EffectContext post_context = context;
 		// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
 		post_context.source = &target;
@@ -3229,7 +3236,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		_handle_death(source, target);
 		return total_damage;
 	}
-	const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, sn_post_take_damage());
+	const std::vector<EffectRecord> &post_take_damage_effects = _uc(target).passive_effects[EFFECT_BUCKET_POST_TAKE_DAMAGE];
 	EffectContext post_context = context;
 	// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
 	post_context.source = &target;
@@ -4176,7 +4183,7 @@ void TeamfightSimulationCore::_cleanup_expired_stacks(UnitState &unit, double cu
 }
 
 void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
-	const std::vector<EffectRecord> &post_attack_effects = _collect_effects(source, StringName("post_attack"));
+	const std::vector<EffectRecord> &post_attack_effects = _uc(source).passive_effects[EFFECT_BUCKET_POST_ATTACK];
 	if (post_attack_effects.empty()) {
 		return;
 	}
@@ -5219,7 +5226,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_regen(profile_sim, _sim_profile_uu_regen_on_tick);
-		const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
+		const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_TICK];
 		for (const EffectRecord &effect : effects) {
 			// Use effect address as unique key for per-unit timing
 			size_t effect_key = reinterpret_cast<size_t>(&effect);
@@ -5233,7 +5240,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			// Check if this effect should execute
 			if (accumulator >= effect.interval) {
 				accumulator -= effect.interval;
-				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("passive"));
+				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
 				_execute_effect(effect, context);
 			}
 		}

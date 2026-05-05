@@ -14,6 +14,17 @@ func _extract_argument(prefix: String, default_value: String) -> String:
 	return default_value
 
 
+func _flag_enabled(prefix: String) -> bool:
+	for a in OS.get_cmdline_user_args():
+		var arg: String = str(a)
+		if arg == prefix:
+			return true
+		if arg.begins_with(prefix + "="):
+			var tail: String = arg.substr(prefix.length() + 1)
+			return tail != "0" and tail.to_lower() != "false"
+	return false
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -27,6 +38,7 @@ func _run() -> void:
 	var matches := int(_extract_argument("--matches-per-size=", "100"))
 	var seed := int(_extract_argument("--base-seed=", "0"))
 	var export_workers := int(_extract_argument("--export-workers=", "0"))
+	var profile_enabled := _flag_enabled("--profile-stats")
 	var arr: Array[int] = []
 	for part in sizes_raw.split(","):
 		var t: String = part.strip_edges()
@@ -38,7 +50,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
-	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers)
+	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers, profile_enabled)
 	if err != OK:
 		push_error("generate_simulation_stats failed: %s" % error_string(err))
 		quit(1)

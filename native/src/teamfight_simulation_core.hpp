@@ -867,6 +867,7 @@ private:
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
+	double _score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
 	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;

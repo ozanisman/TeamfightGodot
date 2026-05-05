@@ -25,3 +25,4 @@ native/bin/
 native/build/
 *.uid
 .aider*
+*.csv

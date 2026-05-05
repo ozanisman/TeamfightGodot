@@ -29,6 +29,21 @@ static func _summary_object(summary_value: Variant):
 		return MatchReplaySummaryScript.from_dict(Dictionary(summary_value))
 	return MatchReplaySummaryScript.new()
 
+
+static func _now_ns() -> int:
+	return Time.get_ticks_usec() * 1000
+
+
+static func _dominant_phase(phases: Dictionary) -> String:
+	var best_name: String = ""
+	var best_ns: int = -1
+	for key in phases.keys():
+		var value_ns: int = int(phases[key])
+		if value_ns > best_ns:
+			best_ns = value_ns
+			best_name = String(key)
+	return best_name
+
 static func _build_batch_input_for_seed(
 	match_seed: int,
 	team_size: int,
@@ -102,6 +117,9 @@ func run_chunk(data: Dictionary) -> Array:
 	var base_seed: int = int(data.get("base_seed", 0))
 	var bench_skip_summaries: bool = bool(data.get("bench_skip_summaries", false))
 	var allow_native_batch: bool = bool(data.get("allow_native_batch", false))
+	var profile_stats: bool = bool(data.get("profile_stats", false))
+	var chunk_start_ns: int = _now_ns()
+	var chunk_profile: Dictionary = {}
 	
 	# Match summaries come from native only (telemetry lives under unit_stats[].telemetry).
 	var backend: Object = NativeSimulationBackendScript.new()
@@ -136,20 +154,32 @@ func run_chunk(data: Dictionary) -> Array:
 		backend.clear()
 		return results
 
+	var assembly_ns: int = 0
+	var native_run_ns: int = 0
+	var summary_to_dict_ns: int = 0
+	var matchup_ns: int = 0
+	var clear_ns: int = 0
 	var result_index: int = 0
 	for match_index in range(start_index, end_index):
+		var t_assembly_ns: int = _now_ns()
 		var batch_match_input = _build_batch_input_for_seed(base_seed + match_index, team_size, archetypes, players, enemies)
+		assembly_ns += _now_ns() - t_assembly_ns
 		if bench_skip_summaries and backend.has_method("run_match_simulation_only"):
 			backend.run_match_simulation_only(batch_match_input)
 			results[result_index] = true
 		else:
+			var t_native_run_ns: int = _now_ns()
 			var summary = _summary_object(backend.run_match(batch_match_input))
+			native_run_ns += _now_ns() - t_native_run_ns
+			var t_summary_to_dict_ns: int = _now_ns()
 			var summary_dict = summary.to_dict() if summary is Object and summary.has_method("to_dict") else summary
+			summary_to_dict_ns += _now_ns() - t_summary_to_dict_ns
 			
 			results[result_index] = summary_dict
 			
 			# Process matchup data from this match result
 			if summary is Object and summary.has_method("to_dict"):
+				var t_matchup_ns: int = _now_ns()
 				var winners: Array[StringName] = []
 				var losers: Array[StringName] = []
 				
@@ -164,12 +194,15 @@ func run_chunk(data: Dictionary) -> Array:
 				# Only process if we have valid winners and losers
 				if not winners.is_empty() and not losers.is_empty():
 					matchup_tracker.process_match_result(winners, losers)
+				matchup_ns += _now_ns() - t_matchup_ns
 		
 		result_index += 1
 		if result_index % 1000 == 0:
 			record_benchmark_progress(1000)
+		var t_clear_ns: int = _now_ns()
 		if backend.has_method("clear"):
 			backend.call("clear")
+		clear_ns += _now_ns() - t_clear_ns
 
 	var tail: int = chunk_len % 1000
 	if tail != 0:
@@ -181,6 +214,36 @@ func run_chunk(data: Dictionary) -> Array:
 			"match_results": results,
 			"matchup_data": matchup_tracker.get_matchup_data()
 		}
+		if profile_stats:
+			var total_ns: int = assembly_ns + native_run_ns + summary_to_dict_ns + matchup_ns + clear_ns
+			chunk_profile = {
+				"start_index": start_index,
+				"end_index": end_index,
+				"team_size": team_size,
+				"base_seed": base_seed,
+				"match_count": chunk_len,
+				"assembly_ns": assembly_ns,
+				"assembly_pct": 100.0 * float(assembly_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"native_run_ns": native_run_ns,
+				"native_run_pct": 100.0 * float(native_run_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"summary_to_dict_ns": summary_to_dict_ns,
+				"summary_to_dict_pct": 100.0 * float(summary_to_dict_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"matchup_ns": matchup_ns,
+				"matchup_pct": 100.0 * float(matchup_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"clear_ns": clear_ns,
+				"clear_pct": 100.0 * float(clear_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"dominant_phase": _dominant_phase({
+					"assembly_ns": assembly_ns,
+					"native_run_ns": native_run_ns,
+					"summary_to_dict_ns": summary_to_dict_ns,
+					"matchup_ns": matchup_ns,
+					"clear_ns": clear_ns,
+				}),
+				"avg_ns_per_match": float(total_ns) / float(chunk_len) if chunk_len > 0 else 0.0,
+				"wall_ns": _now_ns() - chunk_start_ns,
+				"wall_pct": 100.0,
+			}
+			chunk_result["profile_stats"] = chunk_profile
 		return [chunk_result]
 
 	return results

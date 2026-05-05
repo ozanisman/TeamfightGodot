@@ -103,6 +103,10 @@ private:
 			bool splash_triggered = false;
 			bool knockback_applied_set = false;
 			bool knockback_applied = false;
+			bool stealth_applied_set = false;
+			bool stealth_applied = false;
+			bool stealth_broken_set = false;
+			bool stealth_broken = false;
 			bool reached_target_set = false;
 			bool reached_target = false;
 			bool damage_dealt_set = false;
@@ -348,6 +352,12 @@ private:
 		bool silence_blocks_abilities = false;
 		bool silence_blocks_ultimates = false;
 		double disarm_remaining = 0.0;
+		/// Stealth: remaining duration. Cannot be targeted by enemies while > 0.
+		double stealth_remaining = 0.0;
+		/// Stealth break conditions: when to break stealth (on_attack, on_ability, on_damage_taken).
+		bool stealth_break_on_attack = false;
+		bool stealth_break_on_ability = false;
+		bool stealth_break_on_damage_taken = false;
 		/// Passive `reflect_damage` (on_defense): portions by damage-type applicability.
 		double reflect_passive_pct_all = 0.0;
 		double reflect_passive_pct_physical = 0.0;
@@ -528,6 +538,7 @@ private:
 		int64_t target_id = 0;
 		int64_t incoming_target_count = 0;
 		double perceived_threat = 0.0;
+		double stealth_remaining = 0.0;
 	};
 
 	struct TargetScoreContext {
@@ -679,6 +690,7 @@ private:
 		EFFECT_OPCODE_KNOCKBACK_SHIELD = 38,
 		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
 		EFFECT_OPCODE_STAT_MODIFIER = 40,
+		EFFECT_OPCODE_STEALTH = 41,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1004,6 +1016,7 @@ private:
 	void _apply_root(UnitState &source, UnitState &target, double duration);
 	void _apply_silence(UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate);
 	void _apply_disarm(UnitState &source, UnitState &target, double duration);
+	void _apply_stealth(UnitState &source, UnitState &target, double duration, bool break_on_attack, bool break_on_ability, bool break_on_damage_taken);
 	void _apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration);
 	void _apply_self_aoe_root(UnitState &source, double radius, double duration);
 	void _apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate);

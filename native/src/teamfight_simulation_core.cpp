@@ -548,7 +548,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(params.get("additive", 0.0));
 		compiled.scalar1 = double(params.get("multiplicative", 1.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
+		compiled.int0 = params.get("target_self", false) ? 1 : 0;
+		compiled.int1 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Stat modifier"));
 	}
 	
@@ -5538,13 +5539,15 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary stat_result;
 			stat_result["success"] = true;
 			if (target != nullptr) {
-				_apply_stat_modifier(source, *target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int0 != 0);
+				UnitState &modifier_target = (effect.int0 == 1) ? source : *target;
+				_apply_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0);
 				stat_result["stat_modifier_applied"] = true;
 				stat_result["stat_name"] = String(effect.damage_type);
 				stat_result["additive"] = effect.scalar0;
 				stat_result["multiplicative"] = effect.scalar1;
 				stat_result["duration"] = effect.scalar2;
-				stat_result["is_match_duration"] = effect.int0 != 0;
+				stat_result["is_match_duration"] = effect.int1 != 0;
+				stat_result["target_self"] = effect.int0 == 1;
 			}
 			return stat_result;
 		}

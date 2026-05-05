@@ -557,6 +557,11 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	compiled.requires_field = StringName(String(params.get("requires_field", "")));
 	compiled.requires_value = params.get("requires_value", Variant());
 	
+	// Handle interval parameter for timing control
+	compiled.interval = double(params.get("interval", 1.0));
+	// Validate minimum interval (must be at least game tick rate)
+	compiled.interval = Math::max(compiled.interval, DEFAULT_TICK_RATE);
+	
 	return compiled;
 }
 
@@ -1398,6 +1403,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	cold.damage_sources.clear();
 	cold.recent_benefactors.clear();
 	cold.last_hit_time = 0.0;
+	cold.effect_accumulators.clear();
 	unit.regen_accumulator = 0.0;
 	unit.reflect_buff_remaining = 0.0;
 	unit.reflect_buff_pct_all = 0.0;
@@ -4277,6 +4283,7 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	c.damage_sources.clear();
 	c.recent_benefactors.clear();
 	c.last_hit_time = 0.0;
+	c.effect_accumulators.clear();
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;
 	// Python parity: pending casts (casting_remaining > 0) are preserved across death/respawn.
@@ -4626,16 +4633,24 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_regen(profile_sim, _sim_profile_uu_regen_on_tick);
-		double regen_accumulator = unit.regen_accumulator + _tick_rate;
-		while (regen_accumulator >= REGEN_TICK_INTERVAL) {
-			regen_accumulator -= REGEN_TICK_INTERVAL;
-			const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
-			for (const EffectRecord &effect : effects) {
+		const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_tick"));
+		for (const EffectRecord &effect : effects) {
+			// Use effect address as unique key for per-unit timing
+			size_t effect_key = reinterpret_cast<size_t>(&effect);
+			
+			// Get or create per-unit accumulator for this effect
+			double &accumulator = _uc(unit).effect_accumulators[effect_key];
+			
+			// Update accumulator
+			accumulator += _tick_rate;
+			
+			// Check if this effect should execute
+			if (accumulator >= effect.interval) {
+				accumulator -= effect.interval;
 				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, StringName("passive"));
 				_execute_effect(effect, context);
 			}
 		}
-		unit.regen_accumulator = regen_accumulator;
 
 		if (unit.stun_remaining > 0.0) {
 			return;

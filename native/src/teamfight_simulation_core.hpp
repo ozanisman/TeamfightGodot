@@ -837,7 +837,7 @@ private:
 	Dictionary _effective_champion_for(const StringName &archetype_id) const;
 	static void _parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
 	static int64_t _opcode_for_kind(const StringName &kind);
-	static StringName _kind_for_opcode(int64_t opcode);
+	static const StringName &_kind_for_opcode(int64_t opcode);
 	EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;

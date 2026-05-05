@@ -16,6 +16,7 @@ var enemy_units: Array = []
 var record_events: bool = false
 var debug_targeting: bool = false
 var debug_combat_trace: bool = false
+var debug_stack_operations: bool = false
 var debug_fixture_name: String = ""
 var rules_version: int = SimConstantsScript.SIMULATION_RULES_VERSION
 var balance_version: StringName = &"default"
@@ -28,6 +29,7 @@ func _init(
 	_record_events: bool = false,
 	_debug_targeting: bool = false,
 	_debug_combat_trace: bool = false,
+	_debug_stack_operations: bool = false,
 	_debug_fixture_name: String = "",
 	_rules_version: int = SimConstantsScript.SIMULATION_RULES_VERSION,
 	_balance_version: StringName = &"default"
@@ -39,6 +41,7 @@ func _init(
 	record_events = _record_events
 	debug_targeting = _debug_targeting
 	debug_combat_trace = _debug_combat_trace
+	debug_stack_operations = _debug_stack_operations
 	debug_fixture_name = _debug_fixture_name
 	rules_version = _rules_version
 	balance_version = _balance_version
@@ -58,6 +61,7 @@ func to_dict() -> Dictionary:
 		"record_events": record_events,
 		"debug_targeting": debug_targeting,
 		"debug_combat_trace": debug_combat_trace,
+		"debug_stack_operations": debug_stack_operations,
 		"debug_fixture_name": debug_fixture_name,
 		"rules_version": rules_version,
 		"balance_version": String(balance_version),
@@ -78,6 +82,7 @@ static func from_dict(data: Dictionary):
 	input.record_events = bool(data.get("record_events", false))
 	input.debug_targeting = bool(data.get("debug_targeting", false))
 	input.debug_combat_trace = bool(data.get("debug_combat_trace", false))
+	input.debug_stack_operations = bool(data.get("debug_stack_operations", false))
 	input.debug_fixture_name = String(data.get("debug_fixture_name", ""))
 	input.rules_version = int(data.get("rules_version", SimConstantsScript.SIMULATION_RULES_VERSION))
 	input.balance_version = StringName(String(data.get("balance_version", "default")))
@@ -87,7 +92,9 @@ static func build_match_input(
 	seed: int,
 	player_types: Array[StringName],
 	enemy_types: Array[StringName],
-	_tick_rate: float = SimConstantsScript.SIMULATION_TICK_RATE
+	tick_rate: float = SimConstantsScript.DEFAULT_TICK_RATE,
+	debug_stack_operations: bool = false,
+	debug_combat_trace: bool = false
 ):
 	var player_units: Array = []
 	for index in range(player_types.size()):
@@ -99,7 +106,9 @@ static func build_match_input(
 		enemy_units.append(SpawnSpecScript.new(enemy_types[index], &"enemy", position.x, position.y))
 	var input := new()
 	input.seed = seed
-	input.tick_rate = _tick_rate
+	input.tick_rate = tick_rate
 	input.player_units = player_units
 	input.enemy_units = enemy_units
+	input.debug_stack_operations = debug_stack_operations
+	input.debug_combat_trace = debug_combat_trace
 	return input

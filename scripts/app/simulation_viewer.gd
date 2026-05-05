@@ -279,9 +279,15 @@ func _create_ui_structure() -> void:
 	# Create DebugLabel (top-right)
 	var debug_label := Label.new()
 	debug_label.name = "DebugLabel"
-	debug_label.text = "DEBUG MODE: ON"
+	
+	# Show debug status with stack debugging info
+	if _debug_mode:
+		debug_label.text = "DEBUG: ON | STACK: ON"
+	else:
+		debug_label.text = "DEBUG MODE: OFF"
+	
 	debug_label.position = Vector2(screen_size.x - 150.0, 10.0)
-	debug_label.visible = _debug_mode
+	debug_label.visible = true
 	debug_label.add_theme_color_override("font_color", COLOR_WARNING)
 	_header_panel.add_child(debug_label)
 
@@ -1579,8 +1585,11 @@ func _on_start_match_clicked() -> void:
 		0,
 		_player_picks,
 		_enemy_picks,
-		SimConstantsScript.DEFAULT_TICK_RATE
+		SimConstantsScript.DEFAULT_TICK_RATE,
+		true,  # debug_stack_operations
+		true      # debug_combat_trace
 	)
+	
 	_backend.begin_match(match_input)
 	_game_state = COMBAT
 	_sim_time_accumulator = 0.0

@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <queue>
 
 using namespace godot;
 
@@ -58,6 +59,7 @@ private:
 		int64_t int0 = 0;
 		int64_t int1 = 0;
 		int64_t int2 = 0;
+		int64_t int3 = 0;
 		StringName damage_type;
 		String reason;
 		std::vector<EffectRecord> children;
@@ -80,6 +82,67 @@ private:
 		Dictionary accumulated_results;
 		/// Prevents reflected damage from chaining into further reflects.
 		bool suppress_reflect_chain = false;
+	};
+
+	/// Stack behavior types for stat modifier stacking
+	enum class StackBehavior : int8_t {
+		Refresh = 0,    // Reset duration to max (current behavior)
+		Accumulate = 1, // Add duration to current
+		Reset = 2       // Reset stacks to 1, refresh duration
+	};
+
+	/// Optimized stack entry with pre-computed hash for performance
+	struct StackEntry {
+		uint64_t key_hash = 0;
+		int current_stacks = 0;
+		int max_stacks = 1;
+		double base_value = 0.0;
+		double duration = 0.0;
+		bool is_multiplicative = false;
+		String reason = "";
+		double last_applied_time = 0.0;
+		StackBehavior stack_behavior = StackBehavior::Refresh;
+		bool active = true;
+		int pool_index = -1;
+	};
+
+	/// Stack validation parameters for robust error checking
+	struct StackParams {
+		int max_stacks = 1;
+		double base_value = 0.0;
+		StackBehavior behavior = StackBehavior::Refresh;
+		StringName stat_name;
+		String reason;
+		
+		bool validate(const TeamfightSimulationCore* core) const {
+			return max_stacks > 0 && max_stacks <= 100 &&
+				   base_value >= -10000.0 && base_value <= 10000.0 &&
+				   core->_is_valid_stat_name(stat_name);
+		}
+	};
+
+	/// Stack error codes for proper error handling
+	enum class StackError : int8_t {
+		None = 0,
+		InvalidStat = 1,
+		InvalidMaxStacks = 2,
+		InvalidBaseValue = 3,
+		CorruptedData = 4,
+		Overflow = 5
+	};
+
+	/// Function pointer type for stat application
+	using StatApplyFunc = void(*)(UnitState&, double, bool);
+
+	/// Expiration entry for priority queue
+	struct ExpirationEntry {
+		double expire_time = 0.0;
+		uint64_t stack_key_hash = 0;
+		UnitState* unit = nullptr;
+		
+		bool operator<(const ExpirationEntry& other) const {
+			return expire_time > other.expire_time; // Min-heap behavior
+		}
 	};
 
 	/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
@@ -294,6 +357,9 @@ private:
 		double stat_multiplicative_cast_range = 1.0;
 		double stat_temp_cast_range = 0.0;
 		double stat_perm_cast_range = 0.0;
+
+		// Per-source stack tracking for stat modifiers
+		Dictionary stat_stacks;  // key: "stat_name|reason", value: StackInfo
 	};
 
 	struct UnitStrategy {
@@ -693,6 +759,7 @@ private:
 	std::vector<TraceEvent> _trace_buffer;
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
+	bool _debug_stack_operations = false;
 
 	/// Compact HUD/floating labels for the Godot simulation viewer (cleared each tick, filled during sim).
 	struct ViewerFxEvent {
@@ -850,10 +917,54 @@ private:
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
+	void _set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration);
+	void _apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
 	void _clear_all_stat_modifiers(UnitState &unit);
 	void _update_stat_modifier_durations(UnitState &unit, double delta);
 	void _clear_expired_stat_modifiers(UnitState &unit);
+	
+	// Optimized stack management infrastructure
+	static thread_local std::vector<StackEntry> _stack_pool;
+	static thread_local std::unordered_map<uint64_t, int> _stack_key_to_pool_index;
+	static std::priority_queue<ExpirationEntry> _expiration_queue;
+	static constexpr int _pool_capacity = 0;
+	
+	// Stat function pointer tables for optimized application
+	static void _apply_stat_max_hp(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_attack_damage(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_attack_speed(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_move_speed(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_armor(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_magic_resist(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_tenacity(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_life_steal(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_max_mana(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_mana_per_attack(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_ability_cd(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_projectile_speed(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_projectile_radius(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_respawn_time(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_attack_range(UnitState &unit, double value, bool is_multiplicative);
+	static void _apply_stat_cast_range(UnitState &unit, double value, bool is_multiplicative);
+	
+	// Optimized stack management functions
+	StackError _apply_stat_modifier_optimized(UnitState &source, UnitState &target, const StackParams &params, double duration, bool is_match_duration, double current_time);
+	uint64_t _compute_stack_key(StringName stat_name, const String &reason);
+	StackEntry* _get_stack_entry(UnitState &unit, uint64_t key_hash);
+	StackEntry* _allocate_stack_entry();
+	void _free_stack_entry(StackEntry* entry);
+	void _process_expiration_queue(double current_time);
+	void _validate_stack_consistency(UnitState &unit);
+
+	// Stack management functions
+	String _get_stack_key(StringName stat_name, const String &reason);
+	void _update_stacks(UnitState &unit, double delta, double current_time);
+	void _cleanup_expired_stacks(UnitState &unit, double current_time);
 	bool _is_valid_stat_name(const StringName &stat_name) const;
+	
+	// Stack debugging functions
+	void _debug_print_stack_state(const UnitState &unit) const;
+	void _debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const;
 	String _join_team_names(const Array &team) const;
 	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);

@@ -989,6 +989,7 @@ private:
 	void _release_spawn_slot(const StringName &team, int64_t slot_index);
 	void _set_current_target(UnitState &unit, const UnitState &target);
 	Dictionary _build_summary();
+	Dictionary _build_stats_summary();
 	Dictionary _effect_to_dict(const Variant &effect) const;
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
@@ -1070,6 +1071,7 @@ public:
 	bool is_ready() const;
 	void clear();
 	Dictionary run_match(const Variant &match_input);
+	Dictionary run_match_stats(const Variant &match_input);
 	Array run_matches(const Array &match_inputs);
 	void run_match_simulation_only(const Variant &match_input);
 	void run_matches_simulation_only(const Array &match_inputs);

@@ -17,17 +17,9 @@ static func release_benchmark_handles() -> void:
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
-const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const MatchupTrackerScript := preload("res://scripts/simulation/matchup_tracker.gd")
-
-static func _summary_object(summary_value: Variant):
-	if summary_value is Object:
-		return summary_value
-	if summary_value is Dictionary:
-		return MatchReplaySummaryScript.from_dict(Dictionary(summary_value))
-	return MatchReplaySummaryScript.new()
 
 
 static func _now_ns() -> int:
@@ -43,6 +35,13 @@ static func _dominant_phase(phases: Dictionary) -> String:
 			best_ns = value_ns
 			best_name = String(key)
 	return best_name
+
+
+static func _string_name_array(values: Array) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for value in values:
+		out.append(StringName(String(value)))
+	return out
 
 static func _build_batch_input_for_seed(
 	match_seed: int,
@@ -133,6 +132,7 @@ func run_chunk(data: Dictionary) -> Array:
 	var enemies: Array[StringName] = []
 	var results: Array = []
 	results.resize(chunk_len)
+	var use_compact_stats: bool = backend.has_method("run_match_stats")
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_generated_matches_simulation_only"):
 		backend.run_generated_matches_simulation_only(base_seed + start_index, chunk_len, team_size)
@@ -156,7 +156,6 @@ func run_chunk(data: Dictionary) -> Array:
 
 	var assembly_ns: int = 0
 	var native_run_ns: int = 0
-	var summary_to_dict_ns: int = 0
 	var matchup_ns: int = 0
 	var clear_ns: int = 0
 	var result_index: int = 0
@@ -169,27 +168,25 @@ func run_chunk(data: Dictionary) -> Array:
 			results[result_index] = true
 		else:
 			var t_native_run_ns: int = _now_ns()
-			var summary = _summary_object(backend.run_match(batch_match_input))
+			var summary = backend.run_match_stats(batch_match_input) if use_compact_stats else backend.run_match(batch_match_input)
 			native_run_ns += _now_ns() - t_native_run_ns
-			var t_summary_to_dict_ns: int = _now_ns()
-			var summary_dict = summary.to_dict() if summary is Object and summary.has_method("to_dict") else summary
-			summary_to_dict_ns += _now_ns() - t_summary_to_dict_ns
-			
-			results[result_index] = summary_dict
+			results[result_index] = summary
 			
 			# Process matchup data from this match result
-			if summary is Object and summary.has_method("to_dict"):
+			if summary is Dictionary:
 				var t_matchup_ns: int = _now_ns()
 				var winners: Array[StringName] = []
 				var losers: Array[StringName] = []
+				var summary_dict: Dictionary = Dictionary(summary)
 				
 				# Determine winners and losers based on winner_team
-				if summary.winner_team == &"player":
-					winners = summary.player_comp
-					losers = summary.enemy_comp
-				elif summary.winner_team == &"enemy":
-					winners = summary.enemy_comp
-					losers = summary.player_comp
+				var winner_team: StringName = StringName(String(summary_dict.get("winner_team", "")))
+				if winner_team == &"player":
+					winners = _string_name_array(Array(summary_dict.get("player_comp", [])))
+					losers = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
+				elif winner_team == &"enemy":
+					winners = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
+					losers = _string_name_array(Array(summary_dict.get("player_comp", [])))
 				
 				# Only process if we have valid winners and losers
 				if not winners.is_empty() and not losers.is_empty():
@@ -215,7 +212,7 @@ func run_chunk(data: Dictionary) -> Array:
 			"matchup_data": matchup_tracker.get_matchup_data()
 		}
 		if profile_stats:
-			var total_ns: int = assembly_ns + native_run_ns + summary_to_dict_ns + matchup_ns + clear_ns
+			var total_ns: int = assembly_ns + native_run_ns + matchup_ns + clear_ns
 			chunk_profile = {
 				"start_index": start_index,
 				"end_index": end_index,
@@ -226,8 +223,6 @@ func run_chunk(data: Dictionary) -> Array:
 				"assembly_pct": 100.0 * float(assembly_ns) / float(total_ns) if total_ns > 0 else 0.0,
 				"native_run_ns": native_run_ns,
 				"native_run_pct": 100.0 * float(native_run_ns) / float(total_ns) if total_ns > 0 else 0.0,
-				"summary_to_dict_ns": summary_to_dict_ns,
-				"summary_to_dict_pct": 100.0 * float(summary_to_dict_ns) / float(total_ns) if total_ns > 0 else 0.0,
 				"matchup_ns": matchup_ns,
 				"matchup_pct": 100.0 * float(matchup_ns) / float(total_ns) if total_ns > 0 else 0.0,
 				"clear_ns": clear_ns,
@@ -235,7 +230,6 @@ func run_chunk(data: Dictionary) -> Array:
 				"dominant_phase": _dominant_phase({
 					"assembly_ns": assembly_ns,
 					"native_run_ns": native_run_ns,
-					"summary_to_dict_ns": summary_to_dict_ns,
 					"matchup_ns": matchup_ns,
 					"clear_ns": clear_ns,
 				}),

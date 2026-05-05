@@ -1165,9 +1165,9 @@
 				{
 					"kind": "stat_modifier",
 					"params": {
-						"duration": 5.0,
+						"additive": 5.0,
+						"duration": 3.0,
 						"max_stacks": 5,
-						"multiplicative": 1.1,
 						"reason": "Duelist",
 						"stack_behavior": "refresh",
 						"stat_name": "attack_damage",
@@ -1859,7 +1859,7 @@
 		"ability_desc": "Cleaves for 200% damage and 1.0s stun.",
 		"description": "A skilled duelist who gains attack damage with each strike and can stun groups of enemies.",
 		"name": "Swordsman",
-		"passive_desc": "Gains 5 attack damage for 5 seconds after each auto-attack. (Max 5 stacks)",
+		"passive_desc": "Gains 5 attack damage for 3 seconds after each auto-attack. (Max 5 stacks)",
 		"passive_ids": [
 			"duelist"
 		],

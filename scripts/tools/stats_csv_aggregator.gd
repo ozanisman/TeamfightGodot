@@ -3,8 +3,6 @@ extends RefCounted
 
 ## Rolls up native match summaries into CSV rows matching [StatsDashboardLoader].
 
-const MatchReplaySummaryScript := preload("res://scripts/simulation/match_replay_summary.gd")
-const UnitReplaySummaryScript := preload("res://scripts/simulation/unit_replay_summary.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const MatchupAggregatorScript := preload("res://scripts/tools/matchup_aggregator.gd")
 const MatchupAggregator := preload("res://scripts/tools/matchup_aggregator.gd")
@@ -34,35 +32,77 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 		_matchup_aggregator.consume_chunk_result(summary_value)
 		
 		# Process individual match summaries from the chunk
-		var match_results = summary_value.get("match_results", [])
+		var match_results: Array = Array(summary_value.get("match_results", []))
 		for result in match_results:
 			_consume_individual_summary(team_size, result)
 	else:
 		# This is an individual summary (old format)
 		_consume_individual_summary(team_size, summary_value)
 
+static func _unit_float(data: Dictionary, key: String, default_value: float = 0.0) -> float:
+	return float(data.get(key, default_value))
+
+
+static func _unit_int(data: Dictionary, key: String, default_value: int = 0) -> int:
+	return int(data.get(key, default_value))
+
+
 func _consume_individual_summary(team_size: int, summary_value: Variant) -> void:
-	var summary: Object
 	if summary_value is Dictionary:
-		summary = MatchReplaySummaryScript.from_dict(summary_value)
-	else:
-		summary = summary_value as Object
+		_consume_individual_summary_dict(team_size, Dictionary(summary_value))
+		return
+	var summary: Object = summary_value as Object
 	if summary == null:
 		push_error("StatsCsvAggregator: bad summary")
 		return
-	
-	# Log match details for debugging
+	_consume_individual_summary_object(team_size, summary)
+
+
+func _consume_individual_summary_object(team_size: int, summary: Object) -> void:
+	var seed: int = int(summary.seed)
+	var winner_team: StringName = summary.winner_team
+	var sudden_death_ticks: int = int(summary.sudden_death_ticks)
+	var duration: float = float(summary.duration)
+	var unit_stats: Array = Array(summary.unit_stats)
+	var player_comp: Array = Array(summary.player_comp)
+	var enemy_comp: Array = Array(summary.enemy_comp)
+	_consume_individual_summary_common(team_size, seed, winner_team, sudden_death_ticks, duration, unit_stats, player_comp, enemy_comp, true)
+
+
+func _consume_individual_summary_dict(team_size: int, summary: Dictionary) -> void:
+	var seed: int = int(summary.get("seed", 0))
+	var winner_value: Variant = summary.get("winner_team", "")
+	var winner_team: StringName = StringName(String(winner_value))
+	var sudden_death_ticks: int = int(summary.get("sudden_death_ticks", 0))
+	var duration: float = float(summary.get("duration", 0.0))
+	var unit_stats: Array = Array(summary.get("unit_stats", []))
+	var player_comp: Array = Array(summary.get("player_comp", []))
+	var enemy_comp: Array = Array(summary.get("enemy_comp", []))
+	_consume_individual_summary_common(team_size, seed, winner_team, sudden_death_ticks, duration, unit_stats, player_comp, enemy_comp, false)
+
+
+func _consume_individual_summary_common(
+	team_size: int,
+	seed: int,
+	winner_team: StringName,
+	sudden_death_ticks: int,
+	duration: float,
+	unit_stats: Array,
+	player_comp: Array,
+	enemy_comp: Array,
+	summary_is_object: bool
+) -> void:
 	_match_logs.append({
 		"team_size": team_size,
-		"seed": summary.seed,
-		"winner": String(summary.winner_team),
-		"sudden_death_ticks": summary.sudden_death_ticks,
-		"duration": summary.duration,
+		"seed": seed,
+		"winner": String(winner_team),
+		"sudden_death_ticks": sudden_death_ticks,
+		"duration": duration,
 	})
-	
+
 	_ensure_roles()
 	var bucket: Dictionary = _bucket(team_size)
-	var wt: StringName = summary.winner_team
+	var wt: StringName = winner_team
 	if wt == &"player":
 		bucket["p1"] = int(bucket["p1"]) + 1
 	elif wt == &"enemy":
@@ -71,28 +111,29 @@ func _consume_individual_summary(team_size: int, summary_value: Variant) -> void
 		bucket["draws"] = int(bucket["draws"]) + 1
 	bucket["total"] = int(bucket["total"]) + 1
 
-	for item in Array(summary.unit_stats):
-		var u: Object = _coerce_unit(item)
-		if u == null:
-			continue
-		var hero: String = String(u.archetype_id)
-		if hero.is_empty():
-			continue
-		_acc_hero(bucket, hero, wt, u)
-		var role: String = str(_role_by_hero.get(hero, "unknown"))
-		_acc_role(bucket, role, wt, u)
+	for item in unit_stats:
+		if item is Dictionary:
+			var u: Dictionary = Dictionary(item)
+			var hero: String = String(u.get("archetype_id", u.get("archetype", "")))
+			if hero.is_empty():
+				continue
+			_acc_hero_dict(bucket, hero, wt, u)
+			var role: String = str(_role_by_hero.get(hero, "unknown"))
+			_acc_role_dict(bucket, role, wt, u)
+		elif summary_is_object and item is Object:
+			var uo: Object = item as Object
+			if uo == null:
+				continue
+			var hero_obj: String = String(uo.archetype_id)
+			if hero_obj.is_empty():
+				continue
+			_acc_hero(bucket, hero_obj, wt, uo)
+			var role_obj: String = str(_role_by_hero.get(hero_obj, "unknown"))
+			_acc_role(bucket, role_obj, wt, uo)
 
 	if team_size > 1:
-		_acc_combo(bucket, summary.player_comp, wt)
-		_acc_combo(bucket, summary.enemy_comp, _flip_winner(wt))
-
-
-func _coerce_unit(item: Variant) -> Object:
-	if item is Dictionary:
-		return UnitReplaySummaryScript.from_dict(Dictionary(item))
-	if item is Object:
-		return item as Object
-	return null
+		_acc_combo(bucket, player_comp, wt)
+		_acc_combo(bucket, enemy_comp, _flip_winner(wt))
 
 
 func write_to_dir(dir_path: String) -> Error:
@@ -208,6 +249,37 @@ func _acc_hero(bucket: Dictionary, hero: String, wt: StringName, u: Object) -> v
 	h["d_passive"] = float(h["d_passive"]) + float(u.damage_dealt_passive)
 
 
+func _acc_hero_dict(bucket: Dictionary, hero: String, wt: StringName, u: Dictionary) -> void:
+	var h: Dictionary = _hero_entry(bucket, hero)
+	if wt == &"draw":
+		h["d"] = int(h["d"]) + 1
+	elif bool(u.get("won", false)):
+		h["w"] = int(h["w"]) + 1
+	else:
+		h["l"] = int(h["l"]) + 1
+	h["dmg_d"] = float(h["dmg_d"]) + _unit_float(u, "damage_dealt")
+	h["dmg_r"] = float(h["dmg_r"]) + _unit_float(u, "damage_received")
+	h["dmg_m"] = float(h["dmg_m"]) + _unit_float(u, "damage_mitigated")
+	h["heal"] = float(h["heal"]) + _unit_float(u, "healing_done")
+	h["heal_auto"] = float(h["heal_auto"]) + _unit_float(u, "healing_done_auto")
+	h["heal_ability"] = float(h["heal_ability"]) + _unit_float(u, "healing_done_ability")
+	h["heal_ultimate"] = float(h["heal_ultimate"]) + _unit_float(u, "healing_done_ultimate")
+	h["heal_passive"] = float(h["heal_passive"]) + _unit_float(u, "healing_done_passive")
+	h["shield"] = float(h["shield"]) + _unit_float(u, "shielding_done")
+	h["shield_auto"] = float(h["shield_auto"]) + _unit_float(u, "shielding_done_auto")
+	h["shield_ability"] = float(h["shield_ability"]) + _unit_float(u, "shielding_done_ability")
+	h["shield_ultimate"] = float(h["shield_ultimate"]) + _unit_float(u, "shielding_done_ultimate")
+	h["shield_passive"] = float(h["shield_passive"]) + _unit_float(u, "shielding_done_passive")
+	h["stuns"] = int(h["stuns"]) + _unit_int(u, "stuns")
+	h["kills"] = int(h["kills"]) + _unit_int(u, "kills")
+	h["deaths"] = int(h["deaths"]) + _unit_int(u, "deaths")
+	h["assists"] = int(h["assists"]) + _unit_int(u, "assists")
+	h["d_auto"] = float(h["d_auto"]) + _unit_float(u, "damage_dealt_auto")
+	h["d_ab"] = float(h["d_ab"]) + _unit_float(u, "damage_dealt_ability")
+	h["d_ult"] = float(h["d_ult"]) + _unit_float(u, "damage_dealt_ultimate")
+	h["d_passive"] = float(h["d_passive"]) + _unit_float(u, "damage_dealt_passive")
+
+
 func _role_entry(bucket: Dictionary, role: String) -> Dictionary:
 	var roles: Dictionary = bucket["roles"]
 	if not roles.has(role):
@@ -263,6 +335,34 @@ func _acc_role(bucket: Dictionary, role: String, wt: StringName, u: Object) -> v
 	r["d_ab"] = float(r["d_ab"]) + float(u.damage_dealt_ability)
 	r["d_ult"] = float(r["d_ult"]) + float(u.damage_dealt_ultimate)
 	r["d_passive"] = float(r["d_passive"]) + float(u.damage_dealt_passive)
+
+
+func _acc_role_dict(bucket: Dictionary, role: String, wt: StringName, u: Dictionary) -> void:
+	var r: Dictionary = _role_entry(bucket, role)
+	if wt == &"draw":
+		r["d"] = int(r["d"]) + 1
+	elif bool(u.get("won", false)):
+		r["w"] = int(r["w"]) + 1
+	else:
+		r["l"] = int(r["l"]) + 1
+	r["dmg_d"] = float(r["dmg_d"]) + _unit_float(u, "damage_dealt")
+	r["dmg_r"] = float(r["dmg_r"]) + _unit_float(u, "damage_received")
+	r["dmg_m"] = float(r["dmg_m"]) + _unit_float(u, "damage_mitigated")
+	r["heal"] = float(r["heal"]) + _unit_float(u, "healing_done")
+	r["heal_auto"] = float(r["heal_auto"]) + _unit_float(u, "healing_done_auto")
+	r["heal_ability"] = float(r["heal_ability"]) + _unit_float(u, "healing_done_ability")
+	r["heal_ultimate"] = float(r["heal_ultimate"]) + _unit_float(u, "healing_done_ultimate")
+	r["heal_passive"] = float(r["heal_passive"]) + _unit_float(u, "healing_done_passive")
+	r["shield"] = float(r["shield"]) + _unit_float(u, "shielding_done")
+	r["shield_auto"] = float(r["shield_auto"]) + _unit_float(u, "shielding_done_auto")
+	r["shield_ability"] = float(r["shield_ability"]) + _unit_float(u, "shielding_done_ability")
+	r["shield_ultimate"] = float(r["shield_ultimate"]) + _unit_float(u, "shielding_done_ultimate")
+	r["shield_passive"] = float(r["shield_passive"]) + _unit_float(u, "shielding_done_passive")
+	r["stuns"] = int(r["stuns"]) + _unit_int(u, "stuns")
+	r["d_auto"] = float(r["d_auto"]) + _unit_float(u, "damage_dealt_auto")
+	r["d_ab"] = float(r["d_ab"]) + _unit_float(u, "damage_dealt_ability")
+	r["d_ult"] = float(r["d_ult"]) + _unit_float(u, "damage_dealt_ultimate")
+	r["d_passive"] = float(r["d_passive"]) + _unit_float(u, "damage_dealt_passive")
 
 
 func _acc_combo(bucket: Dictionary, player_comp: Array, wt: StringName) -> void:

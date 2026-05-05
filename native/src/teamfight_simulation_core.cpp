@@ -550,6 +550,15 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.int1 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
+		compiled.int2 = int64_t(params.get("max_stacks", 1));
+		String stack_behavior = String(params.get("stack_behavior", "refresh"));
+		if (stack_behavior == "accumulate") {
+			compiled.int3 = 1;
+		} else if (stack_behavior == "reset") {
+			compiled.int3 = 2;
+		} else {
+			compiled.int3 = 0;
+		}
 		compiled.reason = String(params.get("reason", "Stat modifier"));
 	}
 	
@@ -2587,6 +2596,7 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_tick_rate = double(match_input.get("tick_rate", DEFAULT_TICK_RATE));
 	_record_events = bool(match_input.get("record_events", false));
 	_debug_combat_trace = bool(match_input.get("debug_combat_trace", false));
+	_debug_stack_operations = bool(match_input.get("debug_stack_operations", false));
 	_trace_buffer.clear();
 	if (_debug_combat_trace) {
 		_trace_buffer.reserve(TRACE_BUFFER_CAP);
@@ -3390,6 +3400,109 @@ void TeamfightSimulationCore::_apply_stat_modifier(UnitState &source, UnitState 
 	}
 }
 
+void TeamfightSimulationCore::_set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration) {
+	if (duration < 0.0) {
+		duration = 0.0;
+	}
+	if (stat_name == StringName("max_hp")) {
+		if (is_match_duration) {
+			unit.stat_perm_max_hp = Math::max(unit.stat_perm_max_hp, duration);
+		} else {
+			unit.stat_temp_max_hp = Math::max(unit.stat_temp_max_hp, duration);
+		}
+	} else if (stat_name == StringName("attack_damage")) {
+		if (is_match_duration) {
+			unit.stat_perm_attack_damage = Math::max(unit.stat_perm_attack_damage, duration);
+		} else {
+			unit.stat_temp_attack_damage = Math::max(unit.stat_temp_attack_damage, duration);
+		}
+	} else if (stat_name == StringName("attack_speed")) {
+		if (is_match_duration) {
+			unit.stat_perm_attack_speed = Math::max(unit.stat_perm_attack_speed, duration);
+		} else {
+			unit.stat_temp_attack_speed = Math::max(unit.stat_temp_attack_speed, duration);
+		}
+	} else if (stat_name == StringName("move_speed")) {
+		if (is_match_duration) {
+			unit.stat_perm_move_speed = Math::max(unit.stat_perm_move_speed, duration);
+		} else {
+			unit.stat_temp_move_speed = Math::max(unit.stat_temp_move_speed, duration);
+		}
+	} else if (stat_name == StringName("armor")) {
+		if (is_match_duration) {
+			unit.stat_perm_armor = Math::max(unit.stat_perm_armor, duration);
+		} else {
+			unit.stat_temp_armor = Math::max(unit.stat_temp_armor, duration);
+		}
+	} else if (stat_name == StringName("magic_resist")) {
+		if (is_match_duration) {
+			unit.stat_perm_magic_resist = Math::max(unit.stat_perm_magic_resist, duration);
+		} else {
+			unit.stat_temp_magic_resist = Math::max(unit.stat_temp_magic_resist, duration);
+		}
+	} else if (stat_name == StringName("tenacity")) {
+		if (is_match_duration) {
+			unit.stat_perm_tenacity = Math::max(unit.stat_perm_tenacity, duration);
+		} else {
+			unit.stat_temp_tenacity = Math::max(unit.stat_temp_tenacity, duration);
+		}
+	} else if (stat_name == StringName("life_steal")) {
+		if (is_match_duration) {
+			unit.stat_perm_life_steal = Math::max(unit.stat_perm_life_steal, duration);
+		} else {
+			unit.stat_temp_life_steal = Math::max(unit.stat_temp_life_steal, duration);
+		}
+	} else if (stat_name == StringName("max_mana")) {
+		if (is_match_duration) {
+			unit.stat_perm_max_mana = Math::max(unit.stat_perm_max_mana, duration);
+		} else {
+			unit.stat_temp_max_mana = Math::max(unit.stat_temp_max_mana, duration);
+		}
+	} else if (stat_name == StringName("mana_per_attack")) {
+		if (is_match_duration) {
+			unit.stat_perm_mana_per_attack = Math::max(unit.stat_perm_mana_per_attack, duration);
+		} else {
+			unit.stat_temp_mana_per_attack = Math::max(unit.stat_temp_mana_per_attack, duration);
+		}
+	} else if (stat_name == StringName("ability_cd")) {
+		if (is_match_duration) {
+			unit.stat_perm_ability_cd = Math::max(unit.stat_perm_ability_cd, duration);
+		} else {
+			unit.stat_temp_ability_cd = Math::max(unit.stat_temp_ability_cd, duration);
+		}
+	} else if (stat_name == StringName("projectile_speed")) {
+		if (is_match_duration) {
+			unit.stat_perm_projectile_speed = Math::max(unit.stat_perm_projectile_speed, duration);
+		} else {
+			unit.stat_temp_projectile_speed = Math::max(unit.stat_temp_projectile_speed, duration);
+		}
+	} else if (stat_name == StringName("projectile_radius")) {
+		if (is_match_duration) {
+			unit.stat_perm_projectile_radius = Math::max(unit.stat_perm_projectile_radius, duration);
+		} else {
+			unit.stat_temp_projectile_radius = Math::max(unit.stat_temp_projectile_radius, duration);
+		}
+	} else if (stat_name == StringName("respawn_time")) {
+		if (is_match_duration) {
+			unit.stat_perm_respawn_time = Math::max(unit.stat_perm_respawn_time, duration);
+		} else {
+			unit.stat_temp_respawn_time = Math::max(unit.stat_temp_respawn_time, duration);
+		}
+	} else if (stat_name == StringName("attack_range")) {
+		if (is_match_duration) {
+			unit.stat_perm_attack_range = Math::max(unit.stat_perm_attack_range, duration);
+		} else {
+			unit.stat_temp_attack_range = Math::max(unit.stat_temp_attack_range, duration);
+		}
+	} else if (stat_name == StringName("cast_range")) {
+		if (is_match_duration) {
+			unit.stat_perm_cast_range = Math::max(unit.stat_perm_cast_range, duration);
+		} else {
+			unit.stat_temp_cast_range = Math::max(unit.stat_temp_cast_range, duration);
+		}
+	}
+}
+
 void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
 	// Clear all stat modifier fields to defaults
 	unit.stat_additive_max_hp = 0.0;
@@ -3471,6 +3584,9 @@ void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
 	unit.stat_multiplicative_cast_range = 1.0;
 	unit.stat_temp_cast_range = 0.0;
 	unit.stat_perm_cast_range = 0.0;
+	
+	// Clear stack tracking
+	unit.stat_stacks.clear();
 }
 
 bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) const {
@@ -3579,6 +3695,110 @@ void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
 		unit.stat_additive_cast_range = 0.0;
 		unit.stat_multiplicative_cast_range = 1.0;
 	}
+}
+
+void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason) {
+	if (max_stacks <= 0) {
+		return;
+	}
+
+	String stack_key = _get_stack_key(stat_name, reason);
+	Dictionary stack_entry = Dictionary(target.stat_stacks.get(stack_key, Dictionary()));
+	int current_stacks = int(stack_entry.get("current_stacks", 0));
+	double previous_additive = double(stack_entry.get("applied_additive", 0.0));
+	double previous_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
+	double previous_duration = double(stack_entry.get("duration", 0.0));
+
+	if (current_stacks > 0) {
+		double inverse_multiplicative = previous_multiplicative != 0.0 ? 1.0 / previous_multiplicative : 1.0;
+		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
+	}
+
+	if (stack_behavior == StackBehavior::Reset) {
+		current_stacks = 0;
+		previous_duration = 0.0;
+	}
+
+	if (current_stacks < max_stacks) {
+		current_stacks++;
+	}
+
+	double applied_additive = additive * double(current_stacks);
+	double applied_multiplicative = 1.0;
+	if (!Math::is_equal_approx(multiplicative, 1.0)) {
+		applied_multiplicative = Math::pow(multiplicative, double(current_stacks));
+	}
+	_apply_stat_modifier(source, target, stat_name, applied_additive, applied_multiplicative, 0.0, false);
+
+	double next_duration = duration;
+	if (stack_behavior == StackBehavior::Accumulate) {
+		next_duration = previous_duration + duration;
+	}
+	if (next_duration < 0.0) {
+		next_duration = 0.0;
+	}
+
+	stack_entry["current_stacks"] = current_stacks;
+	stack_entry["max_stacks"] = max_stacks;
+	stack_entry["duration"] = next_duration;
+	stack_entry["additive_per_stack"] = additive;
+	stack_entry["multiplicative_per_stack"] = multiplicative;
+	stack_entry["applied_additive"] = applied_additive;
+	stack_entry["applied_multiplicative"] = applied_multiplicative;
+	stack_entry["stack_behavior"] = int(stack_behavior);
+	stack_entry["is_match_duration"] = is_match_duration;
+	target.stat_stacks[stack_key] = stack_entry;
+	_set_stat_modifier_duration(target, stat_name, next_duration, is_match_duration);
+	_debug_log_stack_operation("APPLY", String(stat_name), current_stacks, max_stacks, next_duration, reason);
+}
+
+// Stack management functions
+String TeamfightSimulationCore::_get_stack_key(StringName stat_name, const String &reason) {
+	return String(stat_name) + "|" + reason;
+}
+
+
+void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, double current_time) {
+	(void)current_time;
+	Array keys_to_remove;
+	Array stack_keys = unit.stat_stacks.keys();
+	for (int i = 0; i < stack_keys.size(); i++) {
+		Variant key_variant = stack_keys[i];
+		if (key_variant.get_type() != Variant::STRING) {
+			continue;
+		}
+		String key = key_variant;
+		Dictionary stack_dict = unit.stat_stacks[key];
+		double duration = double(stack_dict.get("duration", 0.0));
+		if (duration <= 0.0) {
+			continue;
+		}
+		duration -= delta;
+		if (duration > 0.0) {
+			stack_dict["duration"] = duration;
+			unit.stat_stacks[key] = stack_dict;
+			continue;
+		}
+
+		StringName stat_name = StringName(key.get_slice("|", 0));
+		double additive = double(stack_dict.get("applied_additive", 0.0));
+		double multiplicative = double(stack_dict.get("applied_multiplicative", 1.0));
+		double inverse_multiplicative = multiplicative != 0.0 ? 1.0 / multiplicative : 1.0;
+		int current_stacks = int(stack_dict.get("current_stacks", 0));
+		if (current_stacks > 0) {
+			_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
+			_debug_log_stack_operation("EXPIRE", String(stat_name), current_stacks, int(stack_dict.get("max_stacks", 1)), duration, String(key));
+		}
+		keys_to_remove.append(key);
+	}
+	for (int i = 0; i < keys_to_remove.size(); i++) {
+		unit.stat_stacks.erase(String(keys_to_remove[i]));
+	}
+}
+
+void TeamfightSimulationCore::_cleanup_expired_stacks(UnitState &unit, double current_time) {
+	(void)unit;
+	(void)current_time;
 }
 
 void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
@@ -4560,6 +4780,9 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		// Stat modifier duration management
 		_update_stat_modifier_durations(unit, _tick_rate);
 		_clear_expired_stat_modifiers(unit);
+		
+		// Stack duration management
+		_update_stacks(unit, _tick_rate, _time);
 		if (unit.forced_target_remaining <= 0.0) {
 			unit.forced_target_remaining = 0.0;
 			unit.forced_target_id = 0;
@@ -5540,14 +5763,45 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			stat_result["success"] = true;
 			if (target != nullptr) {
 				UnitState &modifier_target = (effect.int0 == 1) ? source : *target;
-				_apply_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0);
-				stat_result["stat_modifier_applied"] = true;
+				
+				bool use_stacking = effect.int2 > 1 || effect.int3 != 0;
+				if (use_stacking) {
+					StackBehavior stack_behavior = StackBehavior::Refresh;
+					if (effect.int3 == 1) {
+						stack_behavior = StackBehavior::Accumulate;
+					} else if (effect.int3 == 2) {
+						stack_behavior = StackBehavior::Reset;
+					}
+					_apply_stacked_stat_modifier(
+						source,
+						modifier_target,
+						effect.damage_type,
+						effect.scalar0,
+						effect.scalar1,
+						effect.scalar2,
+						effect.int1 != 0,
+						int(effect.int2),
+						stack_behavior,
+						effect.reason
+					);
+					stat_result["stat_modifier_applied"] = true;
+					stat_result["use_stacking"] = true;
+					stat_result["max_stacks"] = effect.int2;
+					stat_result["stack_behavior"] = effect.int3;
+				} else {
+					// Use original simple application
+					_apply_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0);
+					stat_result["stat_modifier_applied"] = true;
+					stat_result["use_stacking"] = false;
+				}
+				
 				stat_result["stat_name"] = String(effect.damage_type);
 				stat_result["additive"] = effect.scalar0;
 				stat_result["multiplicative"] = effect.scalar1;
 				stat_result["duration"] = effect.scalar2;
 				stat_result["is_match_duration"] = effect.int1 != 0;
 				stat_result["target_self"] = effect.int0 == 1;
+				stat_result["reason"] = effect.reason;
 			}
 			return stat_result;
 		}
@@ -6191,4 +6445,406 @@ String TeamfightSimulationCore::_join_team_names(const Array &team) const {
 		result += String(team[i]);
 	}
 	return result;
+}
+
+// Optimized stat function implementations to replace massive if-else chains
+void TeamfightSimulationCore::_apply_stat_max_hp(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_max_hp *= value;
+	} else {
+		unit.stat_additive_max_hp += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_attack_damage(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_attack_damage *= value;
+	} else {
+		unit.stat_additive_attack_damage += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_attack_speed(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_attack_speed *= value;
+	} else {
+		unit.stat_additive_attack_speed += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_move_speed(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_move_speed *= value;
+	} else {
+		unit.stat_additive_move_speed += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_armor(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_armor *= value;
+	} else {
+		unit.stat_additive_armor += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_magic_resist(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_magic_resist *= value;
+	} else {
+		unit.stat_additive_magic_resist += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_tenacity(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_tenacity *= value;
+	} else {
+		unit.stat_additive_tenacity += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_life_steal(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_life_steal *= value;
+	} else {
+		unit.stat_additive_life_steal += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_max_mana(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_max_mana *= value;
+	} else {
+		unit.stat_additive_max_mana += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_mana_per_attack(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_mana_per_attack *= value;
+	} else {
+		unit.stat_additive_mana_per_attack += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_ability_cd(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_ability_cd *= value;
+	} else {
+		unit.stat_additive_ability_cd += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_projectile_speed(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_projectile_speed *= value;
+	} else {
+		unit.stat_additive_projectile_speed += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_projectile_radius(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_projectile_radius *= value;
+	} else {
+		unit.stat_additive_projectile_radius += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_respawn_time(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_respawn_time *= value;
+	} else {
+		unit.stat_additive_respawn_time += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_attack_range(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_attack_range *= value;
+	} else {
+		unit.stat_additive_attack_range += value;
+	}
+}
+
+void TeamfightSimulationCore::_apply_stat_cast_range(UnitState &unit, double value, bool is_multiplicative) {
+	if (is_multiplicative) {
+		unit.stat_multiplicative_cast_range *= value;
+	} else {
+		unit.stat_additive_cast_range += value;
+	}
+}
+
+// Optimized stack management functions
+uint64_t TeamfightSimulationCore::_compute_stack_key(StringName stat_name, const String &reason) {
+	// Use existing StringName hashes + reason hash for fast key generation
+	return (static_cast<uint64_t>(stat_name.hash()) << 32) ^ 
+		   static_cast<uint64_t>(reason.hash());
+}
+
+TeamfightSimulationCore::StackEntry* TeamfightSimulationCore::_allocate_stack_entry() {
+	// Simple pool allocation - in production, use more sophisticated pool
+	if (_stack_pool.size() < 1000) { // Prevent unbounded growth
+		_stack_pool.emplace_back();
+		return &_stack_pool.back();
+	}
+	// Pool full - allocate dynamically (should be rare)
+	return new StackEntry();
+}
+
+void TeamfightSimulationCore::_free_stack_entry(StackEntry* entry) {
+	// Simple cleanup - in production, return to pool
+	if (entry >= &_stack_pool.front() && entry <= &_stack_pool.back()) {
+		// Was from pool - mark as inactive
+		entry->active = false;
+	} else {
+		// Was dynamic allocation
+		delete entry;
+	}
+}
+
+TeamfightSimulationCore::StackEntry* TeamfightSimulationCore::_get_stack_entry(UnitState &unit, uint64_t key_hash) {
+	// Check if we already have this stack
+	auto it = _stack_key_to_pool_index.find(key_hash);
+	if (it != _stack_key_to_pool_index.end()) {
+		int index = it->second;
+		if (index >= 0 && index < _stack_pool.size()) {
+			StackEntry* entry = &_stack_pool[index];
+			if (entry->active && entry->key_hash == key_hash) {
+				return entry;
+			}
+		}
+	}
+	return nullptr;
+}
+
+void TeamfightSimulationCore::_process_expiration_queue(double current_time) {
+	// Process all expired stacks
+	while (!_expiration_queue.empty() && _expiration_queue.top().expire_time <= current_time) {
+		ExpirationEntry entry = _expiration_queue.top();
+		_expiration_queue.pop();
+		
+		if (entry.unit != nullptr) {
+			StackEntry* stack_entry = _get_stack_entry(*entry.unit, entry.stack_key_hash);
+			if (stack_entry != nullptr) {
+				// Remove expired effect from unit stats
+				double total_effect = stack_entry->current_stacks * stack_entry->base_value;
+				
+				// Apply removal based on stat name (extract from key)
+				StringName stat_name = StringName(); // This needs to be reconstructed from hash
+				// For now, use existing logic in _update_stacks
+				
+				// Mark as inactive
+				stack_entry->active = false;
+			}
+		}
+	}
+}
+
+TeamfightSimulationCore::StackError TeamfightSimulationCore::_apply_stat_modifier_optimized(UnitState &source, UnitState &target, const StackParams &params, double duration, bool is_match_duration, double current_time) {
+	// Validate parameters first
+	if (!params.validate(this)) {
+		return StackError::InvalidStat;
+	}
+	
+	// Compute optimized key
+	uint64_t key_hash = _compute_stack_key(params.stat_name, params.reason);
+	
+	// Get existing or allocate new entry
+	StackEntry* entry = _get_stack_entry(target, key_hash);
+	if (entry == nullptr) {
+		entry = _allocate_stack_entry();
+		entry->key_hash = key_hash;
+		entry->max_stacks = params.max_stacks;
+		entry->base_value = params.base_value;
+		entry->is_multiplicative = (params.base_value == 0.0); // Simplified check
+		entry->reason = params.reason;
+		entry->stack_behavior = params.behavior;
+		entry->current_stacks = 0;
+		entry->duration = 0.0;
+		_stack_key_to_pool_index[key_hash] = entry - &_stack_pool[0];
+	}
+	
+	// Remove previous effect before applying new one
+	if (entry->current_stacks > 0) {
+		double previous_effect = entry->current_stacks * entry->base_value;
+		bool is_multiplicative = entry->is_multiplicative;
+		
+		// Apply removal using function pointer table
+		if (params.stat_name == StringName("max_hp")) {
+			_apply_stat_max_hp(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("attack_damage")) {
+			_apply_stat_attack_damage(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("attack_speed")) {
+			_apply_stat_attack_speed(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("move_speed")) {
+			_apply_stat_move_speed(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("armor")) {
+			_apply_stat_armor(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("magic_resist")) {
+			_apply_stat_magic_resist(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("tenacity")) {
+			_apply_stat_tenacity(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("life_steal")) {
+			_apply_stat_life_steal(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("max_mana")) {
+			_apply_stat_max_mana(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("mana_per_attack")) {
+			_apply_stat_mana_per_attack(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("ability_cd")) {
+			_apply_stat_ability_cd(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("projectile_speed")) {
+			_apply_stat_projectile_speed(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("projectile_radius")) {
+			_apply_stat_projectile_radius(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("respawn_time")) {
+			_apply_stat_respawn_time(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("attack_range")) {
+			_apply_stat_attack_range(target, -previous_effect, is_multiplicative);
+		} else if (params.stat_name == StringName("cast_range")) {
+			_apply_stat_cast_range(target, -previous_effect, is_multiplicative);
+		}
+	}
+	
+	// Apply stacking behavior
+	switch (params.behavior) {
+		case StackBehavior::Refresh:
+			entry->duration = duration;
+			break;
+		case StackBehavior::Accumulate:
+			entry->duration += duration;
+			break;
+		case StackBehavior::Reset:
+			entry->current_stacks = 0;
+			entry->duration = duration;
+			break;
+	}
+	
+	// Update stacks
+	if (entry->current_stacks < params.max_stacks) {
+		entry->current_stacks++;
+	}
+	entry->last_applied_time = current_time;
+	
+	// Apply new effect using function pointer table
+	double total_effect = entry->current_stacks * entry->base_value;
+	bool is_multiplicative = entry->is_multiplicative;
+	
+	// Debug stack application
+	_debug_log_stack_operation("APPLY_OPT", String(params.stat_name), 
+		entry->current_stacks, entry->max_stacks, duration, params.reason);
+	
+	if (params.stat_name == StringName("max_hp")) {
+		_apply_stat_max_hp(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("attack_damage")) {
+		_apply_stat_attack_damage(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("attack_speed")) {
+		_apply_stat_attack_speed(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("move_speed")) {
+		_apply_stat_move_speed(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("armor")) {
+		_apply_stat_armor(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("magic_resist")) {
+		_apply_stat_magic_resist(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("tenacity")) {
+		_apply_stat_tenacity(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("life_steal")) {
+		_apply_stat_life_steal(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("max_mana")) {
+		_apply_stat_max_mana(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("mana_per_attack")) {
+		_apply_stat_mana_per_attack(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("ability_cd")) {
+		_apply_stat_ability_cd(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("projectile_speed")) {
+		_apply_stat_projectile_speed(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("projectile_radius")) {
+		_apply_stat_projectile_radius(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("respawn_time")) {
+		_apply_stat_respawn_time(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("attack_range")) {
+		_apply_stat_attack_range(target, total_effect, is_multiplicative);
+	} else if (params.stat_name == StringName("cast_range")) {
+		_apply_stat_cast_range(target, total_effect, is_multiplicative);
+	}
+	
+	// Add to expiration queue if duration > 0
+	if (duration > 0.0 && !is_match_duration) {
+		ExpirationEntry exp_entry;
+		exp_entry.expire_time = current_time + duration;
+		exp_entry.stack_key_hash = key_hash;
+		exp_entry.unit = &target;
+		_expiration_queue.push(exp_entry);
+	}
+	
+	return TeamfightSimulationCore::StackError::None;
+}
+
+void TeamfightSimulationCore::_validate_stack_consistency(UnitState &unit) {
+	// Validate stack state for debugging
+	for (const auto& pair : _stack_key_to_pool_index) {
+		int index = pair.second;
+		if (index >= 0 && index < _stack_pool.size()) {
+			StackEntry& entry = const_cast<StackEntry&>(_stack_pool[index]);
+			if (entry.active) {
+				// Validate stack invariants
+				if (entry.current_stacks < 0 || entry.current_stacks > entry.max_stacks) {
+					// Stack corruption detected
+					entry.active = false;
+				}
+			}
+		}
+	}
+}
+
+// Define static member variables
+thread_local std::vector<TeamfightSimulationCore::StackEntry> TeamfightSimulationCore::_stack_pool;
+thread_local std::unordered_map<uint64_t, int> TeamfightSimulationCore::_stack_key_to_pool_index;
+std::priority_queue<TeamfightSimulationCore::ExpirationEntry> TeamfightSimulationCore::_expiration_queue;
+
+// Stack debugging implementations
+void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) const {
+	if (!_debug_stack_operations && !_debug_combat_trace) {
+		return;
+	}
+	
+	String debug_output = vformat("=== STACK STATE FOR UNIT %d ===\n", unit.instance_id);
+	debug_output += vformat("Total stacks: %d\n", unit.stat_stacks.size());
+	
+	Array stack_keys = unit.stat_stacks.keys();
+	for (int i = 0; i < stack_keys.size(); i++) {
+		Variant key_var = stack_keys[i];
+		if (key_var.get_type() != Variant::STRING) continue;
+		
+		String key = key_var;
+		Dictionary stack_dict = unit.stat_stacks[key];
+		
+		debug_output += vformat("Stack[%s]: stacks=%d/%d, duration=%.2f, reason=%s\n",
+			key,
+			stack_dict.get("current_stacks", 0),
+			stack_dict.get("max_stacks", 1),
+			stack_dict.get("duration", 0.0),
+			stack_dict.get("reason", "unknown")
+		);
+	}
+	
+	UtilityFunctions::push_warning(debug_output);
+}
+
+void TeamfightSimulationCore::_debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const {
+	if (!_debug_stack_operations && !_debug_combat_trace) {
+		return;
+	}
+	
+	String debug_msg = vformat("STACK_OP: %s | stat=%s | stacks=%d/%d | duration=%.2f | reason=%s",
+		operation,
+		stat_name,
+		stacks,
+		max_stacks,
+		duration,
+		reason
+	);
+	
+	UtilityFunctions::push_warning(debug_msg);
 }

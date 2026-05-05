@@ -204,7 +204,7 @@ const CHAMPION_DATA := {
 		"description": "A skilled duelist who gains attack damage with each strike and can stun groups of enemies.",
 		"ability_desc": "Cleaves for 200% damage and 1.0s stun.",
 		"ultimate_desc": "Whirlwind for 560% damage and 3.2s stun.",
-		"passive_desc": "Gains 10% attack damage for 3 seconds after each auto-attack.",
+		"passive_desc": "Gains 5 attack damage for 3 seconds after each auto-attack. (Max 5 stacks)",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1222,7 +1222,7 @@ const CHAMPION_DATA := {
 		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
 		"ability_desc": "Bashes target for 220% damage and 1.0s stun.",
 		"ultimate_desc": "War cry dealing 430% damage and 2.3s stun.",
-		"passive_desc": "Deals 25% bonus damage while above 80% HP.",
+		"passive_desc": "Deals 10 physical damage in a 0.7 radius around herself and heals for 100% of the damage dealt.",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1757,12 +1757,14 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "attack_damage",
-				"multiplicative": 1.1,
-				"target_self": true,
+				"additive": 5.0,
 				"duration": 3.0,
-				"duration_type": "respawn"
+				"max_stacks": 5,
+				"target_self": true,
+				"stack_behavior": "refresh",
+				"reason": "Duelist",
 			}
-		}],
+    	}],
 	},
 	&"eagle_eye": {
 		&"on_attack": [{
@@ -2022,7 +2024,8 @@ const PASSIVE_DATA := {
 				"stat_name": "attack_damage",
 				"additive": 10.0,
 				"duration": 5.0,
-				"duration_type": "respawn"
+				"duration_type": "respawn",
+				"target_self": true
 			}
 		}],
 	},
@@ -2033,7 +2036,8 @@ const PASSIVE_DATA := {
 				"stat_name": "attack_damage",
 				"multiplicative": 0.8,
 				"duration": 3.0,
-				"duration_type": "respawn"
+				"duration_type": "respawn",
+				"target_self": true
 			}
 		}],
 	},
@@ -2044,7 +2048,8 @@ const PASSIVE_DATA := {
 				"stat_name": "armor",
 				"additive": 5.0,
 				"duration": 0.0,
-				"duration_type": "match"
+				"duration_type": "match",
+				"target_self": true
 			}
 		}],
 	},
@@ -2055,7 +2060,55 @@ const PASSIVE_DATA := {
 				"stat_name": "move_speed",
 				"multiplicative": 1.2,
 				"duration": 2.0,
-				"duration_type": "respawn"
+				"duration_type": "respawn",
+				"target_self": true
+			}
+		}],
+	},
+	
+	# Stack-aware stat modifier examples
+	&"duelist_stacking": {
+		&"post_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "attack_damage",
+				"additive": 3.0,
+				"duration": 8.0,
+				"duration_type": "respawn",
+				"max_stacks": 5,
+				"stack_behavior": "refresh",
+				"reason": "DuelistFury",
+				"target_self": true
+			}
+		}],
+	},
+	&"accumulate_shields": {
+		&"on_tick": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "armor",
+				"additive": 2.0,
+				"duration": 3.0,
+				"duration_type": "respawn",
+				"max_stacks": 10,
+				"stack_behavior": "accumulate",
+				"reason": "ShieldAccumulation",
+				"target_self": true
+			}
+		}],
+	},
+	&"reset_berserk": {
+		&"on_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "attack_speed",
+				"multiplicative": 1.05,
+				"duration": 6.0,
+				"duration_type": "respawn",
+				"max_stacks": 3,
+				"stack_behavior": "reset",
+				"reason": "BerserkRage",
+				"target_self": true
 			}
 		}],
 	},

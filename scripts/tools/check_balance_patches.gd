@@ -43,12 +43,17 @@ func _load_native() -> Object:
 
 
 func _duel_artillery_guardian(seed: int) -> Dictionary:
-	return MatchReplayInputScript.build_match_input(
+	var players = [&"artillery"]
+	var enemies = [&"guardian"]
+	var match_input_obj = MatchReplayInputScript.build_match_input(
 		seed,
-		[&"artillery"],
-		[&"guardian"],
-		SimConstantsScript.SIMULATION_TICK_RATE
+		players,
+		enemies,
+		SimConstantsScript.DEFAULT_TICK_RATE,
+		false,  # debug_stack_operations
+		false      # debug_combat_trace
 	).to_dict()
+	return match_input_obj
 
 
 func _stats_for_archetype(summary: Dictionary, archetype: String) -> Dictionary:

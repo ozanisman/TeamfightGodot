@@ -204,26 +204,52 @@ const CHAMPION_DATA := {
 		"description": "A skilled duelist who gains attack damage with each strike and can stun groups of enemies.",
 		"ability_desc": "Cleaves for 200% damage and 1.0s stun.",
 		"ultimate_desc": "Whirlwind for 560% damage and 3.2s stun.",
-		"passive_desc": "Auto attacks deal 20% bonus damage (replace with something more interesting)",
+		"passive_desc": "Gains 10% attack damage for 3 seconds after each auto-attack.",
 		"ability": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.0, "trigger_on_hit": false, "reason": "Cleave"}},
-					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Cleave"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.0,
+							"trigger_on_hit": false,
+							"reason": "Cleave"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Cleave"
+						}
+					}
 				],
-				"reason": "Cleave",
-			},
+				"reason": "Cleave"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 5.6, "trigger_on_hit": false, "reason": "Whirlwind"}},
-					{"kind": &"stun", "params": {"duration": 3.2, "reason": "Whirlwind"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 5.6,
+							"trigger_on_hit": false,
+							"reason": "Whirlwind"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 3.2,
+							"reason": "Whirlwind"
+						}
+					}
 				],
-				"reason": "Whirlwind",
-			},
+				"reason": "Whirlwind"
+			}
 		},
 		"passive_ids": [&"duelist"],
 	},
@@ -253,8 +279,21 @@ const CHAMPION_DATA := {
 		"ability_desc": "Fires a volley for 140% damage.",
 		"ultimate_desc": "Rain of Arrows for 380% damage with splash.",
 		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
-		"ability": {"kind": &"projectile", "params": {"damage_ratio": 1.4, "reason": "Volley"}},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 3.8, "reason": "Rain of Arrows", "radius_override": 0.06}},
+		"ability": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 1.4,
+				"reason": "Volley"
+			}
+		},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 3.8,
+				"reason": "Rain of Arrows",
+				"radius_override": 0.06
+			}
+		},
 		"passive_ids": [&"eagle_eye"],
 	},
 	&"guardian": {
@@ -283,16 +322,35 @@ const CHAMPION_DATA := {
 		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
 		"ultimate_desc": "Slams the ground for 290% damage and a 3.8s stun.",
 		"passive_desc": "Reduces incoming damage by 10%.",
-		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 0.20, "reason": "Guardian Shield"}},
+		"ability": {
+			"kind": &"shield",
+			"params": {
+				"max_hp_ratio": 0.20,
+				"reason": "Guardian Shield"
+			}
+		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.9, "trigger_on_hit": false, "reason": "Aegis Crash"}},
-					{"kind": &"stun", "params": {"duration": 3.8, "reason": "Aegis Crash"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.9,
+							"trigger_on_hit": false,
+							"reason": "Aegis Crash"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 3.8,
+							"reason": "Aegis Crash"
+						}
+					}
 				],
-				"reason": "Aegis Crash",
-			},
+				"reason": "Aegis Crash"
+			}
 		},
 		"passive_ids": [&"bastion"],
 	},
@@ -326,15 +384,44 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_dash", "params": {"distance": 2.0}},
-					{"kind": &"damage", "params": {"damage_ratio": 1.5, "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true, "reason": "Shadow Strike"}},
-					{"kind": &"stun", "params": {"duration": 0.5, "requires_result_from": "self_dash", "requires_field": "reached_target", "requires_value": true, "reason": "Shadow Strike"}},
+					{
+						"kind": &"self_dash",
+						"params": {
+							"distance": 2.0
+						}
+					},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.5,
+							"requires_result_from": "self_dash",
+							"requires_field": "reached_target",
+							"requires_value": true,
+							"reason": "Shadow Strike"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 0.5,
+							"requires_result_from": "self_dash",
+							"requires_field": "reached_target",
+							"requires_value": true,
+							"reason": "Shadow Strike"
+						}
+					}
 				],
-				"reason": "Shadow Strike",
+				"reason": "Shadow Strike"
 			},
-			"requires_target_in_range": false,
+			"requires_target_in_range": false
 		},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 9.0, "reason": "Assassinate"}},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 9.0,
+				"reason": "Assassinate"
+			}
+		},
 		"passive_ids": [&"executioner"],
 	},
 	&"sniper": {
@@ -363,8 +450,21 @@ const CHAMPION_DATA := {
 		"ability_desc": "High-precision strike for 150% damage.",
 		"ultimate_desc": "Lethal long-range shot for 280% damage.",
 		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
-		"ability": {"kind": &"projectile", "params": {"damage_ratio": 1.5, "reason": "Headshot"}},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 2.8, "speed_override": 15.0, "reason": "ULTIMATE"}},
+		"ability": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 1.5,
+				"reason": "Headshot"
+			}
+		},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 2.8,
+				"speed_override": 15.0,
+				"reason": "ULTIMATE"
+			}
+		},
 		"passive_ids": [&"deadeye"],
 	},
 	&"berserker": {
@@ -397,14 +497,37 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"max_hp_ratio": 0.15, "damage_type": "true", "target_self": true, "reason": "Blood Price"}},
-					{"kind": &"shield", "params": {"max_hp_ratio": 0.30, "target_self": true, "reason": "Blood Price"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"max_hp_ratio": 0.15,
+							"damage_type": "true",
+							"target_self": true,
+							"reason": "Blood Price"
+						}
+					},
+					{
+						"kind": &"shield",
+						"params": {
+							"max_hp_ratio": 0.30,
+							"target_self": true,
+							"reason": "Blood Price"
+						}
+					}
 				],
-				"reason": "Blood Price",
+				"reason": "Blood Price"
 			},
-			"requires_target_in_range": false,
+			"requires_target_in_range": false
 		},
-		"ultimate": {"kind": &"damage", "params": {"damage_ratio": 4.2, "damage_type": "true", "trigger_on_hit": false, "reason": "Berserker Rage"}},
+		"ultimate": {
+			"kind": &"damage",
+			"params": {
+				"damage_ratio": 4.2,
+				"damage_type": "true",
+				"trigger_on_hit": false,
+				"reason": "Berserker Rage"
+			}
+		},
 		"passive_ids": [&"bloodlust"],
 	},
 	&"paladin": {
@@ -433,16 +556,36 @@ const CHAMPION_DATA := {
 		"ability_desc": "Heals self for 20% max HP.",
 		"ultimate_desc": "Heals self for 40% max HP and deals 360% true damage.",
 		"passive_desc": "Regenerates 2% max HP every second.",
-		"ability": {"kind": &"heal", "params": {"max_hp_ratio": 0.20, "reason": "Lay on Hands"}},
+		"ability": {
+			"kind": &"heal",
+			"params": {
+				"max_hp_ratio": 0.20,
+				"reason": "Lay on Hands"
+			}
+		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"heal", "params": {"max_hp_ratio": 0.40, "reason": "Divine Judgment"}},
-					{"kind": &"damage", "params": {"damage_ratio": 3.6, "damage_type": "true", "trigger_on_hit": false, "reason": "Divine Judgment"}},
+					{
+						"kind": &"heal",
+						"params": {
+							"max_hp_ratio": 0.40,
+							"reason": "Divine Judgment"
+						}
+					},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 3.6,
+							"damage_type": "true",
+							"trigger_on_hit": false,
+							"reason": "Divine Judgment"
+						}
+					}
 				],
-				"reason": "Divine Judgment",
-			},
+				"reason": "Divine Judgment"
+			}
 		},
 		"passive_ids": [&"rejuvenation"],
 	},
@@ -476,13 +619,32 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.2, "trigger_on_hit": false, "reason": "Backstab"}},
-					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Backstab"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.2,
+							"trigger_on_hit": false,
+							"reason": "Backstab"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Backstab"
+						}
+					}
 				],
-				"reason": "Backstab",
-			},
+				"reason": "Backstab"
+			}
 		},
-		"ultimate": {"kind": &"damage", "params": {"damage_ratio": 7.8, "reason": "Eviscerate"}},
+		"ultimate": {
+			"kind": &"damage",
+			"params": {
+				"damage_ratio": 7.8,
+				"reason": "Eviscerate"
+			}
+		},
 		"passive_ids": [&"agility"],
 	},
 	&"oracle": {
@@ -511,16 +673,34 @@ const CHAMPION_DATA := {
 		"ability_desc": "Grants a shield worth 15% max HP to self or an ally.",
 		"ultimate_desc": "Restores 35% max HP and grants a shield worth 35% max HP.",
 		"passive_desc": "Gains an additional 5 mana after each auto-attack.",
-		"ability": {"kind": &"shield", "params": {"max_hp_ratio": 0.15, "reason": "Purify"}},
+		"ability": {
+			"kind": &"shield",
+			"params": {
+				"max_hp_ratio": 0.15,
+				"reason": "Purify"
+			}
+		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"shield", "params": {"max_hp_ratio": 0.35, "reason": "Divine Shield"}},
-					{"kind": &"heal", "params": {"max_hp_ratio": 0.35, "reason": "Divine Shield"}},
+					{
+						"kind": &"shield",
+						"params": {
+							"max_hp_ratio": 0.35,
+							"reason": "Divine Shield"
+						}
+					},
+					{
+						"kind": &"heal",
+						"params": {
+							"max_hp_ratio": 0.35,
+							"reason": "Divine Shield"
+						}
+					}
 				],
-				"reason": "Divine Shield",
-			},
+				"reason": "Divine Shield"
+			}
 		},
 		"passive_ids": [&"enlightenment"],
 	},
@@ -554,21 +734,49 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_taunt", "params": {"radius": 2.0, "duration": 2.5, "reason": "Seismic Slam"}},
-					{"kind": &"self_aoe_damage", "params": {"radius": 1.0, "damage_ratio": 1.65, "damage_type": "physical", "reason": "Seismic Slam"}},
+					{
+						"kind": &"self_aoe_taunt",
+						"params": {
+							"radius": 2.0,
+							"duration": 2.5,
+							"reason": "Seismic Slam"
+						}
+					},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 1.0,
+							"damage_ratio": 1.65,
+							"damage_type": "physical",
+							"reason": "Seismic Slam"
+						}
+					}
 				],
-				"reason": "Seismic Slam",
-			},
+				"reason": "Seismic Slam"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 4.6, "trigger_on_hit": false, "reason": "Earthshaker"}},
-					{"kind": &"stun", "params": {"duration": 4, "reason": "Earthshaker"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 4.6,
+							"trigger_on_hit": false,
+							"reason": "Earthshaker"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 4,
+							"reason": "Earthshaker"
+						}
+					}
 				],
-				"reason": "Earthshaker",
-			},
+				"reason": "Earthshaker"
+			}
 		},
 		"passive_ids": [&"durability"],
 	},
@@ -602,21 +810,49 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.2, "damage_type": "magic", "trigger_on_hit": false, "reason": "Spectral Touch"}},
-					{"kind": &"stun", "params": {"duration": 1.5, "reason": "Spectral Touch"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.2,
+							"damage_type": "magic",
+							"trigger_on_hit": false,
+							"reason": "Spectral Touch"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Spectral Touch"
+						}
+					}
 				],
-				"reason": "Spectral Touch",
-			},
+				"reason": "Spectral Touch"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 4.8, "damage_type": "magic", "trigger_on_hit": false, "reason": "Phantom Strike"}},
-					{"kind": &"stun", "params": {"duration": 2.8, "reason": "Phantom Strike"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 4.8,
+							"damage_type": "magic",
+							"trigger_on_hit": false,
+							"reason": "Phantom Strike"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 2.8,
+							"reason": "Phantom Strike"
+						}
+					}
 				],
-				"reason": "Phantom Strike",
-			},
+				"reason": "Phantom Strike"
+			}
 		},
 		"passive_ids": [&"swiftness"],
 	},
@@ -650,13 +886,34 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"projectile", "params": {"damage_ratio": 1.0, "damage_type": "magic", "reason": "Soul Siphon"}},
-					{"kind": &"damage_based_heal", "params": {"heal_ratio": 0.1, "reason": "Soul Siphon"}},
+					{
+						"kind": &"projectile",
+						"params": {
+							"damage_ratio": 1.0,
+							"damage_type": "magic",
+							"reason": "Soul Siphon"
+						}
+					},
+					{
+						"kind": &"damage_based_heal",
+						"params": {
+							"heal_ratio": 0.1,
+							"reason": "Soul Siphon"
+						}
+					}
 				],
-				"reason": "Soul Siphon",
-			},
+				"reason": "Soul Siphon"
+			}
 		},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 2.6, "damage_type": "magic", "stun_duration": 0.5, "reason": "Chaos Rift"}},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 2.6,
+				"damage_type": "magic",
+				"stun_duration": 0.5,
+				"reason": "Chaos Rift"
+			}
+		},
 		"passive_ids": [&"vampirism"],
 	},
 	&"wizard": {
@@ -685,8 +942,25 @@ const CHAMPION_DATA := {
 		"ability_desc": "Fires a magical projectile dealing 170% magic damage.",
 		"ultimate_desc": "Calls down a meteor for 500% magic damage and deals splash damage on impact.",
 		"passive_desc": "Gains 5 mana every second.",
-		"ability": {"kind": &"projectile", "params": {"damage_ratio": 1.7, "damage_type": "magic", "speed_override": 7.0, "reason": "Arcane Bolt"}},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 5.0, "damage_type": "magic", "speed_override": 4.0, "radius_override": 0.07, "reason": "Meteor Bombardment"}},
+		"ability": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 1.7,
+				"damage_type": "magic",
+				"speed_override": 7.0,
+				"reason": "Arcane Bolt"
+			}
+		},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 5.0,
+				"damage_type": "magic",
+				"speed_override": 4.0,
+				"radius_override": 0.07,
+				"reason": "Meteor Bombardment"
+			}
+		},
 		"passive_ids": [&"mana_font"],
 	},
 	&"monk": {
@@ -719,21 +993,47 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.1, "trigger_on_hit": false, "reason": "Pressure Point"}},
-					{"kind": &"stun", "params": {"duration": 1.5, "reason": "Pressure Point"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.1,
+							"trigger_on_hit": false,
+							"reason": "Pressure Point"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.5,
+							"reason": "Pressure Point"
+						}
+					}
 				],
-				"reason": "Pressure Point",
-			},
+				"reason": "Pressure Point"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 4.1, "trigger_on_hit": false, "reason": "Hundred-Hand Slap"}},
-					{"kind": &"stun", "params": {"duration": 2.8, "reason": "Hundred-Hand Slap"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 4.1,
+							"trigger_on_hit": false,
+							"reason": "Hundred-Hand Slap"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 2.8,
+							"reason": "Hundred-Hand Slap"
+						}
+					}
 				],
-				"reason": "Hundred-Hand Slap",
-			},
+				"reason": "Hundred-Hand Slap"
+			}
 		},
 		"passive_ids": [&"technique"],
 	},
@@ -763,8 +1063,22 @@ const CHAMPION_DATA := {
 		"ability_desc": "Explosive shell dealing 150% damage and 0.6s stun.",
 		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"passive_desc": "Attacks and abilities deal 50% splash damage to enemies within 0.5 units of the target.",
-		"ability": {"kind": &"projectile", "params": {"damage_ratio": 1.5, "stun_duration": 0.6, "reason": "Shell Shock"}},
-		"ultimate": {"kind": &"projectile", "params": {"damage_ratio": 3.3, "radius_override": 0.1, "reason": "Big Bertha"}},
+		"ability": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 1.5,
+				"stun_duration": 0.6,
+				"reason": "Shell Shock"
+			}
+		},
+		"ultimate": {
+			"kind": &"projectile",
+			"params": {
+				"damage_ratio": 3.3,
+				"radius_override": 0.1,
+				"reason": "Big Bertha"
+			}
+		},
 		"passive_ids": [&"demolition"],
 	},
 	&"cleric": {
@@ -793,16 +1107,34 @@ const CHAMPION_DATA := {
 		"ability_desc": "Heals an ally or self for 20% max HP.",
 		"ultimate_desc": "Heals for 38% max HP and stuns target for 0.9s.",
 		"passive_desc": "Regenerates 2.0% of max HP every second.",
-		"ability": {"kind": &"heal", "params": {"max_hp_ratio": 0.20, "reason": "Holy Mending"}},
+		"ability": {
+			"kind": &"heal",
+			"params": {
+				"max_hp_ratio": 0.20,
+				"reason": "Holy Mending"
+			}
+		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"heal", "params": {"max_hp_ratio": 0.38, "reason": "Divine Aura"}},
-					{"kind": &"stun", "params": {"duration": 0.9, "reason": "Divine Aura"}},
+					{
+						"kind": &"heal",
+						"params": {
+							"max_hp_ratio": 0.38,
+							"reason": "Divine Aura"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 0.9,
+							"reason": "Divine Aura"
+						}
+					}
 				],
-				"reason": "Divine Aura",
-			},
+				"reason": "Divine Aura"
+			}
 		},
 		"passive_ids": [&"devotion"],
 	},
@@ -832,16 +1164,36 @@ const CHAMPION_DATA := {
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
 		"passive_desc": "Auto-attacks drain 5 mana from the target.",
-		"ability": {"kind": &"stun", "params": {"duration": 0.5, "reason": "Enthralling Song"}},
+		"ability": {
+			"kind": &"stun",
+			"params": {
+				"duration": 0.5,
+				"reason": "Enthralling Song"
+			}
+		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.8, "damage_type": "magic", "trigger_on_hit": false, "reason": "Banshee Wail"}},
-					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Banshee Wail"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.8,
+							"damage_type": "magic",
+							"trigger_on_hit": false,
+							"reason": "Banshee Wail"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Banshee Wail"
+						}
+					}
 				],
-				"reason": "Banshee Wail",
-			},
+				"reason": "Banshee Wail"
+			}
 		},
 		"passive_ids": [&"siphon"],
 	},
@@ -875,21 +1227,47 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 2.2, "trigger_on_hit": false, "reason": "Shield Slam"}},
-					{"kind": &"stun", "params": {"duration": 1.0, "reason": "Shield Slam"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 2.2,
+							"trigger_on_hit": false,
+							"reason": "Shield Slam"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 1.0,
+							"reason": "Shield Slam"
+						}
+					}
 				],
-				"reason": "Shield Slam",
-			},
+				"reason": "Shield Slam"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 4.3, "trigger_on_hit": false, "reason": "Valhalla Call"}},
-					{"kind": &"stun", "params": {"duration": 2.3, "reason": "Valhalla Call"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 4.3,
+							"trigger_on_hit": false,
+							"reason": "Valhalla Call"
+						}
+					},
+					{
+						"kind": &"stun",
+						"params": {
+							"duration": 2.3,
+							"reason": "Valhalla Call"
+						}
+					}
 				],
-				"reason": "Valhalla Call",
-			},
+				"reason": "Valhalla Call"
+			}
 		},
 		"passive_ids": [&"sweeping_strikes"],
 	},
@@ -923,21 +1301,52 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.6, "damage_type": "magic", "reason": "Ice Bolt", "trigger_on_hit": false}},
-					{"kind": &"slow", "params": {"slow_percentage": 0.4, "duration": 2.5, "reason": "Ice Bolt"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.6,
+							"damage_type": "magic",
+							"reason": "Ice Bolt",
+							"trigger_on_hit": false
+						}
+					},
+					{
+						"kind": &"slow",
+						"params": {
+							"slow_percentage": 0.4,
+							"duration": 2.5,
+							"reason": "Ice Bolt"
+						}
+					}
 				],
-				"reason": "Ice Bolt",
-			},
+				"reason": "Ice Bolt"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 2.5, "damage_ratio": 3.2, "damage_type": "magic", "reason": "Blizzard"}},
-					{"kind": &"self_aoe_slow", "params": {"radius": 2.5, "slow_percentage": 0.6, "duration": 4.0, "reason": "Blizzard"}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 2.5,
+							"damage_ratio": 3.2,
+							"damage_type": "magic",
+							"reason": "Blizzard"
+						}
+					},
+					{
+						"kind": &"self_aoe_slow",
+						"params": {
+							"radius": 2.5,
+							"slow_percentage": 0.6,
+							"duration": 4.0,
+							"reason": "Blizzard"
+						}
+					}
 				],
-				"reason": "Blizzard",
-			},
+				"reason": "Blizzard"
+			}
 		},
 		"passive_ids": [&"frost_aura"],
 	},
@@ -971,21 +1380,48 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.8, "trigger_on_hit": false, "reason": "Ground Slam"}},
-					{"kind": &"root", "params": {"duration": 1.8, "reason": "Ground Slam"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.8,
+							"trigger_on_hit": false,
+							"reason": "Ground Slam"
+						}
+					},
+					{
+						"kind": &"root",
+						"params": {
+							"duration": 1.8,
+							"reason": "Ground Slam"
+						}
+					}
 				],
-				"reason": "Ground Slam",
-			},
+				"reason": "Ground Slam"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 3.0, "damage_ratio": 3.5, "reason": "Earthquake"}},
-					{"kind": &"self_aoe_root", "params": {"radius": 3.0, "duration": 3.5, "reason": "Earthquake"}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 3.0,
+							"damage_ratio": 3.5,
+							"reason": "Earthquake"
+						}
+					},
+					{
+						"kind": &"self_aoe_root",
+						"params": {
+							"radius": 3.0,
+							"duration": 3.5,
+							"reason": "Earthquake"
+						}
+					}
 				],
-				"reason": "Earthquake",
-			},
+				"reason": "Earthquake"
+			}
 		},
 		"passive_ids": [&"earth_resistance"],
 	},
@@ -1019,21 +1455,52 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.4, "trigger_on_hit": false, "reason": "Arcane Strike"}},
-					{"kind": &"silence", "params": {"duration": 2.0, "block_abilities": true, "block_ultimate": true, "reason": "Arcane Strike"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.4,
+							"trigger_on_hit": false,
+							"reason": "Arcane Strike"
+						}
+					},
+					{
+						"kind": &"silence",
+						"params": {
+							"duration": 2.0,
+							"block_abilities": true,
+							"block_ultimate": true,
+							"reason": "Arcane Strike"
+						}
+					}
 				],
-				"reason": "Arcane Strike",
-			},
+				"reason": "Arcane Strike"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 2.0, "damage_ratio": 2.4, "reason": "Silence Zone"}},
-					{"kind": &"self_aoe_silence", "params": {"radius": 2.0, "duration": 4.0, "block_abilities": true, "block_ultimate": true, "reason": "Silence Zone"}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 2.0,
+							"damage_ratio": 2.4,
+							"reason": "Silence Zone"
+						}
+					},
+					{
+						"kind": &"self_aoe_silence",
+						"params": {
+							"radius": 2.0,
+							"duration": 4.0,
+							"block_abilities": true,
+							"block_ultimate": true,
+							"reason": "Silence Zone"
+						}
+					}
 				],
-				"reason": "Silence Zone",
-			},
+				"reason": "Silence Zone"
+			}
 		},
 		"passive_ids": [&"arcane_focus"],
 	},
@@ -1067,21 +1534,48 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.3, "trigger_on_hit": false, "reason": "Weapon Break"}},
-					{"kind": &"disarm", "params": {"duration": 1.5, "reason": "Weapon Break"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.3,
+							"trigger_on_hit": false,
+							"reason": "Weapon Break"
+						}
+					},
+					{
+						"kind": &"disarm",
+						"params": {
+							"duration": 1.5,
+							"reason": "Weapon Break"
+						}
+					}
 				],
-				"reason": "Weapon Break",
-			},
+				"reason": "Weapon Break"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 2.0, "damage_ratio": 2.8, "reason": "Suppression Field"}},
-					{"kind": &"self_aoe_disarm", "params": {"radius": 2.0, "duration": 3.0, "reason": "Suppression Field"}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 2.0,
+							"damage_ratio": 2.8,
+							"reason": "Suppression Field"
+						}
+					},
+					{
+						"kind": &"self_aoe_disarm",
+						"params": {
+							"radius": 2.0,
+							"duration": 3.0,
+							"reason": "Suppression Field"
+						}
+					}
 				],
-				"reason": "Suppression Field",
-			},
+				"reason": "Suppression Field"
+			}
 		},
 		"passive_ids": [&"weapon_breaker"],
 	},
@@ -1116,24 +1610,80 @@ const CHAMPION_DATA := {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.2, "damage_type": "magic", "trigger_on_hit": false, "reason": "Wind Blast"}},
-					{"kind": &"knockback", "params": {"distance": 1.5, "direction": "away_from_source", "reason": "Wind Blast"}},
-					{"kind": &"slow", "params": {"slow_percentage": 0.20, "duration": 1.0, "reason": "Wind Blast"}},
-					{"kind": &"shield", "params": {"max_hp_ratio": 0.15, "requires_result_from": "knockback", "requires_field": "knockback_applied", "requires_value": true, "reason": "Gust Protection"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.2,
+							"damage_type": "magic",
+							"trigger_on_hit": false,
+							"reason": "Wind Blast"
+						}
+					},
+					{
+						"kind": &"knockback",
+						"params": {
+							"distance": 1.5,
+							"direction": "away_from_source",
+							"reason": "Wind Blast"
+						}
+					},
+					{
+						"kind": &"slow",
+						"params": {
+							"slow_percentage": 0.20,
+							"duration": 1.0,
+							"reason": "Wind Blast"
+						}
+					},
+					{
+						"kind": &"shield",
+						"params": {
+							"max_hp_ratio": 0.15,
+							"requires_result_from": "knockback",
+							"requires_field": "knockback_applied",
+							"requires_value": true,
+							"reason": "Gust Protection"
+						}
+					}
 				],
-				"reason": "Wind Blast",
-			},
+				"reason": "Wind Blast"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 2.5, "damage_ratio": 3.0, "damage_type": "magic", "reason": "Tornado"}},
-					{"kind": &"self_aoe_knockback", "params": {"radius": 2.5, "distance": 2.5, "direction": "away_from_source", "reason": "Tornado"}},
-					{"kind": &"shield", "params": {"max_hp_ratio": 0.15, "requires_result_from": "self_aoe_knockback", "requires_field": "knockback_applied", "requires_value": true, "reason": "Gust Protection"}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 2.5,
+							"damage_ratio": 3.0,
+							"damage_type": "magic",
+							"reason": "Tornado"
+						}
+					},
+					{
+						"kind": &"self_aoe_knockback",
+						"params": {
+							"radius": 2.5,
+							"distance": 2.5,
+							"direction": "away_from_source",
+							"reason": "Tornado"
+						}
+					},
+					{
+						"kind": &"shield",
+						"params": {
+							"max_hp_ratio": 0.15,
+							"requires_result_from": "self_aoe_knockback",
+							"requires_field": "knockback_applied",
+							"requires_value": true,
+							"reason": "Gust Protection"
+						}
+					}
 				],
-				"reason": "Tornado",
-			},
+				"reason": "Tornado"
+			}
 		},
 	},
 	&"mirror_knight": {
@@ -1164,17 +1714,38 @@ const CHAMPION_DATA := {
 		"passive_desc": "Permanently reflects 10% of all damage taken back to attackers.",
 		"ability": {
 			"kind": &"reflect",
-			"params": {"reflect_percentage": 0.25, "duration": 3.0, "reflect_type": "all", "reason": "Mirror Shield"},
+			"params": {
+				"reflect_percentage": 0.25,
+				"duration": 3.0,
+				"reflect_type": "all",
+				"reason": "Mirror Shield"
+			}
 		},
 		"ultimate": {
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"damage", "params": {"damage_ratio": 1.8, "trigger_on_hit": false, "reason": "Mirror Aura"}},
-					{"kind": &"self_aoe_reflect", "params": {"radius": 2.0, "reflect_percentage": 0.4, "duration": 5.0, "reflect_type": "all", "reason": "Mirror Aura"}},
+					{
+						"kind": &"damage",
+						"params": {
+							"damage_ratio": 1.8,
+							"trigger_on_hit": false,
+							"reason": "Mirror Aura"
+						}
+					},
+					{
+						"kind": &"self_aoe_reflect",
+						"params": {
+							"radius": 2.0,
+							"reflect_percentage": 0.4,
+							"duration": 5.0,
+							"reflect_type": "all",
+							"reason": "Mirror Aura"
+						}
+					}
 				],
-				"reason": "Mirror Aura",
-			},
+				"reason": "Mirror Aura"
+			}
 		},
 		"passive_ids": [&"reflective_armor"],
 	},
@@ -1182,10 +1753,24 @@ const CHAMPION_DATA := {
 
 const PASSIVE_DATA := {
 	&"duelist": {
-		&"on_attack": [{"kind": &"constant_multiplier", "params": {"multiplier": 1.2}}],
+		&"post_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "attack_damage",
+				"multiplicative": 1.1,
+				"target_self": true,
+				"duration": 3.0,
+				"duration_type": "respawn"
+			}
+		}],
 	},
 	&"eagle_eye": {
-		&"on_attack": [{"kind": &"constant_multiplier", "params": {"multiplier": 1.25}}],
+		&"on_attack": [{
+			"kind": &"constant_multiplier",
+			"params": {
+				"multiplier": 1.25
+			}
+		}],
 		&"post_attack": [
 			{
 				"kind": &"threshold_splash_damage",
@@ -1206,116 +1791,273 @@ const PASSIVE_DATA := {
 		],
 	},
 	&"bastion": {
-		&"on_defense": [{"kind": &"constant_multiplier", "params": {"multiplier": 0.9}}],
+		&"on_defense": [{
+			"kind": &"constant_multiplier",
+			"params": {
+				"multiplier": 0.9
+			}
+		}],
 	},
 	&"executioner": {
-		&"on_attack": [{"kind": &"hp_threshold_damage_multiplier", "params": {"below_hp_ratio": 0.3, "multiplier": 2.0}}],
-		&"on_ability": [{"kind": &"hp_threshold_damage_multiplier", "params": {"below_hp_ratio": 0.3, "multiplier": 2.0}}],
-		&"on_ultimate": [{"kind": &"hp_threshold_damage_multiplier", "params": {"below_hp_ratio": 0.3, "multiplier": 2.0}}],
+		&"on_attack": [{
+			"kind": &"hp_threshold_damage_multiplier",
+			"params": {
+				"below_hp_ratio": 0.3,
+				"multiplier": 2.0
+			}
+		}],
+		&"on_ability": [{
+			"kind": &"hp_threshold_damage_multiplier",
+			"params": {
+				"below_hp_ratio": 0.3,
+				"multiplier": 2.0
+			}
+		}],
+		&"on_ultimate": [{
+			"kind": &"hp_threshold_damage_multiplier",
+			"params": {
+				"below_hp_ratio": 0.3,
+				"multiplier": 2.0
+			}
+		}],
 	},
 	&"mana_font": {
-		&"on_tick": [{"kind": &"mana_regen", "params": {"flat_amount": 5.0}}],
+		&"on_tick": [{
+			"kind": &"mana_regen",
+			"params": {
+				"flat_amount": 5.0
+			}
+		}],
 	},
 	&"deadeye": {
-		&"on_attack": [{"kind": &"distance_threshold_multiplier", "params": {"min_distance": 3.0, "multiplier": 1.25}}],
+		&"on_attack": [{
+			"kind": &"distance_threshold_multiplier",
+			"params": {
+				"min_distance": 3.0,
+				"multiplier": 1.25
+			}
+		}],
 	},
 	&"bloodlust": {
-		&"post_attack": [{"kind": &"damage_based_heal", "params": {"heal_ratio": 0.15}}],
+		&"post_attack": [{
+			"kind": &"damage_based_heal",
+			"params": {
+				"heal_ratio": 0.15
+			}
+		}],
 	},
 	&"rejuvenation": {
-		&"on_tick": [{"kind": &"heal", "params": {"max_hp_ratio": 0.02, "reason": "Rejuvenation"}}],
+		&"on_tick": [{
+			"kind": &"heal",
+			"params": {
+				"max_hp_ratio": 0.02,
+				"interval": 1.0,
+				"reason": "Rejuvenation"
+			}
+		}],
 	},
 	&"agility": {
-		&"on_defense": [{"kind": &"auto_dodge", "params": {"dodge_chance": 0.25, "on_dodge_multiplier": 0.0, "on_hit_multiplier": 1.0}}],
+		&"on_defense": [{
+			"kind": &"auto_dodge",
+			"params": {
+				"dodge_chance": 0.25,
+				"on_dodge_multiplier": 0.0,
+				"on_hit_multiplier": 1.0
+			}
+		}],
 	},
 	&"enlightenment": {
-		&"post_attack": [{"kind": &"mana_restore_on_hit", "params": {"flat_amount": 5.0}}],
+		&"post_attack": [{
+			"kind": &"mana_restore_on_hit",
+			"params": {
+				"flat_amount": 5.0
+			}
+		}],
 	},
 	&"durability": {
-		&"on_defense": [{"kind": &"constant_multiplier", "params": {"multiplier": 0.9}}],
+		&"on_defense": [{
+			"kind": &"constant_multiplier",
+			"params": {
+				"multiplier": 0.9
+			}
+		}],
 	},
 	&"swiftness": {
-		&"on_attack": [{"kind": &"constant_multiplier", "params": {"multiplier": 1.15}}],
+		&"on_attack": [{
+			"kind": &"constant_multiplier",
+			"params": {
+				"multiplier": 1.15
+			}
+		}],
 	},
 	&"vampirism": {
-		&"post_attack": [{"kind": &"heal", "params": {"flat_amount": 5.0, "reason": "Vampirism"}}],
+		&"post_attack": [{
+			"kind": &"heal",
+			"params": {
+				"flat_amount": 5.0,
+				"reason": "Vampirism"
+			}
+		}],
 	},
 	&"technique": {
-		&"post_attack": [{"kind": &"every_n_attacks_stun", "params": {"every_n": 3, "stun_duration": 0.5}}],
+		&"post_attack": [{
+			"kind": &"every_n_attacks_stun",
+			"params": {
+				"every_n": 3,
+				"stun_duration": 0.5
+			}
+		}],
 	},
 	&"demolition": {
-		&"post_attack": [{"kind": &"splash_damage", "params": {"radius": 0.5, "ratio": 0.5, "damage_type": "physical", "reason": "Explosion", "color": [255, 100, 50]}}],
+		&"post_attack": [{
+			"kind": &"splash_damage",
+			"params": {
+				"radius": 0.5,
+				"ratio": 0.5,
+				"damage_type": "physical",
+				"reason": "Explosion",
+				"color": [255, 100, 50]
+			}
+		}],
 	},
 	&"devotion": {
-		&"on_tick": [{"kind": &"heal", "params": {"max_hp_ratio": 0.02, "reason": "Devotion"}}],
+		&"on_tick": [{
+			"kind": &"heal",
+			"params": {
+				"max_hp_ratio": 0.02,
+				"interval": 1.0,
+				"reason": "Devotion"
+			}
+		}],
 	},
 	&"siphon": {
-		&"post_attack": [{"kind": &"drain_target_mana_on_hit", "params": {"flat_amount": 5.0}}],
+		&"post_attack": [{
+			"kind": &"drain_target_mana_on_hit",
+			"params": {
+				"flat_amount": 5.0
+			}
+		}],
 	},
 	&"bravery": {
-		&"on_attack": [{"kind": &"hp_threshold_damage_multiplier", "params": {"above_hp_ratio": 0.8, "multiplier": 1.2}}],
+		&"on_attack": [{
+			"kind": &"hp_threshold_damage_multiplier",
+			"params": {
+				"above_hp_ratio": 0.8,
+				"multiplier": 1.2
+			}
+		}],
 	},
 	&"sweeping_strikes": {
 		&"post_attack": [{
 			"kind": &"multi",
 			"params": {
 				"effects": [
-					{"kind": &"self_aoe_damage", "params": {"radius": 0.7, "flat_amount": 10.0, "damage_type": "physical", "reason": "Sweeping Strikes"}},
-					{"kind": &"damage_based_heal", "params": {"heal_ratio": 1.0}},
+					{
+						"kind": &"self_aoe_damage",
+						"params": {
+							"radius": 0.7,
+							"flat_amount": 10.0,
+							"damage_type": "physical",
+							"reason": "Sweeping Strikes"
+						}
+					},
+					{
+						"kind": &"damage_based_heal",
+						"params": {
+							"heal_ratio": 1.0
+						}
+					}
 				],
 			},
 		}],
 	},
 	&"frost_aura": {
-		&"post_attack": [{"kind": &"slow", "params": {"slow_percentage": 0.2, "duration": 1.5, "reason": "Frost Aura"}}],
+		&"post_attack": [{
+			"kind": &"slow",
+			"params": {
+				"slow_percentage": 0.2,
+				"duration": 1.5,
+				"reason": "Frost Aura"
+			}
+		}],
 	},
 	&"earth_resistance": {
 		&"on_defense": [{"kind": &"constant_multiplier", "params": {"multiplier": 0.85}}],
 	},
 	&"arcane_focus": {
-		&"on_attack": [{"kind": &"target_status_multiplier", "params": {"status_kind": "silence", "multiplier": 1.25}}],
+		&"on_attack": [{
+			"kind": &"target_status_multiplier",
+			"params": {
+				"status_kind": "silence",
+				"multiplier": 1.25
+			}
+		}],
 	},
 	&"weapon_breaker": {
-		&"on_attack": [{"kind": &"target_status_multiplier", "params": {"status_kind": "disarm", "multiplier": 1.2}}],
+		&"on_attack": [{
+			"kind": &"target_status_multiplier",
+			"params": {
+				"status_kind": "disarm",
+				"multiplier": 1.2
+			}
+		}],
 	},
 	# Gust Protection passive is implemented in the ability effects of Windcaller, so no hooks are needed here
 	&"gust_protection": {
 	},
 	&"reflective_armor": {
-		&"on_defense": [{"kind": &"reflect_damage", "params": {"reflect_percentage": 0.1, "reflect_type": "all"}}],
+		&"on_defense": [{
+			"kind": &"reflect_damage",
+			"params": {
+				"reflect_percentage": 0.1,
+				"reflect_type": "all"
+			}
+		}],
 	},
 	# Stat modifier example passives
 	&"berserk": {
-		&"on_attack": [{"kind": &"stat_modifier", "params": {
-			"stat_name": "attack_damage", 
-			"additive": 10.0, 
-			"duration": 5.0, 
-			"duration_type": "respawn"
-		}}],
+		&"on_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "attack_damage",
+				"additive": 10.0,
+				"duration": 5.0,
+				"duration_type": "respawn"
+			}
+		}],
 	},
 	&"weaken": {
-		&"on_attack": [{"kind": &"stat_modifier", "params": {
-			"stat_name": "attack_damage", 
-			"multiplicative": 0.8, 
-			"duration": 3.0, 
-			"duration_type": "respawn"
-		}}],
+		&"on_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "attack_damage",
+				"multiplicative": 0.8,
+				"duration": 3.0,
+				"duration_type": "respawn"
+			}
+		}],
 	},
 	&"tank_boost": {
-		&"on_tick": [{"kind": &"stat_modifier", "params": {
-			"stat_name": "armor", 
-			"additive": 5.0, 
-			"duration": 0.0, 
-			"duration_type": "match"
-		}}],
+		&"on_tick": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "armor",
+				"additive": 5.0,
+				"duration": 0.0,
+				"duration_type": "match"
+			}
+		}],
 	},
 	&"speed_burst": {
-		&"on_attack": [{"kind": &"stat_modifier", "params": {
-			"stat_name": "move_speed", 
-			"multiplicative": 1.2, 
-			"duration": 2.0, 
-			"duration_type": "respawn"
-		}}],
+		&"on_attack": [{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "move_speed",
+				"multiplicative": 1.2,
+				"duration": 2.0,
+				"duration_type": "respawn"
+			}
+		}],
 	},
 }
 
@@ -1323,7 +2065,12 @@ const ROLE_CONFIG_DATA := {
 	&"tank": {
 		"stat_mods": {},
 		"passive_on_tick": null,
-		"passive_post_take_damage": {"kind": &"post_damage_mana_gain", "params": {"damage_ratio": SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO}},
+		"passive_post_take_damage": {
+			"kind": &"post_damage_mana_gain",
+			"params": {
+				"damage_ratio": SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO
+			}
+		},
 	},
 	&"fighter": {
 		"stat_mods": {},

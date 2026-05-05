@@ -65,6 +65,10 @@ private:
 		StringName requires_result_from;  // Which previous effect to check
 		StringName requires_field;        // Which field to check
 		Variant requires_value;           // What value to require
+		
+		// Interval timing support for on_tick effects
+		double interval = 1.0;           // Custom interval (seconds), default 1.0
+		double accumulator = 0.0;       // Per-effect timing accumulator
 	};
 
 	struct EffectContext {
@@ -124,6 +128,9 @@ private:
 		double last_hit_time = 0.0;
 		int64_t respawn_slot_index = -1; // -1 = no assigned slot
 		StringName forced_target_kind;
+		
+		// Per-unit effect timing accumulators for on_tick effects
+		std::unordered_map<size_t, double> effect_accumulators;
 	};
 
 	/// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.

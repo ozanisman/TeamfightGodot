@@ -74,6 +74,214 @@ inline const StringName &sn_objective() {
 	static const StringName s("objective");
 	return s;
 }
+inline const StringName &sn_auto() {
+	static const StringName s("auto");
+	return s;
+}
+inline const StringName &sn_multi() {
+	static const StringName s("multi");
+	return s;
+}
+inline const StringName &sn_damage() {
+	static const StringName s("damage");
+	return s;
+}
+inline const StringName &sn_projectile() {
+	static const StringName s("projectile");
+	return s;
+}
+inline const StringName &sn_stun() {
+	static const StringName s("stun");
+	return s;
+}
+inline const StringName &sn_shield() {
+	static const StringName s("shield");
+	return s;
+}
+inline const StringName &sn_heal() {
+	static const StringName s("heal");
+	return s;
+}
+inline const StringName &sn_self_aoe_taunt() {
+	static const StringName s("self_aoe_taunt");
+	return s;
+}
+inline const StringName &sn_self_aoe_damage() {
+	static const StringName s("self_aoe_damage");
+	return s;
+}
+inline const StringName &sn_splash_damage() {
+	static const StringName s("splash_damage");
+	return s;
+}
+inline const StringName &sn_threshold_splash_damage() {
+	static const StringName s("threshold_splash_damage");
+	return s;
+}
+inline const StringName &sn_mana_regen() {
+	static const StringName s("mana_regen");
+	return s;
+}
+inline const StringName &sn_post_damage_mana_gain() {
+	static const StringName s("post_damage_mana_gain");
+	return s;
+}
+inline const StringName &sn_damage_based_heal() {
+	static const StringName s("damage_based_heal");
+	return s;
+}
+inline const StringName &sn_mana_restore_on_hit() {
+	static const StringName s("mana_restore_on_hit");
+	return s;
+}
+inline const StringName &sn_drain_target_mana_on_hit() {
+	static const StringName s("drain_target_mana_on_hit");
+	return s;
+}
+inline const StringName &sn_every_n_attacks_stun() {
+	static const StringName s("every_n_attacks_stun");
+	return s;
+}
+inline const StringName &sn_self_dash() {
+	static const StringName s("self_dash");
+	return s;
+}
+inline const StringName &sn_auto_dodge() {
+	static const StringName s("auto_dodge");
+	return s;
+}
+inline const StringName &sn_constant_multiplier() {
+	static const StringName s("constant_multiplier");
+	return s;
+}
+inline const StringName &sn_hp_threshold_damage_multiplier() {
+	static const StringName s("hp_threshold_damage_multiplier");
+	return s;
+}
+inline const StringName &sn_distance_threshold_multiplier() {
+	static const StringName s("distance_threshold_multiplier");
+	return s;
+}
+inline const StringName &sn_slow() {
+	static const StringName s("slow");
+	return s;
+}
+inline const StringName &sn_root() {
+	static const StringName s("root");
+	return s;
+}
+inline const StringName &sn_silence() {
+	static const StringName s("silence");
+	return s;
+}
+inline const StringName &sn_disarm() {
+	static const StringName s("disarm");
+	return s;
+}
+inline const StringName &sn_knockback() {
+	static const StringName s("knockback");
+	return s;
+}
+inline const StringName &sn_reflect() {
+	static const StringName s("reflect");
+	return s;
+}
+inline const StringName &sn_self_aoe_slow() {
+	static const StringName s("self_aoe_slow");
+	return s;
+}
+inline const StringName &sn_self_aoe_root() {
+	static const StringName s("self_aoe_root");
+	return s;
+}
+inline const StringName &sn_self_aoe_silence() {
+	static const StringName s("self_aoe_silence");
+	return s;
+}
+inline const StringName &sn_self_aoe_disarm() {
+	static const StringName s("self_aoe_disarm");
+	return s;
+}
+inline const StringName &sn_self_aoe_knockback() {
+	static const StringName s("self_aoe_knockback");
+	return s;
+}
+inline const StringName &sn_self_aoe_reflect() {
+	static const StringName s("self_aoe_reflect");
+	return s;
+}
+inline const StringName &sn_reflect_damage() {
+	static const StringName s("reflect_damage");
+	return s;
+}
+inline const StringName &sn_knockback_shield() {
+	static const StringName s("knockback_shield");
+	return s;
+}
+inline const StringName &sn_target_status_multiplier() {
+	static const StringName s("target_status_multiplier");
+	return s;
+}
+inline const StringName &sn_stat_modifier() {
+	static const StringName s("stat_modifier");
+	return s;
+}
+inline const StringName &sn_ability() {
+	static const StringName s("ability");
+	return s;
+}
+inline const StringName &sn_ultimate() {
+	static const StringName s("ultimate");
+	return s;
+}
+inline const StringName &sn_physical() {
+	static const StringName s("physical");
+	return s;
+}
+inline const StringName &sn_magic() {
+	static const StringName s("magic");
+	return s;
+}
+inline const StringName &sn_true() {
+	static const StringName s("true");
+	return s;
+}
+inline const StringName &sn_passive() {
+	static const StringName s("passive");
+	return s;
+}
+inline const StringName &sn_on_attack() {
+	static const StringName s("on_attack");
+	return s;
+}
+inline const StringName &sn_on_defense() {
+	static const StringName s("on_defense");
+	return s;
+}
+inline const StringName &sn_on_tick() {
+	static const StringName s("on_tick");
+	return s;
+}
+inline const StringName &sn_post_attack() {
+	static const StringName s("post_attack");
+	return s;
+}
+inline const StringName &sn_post_take_damage() {
+	static const StringName s("post_take_damage");
+	return s;
+}
+inline const StringName &sn_on_ability() {
+	static const StringName s("on_ability");
+	return s;
+}
+inline const StringName &sn_on_ultimate() {
+	static const StringName s("on_ultimate");
+	return s;
+}
+inline const StringName &sn_cast_start() {
+	static const StringName s("cast_start");
+	return s;
+}
 } // namespace
 
 namespace {
@@ -1439,6 +1647,13 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 			s.bucket_order[static_cast<size_t>(i++)] = StringName(n);
 		}
 		s.bucket_order_len = i;
+		s.bucket_rank_by_tag.fill(i);
+		for (int rank = 0; rank < i; ++rank) {
+			TargetBucketTag tt = tag_for_bucket_order_string(s.bucket_order[static_cast<size_t>(rank)]);
+			if (tt != TargetBucketTag::TagCount) {
+				s.bucket_rank_by_tag[static_cast<size_t>(tt)] = std::min(s.bucket_rank_by_tag[static_cast<size_t>(tt)], rank);
+			}
+		}
 	};
 	auto set_role_prio = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const StringName &role, double value) {
 		int64_t slot = role_slot_for_name(role);
@@ -1678,7 +1893,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (!u.alive) {
 			continue;
 		}
-		_units[idx].incoming_target_count = 0;
 		_sync_targeting_frame_unit(_units[idx]);
 		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
 			_tick_ctx.needs_cluster_density = true;
@@ -1709,7 +1923,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (!u.alive) {
 			continue;
 		}
-		_units[idx].incoming_target_count = 0;
 		_sync_targeting_frame_unit(_units[idx]);
 		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
 			_tick_ctx.needs_cluster_density = true;
@@ -1733,6 +1946,31 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	}
 	_tick_ctx.player_backliner_alive_count = int(_tick_ctx.player_backliner_indices.size());
 	_tick_ctx.enemy_backliner_alive_count = int(_tick_ctx.enemy_backliner_indices.size());
+
+	for (int64_t idx : _alive_player_indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive || u.target_id == 0) {
+			continue;
+		}
+		UnitState *target = _unit_by_id(u.target_id);
+		if (target == nullptr || !target->alive) {
+			continue;
+		}
+		target->incoming_target_count += 1;
+		_sync_targeting_frame_unit(*target);
+	}
+	for (int64_t idx : _alive_enemy_indices) {
+		const UnitState &u = _units[idx];
+		if (!u.alive || u.target_id == 0) {
+			continue;
+		}
+		UnitState *target = _unit_by_id(u.target_id);
+		if (target == nullptr || !target->alive) {
+			continue;
+		}
+		target->incoming_target_count += 1;
+		_sync_targeting_frame_unit(*target);
+	}
 }
 
 void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id, int64_t tgt_id, double val) {
@@ -2608,7 +2846,6 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_append_team_units(Array(match_input.get("enemy_units", Array())), StringName("enemy"), next_instance_id, _enemy_comp);
 	_build_role_strategy_cache();
 	_prepare_tick_context();
-	_refresh_target_pressure();
 }
 
 TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind) {
@@ -2633,25 +2870,25 @@ TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(U
 
 const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCore::_collect_effects(const UnitState &unit, const StringName &kind) {
 	static const std::vector<EffectRecord> EMPTY_EFFECTS;
-	if (kind == StringName("on_attack")) {
+	if (kind == sn_on_attack()) {
 		return _uc(unit).passive_effects[0];
 	}
-	if (kind == StringName("on_defense")) {
+	if (kind == sn_on_defense()) {
 		return _uc(unit).passive_effects[1];
 	}
-	if (kind == StringName("on_tick")) {
+	if (kind == sn_on_tick()) {
 		return _uc(unit).passive_effects[2];
 	}
-	if (kind == StringName("post_attack")) {
+	if (kind == sn_post_attack()) {
 		return _uc(unit).passive_effects[3];
 	}
-	if (kind == StringName("post_take_damage")) {
+	if (kind == sn_post_take_damage()) {
 		return _uc(unit).passive_effects[4];
 	}
-	if (kind == StringName("on_ability")) {
+	if (kind == sn_on_ability()) {
 		return _uc(unit).passive_effects[5];
 	}
-	if (kind == StringName("on_ultimate")) {
+	if (kind == sn_on_ultimate()) {
 		return _uc(unit).passive_effects[6];
 	}
 	return EMPTY_EFFECTS;
@@ -2784,20 +3021,20 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	double pre_res = damage;
 	
 	// Apply defense multipliers only for non-true damage
-	if (damage_type != StringName("true")) {
+	if (damage_type != sn_true()) {
 		pre_res *= _defense_multiplier(target, source, damage, action_kind);
 	}
 	
 	// Auto-dodge applies to all damage types (including true) for auto-attacks
-	if (action_kind == StringName("auto")) {
+	if (action_kind == sn_auto()) {
 		pre_res *= _auto_dodge_multiplier(target, source, damage);
 	}
 	
 	double final_damage = pre_res;
-	if (damage_type == StringName("physical")) {
+	if (damage_type == sn_physical()) {
 		double armor = get_effective_armor(target);
 		final_damage *= Math::clamp(1.0 - armor, 0.05, 1.0);
-	} else if (damage_type == StringName("magic")) {
+	} else if (damage_type == sn_magic()) {
 		double mr = get_effective_magic_resist(target);
 		final_damage *= Math::clamp(1.0 - mr, 0.05, 1.0);
 	}
@@ -2823,13 +3060,13 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	// Self-inflicted damage should not count as damage dealt.
 	if (source.instance_id != target.instance_id) {
 		_uc(source).damage_dealt += total_damage;
-		if (action_kind == StringName("auto")) {
+		if (action_kind == sn_auto()) {
 			_uc(source).damage_dealt_auto += total_damage;
-		} else if (action_kind == StringName("ability")) {
+		} else if (action_kind == sn_ability()) {
 			_uc(source).damage_dealt_ability += total_damage;
-		} else if (action_kind == StringName("ultimate")) {
+		} else if (action_kind == sn_ultimate()) {
 			_uc(source).damage_dealt_ultimate += total_damage;
-		} else if (action_kind == StringName("passive")) {
+		} else if (action_kind == sn_passive()) {
 			_uc(source).damage_dealt_passive += total_damage;
 		}
 	}
@@ -2842,7 +3079,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	}
 	_maybe_apply_reflect_damage(source, target, total_damage, damage_type, context);
 	if (target.hp <= 0.0) {
-		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
+		const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, sn_post_take_damage());
 		EffectContext post_context = context;
 		// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
 		post_context.source = &target;
@@ -2855,7 +3092,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		_handle_death(source, target);
 		return total_damage;
 	}
-	const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, StringName("post_take_damage"));
+	const std::vector<EffectRecord> &post_take_damage_effects = _collect_effects(target, sn_post_take_damage());
 	EffectContext post_context = context;
 	// Python parity: post_take_damage passives run in the defender's own context (ctx.unit = defender).
 	post_context.source = &target;
@@ -3161,13 +3398,13 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 		_viewer_record_shield_fx(target, amount);
 	}
 	_uc(source).shielding_done += amount;
-	if (action_kind == StringName("auto")) {
+	if (action_kind == sn_auto()) {
 		_uc(source).shielding_done_auto += amount;
-	} else if (action_kind == StringName("ability")) {
+	} else if (action_kind == sn_ability()) {
 		_uc(source).shielding_done_ability += amount;
-	} else if (action_kind == StringName("ultimate")) {
+	} else if (action_kind == sn_ultimate()) {
 		_uc(source).shielding_done_ultimate += amount;
-	} else if (action_kind == StringName("passive")) {
+	} else if (action_kind == sn_passive()) {
 		_uc(source).shielding_done_passive += amount;
 	}
 	if (source.instance_id != target.instance_id) {
@@ -3191,13 +3428,13 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 	}
 	_sync_targeting_frame_unit(target);
 	_uc(source).healing_done += amount;
-	if (action_kind == StringName("auto")) {
+	if (action_kind == sn_auto()) {
 		_uc(source).healing_done_auto += amount;
-	} else if (action_kind == StringName("ability")) {
+	} else if (action_kind == sn_ability()) {
 		_uc(source).healing_done_ability += amount;
-	} else if (action_kind == StringName("ultimate")) {
+	} else if (action_kind == sn_ultimate()) {
 		_uc(source).healing_done_ultimate += amount;
-	} else if (action_kind == StringName("passive")) {
+	} else if (action_kind == sn_passive()) {
 		_uc(source).healing_done_passive += amount;
 	}
 	if (source.instance_id != target.instance_id) {
@@ -4017,17 +4254,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 		return bucket_tag;
 	};
-	std::array<int, static_cast<size_t>(TeamfightSimulationCore::TargetBucketTag::TagCount)> bucket_rank_by_tag{};
-	for (size_t ti = 0; ti < bucket_rank_by_tag.size(); ++ti) {
-		bucket_rank_by_tag[ti] = strategy.bucket_order_len;
-	}
-	for (int i = 0; i < strategy.bucket_order_len; ++i) {
-		TeamfightSimulationCore::TargetBucketTag tt = tag_for_bucket_order_string(strategy.bucket_order[static_cast<size_t>(i)]);
-		if (tt != TeamfightSimulationCore::TargetBucketTag::TagCount) {
-			size_t idx = static_cast<size_t>(tt);
-			bucket_rank_by_tag[idx] = std::min(bucket_rank_by_tag[idx], i);
-		}
-	}
+	const std::array<int, static_cast<size_t>(TeamfightSimulationCore::TargetBucketTag::TagCount)> &bucket_rank_by_tag = strategy.bucket_rank_by_tag;
 
 	// Python: whenever we do evaluate, we reset the retarget timer immediately (even if we end up keeping).
 	unit.retarget_timer = RETARGET_INTERVAL;
@@ -4621,6 +4848,7 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	for (UnitState &unit : _units) {
 		unit.respawned_this_tick = false;
 		unit.cast_resolved_this_tick = false;
+		unit.incoming_target_count = 0;
 	}
 	// Python: projectiles resolve before unit updates.
 	if (profile_sim) {
@@ -4639,12 +4867,6 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	}
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();
-		_refresh_target_pressure();
-		_sim_profile_ns_refresh_pressure_pre += sim_profile_elapsed_ns(t0);
-	} else {
-		_refresh_target_pressure();
-	}
-	if (profile_sim) {
 		for (UnitState &unit : _units) {
 			_update_unit(unit, true);
 		}
@@ -4652,13 +4874,6 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 		for (UnitState &unit : _units) {
 			_update_unit(unit, false);
 		}
-	}
-	if (profile_sim) {
-		auto t0 = std::chrono::steady_clock::now();
-		_refresh_target_pressure(false);
-		_sim_profile_ns_refresh_pressure_post += sim_profile_elapsed_ns(t0);
-	} else {
-		_refresh_target_pressure(false);
 	}
 }
 
@@ -4987,12 +5202,12 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 
 bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind) {
 	(void)distance;
-	bool has_effect = action_kind == StringName("ability") ? unit.has_ability_effect : unit.has_ultimate_effect;
+	bool has_effect = action_kind == sn_ability() ? unit.has_ability_effect : unit.has_ultimate_effect;
 	if (!has_effect) {
 		return false;
 	}
 	UnitState *target_ally = _select_ally_target(unit);
-	if (action_kind == StringName("ability")) {
+	if (action_kind == sn_ability()) {
 		_uc(unit).abilities += 1;
 	} else {
 		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
@@ -5000,12 +5215,12 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 	unit.casting_remaining = CASTING_WINDUP;
 	UnitStateCold &ucast = _uc(unit);
 	ucast.casting_kind = action_kind;
-	ucast.casting_effect = action_kind == StringName("ability") ? ucast.ability_effect : ucast.ultimate_effect;
+	ucast.casting_effect = action_kind == sn_ability() ? ucast.ability_effect : ucast.ultimate_effect;
 	unit.has_casting_effect = true;
 	unit.casting_target_id = unit.target_id != 0 ? unit.target_id : target.instance_id;
 	unit.casting_ally_target_id = unit.current_ally_target_id != 0 ? unit.current_ally_target_id : (target_ally == nullptr ? 0 : target_ally->instance_id);
 
-	_emit_trace(StringName("cast_start"), unit.instance_id, target.instance_id, action_kind == StringName("ultimate") ? 1.0 : 0.0);
+	_emit_trace(sn_cast_start(), unit.instance_id, target.instance_id, action_kind == sn_ultimate() ? 1.0 : 0.0);
 
 	return true;
 }
@@ -5028,7 +5243,7 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	}
 	
 	// Start cooldown after cast resolves
-	if (action_kind == StringName("ability")) {
+	if (action_kind == sn_ability()) {
 		unit.ability_cooldown = get_effective_ability_cd(unit);
 	}
 	
@@ -5269,10 +5484,10 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 	EffectContext context = _build_context(*source, target, nullptr, damage, action_kind);
 	double dealt = _apply_damage(*source, *target, damage, damage_type, action_kind, context);
 	_run_post_attack_effects(*source, *target, dealt, context);
-	if (projectile.action_kind == StringName("auto")) {
+	if (projectile.action_kind == sn_auto()) {
 		double life_steal = get_effective_life_steal(*source);
 		if (life_steal > 0.0) {
-			_heal_unit(*source, *source, dealt * life_steal, StringName("auto"));
+			_heal_unit(*source, *source, dealt * life_steal, sn_auto());
 		}
 	}
 	if (projectile.stun_duration > 0.0 && target->alive) {
@@ -5363,13 +5578,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			damage += effect.scalar2;  // flat_amount
 			
 			// Apply ability/ultimate modifiers if applicable
-			if (context.action_kind == StringName("ability")) {
+			if (context.action_kind == sn_ability()) {
 				damage = _apply_ability_modifiers(source, damage_target, damage);
-			} else if (context.action_kind == StringName("ultimate")) {
+			} else if (context.action_kind == sn_ultimate()) {
 				damage = _apply_ultimate_modifiers(source, damage_target, damage);
 			}
 			
-			double dealt = _apply_damage(source, *damage_target, damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, context);
+			double dealt = _apply_damage(source, *damage_target, damage, effect.damage_type.is_empty() ? sn_physical() : effect.damage_type, context.action_kind, context);
 			context.damage = dealt;
 			
 			// Minimum health check for self-damage
@@ -5398,14 +5613,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double damage = source.combat.attack_damage * effect.scalar2;
 			
 			// Apply ability/ultimate modifiers if applicable
-			if (context.action_kind == StringName("ability")) {
+			if (context.action_kind == sn_ability()) {
 				damage = _apply_ability_modifiers(source, target, damage);
-			} else if (context.action_kind == StringName("ultimate")) {
+			} else if (context.action_kind == sn_ultimate()) {
 				damage = _apply_ultimate_modifiers(source, target, damage);
 			}
 			
 			projectile_state.damage = damage;
-			projectile_state.damage_type = effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type;
+			projectile_state.damage_type = effect.damage_type.is_empty() ? sn_physical() : effect.damage_type;
 			projectile_state.stun_duration = effect.scalar3;
 			// Python parity: null speed/radius override → fall back to unit's projectile stats.
 			double projectile_speed = (effect.scalar0 < 0.0)
@@ -6064,7 +6279,6 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 		}
 		_build_role_strategy_cache();
 		_prepare_tick_context();
-		_refresh_target_pressure();
 		if (bench_phases) {
 			ns_match_setup_total += sim_profile_elapsed_ns(t_match0);
 		}

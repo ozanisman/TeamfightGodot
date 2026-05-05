@@ -2,7 +2,7 @@
 
 Generated from [scripts/tools/check_benchmark.gd](../scripts/tools/check_benchmark.gd) via `run_godot.ps1 -- --check-benchmark`. Native DLL built **Release**. Older raw transcripts: [bench_2000_t1.txt](bench_2000_t1.txt), [bench_2000_t5.txt](bench_2000_t5.txt), [bench_10000_t1.txt](bench_10000_t1.txt).
 
-**April 2026:** Native changes include catalog load **mutex**, **spatial broad-phase** for targeting/density/kite/obscurance only when either team has **≥ 6** alive (standard **5v5 uses brute** at full roster). Optional **`run_matches_simulation_only`** (bench: native batch when **`--workers=1`** + **`--bench-skip-summaries`**). Benchmark exits after **two idle frames** before `quit`.
+**April 2026:** Native changes include catalog load **mutex**, **spatial broad-phase** for targeting/density/kite/obscurance only when either team has **4+** alive. Standard **5v5 can enter the spatial path** under the current code path, so benchmark comparisons here assume that executed path. Optional **`run_matches_simulation_only`** (bench: native batch when **`--workers=1`** + **`--bench-skip-summaries`**). Benchmark exits after **two idle frames** before `quit`.
 
 ## Measurement gates (performance work)
 
@@ -141,7 +141,7 @@ Raw **workers=8** runs: 462.3 (median after GDScript duplicate() optimizations)
 
 ## Results — roadmap pass (Apr 2026, 2000 matches, Release)
 
-**Change set:** `SPATIAL_BROAD_PHASE_TEAM_THRESHOLD` **6** (standard 5v5 uses brute for targeting/density/kite/obscurance). Separation uses the same **≥ 6 alive on team** rule for grid-based ally pruning. Parity: **22/22** goldens.
+**Change set:** Historical prior revision: `SPATIAL_BROAD_PHASE_TEAM_THRESHOLD` **6** (standard 5v5 used brute for targeting/density/kite/obscurance in that earlier run). Separation used the same **≥ 6 alive on team** rule for grid-based ally pruning. Parity: **22/22** goldens.
 
 ### 1v1 (`team_size` 1), 16 workers (guardrail, single run)
 
@@ -250,7 +250,7 @@ Godot may still exit non-zero on teardown warnings; the driver treats a shard as
 ## Analysis
 
 1. **Throughput:** **1v1** remains **~790+** m/s on 16 workers (guardrail). **5v5** reference baselines with **`--bench-skip-summaries`**: **315** m/s at **`--workers=1`**, **526** m/s at **`--workers=3`** (direct execution means, [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026)).
-2. **5v5 scaling:** Broad-phase for targeting/density/kite/obscurance activates only at **≥ 6** alive on a team; standard 5v5 at full roster stays **brute** to avoid small-`n` grid overhead. **6v6+** or lopsided counts still use grids.
+2. **5v5 scaling:** Broad-phase for targeting/density/kite/obscurance activates at **4+** alive on a team in the current code path, so 5v5 can use the spatial path. **6v6+** or lopsided counts still use grids, but the 5v5 benchmark contract should be read against this current threshold.
 3. **Threading:** For **5v5**, prefer **`--workers=1`** for core sim throughput vs heavy worker counts when using bench-skip + native batch (less contention). **`--workers=3`** is the documented multi-worker reference (**526** m/s mean); tune for your machine.
 4. **Memory:** Bench-skip removes most static delta / peak growth from summary retention; full-summary 5v5 still allocates heavily per match.
 5. **Godot exit noise:** `ObjectDB instances leaked` / resources in use may still appear; teardown now waits **two** frames before `quit`. Further reduction may need explicit unrefs or longer drain.

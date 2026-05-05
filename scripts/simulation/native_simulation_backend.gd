@@ -103,6 +103,18 @@ func run_match(match_input):
 		return {}
 	return _detach_native_summary(_backend.call("run_match", match_input))
 
+func run_match_stats(match_input):
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return {}
+	if _backend.has_method("run_match_stats"):
+		var compact_result: Variant = _backend.call("run_match_stats", match_input)
+		if compact_result is Dictionary:
+			return compact_result
+		return {}
+	push_error("Native simulation backend is missing run_match_stats().")
+	return {}
+
 func run_matches(match_inputs: Array):
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")

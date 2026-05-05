@@ -850,6 +850,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_ready"), &TeamfightSimulationCore::is_ready);
 	ClassDB::bind_method(D_METHOD("clear"), &TeamfightSimulationCore::clear);
 	ClassDB::bind_method(D_METHOD("run_match", "match_input"), &TeamfightSimulationCore::run_match);
+	ClassDB::bind_method(D_METHOD("run_match_stats", "match_input"), &TeamfightSimulationCore::run_match_stats);
 	ClassDB::bind_method(D_METHOD("run_matches", "match_inputs"), &TeamfightSimulationCore::run_matches);
 	ClassDB::bind_method(D_METHOD("run_match_simulation_only", "match_input"), &TeamfightSimulationCore::run_match_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_matches_simulation_only", "match_inputs"), &TeamfightSimulationCore::run_matches_simulation_only);
@@ -3025,22 +3026,22 @@ const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCor
 }
 
 bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const StringName &status_kind) const {
-	if (status_kind == StringName("slow")) {
+	if (status_kind == sn_slow()) {
 		return target.slow_remaining > 0.0;
 	}
-	if (status_kind == StringName("root")) {
+	if (status_kind == sn_root()) {
 		return target.root_remaining > 0.0;
 	}
-	if (status_kind == StringName("silence")) {
+	if (status_kind == sn_silence()) {
 		return target.silence_remaining > 0.0;
 	}
-	if (status_kind == StringName("disarm")) {
+	if (status_kind == sn_disarm()) {
 		return target.disarm_remaining > 0.0;
 	}
-	if (status_kind == StringName("stun")) {
+	if (status_kind == sn_stun()) {
 		return target.stun_remaining > 0.0;
 	}
-	if (status_kind == StringName("reflect")) {
+	if (status_kind == sn_reflect()) {
 		return target.reflect_buff_remaining > 0.0 || target.reflect_passive_pct_all > 0.0 || target.reflect_passive_pct_physical > 0.0;
 	}
 	return false;
@@ -3089,7 +3090,7 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind) {
 	double multiplier = 1.0;
 	EffectContext context = _build_context(source, &target, nullptr, damage, action_kind);
-	const std::vector<EffectRecord> &effects = _collect_effects(target, StringName("on_defense"));
+	const std::vector<EffectRecord> &effects = _collect_effects(target, sn_on_defense());
 	for (const EffectRecord &effect : effects) {
 		if (effect.opcode == EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
@@ -3101,8 +3102,8 @@ double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState
 
 double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitState &source, double damage) {
 	double multiplier = 1.0;
-	EffectContext context = _build_context(source, &target, nullptr, damage, StringName("auto"));
-	const std::vector<EffectRecord> &effects = _collect_effects(target, StringName("on_defense"));
+	EffectContext context = _build_context(source, &target, nullptr, damage, sn_auto());
+	const std::vector<EffectRecord> &effects = _collect_effects(target, sn_on_defense());
 	for (const EffectRecord &effect : effects) {
 		if (effect.opcode != EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
@@ -3114,8 +3115,8 @@ double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitSt
 
 double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage) {
 	(void)distance;
-	EffectContext context = _build_context(unit, &target, nullptr, damage, StringName("auto"));
-	const std::vector<EffectRecord> &effects = _collect_effects(unit, StringName("on_attack"));
+	EffectContext context = _build_context(unit, &target, nullptr, damage, sn_auto());
+	const std::vector<EffectRecord> &effects = _collect_effects(unit, sn_on_attack());
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
 		modified_damage *= _evaluate_multiplier_effect(effect, context, modified_damage);
@@ -3273,7 +3274,7 @@ void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, U
 	bounce.suppress_reflect_chain = true;
 	bounce.source = &defender;
 	bounce.target = &attacker;
-	_apply_damage(defender, attacker, reflected, damage_type, StringName("passive"), bounce);
+	_apply_damage(defender, attacker, reflected, damage_type, sn_passive(), bounce);
 }
 
 void TeamfightSimulationCore::_touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage) {
@@ -4401,6 +4402,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double current_target_dist_for_switch = -1.0;
 	const double unit_x = unit.pos_x;
 	const double unit_y = unit.pos_y;
+	const double bodyguard_bonus_bound = strategy.bodyguard_weight > 0.0 ? strategy.bodyguard_weight * double(carry_indices.size()) : 0.0;
 	UnitState *best_live = nullptr;
 	int64_t best_index = -1;
 	double best_adjusted = std::numeric_limits<double>::infinity();
@@ -4417,11 +4419,6 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
 		double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
 		if (best_live != nullptr && enemy_index != current_target_index) {
-			double bodyguard_bonus_bound = 0.0;
-			double bodyguard_weight = strategy.bodyguard_weight;
-			if (bodyguard_weight > 0.0) {
-				bodyguard_bonus_bound = bodyguard_weight * double(carry_indices.size());
-			}
 			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
 			if (candidate_lower_bound > best_adjusted) {
 				continue;
@@ -6295,6 +6292,63 @@ Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {
 	_populate_runtime_state(input);
 	_simulate();
 	return _build_summary();
+}
+
+Dictionary TeamfightSimulationCore::_build_stats_summary() {
+	Dictionary summary;
+	summary["seed"] = _seed;
+	summary["winner_team"] = String(_winner_team);
+	summary["duration"] = _time;
+	summary["sudden_death_ticks"] = int64_t(_sudden_death_ticks);
+	summary["player_comp"] = _player_comp;
+	summary["enemy_comp"] = _enemy_comp;
+	Array unit_stats;
+	for (const UnitState &unit : _units) {
+		const UnitStateCold &c = _uc(unit);
+		Dictionary unit_summary;
+		unit_summary["archetype_id"] = String(c.archetype_id);
+		unit_summary["won"] = _winner_team != StringName() && unit.team == _winner_team;
+		unit_summary["damage_dealt"] = c.damage_dealt;
+		unit_summary["damage_dealt_auto"] = c.damage_dealt_auto;
+		unit_summary["damage_dealt_ability"] = c.damage_dealt_ability;
+		unit_summary["damage_dealt_ultimate"] = c.damage_dealt_ultimate;
+		unit_summary["damage_dealt_passive"] = c.damage_dealt_passive;
+		unit_summary["damage_received"] = c.damage_received;
+		unit_summary["damage_mitigated"] = c.damage_mitigated;
+		unit_summary["healing_done"] = c.healing_done;
+		unit_summary["healing_done_auto"] = c.healing_done_auto;
+		unit_summary["healing_done_ability"] = c.healing_done_ability;
+		unit_summary["healing_done_ultimate"] = c.healing_done_ultimate;
+		unit_summary["healing_done_passive"] = c.healing_done_passive;
+		unit_summary["shielding_done"] = c.shielding_done;
+		unit_summary["shielding_done_auto"] = c.shielding_done_auto;
+		unit_summary["shielding_done_ability"] = c.shielding_done_ability;
+		unit_summary["shielding_done_ultimate"] = c.shielding_done_ultimate;
+		unit_summary["shielding_done_passive"] = c.shielding_done_passive;
+		unit_summary["auto_attacks"] = c.auto_attacks;
+		unit_summary["abilities"] = c.abilities;
+		unit_summary["ultimates"] = c.ultimates;
+		unit_summary["stuns"] = c.stuns;
+		unit_summary["kills"] = c.kills;
+		unit_summary["deaths"] = c.deaths;
+		unit_summary["assists"] = c.assists;
+		unit_stats.append(unit_summary);
+	}
+	summary["unit_stats"] = unit_stats;
+	return summary;
+}
+
+Dictionary TeamfightSimulationCore::run_match_stats(const Variant &match_input) {
+	_ensure_catalog_loaded();
+	Dictionary input = _coerce_match_input(match_input);
+	if (input.is_empty()) {
+		UtilityFunctions::push_error("TeamfightSimulationCore.run_match_stats() expected MatchReplayInput or Dictionary.");
+		return Dictionary();
+	}
+	_reset_runtime_state();
+	_populate_runtime_state(input);
+	_simulate();
+	return _build_stats_summary();
 }
 
 void TeamfightSimulationCore::run_match_simulation_only(const Variant &match_input) {

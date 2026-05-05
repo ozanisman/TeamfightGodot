@@ -178,6 +178,10 @@ inline const StringName &sn_disarm() {
 	static const StringName s("disarm");
 	return s;
 }
+inline const StringName &sn_stealth() {
+	static const StringName s("stealth");
+	return s;
+}
 inline const StringName &sn_knockback() {
 	static const StringName s("knockback");
 	return s;
@@ -537,6 +541,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("disarm")) {
 		return EFFECT_OPCODE_DISARM;
 	}
+	if (kind == StringName("stealth")) {
+		return EFFECT_OPCODE_STEALTH;
+	}
 	if (kind == StringName("knockback")) {
 		return EFFECT_OPCODE_KNOCKBACK;
 	}
@@ -630,6 +637,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_silence();
 		case EFFECT_OPCODE_DISARM:
 			return sn_disarm();
+		case EFFECT_OPCODE_STEALTH:
+			return sn_stealth();
 		case EFFECT_OPCODE_KNOCKBACK:
 			return sn_knockback();
 		case EFFECT_OPCODE_REFLECT:
@@ -776,6 +785,13 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	} else if (kind == StringName("disarm")) {
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", "Disarm"));
+	} else if (kind == StringName("stealth")) {
+		Dictionary break_conditions = Dictionary(params.get("break_conditions", Dictionary()));
+		compiled.scalar0 = double(params.get("duration", 0.0));
+		compiled.int0 = bool(break_conditions.get("on_attack", false)) ? 1 : 0;
+		compiled.int1 = bool(break_conditions.get("on_ability", false)) ? 1 : 0;
+		compiled.int2 = bool(break_conditions.get("on_damage_taken", false)) ? 1 : 0;
+		compiled.reason = String(params.get("reason", "Stealth"));
 	} else if (kind == StringName("knockback")) {
 		compiled.scalar0 = double(params.get("distance", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
@@ -1428,6 +1444,7 @@ TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targ
 	frame.target_id = unit.target_id;
 	frame.incoming_target_count = unit.incoming_target_count;
 	frame.perceived_threat = unit.perceived_threat;
+	frame.stealth_remaining = unit.stealth_remaining;
 	return frame;
 }
 
@@ -1602,6 +1619,10 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.silence_blocks_abilities = false;
 	unit.silence_blocks_ultimates = false;
 	unit.disarm_remaining = 0.0;
+	unit.stealth_remaining = 0.0;
+	unit.stealth_break_on_attack = false;
+	unit.stealth_break_on_ability = false;
+	unit.stealth_break_on_damage_taken = false;
 	unit.respawn_timer = 0.0;
 	unit.respawned_this_tick = false;
 	unit.alive = true;
@@ -3122,6 +3143,9 @@ bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const 
 	if (status_kind == sn_disarm()) {
 		return target.disarm_remaining > 0.0;
 	}
+	if (status_kind == sn_stealth()) {
+		return target.stealth_remaining > 0.0;
+	}
 	if (status_kind == sn_stun()) {
 		return target.stun_remaining > 0.0;
 	}
@@ -3307,6 +3331,13 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		post_context.target = nullptr;
 		post_context.damage = total_damage;
 		post_context.action_kind = sn_passive();
+		// Break stealth on damage taken if configured
+		if (target.stealth_remaining > 0.0 && target.stealth_break_on_damage_taken) {
+			target.stealth_remaining = 0.0;
+			target.stealth_break_on_attack = false;
+			target.stealth_break_on_ability = false;
+			target.stealth_break_on_damage_taken = false;
+		}
 		for (const EffectRecord &effect : post_take_damage_effects) {
 			_execute_effect(effect, post_context);
 		}
@@ -3320,6 +3351,13 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	post_context.target = nullptr;
 	post_context.damage = total_damage;
 	post_context.action_kind = sn_passive();
+	// Break stealth on damage taken if configured
+	if (target.stealth_remaining > 0.0 && target.stealth_break_on_damage_taken) {
+		target.stealth_remaining = 0.0;
+		target.stealth_break_on_attack = false;
+		target.stealth_break_on_ability = false;
+		target.stealth_break_on_damage_taken = false;
+	}
 	for (const EffectRecord &effect : post_take_damage_effects) {
 		_execute_effect(effect, post_context);
 	}
@@ -3447,6 +3485,18 @@ void TeamfightSimulationCore::_apply_disarm(UnitState &source, UnitState &target
 		return;
 	}
 	target.disarm_remaining = Math::max(target.disarm_remaining, effective_duration);
+}
+
+void TeamfightSimulationCore::_apply_stealth(UnitState &source, UnitState &target, double duration, bool break_on_attack, bool break_on_ability, bool break_on_damage_taken) {
+	(void)source;
+	if (duration <= 0.0) {
+		return;
+	}
+	// Refresh stealth duration (re-application allowed)
+	target.stealth_remaining = duration;
+	target.stealth_break_on_attack = break_on_attack;
+	target.stealth_break_on_ability = break_on_ability;
+	target.stealth_break_on_damage_taken = break_on_damage_taken;
 }
 
 void TeamfightSimulationCore::_apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration) {
@@ -4260,6 +4310,13 @@ void TeamfightSimulationCore::_cleanup_expired_stacks(UnitState &unit, double cu
 }
 
 void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
+	// Break stealth on attack cast finish if configured
+	if (source.stealth_remaining > 0.0 && source.stealth_break_on_attack) {
+		source.stealth_remaining = 0.0;
+		source.stealth_break_on_attack = false;
+		source.stealth_break_on_ability = false;
+		source.stealth_break_on_damage_taken = false;
+	}
 	const std::vector<EffectRecord> &post_attack_effects = _uc(source).passive_effects[EFFECT_BUCKET_POST_ATTACK];
 	if (post_attack_effects.empty()) {
 		return;
@@ -4499,6 +4556,10 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double best_dist = std::numeric_limits<double>::infinity();
 	for (int64_t enemy_index : enemy_indices) {
 		const TargetingFrameEntry &candidate = _targeting_frame[static_cast<size_t>(enemy_index)];
+		// Skip stealthed enemy units (cannot be targeted)
+		if (candidate.stealth_remaining > 0.0) {
+			continue;
+		}
 		double dx = candidate.pos_x - unit_x;
 		double dy = candidate.pos_y - unit_y;
 		double dist = Math::sqrt(dx * dx + dy * dy);
@@ -4951,6 +5012,10 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.silence_blocks_abilities = false;
 	unit.silence_blocks_ultimates = false;
 	unit.disarm_remaining = 0.0;
+	unit.stealth_remaining = 0.0;
+	unit.stealth_break_on_attack = false;
+	unit.stealth_break_on_ability = false;
+	unit.stealth_break_on_damage_taken = false;
 	unit.reflect_buff_remaining = 0.0;
 	unit.reflect_buff_pct_all = 0.0;
 	unit.reflect_buff_pct_physical = 0.0;
@@ -5213,6 +5278,13 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			unit.silence_blocks_ultimates = false;
 		}
 		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
+		unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
+		if (unit.stealth_remaining <= 0.0) {
+			unit.stealth_remaining = 0.0;
+			unit.stealth_break_on_attack = false;
+			unit.stealth_break_on_ability = false;
+			unit.stealth_break_on_damage_taken = false;
+		}
 		unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
 		if (unit.reflect_buff_remaining <= 0.0) {
 			unit.reflect_buff_remaining = 0.0;
@@ -5461,6 +5533,13 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 }
 
 void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
+	// Break stealth on ability cast finish if configured
+	if (unit.stealth_remaining > 0.0 && unit.stealth_break_on_ability) {
+		unit.stealth_remaining = 0.0;
+		unit.stealth_break_on_attack = false;
+		unit.stealth_break_on_ability = false;
+		unit.stealth_break_on_damage_taken = false;
+	}
 	UnitStateCold &c = _uc(unit);
 	EffectRecord effect = c.casting_effect;
 	StringName action_kind = c.casting_kind;
@@ -6051,6 +6130,16 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				_apply_disarm(source, *target, effect.scalar0);
 			}
 			return disarm_result;
+		}
+		case EFFECT_OPCODE_STEALTH: {
+			Dictionary stealth_result;
+			stealth_result["success"] = true;
+			stealth_result["stealth_applied"] = false;
+			if (target != nullptr) {
+				_apply_stealth(source, *target, effect.scalar0, effect.int0 != 0, effect.int1 != 0, effect.int2 != 0);
+				stealth_result["stealth_applied"] = true;
+			}
+			return stealth_result;
 		}
 		case EFFECT_OPCODE_SELF_AOE_SLOW: {
 			Dictionary aoe_slow_result;
@@ -6803,6 +6892,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["root_remaining"] = u.root_remaining;
 		d["silence_remaining"] = u.silence_remaining;
 		d["disarm_remaining"] = u.disarm_remaining;
+		d["stealth_remaining"] = u.stealth_remaining;
 		d["reflect_buff_remaining"] = u.reflect_buff_remaining;
 		d["alive"] = u.alive;
 		d["state"] = _viewer_state_string(u);

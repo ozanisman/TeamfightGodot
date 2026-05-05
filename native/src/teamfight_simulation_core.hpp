@@ -375,6 +375,7 @@ private:
 		double bucket_margin = 0.75;
 		std::array<StringName, 8> bucket_order{};
 		int bucket_order_len = 0;
+		std::array<int, static_cast<size_t>(TargetBucketTag::TagCount)> bucket_rank_by_tag{};
 		double switch_margin = 0.75;
 		double in_range_bonus = 0.6;
 		double tank_penalty = 2.0;
@@ -708,7 +709,7 @@ private:
 	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
 	static constexpr double UNIT_COLLISION_RADIUS = 0.15;
 	static constexpr int SPATIAL_GRID_DIM = 8;
-	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (6+). Standard 5v5 (5 alive) stays brute — avoids grid overhead at small n.
+	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (4+). Standard 5v5 can enter the spatial path under the current benchmark contract.
 	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4;
 	/// Separation ally scan uses a grid only at this team alive count or above (custom large teams); 5v5 uses brute O(n) with tiny n.
 	static constexpr int SPATIAL_SEPARATION_TEAM_THRESHOLD = 6;

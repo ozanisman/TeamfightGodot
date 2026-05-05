@@ -2381,6 +2381,136 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
+double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
+	if (profile_score) {
+		_sim_profile_se_calls += 1;
+	}
+	const bool attacker_is_player = attacker.team == sn_player();
+	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
+	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
+	const int64_t enemy_role_slot = enemy.role_slot;
+
+	double score = 0.0;
+	double dist = 0.0;
+	double attack_range = score_ctx.attack_range;
+	double effective_range = score_ctx.effective_range;
+	{
+		SimProfileAccScope _se_base(profile_score, _sim_profile_se_base);
+		dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
+		// No buffer for testing
+		bool in_range = false;
+		if (attack_range > RANGED_THRESHOLD) {
+			in_range = dist <= attack_range;
+		} else {
+			in_range = (dist <= effective_range); // || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+		}
+		double hp_ratio = enemy.hp / Math::max(0.0001, enemy.max_hp);
+		double range_gap = Math::max(0.0, dist - Math::max(effective_range, EPSILON));
+		double norm_gap = range_gap / Math::max(effective_range, EPSILON);
+		// Phase 5: stabilize distance term across platforms (20-bit mantissa quantization).
+		norm_gap = std::round(norm_gap * 1048576.0) / 1048576.0;
+		score += Math::pow(norm_gap, DISTANCE_EXPONENT) * strategy.distance_weight * SCORE_DISTANCE_WEIGHT_SCALE;
+		if (in_range) {
+			score -= strategy.in_range_bonus;
+		}
+		score += hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
+		if (strategy.execute_bonus_weight > 0.0 && in_range && hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
+			score -= strategy.execute_bonus_weight;
+		}
+		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
+		if (enemy.is_tank_role) {
+			score += strategy.tank_penalty;
+			// Assassins apply an extra tank penalty if there are backliners alive.
+			if (attacker.is_assassin_role) {
+				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
+				const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
+				int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
+				bool self_in_bl = false;
+				for (int64_t idx : bl) {
+					if (idx == enemy_self_idx) {
+						self_in_bl = true;
+						break;
+					}
+				}
+				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
+				if (n_alive - subtract > 0) {
+					score += ASSASSIN_TANK_CONTEXT_PENALTY;
+				}
+			}
+		}
+		if (enemy.target_id == attacker.instance_id) {
+			double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
+			score -= strategy.threat_response_weight * falloff;
+		}
+		double enemy_incoming = double(enemy.incoming_target_count);
+		double prey_focus = enemy_incoming * PREY_INCOMING_TARGET_SCALE + enemy.perceived_threat * PREY_PERCEIVED_THREAT_SCALE;
+		if (enemy.is_tank_role || enemy.is_fighter_role) {
+			prey_focus *= PREY_FRONTLINE_SCALE;
+		}
+		score -= prey_focus * strategy.prey_instinct_weight;
+		if (attacker.target_id == enemy.instance_id) {
+			score -= Math::max(1.0, strategy.distance_weight) * strategy.stickiness_bonus;
+		}
+		if (attacker.is_support_role) {
+			int64_t ally_target_id = attacker.current_ally_target_id;
+			if (ally_target_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive) {
+				double ally_incoming = double(ally_for_peel->incoming_target_count);
+				double ally_threat = ally_for_peel->perceived_threat;
+				if ((ally_incoming >= SUPPORT_PEEL_THREAT_THRESHOLD || ally_threat >= SUPPORT_PEEL_THREAT_THRESHOLD) && enemy.target_id == ally_target_id) {
+					score -= SUPPORT_PEEL_BOOST;
+				}
+			}
+		}
+	}
+
+	{
+		SimProfileAccScope _se_fl(profile_score, _sim_profile_se_flanking);
+		// Flanking (assassin): reward isolation from enemy team center.
+		double flanking_weight = strategy.flanking_weight;
+		if (flanking_weight > 0.0) {
+			double cx = 0.0;
+			double cy = 0.0;
+			bool ok_center = false;
+			if (enemy.is_player_team) {
+				ok_center = ctx.has_player_center;
+				cx = ctx.player_team_center.x;
+				cy = ctx.player_team_center.y;
+			} else {
+				ok_center = ctx.has_enemy_center;
+				cx = ctx.enemy_team_center.x;
+				cy = ctx.enemy_team_center.y;
+			}
+			if (ok_center) {
+				double ex = enemy.pos_x;
+				double ey = enemy.pos_y;
+				double to_tx = ex - cx;
+				double to_ty = ey - cy;
+				double ax = attacker.pos_x;
+				double ay = attacker.pos_y;
+				double to_ax = ax - ex;
+				double to_ay = ay - ey;
+				double len_t_sq = to_tx * to_tx + to_ty * to_ty;
+				double len_a_sq = to_ax * to_ax + to_ay * to_ay;
+				if (len_t_sq > EPSILON * EPSILON && len_a_sq > EPSILON * EPSILON) {
+					double len_prod = Math::sqrt(len_t_sq * len_a_sq);
+					double align = (to_tx * to_ax + to_ty * to_ay) / len_prod;
+					align = Math::max(0.0, align);
+					double len_t = Math::sqrt(len_t_sq);
+					double isolation = Math::min(1.0, len_t * FLANKING_TEAM_CENTER_SCALE);
+					score -= align * isolation * flanking_weight;
+				}
+			}
+		}
+		// Commit bucket: forced target is massively preferred (Python TAUNT_SCORE_BONUS).
+		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
+			score += TAUNT_SCORE_BONUS;
+		}
+	}
+
+	return score;
+}
+
 double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
@@ -3017,6 +3147,12 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (damage <= 0.0) {
 		return 0.0;
 	}
+	const bool action_is_auto = action_kind == sn_auto();
+	const bool action_is_ability = action_kind == sn_ability();
+	const bool action_is_ultimate = action_kind == sn_ultimate();
+	const bool action_is_passive = action_kind == sn_passive();
+	const bool damage_is_physical = damage_type == sn_physical();
+	const bool damage_is_magic = damage_type == sn_magic();
 	double old_hp = target.hp;
 	double pre_res = damage;
 	
@@ -3026,15 +3162,15 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	}
 	
 	// Auto-dodge applies to all damage types (including true) for auto-attacks
-	if (action_kind == sn_auto()) {
+	if (action_is_auto) {
 		pre_res *= _auto_dodge_multiplier(target, source, damage);
 	}
 	
 	double final_damage = pre_res;
-	if (damage_type == sn_physical()) {
+	if (damage_is_physical) {
 		double armor = get_effective_armor(target);
 		final_damage *= Math::clamp(1.0 - armor, 0.05, 1.0);
-	} else if (damage_type == sn_magic()) {
+	} else if (damage_is_magic) {
 		double mr = get_effective_magic_resist(target);
 		final_damage *= Math::clamp(1.0 - mr, 0.05, 1.0);
 	}
@@ -3060,13 +3196,13 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	// Self-inflicted damage should not count as damage dealt.
 	if (source.instance_id != target.instance_id) {
 		_uc(source).damage_dealt += total_damage;
-		if (action_kind == sn_auto()) {
+		if (action_is_auto) {
 			_uc(source).damage_dealt_auto += total_damage;
-		} else if (action_kind == sn_ability()) {
+		} else if (action_is_ability) {
 			_uc(source).damage_dealt_ability += total_damage;
-		} else if (action_kind == sn_ultimate()) {
+		} else if (action_is_ultimate) {
 			_uc(source).damage_dealt_ultimate += total_damage;
-		} else if (action_kind == sn_passive()) {
+		} else if (action_is_passive) {
 			_uc(source).damage_dealt_passive += total_damage;
 		}
 	}
@@ -3085,7 +3221,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		post_context.source = &target;
 		post_context.target = nullptr;
 		post_context.damage = total_damage;
-		post_context.action_kind = StringName("passive");
+		post_context.action_kind = sn_passive();
 		for (const EffectRecord &effect : post_take_damage_effects) {
 			_execute_effect(effect, post_context);
 		}
@@ -3098,7 +3234,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	post_context.source = &target;
 	post_context.target = nullptr;
 	post_context.damage = total_damage;
-	post_context.action_kind = StringName("passive");
+	post_context.action_kind = sn_passive();
 	for (const EffectRecord &effect : post_take_damage_effects) {
 		_execute_effect(effect, post_context);
 	}
@@ -3116,12 +3252,12 @@ void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, U
 		return;
 	}
 	double pct = defender.reflect_passive_pct_all;
-	if (damage_type == StringName("physical")) {
+	if (damage_type == sn_physical()) {
 		pct += defender.reflect_passive_pct_physical;
 	}
 	if (defender.reflect_buff_remaining > 0.0) {
 		pct += defender.reflect_buff_pct_all;
-		if (damage_type == StringName("physical")) {
+		if (damage_type == sn_physical()) {
 			pct += defender.reflect_buff_pct_physical;
 		}
 	}
@@ -4171,6 +4307,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const int64_t unit_current_ally_target_id = unit.current_ally_target_id;
 	const bool unit_is_assassin_role = unit.is_assassin_role;
 	const double unit_attack_damage = get_effective_attack_damage(unit);
+	const std::vector<int64_t> &carry_indices = unit_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = unit_is_player ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const std::vector<int64_t> &enemy_indices = unit_is_player ? _alive_enemy_indices : _alive_player_indices;
 
@@ -4275,14 +4412,27 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		double dx = candidate.pos_x - unit_x;
 		double dy = candidate.pos_y - unit_y;
 		double dist = Math::sqrt(dx * dx + dy * dy);
+		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
+		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
+		double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
+		double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
+		if (best_live != nullptr && enemy_index != current_target_index) {
+			double bodyguard_bonus_bound = 0.0;
+			double bodyguard_weight = strategy.bodyguard_weight;
+			if (bodyguard_weight > 0.0) {
+				bodyguard_bonus_bound = bodyguard_weight * double(carry_indices.size());
+			}
+			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
+			if (candidate_lower_bound > best_adjusted) {
+				continue;
+			}
+		}
 		double raw = _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
 		if (current_target_index >= 0 && enemy_index == current_target_index) {
 			current_target_raw = raw;
 			current_target_raw_valid = true;
 			current_target_dist_for_switch = dist;
 		}
-		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
-		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
 		double adjusted = raw + double(rank) * strategy.bucket_margin;
 		// Python parity: strict lexicographic ordering on key:
 		// (adjusted_score, raw_score, bucket_rank, distance, instance_id)

@@ -791,6 +791,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int0 = bool(break_conditions.get("on_attack", false)) ? 1 : 0;
 		compiled.int1 = bool(break_conditions.get("on_ability", false)) ? 1 : 0;
 		compiled.int2 = bool(break_conditions.get("on_damage_taken", false)) ? 1 : 0;
+		compiled.int3 = params.get("target_self", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Stealth"));
 	} else if (kind == StringName("knockback")) {
 		compiled.scalar0 = double(params.get("distance", 0.0));
@@ -6135,8 +6136,10 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary stealth_result;
 			stealth_result["success"] = true;
 			stealth_result["stealth_applied"] = false;
-			if (target != nullptr) {
-				_apply_stealth(source, *target, effect.scalar0, effect.int0 != 0, effect.int1 != 0, effect.int2 != 0);
+			bool target_self = effect.int3 != 0;
+			UnitState *stealth_target = target_self ? &source : target;
+			if (stealth_target != nullptr) {
+				_apply_stealth(source, *stealth_target, effect.scalar0, effect.int0 != 0, effect.int1 != 0, effect.int2 != 0);
 				stealth_result["stealth_applied"] = true;
 			}
 			return stealth_result;

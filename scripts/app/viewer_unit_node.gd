@@ -120,7 +120,11 @@ func _draw() -> void:
 			draw_arc(o, r_px, 0.0, TAU, 64, Color(0.8, 0.8, 0.4, 0.55), 1.0, true)
 	if float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
 		draw_circle(o, UNIT_RADIUS + 3.0, Color(0.9, 0.65, 0.2, 0.9), false, 2.0)
-	draw_circle(o, UNIT_RADIUS, wcol)
+	# Apply stealth opacity
+	var draw_color := wcol
+	if float(_u.get("stealth_remaining", 0.0)) > 0.0:
+		draw_color.a = 0.4
+	draw_circle(o, UNIT_RADIUS, draw_color)
 	if float(_u.get("casting_remaining", 0.0)) > 0.0:
 		var pr: float = 1.0 - float(_u.get("casting_remaining", 0.0)) / SimConstantsScript.CASTING_WINDUP
 		pr = clampf(pr, 0.0, 1.0)

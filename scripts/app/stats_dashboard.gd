@@ -1152,7 +1152,7 @@ func _default_export_worker_threads() -> int:
 		mini(
 			OS.get_processor_count(),
 			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
-		) / 4
+		) / 2
 	)
 
 

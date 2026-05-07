@@ -56,6 +56,8 @@ private:
 		double scalar1 = 0.0;
 		double scalar2 = 0.0;
 		double scalar3 = 0.0;
+		double scalar4 = 0.0;
+		double scalar5 = 0.0;
 		int64_t int0 = 0;
 		int64_t int1 = 0;
 		int64_t int2 = 0;
@@ -70,6 +72,10 @@ private:
 		// Interval timing support for on_tick effects
 		double interval = 1.0;           // Custom interval (seconds), default 1.0
 		double accumulator = 0.0;       // Per-effect timing accumulator
+		
+		// DoT/HoT support
+		StringName stacking_mode;       // "refresh", "extend", "stack_damage", "stack_duration", "separate"
+		StringName effect_type;         // e.g., "burn", "poison", "regen"
 	};
 
 	struct EffectContext {
@@ -292,6 +298,23 @@ private:
 		
 		// Per-unit effect timing accumulators for on_tick effects
 		std::unordered_map<size_t, double> effect_accumulators;
+
+		// Periodic effects (DoT/HoT)
+		struct PeriodicEffect {
+			StringName effect_type;  // e.g., "burn", "poison", "regen"
+			double damage_per_tick = 0.0;
+			double heal_per_tick = 0.0;
+			double remaining_duration = 0.0;
+			double tick_interval = 0.0;
+			double tick_accumulator = 0.0;
+			int64_t source_instance_id = 0;
+			StringName damage_type;  // "physical", "magical", "true"
+			StringName stacking_mode;  // "refresh", "extend", "stack_damage", "stack_duration", "separate"
+			bool allow_overheal = false;
+			int stack_count = 0;
+			int max_stacks = 1;
+		};
+		std::vector<PeriodicEffect> periodic_effects;
 	};
 
 	/// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.
@@ -660,8 +683,8 @@ private:
 		EFFECT_OPCODE_HEAL = 6,
 		EFFECT_OPCODE_SELF_AOE_TAUNT = 9,
 		EFFECT_OPCODE_SELF_AOE_DAMAGE = 10,
-		EFFECT_OPCODE_SPLASH_DAMAGE = 11,
-		EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE = 12,
+		EFFECT_OPCODE_TARGET_AOE_DAMAGE = 11,
+		EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER = 12,
 		EFFECT_OPCODE_MANA_REGEN = 13,
 		EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN = 14,
 		EFFECT_OPCODE_DAMAGE_BASED_HEAL = 15,
@@ -691,6 +714,14 @@ private:
 		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
 		EFFECT_OPCODE_STAT_MODIFIER = 40,
 		EFFECT_OPCODE_STEALTH = 41,
+		EFFECT_OPCODE_TARGET_AOE_SLOW = 42,
+		EFFECT_OPCODE_TARGET_AOE_ROOT = 43,
+		EFFECT_OPCODE_TARGET_AOE_SILENCE = 44,
+		EFFECT_OPCODE_TARGET_AOE_DISARM = 45,
+		EFFECT_OPCODE_DAMAGE_OVER_TIME = 46,
+		EFFECT_OPCODE_HEAL_OVER_TIME = 47,
+		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 48,
+		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 49,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1021,10 +1052,14 @@ private:
 	void _apply_self_aoe_root(UnitState &source, double radius, double duration);
 	void _apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate);
 	void _apply_self_aoe_disarm(UnitState &source, double radius, double duration);
+	void _apply_target_aoe_slow(UnitState &source, UnitState &target, double radius, double slow_percentage, double duration);
+	void _apply_target_aoe_root(UnitState &source, UnitState &target, double radius, double duration);
+	void _apply_target_aoe_silence(UnitState &source, UnitState &target, double radius, double duration, bool blocks_abilities, bool blocks_ultimates);
+	void _apply_target_aoe_disarm(UnitState &source, UnitState &target, double radius, double duration);
 	double _movement_speed_multiplier(const UnitState &unit) const;
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
-	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
+	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
 	void _set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration);
@@ -1076,14 +1111,21 @@ private:
 	void _debug_print_stack_state(const UnitState &unit) const;
 	void _debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const;
 	String _join_team_names(const Array &team) const;
-	void _apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio = 0.5);
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
-	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim = false);
-	UnitState *_select_ally_target(UnitState &unit);
-	double _distance_between(const UnitState &left, const UnitState &right) const;
-	double _attack_range(const UnitState &unit) const;
+	void _apply_target_aoe_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio);
+	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type);
+	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type);
+	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self);
+	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self);
+	void _tick_periodic_effects(UnitState &unit, double delta);
+	void _cleanse_dots(UnitState &unit, const StringName &effect_type_filter);
+	void _clear_periodic_effects(UnitState &unit);
 	double _effective_attack_range(const UnitState &unit) const;
+	double _attack_range(const UnitState &unit) const;
+	double _distance_between(const UnitState &left, const UnitState &right) const;
+	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
+	UnitState *_select_ally_target(UnitState &unit);
 	UnitState *_unit_by_id(int64_t instance_id);
 	const UnitState *_unit_by_id(int64_t instance_id) const;
 	int64_t _unit_index_by_id(int64_t instance_id) const;

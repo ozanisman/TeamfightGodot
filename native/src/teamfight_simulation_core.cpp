@@ -110,12 +110,28 @@ inline const StringName &sn_self_aoe_damage() {
 	static const StringName s("self_aoe_damage");
 	return s;
 }
-inline const StringName &sn_splash_damage() {
-	static const StringName s("splash_damage");
+inline const StringName &sn_target_aoe_damage() {
+	static const StringName s("target_aoe_damage");
 	return s;
 }
-inline const StringName &sn_threshold_splash_damage() {
-	static const StringName s("threshold_splash_damage");
+inline const StringName &sn_damage_threshold_trigger() {
+	static const StringName s("damage_threshold_trigger");
+	return s;
+}
+inline const StringName &sn_damage_over_time() {
+	static const StringName s("damage_over_time");
+	return s;
+}
+inline const StringName &sn_heal_over_time() {
+	static const StringName s("heal_over_time");
+	return s;
+}
+inline const StringName &sn_aoe_damage_over_time() {
+	static const StringName s("aoe_damage_over_time");
+	return s;
+}
+inline const StringName &sn_aoe_heal_over_time() {
+	static const StringName s("aoe_heal_over_time");
 	return s;
 }
 inline const StringName &sn_mana_regen() {
@@ -196,6 +212,22 @@ inline const StringName &sn_self_aoe_slow() {
 }
 inline const StringName &sn_self_aoe_root() {
 	static const StringName s("self_aoe_root");
+	return s;
+}
+inline const StringName &sn_target_aoe_slow() {
+	static const StringName s("target_aoe_slow");
+	return s;
+}
+inline const StringName &sn_target_aoe_root() {
+	static const StringName s("target_aoe_root");
+	return s;
+}
+inline const StringName &sn_target_aoe_silence() {
+	static const StringName s("target_aoe_silence");
+	return s;
+}
+inline const StringName &sn_target_aoe_disarm() {
+	static const StringName s("target_aoe_disarm");
 	return s;
 }
 inline const StringName &sn_self_aoe_silence() {
@@ -489,11 +521,17 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("self_aoe_damage")) {
 		return EFFECT_OPCODE_SELF_AOE_DAMAGE;
 	}
-	if (kind == StringName("splash_damage")) {
-		return EFFECT_OPCODE_SPLASH_DAMAGE;
+	if (kind == StringName("target_aoe_damage")) {
+		return EFFECT_OPCODE_TARGET_AOE_DAMAGE;
 	}
-	if (kind == StringName("threshold_splash_damage")) {
-		return EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE;
+	if (kind == StringName("damage_threshold_trigger")) {
+		return EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER;
+	}
+	if (kind == StringName("damage_over_time")) {
+		return EFFECT_OPCODE_DAMAGE_OVER_TIME;
+	}
+	if (kind == StringName("heal_over_time")) {
+		return EFFECT_OPCODE_HEAL_OVER_TIME;
 	}
 	if (kind == StringName("mana_regen")) {
 		return EFFECT_OPCODE_MANA_REGEN;
@@ -562,6 +600,18 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("self_aoe_disarm")) {
 		return EFFECT_OPCODE_SELF_AOE_DISARM;
 	}
+	if (kind == StringName("target_aoe_slow")) {
+		return EFFECT_OPCODE_TARGET_AOE_SLOW;
+	}
+	if (kind == StringName("target_aoe_root")) {
+		return EFFECT_OPCODE_TARGET_AOE_ROOT;
+	}
+	if (kind == StringName("target_aoe_silence")) {
+		return EFFECT_OPCODE_TARGET_AOE_SILENCE;
+	}
+	if (kind == StringName("target_aoe_disarm")) {
+		return EFFECT_OPCODE_TARGET_AOE_DISARM;
+	}
 	if (kind == StringName("self_aoe_knockback")) {
 		return EFFECT_OPCODE_SELF_AOE_KNOCKBACK;
 	}
@@ -602,10 +652,18 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_self_aoe_taunt();
 		case EFFECT_OPCODE_SELF_AOE_DAMAGE:
 			return sn_self_aoe_damage();
-		case EFFECT_OPCODE_SPLASH_DAMAGE:
-			return sn_splash_damage();
-		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE:
-			return sn_threshold_splash_damage();
+		case EFFECT_OPCODE_TARGET_AOE_DAMAGE:
+			return sn_target_aoe_damage();
+		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER:
+			return sn_damage_threshold_trigger();
+		case EFFECT_OPCODE_DAMAGE_OVER_TIME:
+			return sn_damage_over_time();
+		case EFFECT_OPCODE_HEAL_OVER_TIME:
+			return sn_heal_over_time();
+		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME:
+			return sn_aoe_damage_over_time();
+		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME:
+			return sn_aoe_heal_over_time();
 		case EFFECT_OPCODE_MANA_REGEN:
 			return sn_mana_regen();
 		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
@@ -651,6 +709,14 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_self_aoe_silence();
 		case EFFECT_OPCODE_SELF_AOE_DISARM:
 			return sn_self_aoe_disarm();
+		case EFFECT_OPCODE_TARGET_AOE_SLOW:
+			return sn_target_aoe_slow();
+		case EFFECT_OPCODE_TARGET_AOE_ROOT:
+			return sn_target_aoe_root();
+		case EFFECT_OPCODE_TARGET_AOE_SILENCE:
+			return sn_target_aoe_silence();
+		case EFFECT_OPCODE_TARGET_AOE_DISARM:
+			return sn_target_aoe_disarm();
 		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK:
 			return sn_self_aoe_knockback();
 		case EFFECT_OPCODE_SELF_AOE_REFLECT:
@@ -733,14 +799,74 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("splash_damage")) {
+	} else if (kind == StringName("target_aoe_damage")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("ratio", 0.0));
-		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
-		compiled.reason = String(params.get("reason", "Splash"));
-	} else if (kind == StringName("threshold_splash_damage")) {
+		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		compiled.reason = String(params.get("reason", "TargetAoeDamage"));
+	} else if (kind == StringName("damage_over_time")) {
+		// Ratio-based parameters
+		compiled.scalar0 = double(params.get("attack_damage_ratio", 0.0));
+		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar2 = double(params.get("tick_interval", 1.0));
+		compiled.scalar3 = double(params.get("flat_amount", 0.0));
+		// Backward compatibility: damage_per_tick maps to flat_amount
+		if (params.has("damage_per_tick") && !params.has("flat_amount")) {
+			compiled.scalar3 = double(params.get("damage_per_tick", 0.0));
+		}
+		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.int0 = int64_t(params.get("max_stacks", 1));
+		compiled.int1 = int64_t(params.get("duration", 0.0));
+	} else if (kind == StringName("heal_over_time")) {
+		// Ratio-based parameters
+		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
+		compiled.scalar2 = double(params.get("tick_interval", 1.0));
+		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
+		compiled.scalar4 = double(params.get("flat_amount", 0.0));
+		// Backward compatibility: heal_per_tick maps to flat_amount
+		if (params.has("heal_per_tick") && !params.has("flat_amount")) {
+			compiled.scalar4 = double(params.get("heal_per_tick", 0.0));
+		}
+		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.int0 = int64_t(params.get("max_stacks", 1));
+		compiled.int1 = int64_t(params.get("duration", 0.0));
+		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
+	} else if (kind == StringName("aoe_damage_over_time")) {
+		// AoE parameters
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		// DoT ratio parameters
+		compiled.scalar1 = double(params.get("attack_damage_ratio", 0.0));
+		compiled.scalar2 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar3 = double(params.get("flat_amount", 0.0));
+		compiled.scalar4 = double(params.get("tick_interval", 1.0));
+		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.int0 = int64_t(params.get("max_stacks", 1));
+		compiled.int1 = int64_t(params.get("duration", 0.0));
+		compiled.int2 = params.get("target_self", false) ? 1 : 0;
+	} else if (kind == StringName("aoe_heal_over_time")) {
+		// AoE parameters
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		// HoT ratio parameters
+		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
+		compiled.scalar2 = double(params.get("current_hp_ratio", 0.0));
+		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
+		compiled.scalar4 = double(params.get("flat_amount", 0.0));
+		compiled.scalar5 = double(params.get("tick_interval", 1.0));
+		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.int0 = int64_t(params.get("max_stacks", 1));
+		compiled.int1 = int64_t(params.get("duration", 0.0));
+		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
+		compiled.int3 = params.get("target_self", false) ? 1 : 0;
+	} else if (kind == StringName("damage_threshold_trigger")) {
 		compiled.scalar0 = double(params.get("threshold_multiplier", 1.0));
-		Variant nested = params.get("splash", Variant());
+		Variant nested = params.get("effect", Variant());
 		if (nested.get_type() == Variant::DICTIONARY) {
 			compiled.children.push_back(_compile_effect(Dictionary(nested)));
 		}
@@ -822,6 +948,25 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", "AOE Disarm"));
+	} else if (kind == StringName("target_aoe_slow")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
+		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "TargetAoeSlow"));
+	} else if (kind == StringName("target_aoe_root")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "TargetAoeRoot"));
+	} else if (kind == StringName("target_aoe_silence")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.int0 = params.get("blocks_abilities", false) ? 1 : 0;
+		compiled.int1 = params.get("blocks_ultimates", false) ? 1 : 0;
+		compiled.reason = String(params.get("reason", "TargetAoeSilence"));
+	} else if (kind == StringName("target_aoe_disarm")) {
+		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.reason = String(params.get("reason", "TargetAoeDisarm"));
 	} else if (kind == StringName("self_aoe_knockback")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("distance", 0.0));
@@ -3572,6 +3717,78 @@ void TeamfightSimulationCore::_apply_self_aoe_disarm(UnitState &source, double r
 	});
 }
 
+void TeamfightSimulationCore::_apply_target_aoe_slow(UnitState &source, UnitState &target, double radius, double slow_percentage, double duration) {
+	if (radius <= 0.0 || duration <= 0.0 || slow_percentage <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_slow"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = target.pos_x;
+	cir.center_y = target.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_slow(source, unit, slow_percentage, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_target_aoe_root(UnitState &source, UnitState &target, double radius, double duration) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_root"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = target.pos_x;
+	cir.center_y = target.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_root(source, unit, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_target_aoe_silence(UnitState &source, UnitState &target, double radius, double duration, bool blocks_abilities, bool blocks_ultimates) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_silence"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = target.pos_x;
+	cir.center_y = target.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_silence(source, unit, duration, blocks_abilities, blocks_ultimates);
+	});
+}
+
+void TeamfightSimulationCore::_apply_target_aoe_disarm(UnitState &source, UnitState &target, double radius, double duration) {
+	if (radius <= 0.0 || duration <= 0.0) {
+		return;
+	}
+	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_disarm"));
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = target.pos_x;
+	cir.center_y = target.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_disarm(source, unit, duration);
+	});
+}
+
 void TeamfightSimulationCore::_apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types) {
 	if (duration <= 0.0 || pct <= 0.0) {
 		return;
@@ -3684,14 +3901,19 @@ void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, 
 	}
 }
 
-void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
+void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal) {
 	if (amount <= 0.0) {
 		return;
 	}
 	
 	double max_hp = target.combat.max_hp;
 	double old_hp = target.hp;
-	double new_hp = Math::min(max_hp, old_hp + amount);
+	double new_hp;
+	if (allow_overheal) {
+		new_hp = old_hp + amount;
+	} else {
+		new_hp = Math::min(max_hp, old_hp + amount);
+	}
 	
 	target.hp = new_hp;
 	double gained = new_hp - old_hp;
@@ -4329,7 +4551,7 @@ void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitSt
 	}
 }
 
-void TeamfightSimulationCore::_apply_splash_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio) {
+void TeamfightSimulationCore::_apply_target_aoe_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio) {
 	(void)reason;
 	if (radius <= 0.0) {
 		return;
@@ -4344,11 +4566,240 @@ void TeamfightSimulationCore::_apply_splash_damage(UnitState &source, UnitState 
 	cir.radius = radius;
 	cir.indices = &enemy_indices;
 	cir.spatial_team = enemy_team;
-	cir.exclude_instance_id = target.instance_id;
 	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
 		double splash_damage = damage * splash_ratio;
 		EffectContext context = _build_context(source, &unit, nullptr, splash_damage, action_kind);
 		_apply_damage(source, unit, splash_damage, damage_type, action_kind, context);
+	});
+}
+
+void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type) {
+	// Calculate damage_per_tick from ratios at application time
+	double damage_per_tick = source.combat.attack_damage * attack_damage_ratio;
+	damage_per_tick += target.combat.max_hp * max_hp_ratio;
+	damage_per_tick += flat_amount;
+	
+	if (duration <= 0.0 || damage_per_tick <= 0.0) {
+		return;
+	}
+	
+	UnitStateCold::PeriodicEffect new_effect;
+	new_effect.effect_type = effect_type;
+	new_effect.damage_per_tick = damage_per_tick;
+	new_effect.heal_per_tick = 0.0;
+	new_effect.remaining_duration = duration;
+	new_effect.tick_interval = tick_interval;
+	new_effect.tick_accumulator = 0.0;
+	new_effect.source_instance_id = source.instance_id;
+	new_effect.damage_type = damage_type;
+	new_effect.stacking_mode = stacking_mode;
+	new_effect.allow_overheal = false;
+	new_effect.stack_count = 1;
+	new_effect.max_stacks = max_stacks;
+	
+	// Search for existing effect with same type and source
+	auto &periodic_effects = _uc(target).periodic_effects;
+	for (auto &existing : periodic_effects) {
+		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id) {
+			// Apply stacking logic
+			if (stacking_mode == StringName("refresh")) {
+				existing.remaining_duration = duration;
+				return;
+			} else if (stacking_mode == StringName("extend")) {
+				existing.remaining_duration += duration;
+				return;
+			} else if (stacking_mode == StringName("stack_damage")) {
+				if (existing.stack_count < max_stacks) {
+					existing.damage_per_tick += damage_per_tick;
+					existing.stack_count++;
+					existing.remaining_duration = duration;
+				} else {
+					existing.remaining_duration = duration;
+				}
+				return;
+			} else if (stacking_mode == StringName("stack_duration")) {
+				existing.remaining_duration += duration;
+				return;
+			}
+			// "separate" mode: do not modify existing, fall through to add new instance
+		}
+	}
+	
+	// No matching effect found or "separate" mode - add new
+	periodic_effects.push_back(new_effect);
+}
+
+void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type) {
+	// Calculate heal_per_tick from ratios at application time
+	double heal_per_tick = target.combat.max_hp * max_hp_ratio;
+	heal_per_tick += target.hp * current_hp_ratio;
+	heal_per_tick += (target.combat.max_hp - target.hp) * missing_hp_ratio;
+	heal_per_tick += flat_amount;
+	
+	if (duration <= 0.0 || heal_per_tick <= 0.0) {
+		return;
+	}
+	
+	UnitStateCold::PeriodicEffect new_effect;
+	new_effect.effect_type = effect_type;
+	new_effect.damage_per_tick = 0.0;
+	new_effect.heal_per_tick = heal_per_tick;
+	new_effect.remaining_duration = duration;
+	new_effect.tick_interval = tick_interval;
+	new_effect.tick_accumulator = 0.0;
+	new_effect.source_instance_id = source.instance_id;
+	new_effect.damage_type = StringName();
+	new_effect.stacking_mode = stacking_mode;
+	new_effect.allow_overheal = allow_overheal;
+	new_effect.stack_count = 1;
+	new_effect.max_stacks = max_stacks;
+	
+	// Search for existing effect with same type and source
+	auto &periodic_effects = _uc(target).periodic_effects;
+	for (auto &existing : periodic_effects) {
+		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id) {
+			// Apply stacking logic
+			if (stacking_mode == StringName("refresh")) {
+				existing.remaining_duration = duration;
+				return;
+			} else if (stacking_mode == StringName("extend")) {
+				existing.remaining_duration += duration;
+				return;
+			} else if (stacking_mode == StringName("stack_damage")) {
+				if (existing.stack_count < max_stacks) {
+					existing.heal_per_tick += heal_per_tick;
+					existing.stack_count++;
+					existing.remaining_duration = duration;
+				} else {
+					existing.remaining_duration = duration;
+				}
+				return;
+			} else if (stacking_mode == StringName("stack_duration")) {
+				existing.remaining_duration += duration;
+				return;
+			}
+			// "separate" mode: do not modify existing, fall through to add new instance
+		}
+	}
+	
+	// No matching effect found or "separate" mode - add new
+	periodic_effects.push_back(new_effect);
+}
+
+// DoT/HoT Limitations:
+// - Damage multipliers: DoT damage is applied directly without checking damage multiplier effects
+//   (constant_multiplier, hp_threshold_damage_multiplier, target_status_multiplier). This is
+//   intentional for simplicity and performance. DoTs represent fixed damage over time calculated
+//   at application time.
+// - Healing multipliers: HoT healing is applied directly without checking healing multiplier effects.
+//   This is intentional for the same reasons.
+// - Source behavior: When the source unit dies, DoT/HoT continues ticking on the target. The source
+//   is only used for damage/healing attribution (stats tracking). If the source is dead, damage/healing
+//   still occurs but is attributed to the now-dead source.
+// - Visual effects: No visual effect hooks are currently implemented. DoT/HoT ticks do not trigger
+//   damage numbers or particle effects. This will be added in a future update.
+void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double delta) {
+	auto &periodic_effects = _uc(unit).periodic_effects;
+	auto it = periodic_effects.begin();
+	while (it != periodic_effects.end()) {
+		auto &effect = *it;
+		
+		// Update accumulator
+		effect.tick_accumulator += delta;
+		
+		// Check if tick should occur
+		if (effect.tick_accumulator >= effect.tick_interval) {
+			effect.tick_accumulator -= effect.tick_interval;
+			
+			if (effect.damage_per_tick > 0.0) {
+				// Apply DoT damage
+				UnitState *source = _unit_by_id(effect.source_instance_id);
+				if (source != nullptr) {
+					EffectContext context = _build_context(*source, &unit, nullptr, effect.damage_per_tick, sn_passive());
+					_apply_damage(*source, unit, effect.damage_per_tick, effect.damage_type, sn_passive(), context);
+				}
+			}
+			
+			if (effect.heal_per_tick > 0.0) {
+				// Apply HoT heal
+				UnitState *source = _unit_by_id(effect.source_instance_id);
+				if (source != nullptr) {
+					EffectContext context = _build_context(*source, &unit, nullptr, 0.0, sn_passive());
+					_heal_unit(*source, unit, effect.heal_per_tick, sn_passive(), effect.allow_overheal);
+				}
+			}
+		}
+		
+		// Update remaining duration
+		effect.remaining_duration -= delta;
+		
+		// Remove expired effects
+		if (effect.remaining_duration <= 0.0) {
+			it = periodic_effects.erase(it);
+		} else {
+			++it;
+		}
+	}
+}
+
+void TeamfightSimulationCore::_cleanse_dots(UnitState &unit, const StringName &effect_type_filter) {
+	auto &periodic_effects = _uc(unit).periodic_effects;
+	if (effect_type_filter.is_empty()) {
+		// Remove all DoTs (damage_per_tick > 0)
+		periodic_effects.erase(
+			std::remove_if(periodic_effects.begin(), periodic_effects.end(),
+				[](const UnitStateCold::PeriodicEffect &e) { return e.damage_per_tick > 0.0; }),
+			periodic_effects.end()
+		);
+	} else {
+		// Remove DoTs matching effect type
+		periodic_effects.erase(
+			std::remove_if(periodic_effects.begin(), periodic_effects.end(),
+				[&effect_type_filter](const UnitStateCold::PeriodicEffect &e) {
+					return e.damage_per_tick > 0.0 && e.effect_type == effect_type_filter;
+				}),
+			periodic_effects.end()
+		);
+	}
+}
+
+void TeamfightSimulationCore::_clear_periodic_effects(UnitState &unit) {
+	_uc(unit).periodic_effects.clear();
+}
+
+void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self) {
+	StringName source_team = source.team;
+	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &enemy_indices;
+	cir.spatial_team = enemy_team;
+	if (!target_self) {
+		cir.exclude_instance_id = source.instance_id;
+	}
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_dot(source, unit, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type);
+	});
+}
+
+void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self) {
+	StringName source_team = source.team;
+	StringName ally_team = source_team == StringName("player") ? StringName("player") : StringName("enemy");
+	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(ally_team);
+	AoCircleIterationParams cir;
+	cir.center_x = source.pos_x;
+	cir.center_y = source.pos_y;
+	cir.radius = radius;
+	cir.indices = &ally_indices;
+	cir.spatial_team = ally_team;
+	if (!target_self) {
+		cir.exclude_instance_id = source.instance_id;
+	}
+	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+		_apply_hot(source, unit, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type);
 	});
 }
 
@@ -4906,6 +5357,9 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	target.respawn_timer = get_effective_respawn_time(target);
 	_uc(target).deaths += 1;
 	_sync_targeting_frame_unit(target);
+	
+	// Clear periodic effects on death
+	_clear_periodic_effects(target);
 
 	const std::unordered_map<int64_t, UnitStateCold::DamageSourceEntry> &damage_sources = _uc(target).damage_sources;
 	// Killer = source with max accumulated damage in window; ties resolve to lower instance_id.
@@ -5398,6 +5852,9 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				_execute_effect(effect, context);
 			}
 		}
+
+		// Tick periodic effects (DoT/HoT)
+		_tick_periodic_effects(unit, _tick_rate);
 
 		if (unit.stun_remaining > 0.0) {
 			return;
@@ -6033,24 +6490,66 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			aoe_damage_result["damage_dealt"] = total_damage;
 			return aoe_damage_result;
 		}
-		case EFFECT_OPCODE_SPLASH_DAMAGE: {
+		case EFFECT_OPCODE_TARGET_AOE_DAMAGE: {
 			Dictionary splash_result;
 			splash_result["success"] = true;
 			if (target != nullptr) {
-				_apply_splash_damage(source, *target, context.damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, effect.reason, effect.scalar1);
+				_apply_target_aoe_damage(source, *target, context.damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, effect.reason, effect.scalar1);
 				splash_result["splash_applied"] = true;
 			}
 			return splash_result;
 		}
-		case EFFECT_OPCODE_THRESHOLD_SPLASH_DAMAGE: {
+		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: {
 			Dictionary threshold_result;
 			threshold_result["success"] = true;
 			if (context.damage > source.combat.attack_damage * effect.scalar0 && !effect.children.empty()) {
 				Dictionary child_result = _execute_effect(effect.children[0], context);
-				threshold_result["splash_triggered"] = true;
+				threshold_result["triggered"] = true;
 				_merge_accumulated_results(threshold_result, child_result);
 			}
 			return threshold_result;
+		}
+		case EFFECT_OPCODE_DAMAGE_OVER_TIME: {
+			Dictionary dot_result;
+			dot_result["success"] = true;
+			if (target != nullptr) {
+				_apply_dot(source, *target, effect.scalar0, effect.scalar1, effect.scalar3,
+						   double(effect.int1), effect.scalar2,
+						   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
+						   effect.stacking_mode, effect.int0, effect.effect_type);
+				dot_result["dot_applied"] = true;
+			}
+			return dot_result;
+		}
+		case EFFECT_OPCODE_HEAL_OVER_TIME: {
+			Dictionary hot_result;
+			hot_result["success"] = true;
+			if (target != nullptr) {
+				_apply_hot(source, *target, effect.scalar0, effect.scalar1, effect.scalar3, effect.scalar4,
+						   double(effect.int1), effect.scalar2,
+						   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type);
+				hot_result["hot_applied"] = true;
+			}
+			return hot_result;
+		}
+		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME: {
+			Dictionary aoe_dot_result;
+			aoe_dot_result["success"] = true;
+			_apply_aoe_dot(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.scalar3,
+						   double(effect.int1), effect.scalar4,
+						   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
+						   effect.stacking_mode, effect.int0, effect.effect_type, effect.int2 != 0);
+			aoe_dot_result["aoe_dot_applied"] = true;
+			return aoe_dot_result;
+		}
+		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME: {
+			Dictionary aoe_hot_result;
+			aoe_hot_result["success"] = true;
+			_apply_aoe_hot(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
+						   double(effect.int1), effect.scalar5,
+						   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.int3 != 0);
+			aoe_hot_result["aoe_hot_applied"] = true;
+			return aoe_hot_result;
 		}
 		case EFFECT_OPCODE_MANA_REGEN: {
 			Dictionary mana_result;
@@ -6166,6 +6665,38 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary aoe_disarm_result;
 			aoe_disarm_result["success"] = true;
 			_apply_self_aoe_disarm(source, effect.scalar0, effect.scalar1);
+			return aoe_disarm_result;
+		}
+		case EFFECT_OPCODE_TARGET_AOE_SLOW: {
+			Dictionary aoe_slow_result;
+			aoe_slow_result["success"] = true;
+			if (target != nullptr) {
+				_apply_target_aoe_slow(source, *target, effect.scalar0, effect.scalar1, effect.scalar2);
+			}
+			return aoe_slow_result;
+		}
+		case EFFECT_OPCODE_TARGET_AOE_ROOT: {
+			Dictionary aoe_root_result;
+			aoe_root_result["success"] = true;
+			if (target != nullptr) {
+				_apply_target_aoe_root(source, *target, effect.scalar0, effect.scalar1);
+			}
+			return aoe_root_result;
+		}
+		case EFFECT_OPCODE_TARGET_AOE_SILENCE: {
+			Dictionary aoe_silence_result;
+			aoe_silence_result["success"] = true;
+			if (target != nullptr) {
+				_apply_target_aoe_silence(source, *target, effect.scalar0, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
+			}
+			return aoe_silence_result;
+		}
+		case EFFECT_OPCODE_TARGET_AOE_DISARM: {
+			Dictionary aoe_disarm_result;
+			aoe_disarm_result["success"] = true;
+			if (target != nullptr) {
+				_apply_target_aoe_disarm(source, *target, effect.scalar0, effect.scalar1);
+			}
 			return aoe_disarm_result;
 		}
 		case EFFECT_OPCODE_KNOCKBACK_SHIELD: {

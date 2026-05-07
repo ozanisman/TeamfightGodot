@@ -1694,6 +1694,17 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
 	if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
 		double x_base = (team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+		
+		// Adjust melee champions to spawn 0.5 tiles closer to center
+		double attack_range = double(stats.get("attack_range", 0.0));
+		if (attack_range <= 1.0) {  // Melee threshold
+			if (team == StringName("player")) {
+				x_base += 0.5;
+			} else {
+				x_base -= 0.5;
+			}
+		}
+		
 		x = x_base;
 		y = spawn_points[spawn_slot];
 		cold.respawn_slot_index = spawn_slot;

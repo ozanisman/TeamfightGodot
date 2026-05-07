@@ -814,7 +814,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		// Ratio-based parameters
 		compiled.scalar0 = double(params.get("attack_damage_ratio", 0.0));
 		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("tick_interval", 1.0));
+		compiled.scalar2 = double(params.get("damage_tick_interval", 1.0));
 		compiled.scalar3 = double(params.get("flat_amount", 0.0));
 		// Backward compatibility: damage_per_tick maps to flat_amount
 		if (params.has("damage_per_tick") && !params.has("flat_amount")) {
@@ -830,7 +830,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		// Ratio-based parameters
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("tick_interval", 1.0));
+		compiled.scalar2 = double(params.get("heal_tick_interval", 1.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.scalar4 = double(params.get("flat_amount", 0.0));
 		// Backward compatibility: heal_per_tick maps to flat_amount
@@ -850,7 +850,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("attack_damage_ratio", 0.0));
 		compiled.scalar2 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		compiled.scalar4 = double(params.get("tick_interval", 1.0));
+		compiled.scalar4 = double(params.get("damage_tick_interval", 1.0));
 		compiled.damage_type = StringName(params.get("damage_type", "physical"));
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
@@ -865,7 +865,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("current_hp_ratio", 0.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.scalar4 = double(params.get("flat_amount", 0.0));
-		compiled.scalar5 = double(params.get("tick_interval", 1.0));
+		compiled.scalar5 = double(params.get("heal_tick_interval", 1.0));
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
 		compiled.int0 = int64_t(params.get("max_stacks", 1));

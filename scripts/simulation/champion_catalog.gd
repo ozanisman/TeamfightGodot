@@ -1751,7 +1751,7 @@ const CHAMPION_DATA := {
 			"params": {
 				"max_hp_ratio": 0.03,
 				"duration": 5.0,
-				"tick_interval": 0.5,
+				"heal_tick_interval": 0.5,
 				"stacking_mode": "refresh",
 				"reason": "Healing Bloom"
 			}
@@ -1762,7 +1762,7 @@ const CHAMPION_DATA := {
 				"radius": 3.0,
 				"max_hp_ratio": 0.04,
 				"duration": 5.0,
-				"tick_interval": 0.5,
+				"heal_tick_interval": 0.5,
 				"target_self": true,
 				"allow_overheal": true,
 				"stacking_mode": "refresh",
@@ -2062,7 +2062,7 @@ const PASSIVE_DATA := {
 				"on_tick_interval": 5.0,
 				"missing_hp_ratio": 0.02,
 				"duration": 5.0,
-				"tick_interval": 0.5,
+				"heal_tick_interval": 0.5,
 				"target_self": true,
 				"reason": "Restorative Mist"
 			}

@@ -176,14 +176,14 @@ func _build_champion_bbcode(hero_id: StringName) -> String:
 		)
 	)
 	lines.append("")  # Line break before passive
-	lines.append("Passive: %s" % _escape_bbcode_plain(str(d.get("passive_desc", ""))))
+	lines.append("%s (passive): %s" % [_escape_bbcode_plain(str(d.get("passive_name", "Passive"))), _escape_bbcode_plain(str(d.get("passive_desc", "")))])
 	lines.append("")  # Line break before ability
 	lines.append(
-		"Ability (%ss): %s" % [str(st.get("ability_cd", 0.0)), _escape_bbcode_plain(str(d.get("ability_desc", "")))]
+		"%s (%ss): %s" % [_escape_bbcode_plain(str(d.get("ability_name", "Ability"))), str(st.get("ability_cd", 0.0)), _escape_bbcode_plain(str(d.get("ability_desc", "")))]
 	)
 	lines.append("")  # Line break before ultimate
 	lines.append(
-		"Ultimate (%.0f mana): %s" % [float(st.get("max_mana", 0.0)), _escape_bbcode_plain(str(d.get("ultimate_desc", "")))]
+		"%s (%.0f mana): %s" % [_escape_bbcode_plain(str(d.get("ultimate_name", "Ultimate"))), float(st.get("max_mana", 0.0)), _escape_bbcode_plain(str(d.get("ultimate_desc", "")))]
 	)
 	return "\n".join(lines)
 

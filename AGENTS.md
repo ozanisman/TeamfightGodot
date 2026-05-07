@@ -7,7 +7,7 @@
 - Preserve existing behavior unless explicitly changing it.
 - Keep responses concise and relevant.
 - Do not use emojis in responses.
-- Ask questions if you are unsure about something.
+- Ask questions if you are unsure about implementation specifics.
 
 ## Style
 - Be concise. No fluff or narration.
@@ -42,3 +42,4 @@
 - Minimal change.
 - Correct behavior.
 - Checks pass.
+- Concise summary of changes with no emojis or fluff.

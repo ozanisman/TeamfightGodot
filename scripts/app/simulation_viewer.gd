@@ -139,6 +139,7 @@ var _resize_debounce_timer: Timer
 var _speed_button: Button
 var _p1_roster_labels: VBoxContainer
 var _p2_roster_labels: VBoxContainer
+var _overtime_border: Panel
 
 
 func _ready() -> void:
@@ -525,6 +526,24 @@ func _setup_resize_debounce_timer() -> void:
 	_resize_debounce_timer.one_shot = true
 	_resize_debounce_timer.timeout.connect(_on_resize_debounce_timeout)
 	add_child(_resize_debounce_timer)
+
+	# Create overtime border (red screen edge)
+	var border_panel := Panel.new()
+	border_panel.name = "OvertimeBorderPanel"
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)  # Transparent background
+	style.border_width_left = 8
+	style.border_width_top = 8
+	style.border_width_right = 8
+	style.border_width_bottom = 8
+	style.border_color = Color(1.0, 0.2, 0.2, 0.9)
+	border_panel.add_theme_stylebox_override("panel", style)
+	border_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border_panel.z_index = 40
+	border_panel.visible = false
+	_ui_layer.add_child(border_panel)
+	_overtime_border = border_panel
 
 
 func _build_match_over_overlay() -> void:
@@ -1009,7 +1028,19 @@ func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: Str
 
 func _refresh_combat_hud(snapshot: Dictionary) -> void:
 	if _lbl_timer != null:
-		_lbl_timer.text = "TIME: %.1fs" % float(snapshot.get("time_remaining", 0.0))
+		var time_remaining: float = float(snapshot.get("time_remaining", 0.0))
+		var time: float = float(snapshot.get("time", 0.0))
+		if time_remaining <= 0.0:
+			var overtime: float = time - 60.0
+			_lbl_timer.text = "OVERTIME: %.1fs" % overtime
+			_lbl_timer.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+			if _overtime_border != null:
+				_overtime_border.visible = true
+		else:
+			_lbl_timer.text = "TIME: %.1fs" % time_remaining
+			_lbl_timer.add_theme_color_override("font_color", COLOR_TEXT)
+			if _overtime_border != null:
+				_overtime_border.visible = false
 	if _lbl_score != null:
 		_lbl_score.text = "SCORE: %d - %d" % [int(snapshot.get("player_kills", 0)), int(snapshot.get("enemy_kills", 0))]
 	if _lbl_combat_state != null and _game_state != PREPARATION:
@@ -1832,6 +1863,8 @@ func _toggle_pause() -> void:
 func _restart_match() -> void:
 	if _match_overlay != null:
 		_match_overlay.visible = false
+	if _overtime_border != null:
+		_overtime_border.visible = false
 	_reset_to_draft()
 
 
@@ -1926,6 +1959,9 @@ func _show_match_results(summary: Dictionary) -> void:
 	if _match_overlay == null or _match_title == null or _match_stats_container == null:
 		return
 	_match_overlay.visible = true
+	# Hide overtime border when match ends
+	if _overtime_border != null:
+		_overtime_border.visible = false
 	var w: String = str(summary.get("winner_team", "draw"))
 	_match_title.remove_theme_color_override("font_color")
 	if w == "player":
@@ -1941,11 +1977,22 @@ func _show_match_results(summary: Dictionary) -> void:
 		c.queue_free()
 	var pi: int = int(summary.get("player_kills", 0))
 	var ei: int = int(summary.get("enemy_kills", 0))
+	var duration: float = float(summary.get("duration", 0.0))
+	var sudden_death_ticks: int = int(summary.get("sudden_death_ticks", 0))
 	# If summary has no kills at root, 0-0
 	var sc_line := Label.new()
 	sc_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sc_line.text = "Final score (kills): %d - %d" % [pi, ei]
 	_match_stats_container.add_child(sc_line)
+	var duration_line := Label.new()
+	duration_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if sudden_death_ticks > 0:
+		var overtime: float = duration - 60.0
+		duration_line.text = "Duration: %.1fs (OVERTIME: %.1fs)" % [duration, overtime]
+		duration_line.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	else:
+		duration_line.text = "Duration: %.1fs" % duration
+	_match_stats_container.add_child(duration_line)
 	var us: Array = Array(summary.get("unit_stats", []))
 	us.sort_custom(
 		func(a, b):
@@ -1983,6 +2030,8 @@ func _show_match_results(summary: Dictionary) -> void:
 func _on_new_draft_from_match() -> void:
 	if _match_overlay != null:
 		_match_overlay.visible = false
+	if _overtime_border != null:
+		_overtime_border.visible = false
 	_reset_to_draft()
 
 

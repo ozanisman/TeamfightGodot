@@ -734,7 +734,7 @@ private:
 	static constexpr double RETARGET_INTERVAL = 0.5;
 	static constexpr double SHIELD_DECAY_RATE = 0.1;
 	static constexpr double OVERTIME_DAMAGE_BASE_RATE = 0.001;
-	static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.001;
+	static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.0001;
 	static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
 	static constexpr double TARGET_STICKINESS_THRESHOLD = 20.0;
 	static constexpr double STICKINESS_RETARGET_BONUS = 0.5;

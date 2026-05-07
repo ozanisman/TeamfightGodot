@@ -5537,6 +5537,18 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	// Generate respawn position from assigned slot
 	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
 	double x_base = (unit.team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+	
+	// Adjust melee champions to spawn 0.5 tiles closer to center
+	Dictionary stats = Dictionary(c.stats);
+	double attack_range = double(stats.get("attack_range", 0.0));
+	if (attack_range <= 1.0) {  // Melee threshold
+		if (unit.team == StringName("player")) {
+			x_base += 0.5;
+		} else {
+			x_base -= 0.5;
+		}
+	}
+	
 	if (c.respawn_slot_index >= 0 && c.respawn_slot_index < int(spawn_points.size())) {
 		unit.pos_x = x_base;
 		unit.pos_y = spawn_points[static_cast<size_t>(c.respawn_slot_index)];

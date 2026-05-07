@@ -1134,6 +1134,10 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		elif k == "shield":
 			var sh: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("[%d]" % int(ceil(sh)), sp, Color(0.55, 0.75, 1.0))
+		elif k == "hot_status":
+			var target_id: int = int(d.get("target_id", 0))
+			var duration: float = float(d.get("val", 0.0))
+			_spawn_hot_status_ring(target_id, duration, snapshot)
 		elif k == "melee_slash":
 			_spawn_melee_slash_fx(sp_battle)
 		elif k.begins_with("aoe_"):
@@ -1155,6 +1159,8 @@ func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Col
 		return Color(0.72, 0.42, 0.95, 0.62)
 	if kind == "aoe_splash":
 		return Color(1.0, 0.78, 0.2, 0.75)
+	if kind == "aoe_hot":
+		return Color(0.2, 0.9, 0.3, 0.7)
 	# aoe_damage: tint by team
 	if team_s == "player":
 		return Color(0.35, 0.55, 1.0, 0.58)
@@ -1162,6 +1168,34 @@ func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Col
 		return Color(1.0, 0.4, 0.35, 0.58)
 	return Color(0.95, 0.5, 0.35, 0.5)
 
+
+## Creates a green progress ring around a unit that depletes with HoT duration
+func _spawn_hot_status_ring(target_id: int, duration: float, snapshot: Dictionary) -> void:
+	if target_id == 0 or duration <= 0.0:
+		return
+	
+	# Get unit node to parent the ring to it
+	var unit_node: Node2D = _unit_nodes.get(target_id) as Node2D
+	if unit_node == null or not is_instance_valid(unit_node):
+		return
+	
+	# Create progress ring around unit (in local space, so it follows unit movement)
+	var ring_radius: float = 24.0  # Fixed screen-space radius
+	var col: Color = Color(0.2, 0.9, 0.3, 0.85)  # Green
+	var n: Node2D = AoeRingNodeScript.new()
+	n.name = "HotStatusRing"
+	n.position = Vector2.ZERO  # Local space - will follow unit automatically
+	var fill_c := Color(col.r, col.g, col.b, 0.15 * col.a)
+	n.setup(ring_radius, ring_radius, fill_c, col, 2.5)
+	
+	# Parent to unit node so it follows movement
+	unit_node.add_child(n)
+	
+	# Tween to fade out over duration
+	n.modulate = Color(1, 1, 1, 1.0)
+	var tw := create_tween()
+	tw.tween_property(n, "modulate:a", 0.0, duration)
+	tw.tween_callback(n.queue_free)
 
 ## World-space [wx,wy], radius in world units; center matches sim AoE center.
 func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:

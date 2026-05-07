@@ -919,6 +919,7 @@ private:
 	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);
+	void _viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type);
 	String _viewer_state_string(const UnitState &p_u) const;
 
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;

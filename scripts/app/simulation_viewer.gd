@@ -1128,7 +1128,15 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		var sp_battle: Vector2 = world_to_battle_local(wx, wy)
 		if k == "damage" or k == "dmg":
 			var amt: float = float(d.get("val", 0.0))
-			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, Color(0.9, 0.45, 0.45))
+			var damage_type: String = str(d.get("damage_type", "physical"))
+			var color: Color
+			if damage_type == "magic":
+				color = Color(0.3, 0.6, 1.0)  # Blue
+			elif damage_type == "true":
+				color = Color(1.0, 1.0, 1.0)  # White
+			else:
+				color = Color(0.9, 0.45, 0.45)  # Red (physical)
+			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, color)
 		elif k == "heal":
 			var h: float = float(d.get("val", 0.0))
 			_spawn_floating_text_screen("+%d" % int(ceil(h)), sp, COLOR_SUCCESS)

@@ -5507,8 +5507,13 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	c.effect_accumulators.clear();
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;
-	// Python parity: pending casts (casting_remaining > 0) are preserved across death/respawn.
-	// Python's respawn() does not clear any cast state, so a cast started before death continues after respawn.
+	// Clear casting state on respawn
+	unit.casting_remaining = 0.0;
+	c.casting_kind = StringName();
+	c.casting_effect = EffectRecord();
+	unit.casting_target_id = 0;
+	unit.casting_ally_target_id = 0;
+	unit.has_casting_effect = false;
 	unit.taunt_target_id = 0;
 	unit.forced_target_id = 0;
 	c.forced_target_kind = StringName();
@@ -5720,7 +5725,8 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	if (!unit.alive) {
 		SimProfileAccScope _uu_dead(profile_sim, _sim_profile_uu_dead_respawn);
 		unit.respawn_timer = Math::max(0.0, unit.respawn_timer - _tick_rate);
-		if (unit.respawn_timer <= 0.0) {
+		// Disable respawns during overtime (sudden death)
+		if (unit.respawn_timer <= 0.0 && _sudden_death_ticks <= 0) {
 			_respawn_unit(unit);
 		}
 		return;
@@ -6340,6 +6346,12 @@ void TeamfightSimulationCore::_update_projectiles() {
 		double move_dist = data.speed * _tick_rate;
 		if (dist <= move_dist + data.radius) {
 			_resolve_projectile(data);
+			// Check if match ended after this projectile (only during overtime)
+			if (_sudden_death_ticks > 0 && _player_kills != _enemy_kills) {
+				// Match ended, discard remaining projectiles
+				_scratch_projectiles.clear();
+				break;
+			}
 			continue;
 		}
 		if (dist > EPSILON) {

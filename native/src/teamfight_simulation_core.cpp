@@ -5752,6 +5752,12 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
 		unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
+		if (unit.shield > 0.0) {
+			unit.shield *= (1.0 - SHIELD_DECAY_RATE * _tick_rate);
+			if (unit.shield < 0.01) {
+				unit.shield = 0.0;
+			}
+		}
 		if (unit.stealth_remaining <= 0.0) {
 			unit.stealth_remaining = 0.0;
 			unit.stealth_break_on_attack = false;

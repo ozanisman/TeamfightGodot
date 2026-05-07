@@ -733,6 +733,8 @@ private:
 	static constexpr double ASSIST_WINDOW = 5.0;
 	static constexpr double RETARGET_INTERVAL = 0.5;
 	static constexpr double SHIELD_DECAY_RATE = 0.1;
+	static constexpr double OVERTIME_DAMAGE_BASE_RATE = 0.001;
+	static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.001;
 	static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
 	static constexpr double TARGET_STICKINESS_THRESHOLD = 20.0;
 	static constexpr double STICKINESS_RETARGET_BONUS = 0.5;
@@ -912,12 +914,14 @@ private:
 		double val = 0.0;
 		/// World-space radius (aoe_ring / aoe_taunt / aoe_splash); 0 if unused.
 		double radius = 0.0;
+		/// Damage type for coloring (physical/magic/true); empty if unused.
+		StringName damage_type;
 	};
 	static constexpr size_t VIEWER_FX_CAP = 256;
 	std::vector<ViewerFxEvent> _viewer_fx_events;
 
 	void _viewer_fx_push(const ViewerFxEvent &p_ev);
-	void _viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind);
+	void _viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind, const StringName &p_damage_type);
 	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);

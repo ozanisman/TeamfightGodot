@@ -90,6 +90,7 @@ var _draft_step_index: int = 0
 var _unit_nodes: Dictionary = {}  # instance_id -> Node2D
 var _projectile_nodes: Dictionary = {}  # projectile_id -> Node2D
 var _floating_texts: Array = []  # Array of floating text nodes
+var _hot_status_rings: Dictionary = {}  # instance_id -> Node2D (current HoT ring per unit)
 
 # Selection
 var _selected_unit_id: int = 0
@@ -1179,6 +1180,12 @@ func _spawn_hot_status_ring(target_id: int, duration: float, snapshot: Dictionar
 	if unit_node == null or not is_instance_valid(unit_node):
 		return
 	
+	# Remove existing ring for this unit if present
+	var old_ring: Node2D = _hot_status_rings.get(target_id) as Node2D
+	if old_ring != null and is_instance_valid(old_ring):
+		old_ring.queue_free()
+		_hot_status_rings.erase(target_id)
+	
 	# Create progress ring around unit (in local space, so it follows unit movement)
 	var ring_radius: float = 24.0  # Fixed screen-space radius
 	var col: Color = Color(0.2, 0.9, 0.3, 0.85)  # Green
@@ -1191,11 +1198,21 @@ func _spawn_hot_status_ring(target_id: int, duration: float, snapshot: Dictionar
 	# Parent to unit node so it follows movement
 	unit_node.add_child(n)
 	
+	# Track this ring for the unit
+	_hot_status_rings[target_id] = n
+	
 	# Tween to fade out over duration
 	n.modulate = Color(1, 1, 1, 1.0)
 	var tw := create_tween()
 	tw.tween_property(n, "modulate:a", 0.0, duration)
-	tw.tween_callback(n.queue_free)
+	tw.tween_callback(_cleanup_hot_status_ring.bind(target_id))
+
+## Cleanup callback for HoT status ring
+func _cleanup_hot_status_ring(target_id: int) -> void:
+	var ring: Node2D = _hot_status_rings.get(target_id) as Node2D
+	if ring != null and is_instance_valid(ring):
+		ring.queue_free()
+	_hot_status_rings.erase(target_id)
 
 ## World-space [wx,wy], radius in world units; center matches sim AoE center.
 func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:

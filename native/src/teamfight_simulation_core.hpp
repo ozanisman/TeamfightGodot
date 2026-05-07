@@ -69,8 +69,8 @@ private:
 		StringName requires_field;        // Which field to check
 		Variant requires_value;           // What value to require
 		
-		// Interval timing support for on_tick effects
-		double interval = 1.0;           // Custom interval (seconds), default 1.0
+		// on_tick_interval timing support for on_tick effects
+		double on_tick_interval = 1.0;  // Custom interval (seconds), default 1.0
 		double accumulator = 0.0;       // Per-effect timing accumulator
 		
 		// DoT/HoT support
@@ -313,6 +313,7 @@ private:
 			bool allow_overheal = false;
 			int stack_count = 0;
 			int max_stacks = 1;
+			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
 		};
 		std::vector<PeriodicEffect> periodic_effects;
 	};
@@ -1115,10 +1116,10 @@ private:
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
 	void _apply_target_aoe_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio);
-	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type);
-	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type);
-	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self);
-	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self);
+	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const StringName &action_kind);
+	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const StringName &action_kind);
+	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind);
+	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind);
 	void _tick_periodic_effects(UnitState &unit, double delta);
 	void _cleanse_dots(UnitState &unit, const StringName &effect_type_filter);
 	void _clear_periodic_effects(UnitState &unit);

@@ -1731,27 +1731,27 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.0,
 			"move_speed": 0.48,
 			"armor": 0.06,
-			"magic_resist": 0.16,
+			"magic_resist": 0.06,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 50.0,
+			"max_mana": 90.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 4.0,
+			"ability_cd": 7.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"restorative_mist",
 			"respawn_time": 0.0,
 		},
 		"description": "A restorative support who summons enchanted mists that gradually heal allies and sustain them through prolonged fights.",
-		"ability_desc": "REPLACE DESCRIPTION",
-		"ultimate_desc": "REPLACE DESCRIPTION",
-		"passive_desc": "REPLACE DESCRIPTION",
+		"ability_desc": "Heals a target for 15% of their maximum health over 5 seconds.",
+		"ultimate_desc": "Heals all allies in a 3.0 unit radius for 20% of their maximum health over 5 seconds.",
+		"passive_desc": "Every 5 seconds, heals all allies in a 2.0 unit radius for 10% of their missing health over 5 seconds.",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
-				"max_hp_ratio": 0.15,
+				"max_hp_ratio": 0.03,
 				"duration": 5.0,
-				"tick_interval": 1.0,
+				"tick_interval": 0.5,
 				"stacking_mode": "refresh",
 				"reason": "Healing Bloom"
 			}
@@ -1760,9 +1760,9 @@ const CHAMPION_DATA := {
 			"kind": &"aoe_heal_over_time",
 			"params": {
 				"radius": 3.0,
-				"max_hp_ratio": 0.20,
+				"max_hp_ratio": 0.04,
 				"duration": 5.0,
-				"tick_interval": 1.0,
+				"tick_interval": 0.5,
 				"target_self": true,
 				"allow_overheal": true,
 				"stacking_mode": "refresh",
@@ -1875,7 +1875,7 @@ const PASSIVE_DATA := {
 			"kind": &"heal",
 			"params": {
 				"max_hp_ratio": 0.02,
-				"interval": 1.0,
+				"on_tick_interval": 1.0,
 				"reason": "Rejuvenation"
 			}
 		}],
@@ -1949,7 +1949,7 @@ const PASSIVE_DATA := {
 			"kind": &"heal",
 			"params": {
 				"max_hp_ratio": 0.02,
-				"interval": 1.0,
+				"on_tick_interval": 1.0,
 				"reason": "Devotion"
 			}
 		}],
@@ -2043,7 +2043,7 @@ const PASSIVE_DATA := {
 			"kind": &"stealth",
 			"params": {
 				"duration": 1.0,
-				"interval": 2.0,
+				"on_tick_interval": 2.0,
 				"break_conditions": {
 					"on_attack": true,
 					"on_ability": true,
@@ -2056,9 +2056,14 @@ const PASSIVE_DATA := {
 	},
 	&"restorative_mist": {
 		&"on_tick": [{
-			"kind": &"heal_over_time",
+			"kind": &"aoe_heal_over_time",
 			"params": {
-				"max_hp_ratio": 0.02,
+				"radius": 2.0,
+				"on_tick_interval": 5.0,
+				"missing_hp_ratio": 0.02,
+				"duration": 5.0,
+				"tick_interval": 0.5,
+				"target_self": true,
 				"reason": "Restorative Mist"
 			}
 		}]

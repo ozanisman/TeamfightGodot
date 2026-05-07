@@ -5925,8 +5925,10 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 		if (in_contact) {
 			if (unit.attack_cooldown <= 0.0) {
-				_perform_auto_attack(unit, *target, distance);
-				return;
+				if (unit.combat.attack_speed > 0.0) {
+					_perform_auto_attack(unit, *target, distance);
+					return;
+				}
 			}
 		}
 	}
@@ -5937,7 +5939,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			return;
 		}
 		// Movement: kite first if applicable, else move toward.
-		if (strategy.prefers_kiting && unit.attack_cooldown > 0.0 && unit.taunt_remaining <= 0.0) {
+		if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
 			if (_kite_from_enemies(unit)) {
 				return;
 			}

@@ -3474,7 +3474,7 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		_uc(target).last_hit_time = _time;
 	}
 	if (total_damage > 1e-9) {
-		_viewer_record_damage_fx(source, target, total_damage, action_kind);
+		_viewer_record_damage_fx(source, target, total_damage, action_kind, damage_type);
 	}
 	_maybe_apply_reflect_damage(source, target, total_damage, damage_type, context);
 	if (target.hp <= 0.0) {
@@ -5791,6 +5791,38 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 	}
 
+	// Apply overtime damage during sudden death
+	if (_sudden_death_ticks > 0) {
+		double damage_rate = OVERTIME_DAMAGE_BASE_RATE + (OVERTIME_DAMAGE_INCREASE_RATE * _sudden_death_ticks);
+		
+		for (UnitState &unit : _units) {
+			if (!unit.alive) {
+				continue;
+			}
+			
+			double max_hp = get_effective_max_hp(unit);
+			double damage = max_hp * damage_rate;
+			
+			// Apply shield absorption first (bypass _apply_damage to avoid passives/stats)
+			double shield_before = unit.shield;
+			double absorbed = Math::min(shield_before, damage);
+			unit.shield = Math::max(0.0, shield_before - absorbed);
+			double hp_loss = Math::max(0.0, damage - absorbed);
+			unit.hp = Math::max(0.0, unit.hp - hp_loss);
+			
+			// Handle death
+			if (unit.hp <= 0.0 && unit.alive) {
+				unit.alive = false;
+				// Update kill counters
+				if (unit.team == sn_player()) {
+					_enemy_kills++;
+				} else {
+					_player_kills++;
+				}
+			}
+		}
+	}
+
 	// Separation (Python: after CC tick, before threat decay; skipped while stunned or rooted after decrement).
 	{
 		SimProfileAccScope _uu_sep(profile_sim, _sim_profile_uu_separation);
@@ -7336,7 +7368,7 @@ void TeamfightSimulationCore::_viewer_fx_push(const ViewerFxEvent &p_ev) {
 	_viewer_fx_events.push_back(p_ev);
 }
 
-void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind) {
+void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind, const StringName &p_damage_type) {
 	ViewerFxEvent ev;
 	ev.kind = StringName("damage");
 	ev.target_id = p_target.instance_id;
@@ -7344,6 +7376,7 @@ void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source
 	ev.pos_x = p_target.pos_x;
 	ev.pos_y = p_target.pos_y;
 	ev.val = p_total_damage;
+	ev.damage_type = p_damage_type;
 	_viewer_fx_push(ev);
 	if (p_action_kind == StringName("auto") && get_effective_attack_range(p_source) <= RANGED_THRESHOLD) {
 		ViewerFxEvent slash;
@@ -7535,6 +7568,9 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 			const double r = ve.radius;
 			e["r"] = r;
 			e["radius"] = r;
+		}
+		if (!ve.damage_type.is_empty()) {
+			e["damage_type"] = String(ve.damage_type);
 		}
 		fx.append(e);
 	}

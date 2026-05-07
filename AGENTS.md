@@ -5,7 +5,9 @@
 - Do not modify unrelated code.
 - Do not introduce new abstractions or dependencies without clear need.
 - Preserve existing behavior unless explicitly changing it.
-- Enable /caveman skill by default
+- Keep responses concise and relevant.
+- Do not use emojis in responses.
+- Ask questions if you are unsure about something.
 
 ## Style
 - Be concise. No fluff or narration.

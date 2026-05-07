@@ -158,6 +158,9 @@ static func _build_champion(data: Dictionary) -> ChampionSpecScript:
 		data["ability_desc"],
 		data["ultimate_desc"],
 		data["passive_desc"],
+		data.get("passive_name", ""),
+		data.get("ability_name", ""),
+		data.get("ultimate_name", ""),
 		ability,
 		ultimate,
 		passive_ids
@@ -184,8 +187,8 @@ const CHAMPION_DATA := {
 			"unit_id": &"swordsman",
 			"name": &"Swordsman",
 			"role": &"fighter",
-			"max_hp": 220.0,
-			"attack_damage": 28.0,
+			"max_hp": 250.0,
+			"attack_damage": 27.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.1,
 			"move_speed": 0.75,
@@ -205,6 +208,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Cleaves for 200% damage and 1.0s stun.",
 		"ultimate_desc": "Whirlwind for 560% damage and 3.2s stun.",
 		"passive_desc": "Gains 5 attack damage for 3 seconds after each auto-attack. (Max 5 stacks)",
+		"passive_name": "Duelist",
+		"ability_name": "Cleave",
+		"ultimate_name": "Whirlwind",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -279,6 +285,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Fires a volley for 140% damage.",
 		"ultimate_desc": "Rain of Arrows for 380% damage with splash.",
 		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
+		"passive_name": "Eagle Eye",
+		"ability_name": "Volley",
+		"ultimate_name": "Rain of Arrows",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -322,6 +331,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Grants a shield worth 20% max HP to self or an ally.",
 		"ultimate_desc": "Slams the ground for 290% damage and a 3.8s stun.",
 		"passive_desc": "Reduces incoming damage by 10%.",
+		"passive_name": "Bastion",
+		"ability_name": "Guardian Shield",
+		"ultimate_name": "Ground Slam",
 		"ability": {
 			"kind": &"shield",
 			"params": {
@@ -359,7 +371,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"ninja",
 			"name": &"Ninja",
 			"role": &"assassin",
-			"max_hp": 220.0,
+			"max_hp": 160.0,
 			"attack_damage": 25.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.7,
@@ -380,6 +392,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% damage and stun for 0.5s.",
 		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"passive_desc": "Deals double damage to targets below 30% HP.",
+		"passive_name": "Executioner",
+		"ability_name": "Shadow Dash",
+		"ultimate_name": "Execute",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -450,6 +465,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "High-precision strike for 150% damage.",
 		"ultimate_desc": "Lethal long-range shot for 280% damage.",
 		"passive_desc": "Deals 25% bonus damage to targets further than 3 units away.",
+		"passive_name": "Deadeye",
+		"ability_name": "Headshot",
+		"ultimate_name": "Snipe",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -492,7 +510,10 @@ const CHAMPION_DATA := {
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"ability_desc": "Damages self for 15% max HP and gains a 30% max HP shield.",
 		"ultimate_desc": "Unleashes a devastating strike for 420% true damage.",
-		"passive_desc": "Heals for 15% of his auto-attack damage.",
+		"passive_desc": "Heals for 30% of damage dealt.",
+		"passive_name": "Bloodlust",
+		"ability_name": "Blood Sacrifice",
+		"ultimate_name": "Ravage",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -556,6 +577,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Heals self for 20% max HP.",
 		"ultimate_desc": "Heals self for 40% max HP and deals 200% true damage.",
 		"passive_desc": "Regenerates 2% max HP every second.",
+		"passive_name": "Rejuvenation",
+		"ability_name": "Lay on Hands",
+		"ultimate_name": "Divine Judgment",
 		"ability": {
 			"kind": &"heal",
 			"params": {
@@ -594,7 +618,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"rogue",
 			"name": &"Rogue",
 			"role": &"assassin",
-			"max_hp": 190.0,
+			"max_hp": 180.0,
 			"attack_damage": 28.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.3,
@@ -615,6 +639,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Deals 200% physical damage.",
 		"ultimate_desc": "Lethal execution dealing 600% physical damage.",
 		"passive_desc": "25% chance to dodge incoming auto attacks, avoiding all damage.",
+		"passive_name": "Agility",
+		"ability_name": "Backstab",
+		"ultimate_name": "Execute",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -645,7 +672,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"oracle",
 			"name": &"Oracle",
 			"role": &"support",
-			"max_hp": 85.0,
+			"max_hp": 185.0,
 			"attack_damage": 14.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.75,
@@ -666,6 +693,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Grants a shield worth 15% max HP to self or an ally.",
 		"ultimate_desc": "Restores 35% max HP and grants a shield worth 35% max HP.",
 		"passive_desc": "Gains an additional 5 mana after each auto-attack.",
+		"passive_name": "Enlightenment",
+		"ability_name": "Purify",
+		"ultimate_name": "Divine Intervention",
 		"ability": {
 			"kind": &"shield",
 			"params": {
@@ -702,7 +732,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"colossus",
 			"name": &"Colossus",
 			"role": &"tank",
-			"max_hp": 350.0,
+			"max_hp": 330.0,
 			"attack_damage": 13.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.6,
@@ -713,16 +743,19 @@ const CHAMPION_DATA := {
 			"life_steal": 0.0,
 			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 5.5,
+			"ability_cd": 6.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.05,
 			"passive_id": &"durability",
 			"respawn_time": 0.0,
 		},
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
-		"ability_desc": "Taunts all targets in a 3 unit radius for 2.5s and deals 165% damage in a 1 unit radius.",
+		"ability_desc": "Taunts all targets in a 3 unit radius for 2.5s and deals 130% damage in a 1 unit radius.",
 		"ultimate_desc": "Colossal impact for 300% damage and a 2s stun.",
 		"passive_desc": "Reduces all incoming damage by 10%.",
+		"passive_name": "Durability",
+		"ability_name": "Taunt",
+		"ultimate_name": "Colossal Impact",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -739,7 +772,7 @@ const CHAMPION_DATA := {
 						"kind": &"self_aoe_damage",
 						"params": {
 							"radius": 1.0,
-							"damage_ratio": 1.65,
+							"damage_ratio": 1.3,
 							"damage_type": "physical",
 							"reason": "Seismic Slam"
 						}
@@ -778,7 +811,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"wraith",
 			"name": &"Wraith",
 			"role": &"assassin",
-			"max_hp": 220.0,
+			"max_hp": 180.0,
 			"attack_damage": 27.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.2,
@@ -799,6 +832,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Magic strike for 150% damage.",
 		"ultimate_desc": "Magic strike for 250% magic damage and 1.5s stun.",
 		"passive_desc": "Every second, enters stealth for 0.5 seconds. Stealth breaks on attack or ability cast.",
+		"passive_name": "Shadow Steps",
+		"ability_name": "Spectral Strike",
+		"ultimate_name": "Haunt",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -847,7 +883,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"warlock",
 			"name": &"Warlock",
 			"role": &"mage",
-			"max_hp": 100.0,
+			"max_hp": 160.0,
 			"attack_damage": 20.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.65,
@@ -868,6 +904,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Deals 100% magic damage and heals self for 10% of it.",
 		"ultimate_desc": "Rifts the ground for 260% magic damage and 0.5s stun.",
 		"passive_desc": "Heals for 5 HP after each auto-attack.",
+		"passive_name": "Vampirism",
+		"ability_name": "Life Drain",
+		"ultimate_name": "Rift",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -928,6 +967,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Fires a magical projectile dealing 170% magic damage.",
 		"ultimate_desc": "Calls down a meteor for 500% magic damage and deals splash damage on impact.",
 		"passive_desc": "Gains 5 mana every second.",
+		"passive_name": "Mana Font",
+		"ability_name": "Arcane Bolt",
+		"ultimate_name": "Meteor Bombardment",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -954,13 +996,13 @@ const CHAMPION_DATA := {
 			"unit_id": &"monk",
 			"name": &"Monk",
 			"role": &"fighter",
-			"max_hp": 230.0,
+			"max_hp": 250.0,
 			"attack_damage": 28.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.0,
 			"move_speed": 0.76,
-			"armor": 0.24,
-			"magic_resist": 0.24,
+			"armor": 0.22,
+			"magic_resist": 0.22,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 70.0,
@@ -972,9 +1014,12 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
-		"ability_desc": "Precise strike for 210% damage and 1.5s stun.",
-		"ultimate_desc": "Rapid flurry for 410% damage and 2.8s stun.",
+		"ability_desc": "Precise strike for 150% damage that silences the target for 1.0s.",
+		"ultimate_desc": "Gains 10% max HP shield and reflects 50% damage for 3s.",
 		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
+		"passive_name": "Technique",
+		"ability_name": "Pressure Point",
+		"ultimate_name": "Drunken Stance",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -982,15 +1027,15 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"damage",
 						"params": {
-							"damage_ratio": 2.1,
+							"damage_ratio": 1.5,
 							"trigger_on_hit": false,
 							"reason": "Pressure Point"
 						}
 					},
 					{
-						"kind": &"stun",
+						"kind": &"silence",
 						"params": {
-							"duration": 1.5,
+							"duration": 1.0,
 							"reason": "Pressure Point"
 						}
 					}
@@ -1003,22 +1048,23 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"damage",
+						"kind": &"shield",
 						"params": {
-							"damage_ratio": 4.1,
-							"trigger_on_hit": false,
-							"reason": "Hundred-Hand Slap"
+							"max_hp_ratio": 0.1,
+							"reason": "Drunken Stance"
 						}
 					},
 					{
-						"kind": &"stun",
+						"kind": &"reflect",
 						"params": {
-							"duration": 2.8,
-							"reason": "Hundred-Hand Slap"
+							"reflect_percentage": 0.5,
+							"duration": 3.0,
+							"reflect_type": "all",
+							"reason": "Drunken Stance"
 						}
 					}
 				],
-				"reason": "Hundred-Hand Slap"
+				"reason": "Drunken Stance"
 			}
 		},
 		"passive_ids": [&"technique"],
@@ -1049,6 +1095,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Explosive shell dealing 150% damage and 0.5s stun.",
 		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"passive_desc": "Attacks and abilities deal 30% splash damage in a 0.5 tile radius.",
+		"passive_name": "Demolition",
+		"ability_name": "Explosive Shell",
+		"ultimate_name": "Barrage",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -1072,33 +1121,37 @@ const CHAMPION_DATA := {
 			"unit_id": &"cleric",
 			"name": &"Cleric",
 			"role": &"support",
-			"max_hp": 115.0,
-			"attack_damage": 13.0,
-			"attack_range": 3.5,
-			"attack_speed": 1.0,
-			"move_speed": 0.48,
-			"armor": 0.06,
+			"max_hp": 170.0,
+			"attack_damage": 0.0,
+			"attack_range": 4.0,
+			"attack_speed": 0.0,
+			"move_speed": 0.75,
+			"armor": 0.16,
 			"magic_resist": 0.16,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 8.0,
+			"ability_cd": 1.5,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"devotion",
 			"respawn_time": 0.0,
 		},
-		"description": "A dedicated holy healer who provides constant HP regeneration and massive burst heals for her team.",
-		"ability_desc": "Heals an ally or self for 20% max HP.",
-		"ultimate_desc": "Heals for 38% max HP.",
-		"passive_desc": "Regenerates 2.0% of max HP every second.",
+		"description": "A dedicated holy healer who constantly heals her allies instead of attacking enemies.",
+		"ability_desc": "Heals an ally or self for 25 Health.",
+		"ultimate_desc": "Heals for 50% missing Health.",
+		"passive_desc": "Can't attack, but gains 10 mana per second passively.",
+		"passive_name": "Devotion",
+		"ability_name": "Heal",
+		"ultimate_name": "Mass Heal",
 		"ability": {
 			"kind": &"heal",
 			"params": {
-				"max_hp_ratio": 0.20,
+				"flat_amount": 25.0,
 				"reason": "Holy Mending"
-			}
+			},
+			"requires_target_in_range": false
 		},
 		"ultimate": {
 			"kind": &"multi",
@@ -1107,7 +1160,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"heal",
 						"params": {
-							"max_hp_ratio": 0.38,
+							"missing_hp_ratio": 0.50,
 							"reason": "Divine Aura"
 						}
 					},
@@ -1122,10 +1175,10 @@ const CHAMPION_DATA := {
 			"unit_id": &"siren",
 			"name": &"Siren",
 			"role": &"support",
-			"max_hp": 80.0,
-			"attack_damage": 14.0,
+			"max_hp": 150.0,
+			"attack_damage": 16.0,
 			"attack_range": 3.5,
-			"attack_speed": 1.05,
+			"attack_speed": 1.4,
 			"move_speed": 0.48,
 			"armor": 0.04,
 			"magic_resist": 0.13,
@@ -1143,6 +1196,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
 		"passive_desc": "Auto-attacks drain 5 mana from the target.",
+		"passive_name": "Siphon",
+		"ability_name": "Enthralling Song",
+		"ultimate_name": "Siren's Shriek",
 		"ability": {
 			"kind": &"stun",
 			"params": {
@@ -1181,16 +1237,16 @@ const CHAMPION_DATA := {
 			"unit_id": &"valkyrie",
 			"name": &"Valkyrie",
 			"role": &"fighter",
-			"max_hp": 280.0,
-			"attack_damage": 25.0,
+			"max_hp": 260.0,
+			"attack_damage": 20.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.2,
+			"attack_speed": 1.1,
 			"move_speed": 0.7,
 			"armor": 0.25,
 			"magic_resist": 0.25,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 80.0,
+			"max_mana": 90.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 6.0,
 			"projectile_speed": 0.0,
@@ -1201,7 +1257,10 @@ const CHAMPION_DATA := {
 		"description": "A formidable bruiser who grows more dangerous as she fights, slamming foes with her shield.",
 		"ability_desc": "Bashes target for 220% damage and 0.5s stun.",
 		"ultimate_desc": "War cry dealing 400% damage and 1.5s stun.",
-		"passive_desc": "Deals 10 physical damage in a 0.7 radius around herself and heals for 100% of the damage dealt.",
+		"passive_desc": "Auto attacks additionally deal 10 physical damage in a 0.5 radius around herself and heals for 100% of the damage dealt.",
+		"passive_name": "Sweeping Strikes",
+		"ability_name": "Shield Bash",
+		"ultimate_name": "War Cry",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1255,7 +1314,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"frost_mage",
 			"name": &"Frost Mage",
 			"role": &"mage",
-			"max_hp": 85.0,
+			"max_hp": 155.0,
 			"attack_damage": 22.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.95,
@@ -1276,6 +1335,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Fires an ice bolt for 180% magic damage and slows target by 40% for 2.5s.",
 		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 60% for 4.0s.",
 		"passive_desc": "Auto-attacks slow targets by 20% for 1.5s.",
+		"passive_name": "Frost Aura",
+		"ability_name": "Ice Bolt",
+		"ultimate_name": "Blizzard",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1340,7 +1402,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.1,
 			"move_speed": 0.7,
 			"armor": 0.35,
-			"magic_resist": 0.25,
+			"magic_resist": 0.20,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 70.0,
@@ -1355,6 +1417,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Slams the ground for 180% damage and roots target for 1.8s.",
 		"ultimate_desc": "Causes an earthquake for 350% damage and roots all enemies in 3.0 unit radius for 3.5s.",
 		"passive_desc": "Has 15% damage reduction.",
+		"passive_name": "Earth Resistance",
+		"ability_name": "Ground Slam",
+		"ultimate_name": "Earthquake",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1430,6 +1495,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Strikes target for 140% damage and silences for 2.0s.",
 		"ultimate_desc": "Creates a silence zone for 240% damage, silencing all enemies in 2.0 unit radius for 4.0s.",
 		"passive_desc": "Deals 25% bonus damage to silenced targets.",
+		"passive_name": "Arcane Focus",
+		"ability_name": "Arcane Strike",
+		"ultimate_name": "Silence Zone",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1488,7 +1556,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"disarmer",
 			"name": &"Disarmer",
 			"role": &"fighter",
-			"max_hp": 240.0,
+			"max_hp": 250.0,
 			"attack_damage": 26.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.6,
@@ -1509,6 +1577,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Disarms target for 1.0s and deals 130% damage.",
 		"ultimate_desc": "Creates a weapon suppression field that disarms all enemies in 3.0 unit radius for 2.0s.",
 		"passive_desc": "Attacks against disarmed targets have 20% increased attack speed.",
+		"passive_name": "Weapon Breaker",
+		"ability_name": "Disarm",
+		"ultimate_name": "Weapon Suppression",
 		"ability": {
 			"kind": &"multi",
 			"params": {
@@ -1555,16 +1626,16 @@ const CHAMPION_DATA := {
 			"unit_id": &"windcaller",
 			"name": &"Windcaller",
 			"role": &"mage",
-			"max_hp": 80.0,
-			"attack_damage": 14.0,
+			"max_hp": 150.0,
+			"attack_damage": 19.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.9,
-			"move_speed": 0.55,
-			"armor": 0.05,
+			"move_speed": 0.60,
+			"armor": 0.15,
 			"magic_resist": 0.28,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 90.0,
+			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 8.0,
 			"projectile_speed": 7.0,
@@ -1574,8 +1645,11 @@ const CHAMPION_DATA := {
 		},
 		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
 		"ability_desc": "Blasts target with wind for 120% magic damage, knocks back 1.5 tiles, and slows by 20% for 1 second.",
-		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in a 3 tile radius by 2.5 units.",
-		"passive_desc": "When knocking back enemies, gain a shield equal to 15% max hp.",
+		"ultimate_desc": "Creates a tornado for 300% magic damage, knocking back all enemies in a 5 tile radius by 2 units.",
+		"passive_desc": "When knocking back enemies, gain a 15% max hp shield.",
+		"passive_name": "Gust Protection",
+		"ability_name": "Wind Blast",
+		"ultimate_name": "Tornado",
 		"passive_ids": [&"gust_protection"],
 		"ability": {
 			"kind": &"multi",
@@ -1627,7 +1701,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"self_aoe_damage",
 						"params": {
-							"radius": 2.5,
+							"radius": 5.0,
 							"damage_ratio": 3.0,
 							"damage_type": "magic",
 							"reason": "Tornado"
@@ -1636,7 +1710,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"self_aoe_knockback",
 						"params": {
-							"radius": 2.5,
+							"radius": 5.0,
 							"distance": 2.5,
 							"direction": "away_from_source",
 							"reason": "Tornado"
@@ -1683,6 +1757,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Gains a 25% damage reflect shield for 3.0s.",
 		"ultimate_desc": "Creates a mirrored aura for 180% damage, granting 40% reflect to all allies in 2.0 unit radius for 5.0s.",
 		"passive_desc": "Permanently reflects 10% of all damage taken back to attackers.",
+		"passive_name": "Reflective Armor",
+		"ability_name": "Mirror Shield",
+		"ultimate_name": "Mirrored Aura",
 		"ability": {
 			"kind": &"reflect",
 			"params": {
@@ -1725,7 +1802,7 @@ const CHAMPION_DATA := {
 			"unit_id": &"mistcaller",
 			"name": &"Mistcaller",
 			"role": &"support",
-			"max_hp": 115.0,
+			"max_hp": 130.0,
 			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.0,
@@ -1746,6 +1823,9 @@ const CHAMPION_DATA := {
 		"ability_desc": "Heals a target for 15% of their maximum health over 5 seconds.",
 		"ultimate_desc": "Heals all allies in a 3.0 unit radius for 20% of their maximum health over 5 seconds.",
 		"passive_desc": "Every 5 seconds, heals all allies in a 2.0 unit radius for 10% of their missing health over 5 seconds.",
+		"passive_name": "Restorative Mist",
+		"ability_name": "Mist Heal",
+		"ultimate_name": "Enveloping Mist",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
@@ -1946,11 +2026,9 @@ const PASSIVE_DATA := {
 	},
 	&"devotion": {
 		&"on_tick": [{
-			"kind": &"heal",
+			"kind": &"mana_regen",
 			"params": {
-				"max_hp_ratio": 0.02,
-				"on_tick_interval": 1.0,
-				"reason": "Devotion"
+				"flat_amount": 10.0
 			}
 		}],
 	},
@@ -1979,7 +2057,7 @@ const PASSIVE_DATA := {
 					{
 						"kind": &"self_aoe_damage",
 						"params": {
-							"radius": 0.7,
+							"radius": 0.5,
 							"flat_amount": 10.0,
 							"damage_type": "physical",
 							"reason": "Sweeping Strikes"
@@ -2158,12 +2236,13 @@ const ROLE_CONFIG_DATA := {
 	&"tank": {
 		"stat_mods": {},
 		"passive_on_tick": null,
-		"passive_post_take_damage": {
-			"kind": &"post_damage_mana_gain",
-			"params": {
-				"damage_ratio": SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO
-			}
-		},
+		"passive_post_take_damage": null,
+		#{
+		#	"kind": &"post_damage_mana_gain",
+		#	"params": {
+		#		"damage_ratio": SimConstantsScript.TANK_MANA_GAIN_DAMAGE_RATIO
+		#	}
+		#}
 	},
 	&"fighter": {
 		"stat_mods": {},
@@ -2182,7 +2261,7 @@ const ROLE_CONFIG_DATA := {
 	},
 	&"mage": {
 		"stat_mods": {},
-		"passive_on_tick": {"kind": &"mana_regen", "params": {"flat_amount": SimConstantsScript.MAGE_MANA_REGEN_TICK}},
+		"passive_on_tick": null, #{"kind": &"mana_regen", "params": {"flat_amount": SimConstantsScript.MAGE_MANA_REGEN_TICK}}
 		"passive_post_take_damage": null,
 	},
 	&"support": {

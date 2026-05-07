@@ -5725,8 +5725,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	if (!unit.alive) {
 		SimProfileAccScope _uu_dead(profile_sim, _sim_profile_uu_dead_respawn);
 		unit.respawn_timer = Math::max(0.0, unit.respawn_timer - _tick_rate);
-		// Disable respawns during overtime (sudden death)
-		if (unit.respawn_timer <= 0.0 && _sudden_death_ticks <= 0) {
+		if (unit.respawn_timer <= 0.0) {
 			_respawn_unit(unit);
 		}
 		return;
@@ -5799,15 +5798,13 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	// Apply overtime damage during sudden death
 	if (_sudden_death_ticks > 0) {
-		double damage_rate = OVERTIME_DAMAGE_BASE_RATE + (OVERTIME_DAMAGE_INCREASE_RATE * _sudden_death_ticks);
-		
 		for (UnitState &unit : _units) {
 			if (!unit.alive) {
 				continue;
 			}
 			
 			double max_hp = get_effective_max_hp(unit);
-			double damage = max_hp * damage_rate;
+			double damage = (max_hp * OVERTIME_DAMAGE_BASE_RATE) + 1.0;
 			
 			// Apply shield absorption first (bypass _apply_damage to avoid passives/stats)
 			double shield_before = unit.shield;

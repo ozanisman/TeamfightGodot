@@ -4906,7 +4906,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			? &_targeting_frame[static_cast<size_t>(current_target_index)]
 			: nullptr;
 	bool forced_reason = true;
-	if (current_target != nullptr && current_target->alive && current_target->is_player_team != (unit.team == sn_player())) {
+	if (current_target != nullptr && current_target->alive && current_target->is_player_team != (unit.team == sn_player()) && current_target->stealth_remaining <= 0.0) {
 		forced_reason = false;
 	}
 
@@ -6106,6 +6106,7 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	// Python parity: only fail the cast for projectile abilities when the enemy target is gone.
 	// Self-targeting abilities (shield, heal) always succeed using source as fallback.
 	// Matches Python's execute_ability which returns False only for use_projectile with dead target.
+	// Extended: also fail when target is stealthed (target no longer valid).
 	auto _effect_uses_projectile = [](const EffectRecord &e) -> bool {
 		if (e.opcode == EFFECT_OPCODE_PROJECTILE) return true;
 		if (e.opcode == EFFECT_OPCODE_MULTI) {
@@ -6115,7 +6116,7 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 		}
 		return false;
 	};
-	if (_effect_uses_projectile(effect) && (target == nullptr || !target->alive)) {
+	if (_effect_uses_projectile(effect) && (target == nullptr || !target->alive || target->stealth_remaining > 0.0)) {
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
@@ -6130,6 +6131,10 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 
 void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &target, double distance) {
 	if (unit.disarm_remaining > 0.0) {
+		return;
+	}
+	// Break attack if target is stealthed (target no longer valid)
+	if (target.stealth_remaining > 0.0) {
 		return;
 	}
 	_uc(unit).auto_attacks += 1;

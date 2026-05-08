@@ -3368,6 +3368,15 @@ double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState
 		if (effect.opcode == EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
 		}
+		if (effect.opcode == EFFECT_OPCODE_STAT_MODIFIER) {
+			// Execute stat_modifier effects before damage calculation
+			// For on_defense, the target (defender) should be the source of the stat_modifier
+			EffectContext stat_context = context;
+			stat_context.source = &target;
+			stat_context.target = &target;
+			_execute_effect(effect, stat_context);
+			continue;
+		}
 		multiplier *= _evaluate_multiplier_effect(effect, context, multiplier);
 	}
 	return multiplier;

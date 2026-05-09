@@ -1146,6 +1146,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_obscurance_aux_enemy_grid_sig = 0;
 	_obscurance_aux_player_grid_tick = -1;
 	_obscurance_aux_player_grid_sig = 0;
+	_expiration_queue = std::priority_queue<ExpirationEntry>();
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -1197,39 +1198,103 @@ void TeamfightSimulationCore::_ensure_catalog_loaded() {
 	if (_catalog_loaded) {
 		return;
 	}
-	// Godot FileAccess / JSON from multiple threads during first load has faulted on Windows;
-	// serialize so each core instance still gets its own catalog copy, but not concurrently.
-	static std::mutex s_catalog_load_mutex;
-	std::lock_guard<std::mutex> lock(s_catalog_load_mutex);
-	if (_catalog_loaded) {
-		return;
-	}
-	_champion_catalog = _load_json_file(String(CHAMPION_SCHEMA_PATH));
-	_build_role_configs();
-	_build_passive_registry();
+	// Godot FileAccess / JSON from multiple threads during first load has faulted on Windows.
+	// Use a single global parse (call_once) and then share the read-only catalog payloads across
+	// core instances to avoid per-worker serialization during benchmarks.
+	static std::once_flag s_catalog_once;
+	static Dictionary s_champion_catalog;
+	static Dictionary s_role_configs;
+	static Dictionary s_passive_registry;
+	static Dictionary s_ability_kits;
+	static std::vector<BalancePatch> s_balance_patches;
 
-	// Load balance patches (file is optional; silently skip if absent or empty).
-	_balance_patches.clear();
-	Dictionary bp_root = _load_json_file(String(BALANCE_PATCHES_PATH));
-	if (!bp_root.is_empty()) {
-		Array patches = Array(bp_root.get("patches", Array()));
-		for (int64_t i = 0; i < patches.size(); ++i) {
-			Dictionary pd = Dictionary(patches[i]);
-			BalancePatch patch;
-			_parse_balance_patch_from_dict(pd, patch);
-			_balance_patches.push_back(patch);
+	auto load_json_required = [](const String &path) -> Dictionary {
+		Dictionary empty;
+		Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+		if (file.is_null()) {
+			UtilityFunctions::push_error(vformat("Failed to open JSON file: %s", path));
+			return empty;
 		}
-	}
+		Variant parsed = JSON::parse_string(file->get_as_text());
+		if (parsed.get_type() != Variant::DICTIONARY) {
+			UtilityFunctions::push_error(vformat("Failed to parse JSON file: %s", path));
+			return empty;
+		}
+		return Dictionary(parsed);
+	};
+	auto load_json_optional = [](const String &path) -> Dictionary {
+		Dictionary empty;
+		Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+		if (file.is_null()) {
+			return empty;
+		}
+		Variant parsed = JSON::parse_string(file->get_as_text());
+		if (parsed.get_type() != Variant::DICTIONARY) {
+			UtilityFunctions::push_error(vformat("Failed to parse JSON file: %s", path));
+			return empty;
+		}
+		return Dictionary(parsed);
+	};
 
-	// Optional champion kits (preset ability/ultimate/passive swaps).
-	_ability_kits = Dictionary();
-	Dictionary kits_root = _load_json_file_if_exists(String(CHAMPION_KITS_PATH));
-	if (!kits_root.is_empty()) {
-		_ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
-	}
+	std::call_once(s_catalog_once, [&]() {
+		s_champion_catalog = load_json_required(String(CHAMPION_SCHEMA_PATH));
+
+		// role_configs
+		s_role_configs.clear();
+		if (!s_champion_catalog.has("role_configs")) {
+			UtilityFunctions::push_error("Champion schema missing 'role_configs' key");
+		} else {
+			Dictionary role_configs_dict = Dictionary(s_champion_catalog.get("role_configs", Dictionary()));
+			Array role_keys = role_configs_dict.keys();
+			for (int64_t i = 0; i < role_keys.size(); ++i) {
+				StringName role_id = StringName(String(role_keys[i]));
+				Dictionary role_entry = Dictionary(role_configs_dict.get(role_id, Dictionary()));
+				s_role_configs[role_id] = role_entry;
+			}
+		}
+
+		// passives
+		s_passive_registry.clear();
+		if (!s_champion_catalog.has("passives")) {
+			UtilityFunctions::push_error("Champion schema missing 'passives' key");
+		} else {
+			Dictionary passives_dict = Dictionary(s_champion_catalog.get("passives", Dictionary()));
+			Array passive_keys = passives_dict.keys();
+			for (int64_t i = 0; i < passive_keys.size(); ++i) {
+				StringName passive_id = StringName(String(passive_keys[i]));
+				Dictionary passive_entry = Dictionary(passives_dict.get(passive_id, Dictionary()));
+				s_passive_registry[passive_id] = passive_entry;
+			}
+		}
+
+		// balance patches (required file, but contents may be empty)
+		s_balance_patches.clear();
+		Dictionary bp_root = load_json_required(String(BALANCE_PATCHES_PATH));
+		if (!bp_root.is_empty()) {
+			Array patches = Array(bp_root.get("patches", Array()));
+			for (int64_t i = 0; i < patches.size(); ++i) {
+				Dictionary pd = Dictionary(patches[i]);
+				BalancePatch patch;
+				_parse_balance_patch_from_dict(pd, patch);
+				s_balance_patches.push_back(patch);
+			}
+		}
+
+		// champion kits (optional)
+		s_ability_kits.clear();
+		Dictionary kits_root = load_json_optional(String(CHAMPION_KITS_PATH));
+		if (!kits_root.is_empty()) {
+			s_ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
+		}
+	});
+
+	_champion_catalog = s_champion_catalog;
+	_role_configs = s_role_configs;
+	_passive_registry = s_passive_registry;
+	_ability_kits = s_ability_kits;
+	_balance_patches = s_balance_patches;
 
 	_rebuild_effective_champion_cache();
-
 	_catalog_loaded = true;
 }
 
@@ -8401,7 +8466,6 @@ void TeamfightSimulationCore::_validate_stack_consistency(UnitState &unit) {
 // Define static member variables
 thread_local std::vector<TeamfightSimulationCore::StackEntry> TeamfightSimulationCore::_stack_pool;
 thread_local std::unordered_map<uint64_t, int> TeamfightSimulationCore::_stack_key_to_pool_index;
-std::priority_queue<TeamfightSimulationCore::ExpirationEntry> TeamfightSimulationCore::_expiration_queue;
 
 // Stack debugging implementations
 void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) const {

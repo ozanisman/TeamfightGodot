@@ -25,6 +25,7 @@ Special **first-flag** modes (select a different `--script` and shorter timeouts
 | `--check-match-telemetry` | [`scripts/tools/check_match_telemetry.gd`](../scripts/tools/check_match_telemetry.gd) | Runs one native match and asserts each `unit_stats` row includes versioned `telemetry` from the native summary. |
 | `--check-determinism` | [`scripts/tools/check_determinism.gd`](../scripts/tools/check_determinism.gd) | Runs a **subset** of golden inputs twice per case; fails if canonical payloads/signatures differ. |
 | `--check-benchmark` | [`scripts/tools/check_benchmark.gd`](../scripts/tools/check_benchmark.gd) | Throughput benchmark (prints JSON to stdout). |
+| `--check-benchmark-sharded` | [`scripts/tools/run_benchmark_sharded.ps1`](../scripts/tools/run_benchmark_sharded.ps1) | Spawns multiple benchmark processes (PowerShell driver) and reports aggregate wall-clock matches/sec. |
 | `--check-balance-patches` | [`scripts/tools/check_balance_patches.gd`](../scripts/tools/check_balance_patches.gd) | Native balance-patch API and overlay behavior smoke suite. |
 | `--check-stats-dashboard` | [`scripts/tools/check_stats_dashboard_load.gd`](../scripts/tools/check_stats_dashboard_load.gd) | Loads fixture CSVs and instantiates the stats dashboard scene. |
 | `--check-stats-aggregator` | [`scripts/tools/check_stats_aggregator_roundtrip.gd`](../scripts/tools/check_stats_aggregator_roundtrip.gd) | Writes synthetic summaries through [`stats_csv_aggregator.gd`](../scripts/tools/stats_csv_aggregator.gd) and reloads with [`stats_dashboard_loader.gd`](../scripts/tools/stats_dashboard_loader.gd). |
@@ -94,6 +95,11 @@ Baseline numbers and methodology: [`logs/benchmark_rundown.md`](../logs/benchmar
 
 - [`scripts/tools/run_benchmark_sharded.ps1`](../scripts/tools/run_benchmark_sharded.ps1)
 - [`scripts/tools/run_benchmark_shard_worker.ps1`](../scripts/tools/run_benchmark_shard_worker.ps1)
+
+`run_godot.ps1` also exposes this via `--check-benchmark-sharded` (same `--batch-count` / `--team-size` flags) plus:
+
+- `--shards=N`: process count (defaults to 8 when not specified)
+- `--workers-per-shard=N`: benchmark workers inside each shard process (default 1)
 
 ---
 

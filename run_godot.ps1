@@ -13,6 +13,7 @@ $checkOnly = $Arguments -contains "--check-only"
 $checkNativeLoad = $Arguments -contains "--check-native-load"
 $checkDeterminism = $Arguments -contains "--check-determinism"
 $checkBenchmark = $Arguments -contains "--check-benchmark"
+$checkBenchmarkSharded = $Arguments -contains "--check-benchmark-sharded"
 $checkBalancePatches = $Arguments -contains "--check-balance-patches"
 $checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
 $checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
@@ -43,6 +44,9 @@ elseif ($checkDeterminism) {
 elseif ($checkBenchmark) {
 	$timeoutSeconds = 180
 }
+elseif ($checkBenchmarkSharded) {
+	$timeoutSeconds = 300
+}
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
@@ -56,6 +60,9 @@ elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkDeterminism) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmark) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmarkSharded) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsDashboard) {
@@ -93,6 +100,34 @@ elseif ($checkDeterminism) {
 }
 elseif ($checkBenchmark) {
 	$godotArgs += @("--script", "res://scripts/tools/check_benchmark.gd")
+}
+elseif ($checkBenchmarkSharded) {
+	# Run benchmark sharded across processes (PowerShell driver).
+	function Get-ArgInt([string]$Prefix, [int]$DefaultValue) {
+		foreach ($a in $Arguments) {
+			if ($a -like "$Prefix*") {
+				return [int]($a.Substring($Prefix.Length))
+			}
+		}
+		return $DefaultValue
+	}
+	function Has-Flag([string]$Flag) {
+		return $Arguments -contains $Flag
+	}
+	$batchCount = [Math]::Max(1, (Get-ArgInt "--batch-count=" 2000))
+	$teamSize = [Math]::Max(1, (Get-ArgInt "--team-size=" 5))
+	$shardCount = [Math]::Max(1, (Get-ArgInt "--shards=" (Get-ArgInt "--workers=" (Get-ArgInt "--max-workers=" 8))))
+	$workersPerShard = [Math]::Max(1, (Get-ArgInt "--workers-per-shard=" 1))
+	$benchSkip = (Has-Flag "--bench-skip-summaries")
+
+	$driver = Join-Path $projectRoot "scripts\tools\run_benchmark_sharded.ps1"
+	if (-not (Test-Path $driver)) {
+		Write-Error "Sharded benchmark driver not found at $driver"
+		exit 1
+	}
+	# Sharded mode is intended for the bench-skip throughput gate; the driver defaults BenchSkipSummaries on.
+	& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $driver -TotalBatchCount $batchCount -ShardCount $shardCount -TeamSize $teamSize -WorkersPerShard $workersPerShard
+	exit $LASTEXITCODE
 }
 elseif ($checkBalancePatches) {
 	$godotArgs += @("--script", "res://scripts/tools/check_balance_patches.gd")

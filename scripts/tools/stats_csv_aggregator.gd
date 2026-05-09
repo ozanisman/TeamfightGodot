@@ -11,6 +11,7 @@ var _by_size: Dictionary = {}
 var _role_by_hero: Dictionary = {}
 var _match_logs: Array = []
 var _matchup_aggregator: MatchupAggregator
+var _write_match_log: bool = true
 
 
 func reset() -> void:
@@ -23,21 +24,78 @@ func reset() -> void:
 		_matchup_aggregator.reset()
 
 
+func set_write_match_log(enabled: bool) -> void:
+	_write_match_log = enabled
+	if not _write_match_log:
+		_match_logs.clear()
+
+
 func consume_summary(team_size: int, summary_value: Variant) -> void:
-	# Handle both individual summaries and chunk results with matchup data
 	if summary_value is Dictionary and summary_value.has("match_results"):
-		# This is a chunk result with matchup data
 		if _matchup_aggregator == null:
 			_matchup_aggregator = MatchupAggregator.new()
 		_matchup_aggregator.consume_chunk_result(summary_value)
 		
-		# Process individual match summaries from the chunk
 		var match_results: Array = Array(summary_value.get("match_results", []))
 		for result in match_results:
 			_consume_individual_summary(team_size, result)
+	elif summary_value is Dictionary and summary_value.has("stats_partial"):
+		var partial_entry: Dictionary = Dictionary(summary_value)
+		if _matchup_aggregator == null:
+			_matchup_aggregator = MatchupAggregator.new()
+		_matchup_aggregator.consume_chunk_result(partial_entry)
+		consume_partial(Dictionary(partial_entry.get("stats_partial", {})))
 	else:
-		# This is an individual summary (old format)
 		_consume_individual_summary(team_size, summary_value)
+
+
+func to_partial_dict(include_match_log: bool = true) -> Dictionary:
+	return {
+		"by_size": _by_size.duplicate(true),
+		"match_logs": _match_logs.duplicate(true) if include_match_log else [],
+	}
+
+
+func consume_partial(partial: Dictionary) -> void:
+	var partial_by_size: Dictionary = Dictionary(partial.get("by_size", {}))
+	for size_key in partial_by_size.keys():
+		var source_bucket: Dictionary = Dictionary(partial_by_size[size_key])
+		var target_bucket: Dictionary = _bucket(int(size_key))
+		for count_key in ["p1", "p2", "draws", "total"]:
+			target_bucket[count_key] = int(target_bucket.get(count_key, 0)) + int(source_bucket.get(count_key, 0))
+		_merge_named_entries(target_bucket, "heroes", Dictionary(source_bucket.get("heroes", {})))
+		_merge_named_entries(target_bucket, "roles", Dictionary(source_bucket.get("roles", {})))
+		_merge_named_entries(target_bucket, "combos", Dictionary(source_bucket.get("combos", {})))
+	if _write_match_log:
+		for log_entry in Array(partial.get("match_logs", [])):
+			_match_logs.append(log_entry)
+
+
+static func _merge_numeric_fields(target: Dictionary, source: Dictionary) -> void:
+	for field in source.keys():
+		if not target.has(field):
+			target[field] = source[field]
+			continue
+		var current_value: Variant = target[field]
+		var source_value: Variant = source[field]
+		if current_value is int and source_value is int:
+			target[field] = int(current_value) + int(source_value)
+		else:
+			target[field] = float(current_value) + float(source_value)
+
+
+static func _merge_named_entries(target_bucket: Dictionary, group_name: String, source_group: Dictionary) -> void:
+	var target_group: Dictionary = Dictionary(target_bucket[group_name])
+	for name_key in source_group.keys():
+		var source_entry: Dictionary = Dictionary(source_group[name_key])
+		var name: String = String(name_key)
+		if target_group.has(name):
+			var target_entry: Dictionary = Dictionary(target_group[name])
+			_merge_numeric_fields(target_entry, source_entry)
+			target_group[name] = target_entry
+		else:
+			target_group[name] = source_entry.duplicate(true)
+	target_bucket[group_name] = target_group
 
 static func _unit_float(data: Dictionary, key: String, default_value: float = 0.0) -> float:
 	return float(data.get(key, default_value))
@@ -92,13 +150,14 @@ func _consume_individual_summary_common(
 	enemy_comp: Array,
 	summary_is_object: bool
 ) -> void:
-	_match_logs.append({
-		"team_size": team_size,
-		"seed": seed,
-		"winner": String(winner_team),
-		"sudden_death_ticks": sudden_death_ticks,
-		"duration": duration,
-	})
+	if _write_match_log:
+		_match_logs.append({
+			"team_size": team_size,
+			"seed": seed,
+			"winner": String(winner_team),
+			"sudden_death_ticks": sudden_death_ticks,
+			"duration": duration,
+		})
 
 	_ensure_roles()
 	var bucket: Dictionary = _bucket(team_size)
@@ -147,14 +206,15 @@ func write_to_dir(dir_path: String) -> Error:
 	var hero_csv := _build_combat_csv()
 	var role_csv := _build_role_csv()
 	var combo_csv := _build_combo_csv()
-	var match_log_csv := _build_match_log_csv()
-	for pair: Array in [
+	var csv_files: Array = [
 		["summary_stats.csv", summary_csv],
 		["combat_stats.csv", hero_csv],
 		["role_stats.csv", role_csv],
 		["hero_combinations.csv", combo_csv],
-		["match_log.csv", match_log_csv],
-	]:
+	]
+	if _write_match_log:
+		csv_files.append(["match_log.csv", _build_match_log_csv()])
+	for pair: Array in csv_files:
 		var name: String = String(pair[0])
 		var text: String = String(pair[1])
 		var err := _write_text_atomic("%s/%s" % [dir_path.rstrip("/"), name], text)

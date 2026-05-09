@@ -761,16 +761,20 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_taunt",
+						"kind": &"aoe_taunt",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 3.0,
 							"duration": 2.5,
 							"reason": "Seismic Slam"
 						}
 					},
 					{
-						"kind": &"self_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 1.0,
 							"damage_ratio": 1.3,
 							"damage_type": "physical",
@@ -811,18 +815,18 @@ const CHAMPION_DATA := {
 			"unit_id": &"wraith",
 			"name": &"Wraith",
 			"role": &"assassin",
-			"max_hp": 180.0,
-			"attack_damage": 27.0,
+			"max_hp": 150.0,
+			"attack_damage": 23.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.2,
+			"attack_speed": 1.0,
 			"move_speed": 1.0,
-			"armor": 0.20,
-			"magic_resist": 0.15,
+			"armor": 0.15,
+			"magic_resist": 0.12,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 60.0,
+			"max_mana": 70.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 3,
+			"ability_cd": 3.5,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"shadow_steps",
@@ -1314,13 +1318,13 @@ const CHAMPION_DATA := {
 			"unit_id": &"frost_mage",
 			"name": &"Frost Mage",
 			"role": &"mage",
-			"max_hp": 155.0,
+			"max_hp": 140.0,
 			"attack_damage": 22.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.95,
 			"move_speed": 0.5,
 			"armor": 0.10,
-			"magic_resist": 0.24,
+			"magic_resist": 0.17,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 70.0,
@@ -1328,14 +1332,14 @@ const CHAMPION_DATA := {
 			"ability_cd": 4.0,
 			"projectile_speed": 6.0,
 			"projectile_radius": 0.0,
-			"passive_id": &"frost_aura",
+			"passive_id": &"bitter_chill",
 			"respawn_time": 0.0,
 		},
 		"description": "A cryomancer who controls ice and frost, slowing enemies with every attack and freezing them with powerful spells.",
-		"ability_desc": "Fires an ice bolt for 180% magic damage and slows target by 40% for 2.5s.",
-		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 60% for 4.0s.",
-		"passive_desc": "Auto-attacks slow targets by 20% for 1.5s.",
-		"passive_name": "Frost Aura",
+		"ability_desc": "Fires an ice bolt for 180% magic damage and slows target by 30% for 2.5s.",
+		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 50% for 4.0s.",
+		"passive_desc": "Auto-attacks slow targets by 10% for 1.5s.",
+		"passive_name": "Bitter Chill",
 		"ability_name": "Ice Bolt",
 		"ultimate_name": "Blizzard",
 		"ability": {
@@ -1354,7 +1358,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"slow",
 						"params": {
-							"slow_percentage": 0.4,
+							"slow_percentage": 0.3,
 							"duration": 2.5,
 							"reason": "Ice Bolt"
 						}
@@ -1368,8 +1372,10 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"target_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "target",
 							"radius": 2.5,
 							"damage_ratio": 3.2,
 							"damage_type": "magic",
@@ -1379,8 +1385,10 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"aoe_slow",
 						"params": {
+							"shape": "circle",
+							"anchor": "target",
 							"radius": 2.5,
-							"slow_percentage": 0.6,
+							"slow_percentage": 0.5,
 							"duration": 4.0,
 							"reason": "Blizzard"
 						}
@@ -1389,20 +1397,20 @@ const CHAMPION_DATA := {
 				"reason": "Blizzard"
 			}
 		},
-		"passive_ids": [&"frost_aura"],
+		"passive_ids": [&"bitter_chill"],
 	},
 	&"earthbender": {
 		"stats": {
 			"unit_id": &"earthbender",
 			"name": &"Earthbender",
-			"role": &"fighter",
-			"max_hp": 280.0,
-			"attack_damage": 28.0,
+			"role": &"tank",
+			"max_hp": 260.0,
+			"attack_damage": 23.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.1,
-			"move_speed": 0.7,
-			"armor": 0.35,
-			"magic_resist": 0.20,
+			"attack_speed": 1.0,
+			"move_speed": 0.65,
+			"armor": 0.15,
+			"magic_resist": 0.10,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 70.0,
@@ -1410,14 +1418,14 @@ const CHAMPION_DATA := {
 			"ability_cd": 6.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
-			"passive_id": &"earth_resistance",
+			"passive_id": &"earthen_protection",
 			"respawn_time": 0.0,
 		},
 		"description": "A master of earth manipulation who can root enemies in place and control the battlefield.",
-		"ability_desc": "Slams the ground for 180% damage and roots target for 1.8s.",
+		"ability_desc": "Slams the ground for 180% damage and roots target for 2.0s.",
 		"ultimate_desc": "Causes an earthquake for 350% damage and roots all enemies in 3.0 unit radius for 3.5s.",
-		"passive_desc": "Has 15% damage reduction.",
-		"passive_name": "Earth Resistance",
+		"passive_desc": "When taking damage, gain 2% armor and magic resist for 5.0s. (Max 10 stacks)",
+		"passive_name": "Earthen Protection",
 		"ability_name": "Ground Slam",
 		"ultimate_name": "Earthquake",
 		"ability": {
@@ -1435,7 +1443,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"root",
 						"params": {
-							"duration": 1.8,
+							"duration": 2.0,
 							"reason": "Ground Slam"
 						}
 					}
@@ -1448,16 +1456,20 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 3.0,
 							"damage_ratio": 3.5,
 							"reason": "Earthquake"
 						}
 					},
 					{
-						"kind": &"self_aoe_root",
+						"kind": &"aoe_root",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 3.0,
 							"duration": 3.5,
 							"reason": "Earthquake"
@@ -1467,7 +1479,7 @@ const CHAMPION_DATA := {
 				"reason": "Earthquake"
 			}
 		},
-		"passive_ids": [&"earth_resistance"],
+		"passive_ids": [&"earthen_protection"],
 	},
 	&"silencer": {
 		"stats": {
@@ -1528,16 +1540,20 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 2.0,
 							"damage_ratio": 2.4,
 							"reason": "Silence Zone"
 						}
 					},
 					{
-						"kind": &"self_aoe_silence",
+						"kind": &"aoe_silence",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 2.0,
 							"duration": 4.0,
 							"block_abilities": true,
@@ -1608,8 +1624,10 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_disarm",
+						"kind": &"aoe_disarm",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 3.0,
 							"duration": 2.0,
 							"reason": "Suppression Field"
@@ -1699,8 +1717,10 @@ const CHAMPION_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 5.0,
 							"damage_ratio": 3.0,
 							"damage_type": "magic",
@@ -1708,8 +1728,10 @@ const CHAMPION_DATA := {
 						}
 					},
 					{
-						"kind": &"self_aoe_knockback",
+						"kind": &"aoe_knockback",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 5.0,
 							"distance": 2.5,
 							"direction": "away_from_source",
@@ -1720,7 +1742,7 @@ const CHAMPION_DATA := {
 						"kind": &"shield",
 						"params": {
 							"max_hp_ratio": 0.15,
-							"requires_result_from": "self_aoe_knockback",
+							"requires_result_from": "aoe_knockback",
 							"requires_field": "knockback_applied",
 							"requires_value": true,
 							"reason": "Gust Protection"
@@ -1782,8 +1804,10 @@ const CHAMPION_DATA := {
 						}
 					},
 					{
-						"kind": &"self_aoe_reflect",
+						"kind": &"aoe_reflect",
 						"params": {
+							"shape": "circle",
+							"anchor": "source",
 							"radius": 2.0,
 							"reflect_percentage": 0.4,
 							"duration": 5.0,
@@ -1803,7 +1827,7 @@ const CHAMPION_DATA := {
 			"name": &"Mistcaller",
 			"role": &"support",
 			"max_hp": 130.0,
-			"attack_damage": 15.0,
+			"attack_damage": 13.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.0,
 			"move_speed": 0.48,
@@ -1811,16 +1835,16 @@ const CHAMPION_DATA := {
 			"magic_resist": 0.06,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 90.0,
+			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 7.0,
+			"ability_cd": 8.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"restorative_mist",
 			"respawn_time": 0.0,
 		},
 		"description": "A restorative support who summons enchanted mists that gradually heal allies and sustain them through prolonged fights.",
-		"ability_desc": "Heals a target for 15% of their maximum health over 5 seconds.",
+		"ability_desc": "Heals a target for 15% of their missing health over 5 seconds.",
 		"ultimate_desc": "Heals all allies in a 3.0 unit radius for 20% of their maximum health over 5 seconds.",
 		"passive_desc": "Every 5 seconds, heals all allies in a 2.0 unit radius for 10% of their missing health over 5 seconds.",
 		"passive_name": "Restorative Mist",
@@ -1829,7 +1853,7 @@ const CHAMPION_DATA := {
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
-				"max_hp_ratio": 0.03,
+				"missing_hp_ratio": 0.03,
 				"duration": 5.0,
 				"heal_tick_interval": 0.5,
 				"stacking_mode": "refresh",
@@ -1839,6 +1863,8 @@ const CHAMPION_DATA := {
 		"ultimate": {
 			"kind": &"aoe_heal_over_time",
 			"params": {
+				"shape": "circle",
+				"anchor": "source",
 				"radius": 3.0,
 				"max_hp_ratio": 0.04,
 				"duration": 5.0,
@@ -1881,10 +1907,12 @@ const PASSIVE_DATA := {
 				"params": {
 					"threshold_multiplier": 3.0,
 					"effect": {
-						"kind": &"target_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "target",
 							"radius": 2.0,
-							"ratio": 0.5,
+							"damage_ratio": 0.5,
 							"damage_type": "physical",
 							"reason": "Rain of Arrows",
 							"color": [34, 139, 34],
@@ -1982,7 +2010,7 @@ const PASSIVE_DATA := {
 		&"on_defense": [{
 			"kind": &"constant_multiplier",
 			"params": {
-				"multiplier": 0.9
+				"multiplier": 0.90
 			}
 		}],
 	},
@@ -2014,10 +2042,12 @@ const PASSIVE_DATA := {
 	},
 	&"demolition": {
 		&"post_attack": [{
-			"kind": &"target_aoe_damage",
+			"kind": &"aoe_damage",
 			"params": {
+				"shape": "circle",
+				"anchor": "target",
 				"radius": 0.5,
-				"ratio": 0.3,
+				"damage_ratio": 0.3,
 				"damage_type": "physical",
 				"reason": "Explosion",
 				"color": [255, 100, 50]
@@ -2055,8 +2085,10 @@ const PASSIVE_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": &"self_aoe_damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "target",
 							"radius": 0.5,
 							"flat_amount": 10.0,
 							"damage_type": "physical",
@@ -2073,18 +2105,45 @@ const PASSIVE_DATA := {
 			},
 		}],
 	},
-	&"frost_aura": {
+	&"bitter_chill": {
 		&"post_attack": [{
 			"kind": &"slow",
 			"params": {
-				"slow_percentage": 0.2,
+				"slow_percentage": 0.1,
 				"duration": 1.5,
-				"reason": "Frost Aura"
+				"reason": "Bitter Chill"
 			}
 		}],
 	},
-	&"earth_resistance": {
-		&"on_defense": [{"kind": &"constant_multiplier", "params": {"multiplier": 0.85}}],
+	&"earthen_protection": {
+		&"on_defense": [
+		{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "armor",
+				"additive": 0.02,
+				"duration": 5.0,
+				"duration_type": "respawn",
+				"max_stacks": 10,
+				"stack_behavior": "refresh",
+				"reason": "Earthen Protection",
+				"target_self": true
+			}
+		},
+		{
+			"kind": &"stat_modifier",
+			"params": {
+				"stat_name": "magic_resist",
+				"additive": 0.02,
+				"duration": 5.0,
+				"duration_type": "respawn",
+				"max_stacks": 10,
+				"stack_behavior": "refresh",
+				"reason": "Earthen Protection",
+				"target_self": true
+			}
+		}
+	],
 	},
 	&"arcane_focus": {
 		&"on_attack": [{
@@ -2136,6 +2195,8 @@ const PASSIVE_DATA := {
 		&"on_tick": [{
 			"kind": &"aoe_heal_over_time",
 			"params": {
+				"shape": "circle",
+				"anchor": "source",
 				"radius": 2.0,
 				"on_tick_interval": 5.0,
 				"missing_hp_ratio": 0.02,

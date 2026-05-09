@@ -247,21 +247,25 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_taunt",
+						"kind": "aoe_taunt",
 						"params": {
+							"anchor": "source",
 							"duration": 2.5,
 							"radius": 3.0,
-							"reason": "Seismic Slam"
+							"reason": "Seismic Slam",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "source",
 							"damage_ratio": 1.3,
 							"damage_type": "physical",
 							"radius": 1.0,
-							"reason": "Seismic Slam"
+							"reason": "Seismic Slam",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					}
@@ -394,11 +398,13 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_disarm",
+						"kind": "aoe_disarm",
 						"params": {
+							"anchor": "source",
 							"duration": 2.0,
 							"radius": 3.0,
-							"reason": "Suppression Field"
+							"reason": "Suppression Field",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					}
@@ -428,7 +434,7 @@
 					{
 						"kind": "root",
 						"params": {
-							"duration": 1.8,
+							"duration": 2.0,
 							"reason": "Ground Slam"
 						},
 						"requires_target_in_range": true
@@ -438,34 +444,34 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Slams the ground for 180% damage and roots target for 1.8s.",
+		"ability_desc": "Slams the ground for 180% damage and roots target for 2.0s.",
 		"ability_name": "Ground Slam",
 		"description": "A master of earth manipulation who can root enemies in place and control the battlefield.",
 		"name": "Earthbender",
-		"passive_desc": "Has 15% damage reduction.",
+		"passive_desc": "When taking damage, gain 2% armor and magic resist for 5.0s. (Max 10 stacks)",
 		"passive_ids": [
-			"earth_resistance"
+			"earthen_protection"
 		],
-		"passive_name": "Earth Resistance",
-		"role": "fighter",
+		"passive_name": "Earthen Protection",
+		"role": "tank",
 		"stats": {
 			"ability_cd": 6.0,
-			"armor": 0.35,
-			"attack_damage": 28.0,
+			"armor": 0.15,
+			"attack_damage": 23.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.1,
+			"attack_speed": 1.0,
 			"life_steal": 0.0,
-			"magic_resist": 0.2,
+			"magic_resist": 0.1,
 			"mana_per_attack": 10.0,
-			"max_hp": 280.0,
+			"max_hp": 260.0,
 			"max_mana": 70.0,
-			"move_speed": 0.7,
+			"move_speed": 0.65,
 			"name": "Earthbender",
-			"passive_id": "earth_resistance",
+			"passive_id": "earthen_protection",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
 			"respawn_time": 5.0,
-			"role": "fighter",
+			"role": "tank",
 			"tenacity": 0.0,
 			"unit_id": "earthbender"
 		},
@@ -474,20 +480,24 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "source",
 							"damage_ratio": 3.5,
 							"radius": 3.0,
-							"reason": "Earthquake"
+							"reason": "Earthquake",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_aoe_root",
+						"kind": "aoe_root",
 						"params": {
+							"anchor": "source",
 							"duration": 3.5,
 							"radius": 3.0,
-							"reason": "Earthquake"
+							"reason": "Earthquake",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					}
@@ -520,7 +530,7 @@
 						"params": {
 							"duration": 2.5,
 							"reason": "Ice Bolt",
-							"slow_percentage": 0.4
+							"slow_percentage": 0.3
 						},
 						"requires_target_in_range": true
 					}
@@ -529,15 +539,15 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Fires an ice bolt for 180% magic damage and slows target by 40% for 2.5s.",
+		"ability_desc": "Fires an ice bolt for 180% magic damage and slows target by 30% for 2.5s.",
 		"ability_name": "Ice Bolt",
 		"description": "A cryomancer who controls ice and frost, slowing enemies with every attack and freezing them with powerful spells.",
 		"name": "Frost Mage",
-		"passive_desc": "Auto-attacks slow targets by 20% for 1.5s.",
+		"passive_desc": "Auto-attacks slow targets by 10% for 1.5s.",
 		"passive_ids": [
-			"frost_aura"
+			"bitter_chill"
 		],
-		"passive_name": "Frost Aura",
+		"passive_name": "Bitter Chill",
 		"role": "mage",
 		"stats": {
 			"ability_cd": 4.0,
@@ -546,13 +556,13 @@
 			"attack_range": 3.5,
 			"attack_speed": 0.95,
 			"life_steal": 0.0,
-			"magic_resist": 0.24,
+			"magic_resist": 0.17,
 			"mana_per_attack": 10.0,
-			"max_hp": 155.0,
+			"max_hp": 140.0,
 			"max_mana": 70.0,
 			"move_speed": 0.5,
 			"name": "Frost Mage",
-			"passive_id": "frost_aura",
+			"passive_id": "bitter_chill",
 			"projectile_radius": 0.03,
 			"projectile_speed": 6.0,
 			"respawn_time": 5.0,
@@ -565,22 +575,26 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "target_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "target",
 							"damage_ratio": 3.2,
 							"damage_type": "magic",
 							"radius": 2.5,
-							"reason": "Blizzard"
+							"reason": "Blizzard",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
 					{
 						"kind": "aoe_slow",
 						"params": {
+							"anchor": "target",
 							"duration": 4.0,
 							"radius": 2.5,
 							"reason": "Blizzard",
-							"slow_percentage": 0.6
+							"shape": "circle",
+							"slow_percentage": 0.5
 						},
 						"requires_target_in_range": true
 					}
@@ -589,7 +603,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 60% for 4.0s.",
+		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 unit radius by 50% for 4.0s.",
 		"ultimate_name": "Blizzard",
 		"unit_id": "frost_mage"
 	},
@@ -719,13 +733,15 @@
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_aoe_reflect",
+						"kind": "aoe_reflect",
 						"params": {
+							"anchor": "source",
 							"duration": 5.0,
 							"radius": 2.0,
 							"reason": "Mirror Aura",
 							"reflect_percentage": 0.4,
-							"reflect_type": "all"
+							"reflect_type": "all",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					}
@@ -744,13 +760,13 @@
 			"params": {
 				"duration": 5.0,
 				"heal_tick_interval": 0.5,
-				"max_hp_ratio": 0.03,
+				"missing_hp_ratio": 0.03,
 				"reason": "Healing Bloom",
 				"stacking_mode": "refresh"
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Heals a target for 15% of their maximum health over 5 seconds.",
+		"ability_desc": "Heals a target for 15% of their missing health over 5 seconds.",
 		"ability_name": "Mist Heal",
 		"description": "A restorative support who summons enchanted mists that gradually heal allies and sustain them through prolonged fights.",
 		"name": "Mistcaller",
@@ -761,16 +777,16 @@
 		"passive_name": "Restorative Mist",
 		"role": "support",
 		"stats": {
-			"ability_cd": 7.0,
+			"ability_cd": 8.0,
 			"armor": 0.06,
-			"attack_damage": 15.0,
+			"attack_damage": 13.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.0,
 			"life_steal": 0.0,
 			"magic_resist": 0.06,
 			"mana_per_attack": 10.0,
 			"max_hp": 130.0,
-			"max_mana": 90.0,
+			"max_mana": 100.0,
 			"move_speed": 0.48,
 			"name": "Mistcaller",
 			"passive_id": "restorative_mist",
@@ -785,11 +801,13 @@
 			"kind": "aoe_heal_over_time",
 			"params": {
 				"allow_overheal": true,
+				"anchor": "source",
 				"duration": 5.0,
 				"heal_tick_interval": 0.5,
 				"max_hp_ratio": 0.04,
 				"radius": 3.0,
 				"reason": "Celestial Rain",
+				"shape": "circle",
 				"stacking_mode": "refresh",
 				"target_self": true
 			},
@@ -1165,6 +1183,19 @@
 				}
 			]
 		},
+		"bitter_chill": {
+			"post_attack": [
+				{
+					"kind": "slow",
+					"params": {
+						"duration": 1.5,
+						"reason": "Bitter Chill",
+						"slow_percentage": 0.1
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"bloodlust": {
 			"post_attack": [
 				{
@@ -1203,17 +1234,19 @@
 		"demolition": {
 			"post_attack": [
 				{
-					"kind": "target_aoe_damage",
+					"kind": "aoe_damage",
 					"params": {
+						"anchor": "target",
 						"color": [
 							255,
 							100,
 							50
 						],
+						"damage_ratio": 0.3,
 						"damage_type": "physical",
 						"radius": 0.5,
-						"ratio": 0.3,
-						"reason": "Explosion"
+						"reason": "Explosion",
+						"shape": "circle"
 					},
 					"requires_target_in_range": true
 				}
@@ -1291,17 +1324,19 @@
 					"kind": "damage_threshold_trigger",
 					"params": {
 						"effect": {
-							"kind": "target_aoe_damage",
+							"kind": "aoe_damage",
 							"params": {
+								"anchor": "target",
 								"color": [
 									34,
 									139,
 									34
 								],
+								"damage_ratio": 0.5,
 								"damage_type": "physical",
 								"radius": 2.0,
-								"ratio": 0.5,
-								"reason": "Rain of Arrows"
+								"reason": "Rain of Arrows",
+								"shape": "circle"
 							}
 						},
 						"threshold_multiplier": 3.0
@@ -1310,12 +1345,33 @@
 				}
 			]
 		},
-		"earth_resistance": {
+		"earthen_protection": {
 			"on_defense": [
 				{
-					"kind": "constant_multiplier",
+					"kind": "stat_modifier",
 					"params": {
-						"multiplier": 0.85
+						"additive": 0.02,
+						"duration": 5.0,
+						"duration_type": "respawn",
+						"max_stacks": 10,
+						"reason": "Earthen Protection",
+						"stack_behavior": "refresh",
+						"stat_name": "armor",
+						"target_self": true
+					},
+					"requires_target_in_range": true
+				},
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"additive": 0.02,
+						"duration": 5.0,
+						"duration_type": "respawn",
+						"max_stacks": 10,
+						"reason": "Earthen Protection",
+						"stack_behavior": "refresh",
+						"stat_name": "magic_resist",
+						"target_self": true
 					},
 					"requires_target_in_range": true
 				}
@@ -1359,19 +1415,6 @@
 					"params": {
 						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"frost_aura": {
-			"post_attack": [
-				{
-					"kind": "slow",
-					"params": {
-						"duration": 1.5,
-						"reason": "Frost Aura",
-						"slow_percentage": 0.2
 					},
 					"requires_target_in_range": true
 				}
@@ -1439,12 +1482,14 @@
 				{
 					"kind": "aoe_heal_over_time",
 					"params": {
+						"anchor": "source",
 						"duration": 5.0,
 						"heal_tick_interval": 0.5,
 						"missing_hp_ratio": 0.02,
 						"on_tick_interval": 5.0,
 						"radius": 2.0,
 						"reason": "Restorative Mist",
+						"shape": "circle",
 						"target_self": true
 					},
 					"requires_target_in_range": true
@@ -1503,12 +1548,14 @@
 					"params": {
 						"effects": [
 							{
-								"kind": "self_aoe_damage",
+								"kind": "aoe_damage",
 								"params": {
+									"anchor": "target",
 									"damage_type": "physical",
 									"flat_amount": 10.0,
 									"radius": 0.5,
-									"reason": "Sweeping Strikes"
+									"reason": "Sweeping Strikes",
+									"shape": "circle"
 								},
 								"requires_target_in_range": true
 							},
@@ -1774,22 +1821,26 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "source",
 							"damage_ratio": 2.4,
 							"radius": 2.0,
-							"reason": "Silence Zone"
+							"reason": "Silence Zone",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_aoe_silence",
+						"kind": "aoe_silence",
 						"params": {
+							"anchor": "source",
 							"block_abilities": true,
 							"block_ultimate": true,
 							"duration": 4.0,
 							"radius": 2.0,
-							"reason": "Silence Zone"
+							"reason": "Silence Zone",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					}
@@ -2259,22 +2310,26 @@
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "source",
 							"damage_ratio": 3.0,
 							"damage_type": "magic",
 							"radius": 5.0,
-							"reason": "Tornado"
+							"reason": "Tornado",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
 					{
-						"kind": "self_aoe_knockback",
+						"kind": "aoe_knockback",
 						"params": {
+							"anchor": "source",
 							"direction": "away_from_source",
 							"distance": 2.5,
 							"radius": 5.0,
-							"reason": "Tornado"
+							"reason": "Tornado",
+							"shape": "circle"
 						},
 						"requires_target_in_range": true
 					},
@@ -2284,7 +2339,7 @@
 							"max_hp_ratio": 0.15,
 							"reason": "Gust Protection",
 							"requires_field": "knockback_applied",
-							"requires_result_from": "self_aoe_knockback",
+							"requires_result_from": "aoe_knockback",
 							"requires_value": true
 						},
 						"requires_target_in_range": true
@@ -2386,16 +2441,16 @@
 		"passive_name": "Shadow Steps",
 		"role": "assassin",
 		"stats": {
-			"ability_cd": 3.0,
-			"armor": 0.2,
-			"attack_damage": 27.0,
+			"ability_cd": 3.5,
+			"armor": 0.15,
+			"attack_damage": 23.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.2,
+			"attack_speed": 1.0,
 			"life_steal": 0.0,
-			"magic_resist": 0.15,
+			"magic_resist": 0.12,
 			"mana_per_attack": 10.0,
-			"max_hp": 180.0,
-			"max_mana": 60.0,
+			"max_hp": 150.0,
+			"max_mana": 70.0,
 			"move_speed": 1.0,
 			"name": "Wraith",
 			"passive_id": "shadow_steps",

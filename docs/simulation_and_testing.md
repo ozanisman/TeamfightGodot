@@ -130,6 +130,8 @@ Runs [`generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats
 | `--team-sizes=` | `1,2,3,4,5` | Comma-separated team sizes to simulate. |
 | `--matches-per-size=` | `100` | Match count **per** listed team size. |
 | `--base-seed=` | `0` | Base seed offset (per-size seeds derived internally). |
+| `--write-match-log` | off | Write `match_log.csv`; omitted by default to avoid retaining one row per match. |
+| `--no-worker-aggregate` | off | Disable worker-local stats aggregation and return per-match summaries to the main thread. |
 
 Example:
 

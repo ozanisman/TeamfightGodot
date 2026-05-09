@@ -6,6 +6,7 @@ const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggrega
 const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
 
 const _TEST_DIR := "user://stats_agg_roundtrip_test"
+const _TEST_DIR_PARTIAL := "user://stats_agg_roundtrip_partial_test"
 
 
 func _init() -> void:
@@ -38,40 +39,34 @@ func _unit(
 
 
 func _run() -> void:
+	var summary_a := {
+		"winner_team": "player",
+		"player_comp": ["archer"],
+		"enemy_comp": ["swordsman"],
+		"unit_stats": [_unit("archer", "player", true, 20.0), _unit("swordsman", "enemy", false, 15.0)],
+	}
+	var summary_b := {
+		"winner_team": "enemy",
+		"player_comp": ["archer"],
+		"enemy_comp": ["swordsman"],
+		"unit_stats": [_unit("archer", "player", false, 12.0), _unit("swordsman", "enemy", true, 18.0)],
+	}
+	var summary_c := {
+		"winner_team": "player",
+		"player_comp": ["archer", "guardian"],
+		"enemy_comp": ["swordsman", "mage"],
+		"unit_stats": [
+			_unit("archer", "player", true),
+			_unit("guardian", "player", true),
+			_unit("swordsman", "enemy", false),
+			_unit("mage", "enemy", false),
+		],
+	}
 	var agg := StatsCsvAggregatorScript.new()
 	agg.reset()
-	agg.consume_summary(
-		1,
-		{
-			"winner_team": "player",
-			"player_comp": ["archer"],
-			"enemy_comp": ["swordsman"],
-			"unit_stats": [_unit("archer", "player", true, 20.0), _unit("swordsman", "enemy", false, 15.0)],
-		}
-	)
-	agg.consume_summary(
-		1,
-		{
-			"winner_team": "enemy",
-			"player_comp": ["archer"],
-			"enemy_comp": ["swordsman"],
-			"unit_stats": [_unit("archer", "player", false, 12.0), _unit("swordsman", "enemy", true, 18.0)],
-		}
-	)
-	agg.consume_summary(
-		2,
-		{
-			"winner_team": "player",
-			"player_comp": ["archer", "guardian"],
-			"enemy_comp": ["swordsman", "mage"],
-			"unit_stats": [
-				_unit("archer", "player", true),
-				_unit("guardian", "player", true),
-				_unit("swordsman", "enemy", false),
-				_unit("mage", "enemy", false),
-			],
-		}
-	)
+	agg.consume_summary(1, summary_a)
+	agg.consume_summary(1, summary_b)
+	agg.consume_summary(2, summary_c)
 	var abs_base := ProjectSettings.globalize_path(_TEST_DIR)
 	if DirAccess.dir_exists_absolute(abs_base):
 		_delete_tree(abs_base)
@@ -94,7 +89,53 @@ func _run() -> void:
 		push_error("check_stats_aggregator_roundtrip: missing hero aggregate")
 		quit(1)
 		return
+	var partial_a := StatsCsvAggregatorScript.new()
+	partial_a.set_write_match_log(false)
+	partial_a.reset()
+	partial_a.consume_summary(1, summary_a)
+	partial_a.consume_summary(1, summary_b)
+	var partial_b := StatsCsvAggregatorScript.new()
+	partial_b.set_write_match_log(false)
+	partial_b.reset()
+	partial_b.consume_summary(2, summary_c)
+	var merged := StatsCsvAggregatorScript.new()
+	merged.set_write_match_log(false)
+	merged.reset()
+	merged.consume_partial(partial_a.to_partial_dict(false))
+	merged.consume_partial(partial_b.to_partial_dict(false))
+	var abs_partial_base := ProjectSettings.globalize_path(_TEST_DIR_PARTIAL)
+	if DirAccess.dir_exists_absolute(abs_partial_base):
+		_delete_tree(abs_partial_base)
+	var partial_werr: Error = merged.write_to_dir(_TEST_DIR_PARTIAL)
+	if partial_werr != OK:
+		push_error("check_stats_aggregator_roundtrip: partial write failed %s" % error_string(partial_werr))
+		quit(1)
+		return
+	var required_files: Array[String] = ["summary_stats.csv", "combat_stats.csv", "role_stats.csv", "hero_combinations.csv"]
+	for file_name in required_files:
+		if not _same_file_text("%s/%s" % [_TEST_DIR, file_name], "%s/%s" % [_TEST_DIR_PARTIAL, file_name]):
+			push_error("check_stats_aggregator_roundtrip: partial mismatch %s" % file_name)
+			quit(1)
+			return
+	if FileAccess.file_exists("%s/match_log.csv" % _TEST_DIR_PARTIAL):
+		push_error("check_stats_aggregator_roundtrip: partial unexpectedly wrote match_log.csv")
+		quit(1)
+		return
 	quit(0)
+
+
+func _same_file_text(left_path: String, right_path: String) -> bool:
+	var left_file := FileAccess.open(left_path, FileAccess.READ)
+	if left_file == null:
+		return false
+	var left_text: String = left_file.get_as_text()
+	left_file.close()
+	var right_file := FileAccess.open(right_path, FileAccess.READ)
+	if right_file == null:
+		return false
+	var right_text: String = right_file.get_as_text()
+	right_file.close()
+	return left_text == right_text
 
 
 func _delete_tree(abs_path: String) -> void:

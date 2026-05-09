@@ -140,7 +140,9 @@ func run_packed(p: Dictionary) -> int:
 		int(p.get("matches_per_size", 0)),
 		int(p.get("base_seed", 0)),
 		int(p.get("max_worker_threads", 0)),
-		bool(p.get("profile_stats", false))
+		bool(p.get("profile_stats", false)),
+		bool(p.get("write_match_log", false)),
+		bool(p.get("aggregate_stats_in_worker", true))
 	)
 
 
@@ -150,7 +152,9 @@ func run(
 	matches_per_size: int,
 	base_seed: int,
 	max_worker_threads: int = 0,
-	profile_stats: bool = false
+	profile_stats: bool = false,
+	write_match_log: bool = false,
+	aggregate_stats_in_worker: bool = true
 ) -> Error:
 	if output_dir.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -168,6 +172,8 @@ func run(
 			"matches_per_size": matches_per_size,
 			"base_seed": base_seed,
 			"max_worker_threads": max_worker_threads,
+			"write_match_log": write_match_log,
+			"aggregate_stats_in_worker": aggregate_stats_in_worker,
 			"probe_ns": 0,
 			"progress_reset_ns": 0,
 			"team_size_ns": {},
@@ -196,12 +202,20 @@ func run(
 	if profile_stats:
 		profile_state["progress_reset_ns"] = _now_ns() - reset_start_ns
 	var aggregator := StatsCsvAggregator.new()
+	aggregator.set_write_match_log(write_match_log)
 	aggregator.reset()
 	for sz in team_sizes:
 		var size_start_ns: int = _now_ns()
 		var per_size_seed: int = base_seed + int(sz) * 1_009_033
 		var err_sz: Error = _run_matches_for_team_size(
-			aggregator, int(sz), per_size_seed, matches_per_size, max_worker_threads, profile_state if profile_stats else null
+			aggregator,
+			int(sz),
+			per_size_seed,
+			matches_per_size,
+			max_worker_threads,
+			profile_state if profile_stats else null,
+			write_match_log,
+			aggregate_stats_in_worker
 		)
 		if err_sz != OK:
 			return err_sz
@@ -248,7 +262,9 @@ func _run_matches_for_team_size(
 	per_size_seed: int,
 	matches_per_size: int,
 	max_worker_threads: int,
-	profile_state: Variant = null
+	profile_state: Variant = null,
+	write_match_log: bool = false,
+	aggregate_stats_in_worker: bool = true
 ) -> Error:
 	var worker_count: int = _worker_count_for_export(matches_per_size, max_worker_threads)
 	var slice: int = (matches_per_size + worker_count - 1) / worker_count
@@ -269,6 +285,8 @@ func _run_matches_for_team_size(
 			"bench_skip_summaries": false,
 			"allow_native_batch": false,
 			"profile_stats": do_profile,
+			"write_match_log": write_match_log,
+			"aggregate_stats_in_worker": aggregate_stats_in_worker,
 		}
 		var runner := SimulationBatchWorkerScript.new()
 		worker_runners.append(runner)

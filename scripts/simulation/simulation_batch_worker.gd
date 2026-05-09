@@ -20,6 +20,7 @@ const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_i
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const MatchupTrackerScript := preload("res://scripts/simulation/matchup_tracker.gd")
+const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
 
 
 static func _now_ns() -> int:
@@ -117,6 +118,8 @@ func run_chunk(data: Dictionary) -> Array:
 	var bench_skip_summaries: bool = bool(data.get("bench_skip_summaries", false))
 	var allow_native_batch: bool = bool(data.get("allow_native_batch", false))
 	var profile_stats: bool = bool(data.get("profile_stats", false))
+	var aggregate_stats_in_worker: bool = bool(data.get("aggregate_stats_in_worker", false))
+	var write_match_log: bool = bool(data.get("write_match_log", true))
 	var chunk_start_ns: int = _now_ns()
 	var chunk_profile: Dictionary = {}
 	
@@ -131,7 +134,13 @@ func run_chunk(data: Dictionary) -> Array:
 	var players: Array[StringName] = []
 	var enemies: Array[StringName] = []
 	var results: Array = []
-	results.resize(chunk_len)
+	if not aggregate_stats_in_worker or bench_skip_summaries:
+		results.resize(chunk_len)
+	var stats_aggregator = null
+	if aggregate_stats_in_worker and not bench_skip_summaries:
+		stats_aggregator = StatsCsvAggregatorScript.new()
+		stats_aggregator.set_write_match_log(write_match_log)
+		stats_aggregator.reset()
 	var use_compact_stats: bool = backend.has_method("run_match_stats")
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_generated_matches_simulation_only"):
@@ -170,7 +179,10 @@ func run_chunk(data: Dictionary) -> Array:
 			var t_native_run_ns: int = _now_ns()
 			var summary = backend.run_match_stats(batch_match_input) if use_compact_stats else backend.run_match(batch_match_input)
 			native_run_ns += _now_ns() - t_native_run_ns
-			results[result_index] = summary
+			if aggregate_stats_in_worker:
+				stats_aggregator.consume_summary(team_size, summary)
+			else:
+				results[result_index] = summary
 			
 			# Process matchup data from this match result
 			if summary is Dictionary:
@@ -207,10 +219,11 @@ func run_chunk(data: Dictionary) -> Array:
 
 	# Include matchup data in results if not in benchmark mode
 	if not bench_skip_summaries:
-		var chunk_result = {
-			"match_results": results,
-			"matchup_data": matchup_tracker.get_matchup_data()
-		}
+		var chunk_result = {"matchup_data": matchup_tracker.get_matchup_data()}
+		if aggregate_stats_in_worker:
+			chunk_result["stats_partial"] = stats_aggregator.to_partial_dict(write_match_log)
+		else:
+			chunk_result["match_results"] = results
 		if profile_stats:
 			var total_ns: int = assembly_ns + native_run_ns + matchup_ns + clear_ns
 			chunk_profile = {

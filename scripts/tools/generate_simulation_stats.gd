@@ -39,6 +39,8 @@ func _run() -> void:
 	var seed := int(_extract_argument("--base-seed=", "0"))
 	var export_workers := int(_extract_argument("--export-workers=", "0"))
 	var profile_enabled := _flag_enabled("--profile-stats")
+	var write_match_log := _flag_enabled("--write-match-log")
+	var aggregate_stats_in_worker := not _flag_enabled("--no-worker-aggregate")
 	var arr: Array[int] = []
 	for part in sizes_raw.split(","):
 		var t: String = part.strip_edges()
@@ -50,7 +52,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
-	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers, profile_enabled)
+	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers, profile_enabled, write_match_log, aggregate_stats_in_worker)
 	if err != OK:
 		push_error("generate_simulation_stats failed: %s" % error_string(err))
 		quit(1)

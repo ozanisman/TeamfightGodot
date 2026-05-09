@@ -23,6 +23,22 @@ func _flag_enabled(prefix: String) -> bool:
 			return tail != "0" and tail.to_lower() != "false"
 	return false
 
+func _count_completed_matches(chunk_results: Array) -> int:
+	var completed: int = 0
+	for entry in chunk_results:
+		if entry is bool:
+			if bool(entry):
+				completed += 1
+		elif entry is Dictionary:
+			var entry_dict: Dictionary = Dictionary(entry)
+			if entry_dict.has("match_results"):
+				completed += Array(entry_dict.get("match_results", [])).size()
+			else:
+				completed += 1
+		elif entry != null:
+			completed += 1
+	return completed
+
 func _run_benchmark() -> void:
 	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
 		push_error("Failed to load %s" % NativeExtensionPath)
@@ -103,7 +119,7 @@ func _run_benchmark() -> void:
 	var workers_started: int = threads.size()
 	for thread in threads:
 		var chunk_results: Array = thread.wait_to_finish()
-		completed_matches += chunk_results.size()
+		completed_matches += _count_completed_matches(chunk_results)
 
 	threads.clear()
 	worker_runners.clear()

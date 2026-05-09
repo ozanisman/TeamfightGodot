@@ -69,22 +69,29 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 	var chunk_count: int = maxi(0, int(profile_state.get("chunk_count", 0)))
 	var match_count: int = maxi(0, int(profile_state.get("match_count", 0)))
 	var total_match_path_ns: int = int(profile_state.get("assembly_ns", 0)) + int(profile_state.get("native_run_ns", 0)) + int(profile_state.get("matchup_ns", 0)) + int(profile_state.get("clear_ns", 0))
-	var setup_total_ns: int = int(profile_state.get("probe_ns", 0)) + int(profile_state.get("progress_reset_ns", 0)) + int(profile_state.get("worker_startup_ns", 0)) + int(profile_state.get("worker_join_ns", 0))
+	var setup_overhead_ns: int = int(profile_state.get("probe_ns", 0)) + int(profile_state.get("progress_reset_ns", 0)) + int(profile_state.get("worker_startup_ns", 0))
+	var worker_wait_wall_ns: int = int(profile_state.get("worker_join_ns", 0))
 	var bookkeeping_total_ns: int = int(profile_state.get("aggregation_ns", 0)) + int(profile_state.get("csv_write_ns", 0)) + int(profile_state.get("matchup_write_ns", 0))
-	var measured_total_ns: int = setup_total_ns + bookkeeping_total_ns + chunk_total_ns
+	var main_thread_accounted_wall_ns: int = setup_overhead_ns + worker_wait_wall_ns + bookkeeping_total_ns
 	var per_match_ns: float = float(chunk_total_ns) / float(match_count) if match_count > 0 else 0.0
 	var per_chunk_ns: float = float(chunk_total_ns) / float(chunk_count) if chunk_count > 0 else 0.0
 	var profile_breakdown: Dictionary = {
-		"setup_total_ns": setup_total_ns,
-		"bookkeeping_total_ns": bookkeeping_total_ns,
-		"chunk_total_ns": chunk_total_ns,
-		"match_path_total_ns": total_match_path_ns,
-		"measured_total_ns": measured_total_ns,
+		"setup_overhead_ns": setup_overhead_ns,
+		"worker_wait_wall_ns": worker_wait_wall_ns,
+		"main_thread_bookkeeping_ns": bookkeeping_total_ns,
+		"worker_chunk_sum_ns": chunk_total_ns,
+		"match_path_sum_ns": total_match_path_ns,
+		"main_thread_accounted_wall_ns": main_thread_accounted_wall_ns,
 	}
-	var setup_rankings: Array = _rank_ns_fields(profile_state, ["probe_ns", "progress_reset_ns", "worker_startup_ns", "worker_join_ns"])
+	var wall_breakdown: Dictionary = {
+		"setup_overhead_ns": setup_overhead_ns,
+		"worker_wait_wall_ns": worker_wait_wall_ns,
+		"main_thread_bookkeeping_ns": bookkeeping_total_ns,
+	}
+	var setup_rankings: Array = _rank_ns_fields(profile_state, ["probe_ns", "progress_reset_ns", "worker_startup_ns"])
+	var wall_phase_rankings: Array = _rank_ns_fields(wall_breakdown, ["setup_overhead_ns", "worker_wait_wall_ns", "main_thread_bookkeeping_ns"])
 	var bookkeeping_rankings: Array = _rank_ns_fields(profile_state, ["aggregation_ns", "csv_write_ns", "matchup_write_ns"])
 	var chunk_rankings: Array = _rank_ns_fields(profile_state, ["assembly_ns", "native_run_ns", "matchup_ns", "clear_ns"])
-	var top_level_rankings: Array = _rank_ns_fields(profile_breakdown, ["setup_total_ns", "bookkeeping_total_ns", "chunk_total_ns", "match_path_total_ns"])
 	return {
 		"wall_ns": wall_ns,
 		"match_count": match_count,
@@ -92,18 +99,32 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 		"avg_ns_per_match": per_match_ns,
 		"avg_ns_per_chunk": per_chunk_ns,
 		"setup_phase_rankings": setup_rankings,
+		"wall_phase_rankings": wall_phase_rankings,
 		"bookkeeping_phase_rankings": bookkeeping_rankings,
 		"chunk_phase_rankings": chunk_rankings,
-		"top_level_rankings": top_level_rankings,
-		"dominant_top_level_phase": top_level_rankings[0]["phase"] if not top_level_rankings.is_empty() else "",
+		"top_level_rankings": wall_phase_rankings,
+		"dominant_wall_phase": wall_phase_rankings[0]["phase"] if not wall_phase_rankings.is_empty() else "",
+		"dominant_top_level_phase": wall_phase_rankings[0]["phase"] if not wall_phase_rankings.is_empty() else "",
 		"dominant_chunk_phase": chunk_rankings[0]["phase"] if not chunk_rankings.is_empty() else "",
 		"team_size_rankings": _team_size_rankings(Dictionary(profile_state.get("team_size_ns", {})), wall_ns),
-		"top_level_percentages": {
-			"setup_pct": _profile_percent(setup_total_ns, measured_total_ns),
-			"bookkeeping_pct": _profile_percent(bookkeeping_total_ns, measured_total_ns),
-			"chunk_pct": _profile_percent(chunk_total_ns, measured_total_ns),
-			"match_path_pct": _profile_percent(total_match_path_ns, measured_total_ns),
+		"wall_phase_percentages": {
+			"setup_overhead_pct_of_wall": _profile_percent(setup_overhead_ns, wall_ns),
+			"worker_wait_pct_of_wall": _profile_percent(worker_wait_wall_ns, wall_ns),
+			"bookkeeping_pct_of_wall": _profile_percent(bookkeeping_total_ns, wall_ns),
+			"chunk_sum_pct_of_wall": _profile_percent(chunk_total_ns, wall_ns),
+			"match_path_sum_pct_of_wall": _profile_percent(total_match_path_ns, wall_ns),
 		},
+		"top_level_percentages": {
+			"setup_overhead_pct_of_wall": _profile_percent(setup_overhead_ns, wall_ns),
+			"worker_wait_pct_of_wall": _profile_percent(worker_wait_wall_ns, wall_ns),
+			"bookkeeping_pct_of_wall": _profile_percent(bookkeeping_total_ns, wall_ns),
+			"chunk_sum_pct_of_wall": _profile_percent(chunk_total_ns, wall_ns),
+			"match_path_sum_pct_of_wall": _profile_percent(total_match_path_ns, wall_ns),
+		},
+		"profile_summary_notes": [
+			"worker_wait_wall_ns comes from worker_join_ns and is elapsed wait time, not setup work.",
+			"worker_chunk_sum_ns and match_path_sum_ns are summed across chunks and can exceed wall_ns when workers run in parallel.",
+		],
 		"profile_breakdown_ns": profile_breakdown,
 	}
 

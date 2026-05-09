@@ -62,6 +62,7 @@ If **none** of the above are present, the default headless path is [`scripts/too
 Implemented in [`scripts/tools/check_benchmark.gd`](../scripts/tools/check_benchmark.gd) using [`scripts/simulation/simulation_batch_worker.gd`](../scripts/simulation/simulation_batch_worker.gd).
 
 **Important:** `matches_per_sec` is **total matches ÷ wall time** for the whole process. Larger `--batch-count` often looks slightly faster because fixed startup/teardown cost is amortized—**compare runs using the same flags and batch size**.
+For accepted throughput claims, use direct PowerShell runs outside AI/IDE automation and compare median runs from the same machine; AI/IDE-triggered runs are useful smoke probes but not authoritative baselines.
 
 Common flags (all after `--`):
 
@@ -133,8 +134,9 @@ Runs [`generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats
 Example:
 
 ```powershell
-.\run_godot.ps1 --generate-stats -- --matches-per-size=20 --team-sizes=1,2 --out-dir=res://stats_output
+.\run_godot.ps1 --generate-stats -- --matches-per-size=20 "--team-sizes=1,2" --out-dir=res://stats_output
 ```
+Quote comma-list arguments in PowerShell, e.g. `"--team-sizes=1,2,3,4,5"`, so the full list is forwarded as one Godot user argument.
 
 ---
 
@@ -170,6 +172,6 @@ Design note on Python-shaped internals: [`docs/python_relics_vs_godot.md`](pytho
 1. **Native changes:** build the extension **Release** before benchmarking (`cmake --build` in `native/build`).
 2. **Correctness first:** `Fixture parity passed` for **all** cases in `match_fixtures.json`.
 3. **Benchmark discipline:** same machine, same `--batch-count`, `--team-size`, `--workers`, and `--bench-skip-summaries` choice; prefer **median of 3** for 5v5 primary gate ([`benchmark_rundown.md`](../logs/benchmark_rundown.md)).
-4. **Threading:** native **batched** sim is only enabled in benchmarks when **`--bench-skip-summaries` and `--workers=1`**; multi-thread native batch is unsafe on Windows—use **process sharding** for parallel throughput.
+4. **Threading:** current benchmark code passes `allow_native_batch` whenever **`--bench-skip-summaries`** is enabled, so each worker may use native `run_generated_matches_simulation_only()` when available. Treat worker-count recommendations as measurement-dependent; use direct stress runs on the target machine before changing defaults, and use **process sharding** when process-level isolation is desired.
 5. **GDScript workflow:** run `--check-only` before long headless runs after script edits; avoid heavy work at parse time (see [`AGENTS.md`](../AGENTS.md)).
 6. **Logs:** inspect `logs/godot.log` when a run fails or times out; `run_godot.ps1` tails the log in `--check-only` for parse errors.

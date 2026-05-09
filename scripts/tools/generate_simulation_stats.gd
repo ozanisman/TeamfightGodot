@@ -32,6 +32,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	OS.set_environment("TEAMFIGHT_STATS_EXPORT_MINIMAL", "1")
 	# Pre-initialize champion catalog static cache to avoid threading issues
 	ChampionCatalogScript.build_catalog()
 	

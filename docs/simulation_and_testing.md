@@ -158,8 +158,12 @@ Runs [`generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats
 | `--team-sizes=` | `1,2,3,4,5` | Comma-separated team sizes to simulate. |
 | `--matches-per-size=` | `100` | Match count **per** listed team size. |
 | `--base-seed=` | `0` | Base seed offset (per-size seeds derived internally). |
+| `--export-workers=` | `0` | Parallel chunk threads (`0` = auto cap vs matches and cores). |
+| `--profile-stats` | off | Print JSON timing attribution lines to stderr (see [`stats_simulation_csv_generator.gd`](../scripts/tools/stats_simulation_csv_generator.gd)). |
 | `--write-match-log` | off | Write `match_log.csv`; omitted by default to avoid retaining one row per match. |
 | `--no-worker-aggregate` | off | Disable worker-local stats aggregation and return per-match summaries to the main thread. |
+
+`generate_simulation_stats` sets process env **`TEAMFIGHT_STATS_EXPORT_MINIMAL=1`** so native `run_matches_stats` / batch stats summaries omit per-unit **`telemetry`** dictionaries (CSV aggregation does not use them). Other entry points leave summaries unchanged unless you set that env yourself.
 
 Example:
 
@@ -167,6 +171,22 @@ Example:
 .\run_godot.ps1 --generate-stats -- --matches-per-size=20 "--team-sizes=1,2" --out-dir=res://stats_output
 ```
 Quote comma-list arguments in PowerShell, e.g. `"--team-sizes=1,2,3,4,5"`, so the full list is forwarded as one Godot user argument.
+
+### Generate-stats throughput gate
+
+When iterating on stats-export performance, keep one **frozen** workload for apples-to-apples wall time:
+
+```powershell
+1..3 | ForEach-Object {
+	(Measure-Command {
+		.\run_godot.ps1 --generate-stats -- `
+			--matches-per-size=50 --team-sizes=5 --export-workers=8 --base-seed=0 `
+			--out-dir=user://bench_stats_throughput
+	}).TotalSeconds
+}
+```
+
+Take the **median** of the outer seconds (`Measure-Command`); optionally add `--profile-stats` for stderr JSON buckets (`catalog_build_ns`, `assembly_ns`, etc.). **Regression policy:** if the median worsens by **more than about 5%** versus the baseline from the immediately previous optimization step on the **same machine and flags**, stop further stats-throughput tweaks for that series, record both medians, and do **not** assume an automatic revert (decide separately). Change `matches-per-size` or `team-sizes` only when starting a **new** comparison series—never mid-series unless you deliberately widen the workload.
 
 ---
 

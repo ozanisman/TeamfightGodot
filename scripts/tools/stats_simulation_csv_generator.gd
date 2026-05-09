@@ -6,7 +6,9 @@ extends RefCounted
 
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+
 const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
+const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 
 ## Upper bound on parallel export workers (avoids huge thread counts on high-core CPUs).
 const DEFAULT_EXPORT_MAX_WORKER_THREADS: int = 16
@@ -134,6 +136,10 @@ func run_packed(p: Dictionary) -> int:
 	var arr: Array[int] = []
 	for x in raw_sizes:
 		arr.append(int(x))
+	var role_override: Variant = p.get("role_by_hero_map", {})
+	var role_dict: Dictionary = {}
+	if role_override is Dictionary:
+		role_dict = Dictionary(role_override)
 	return run(
 		str(p.get("output_dir", "")),
 		arr,
@@ -142,7 +148,8 @@ func run_packed(p: Dictionary) -> int:
 		int(p.get("max_worker_threads", 0)),
 		bool(p.get("profile_stats", false)),
 		bool(p.get("write_match_log", false)),
-		bool(p.get("aggregate_stats_in_worker", true))
+		bool(p.get("aggregate_stats_in_worker", true)),
+		role_dict
 	)
 
 
@@ -154,7 +161,8 @@ func run(
 	max_worker_threads: int = 0,
 	profile_stats: bool = false,
 	write_match_log: bool = false,
-	aggregate_stats_in_worker: bool = true
+	aggregate_stats_in_worker: bool = true,
+	role_by_hero_map_override: Dictionary = {}
 ) -> Error:
 	if output_dir.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -162,6 +170,12 @@ func run(
 		return ERR_INVALID_PARAMETER
 	if matches_per_size < 1:
 		return ERR_INVALID_PARAMETER
+	var roles_for_workers: Dictionary = {}
+	if aggregate_stats_in_worker:
+		if not role_by_hero_map_override.is_empty():
+			roles_for_workers = role_by_hero_map_override.duplicate()
+		else:
+			roles_for_workers = ChampionCatalogScript.build_role_by_hero_map()
 	var run_start_ns: int = _now_ns()
 	var profile_state: Dictionary = {}
 	if profile_stats:
@@ -215,7 +229,8 @@ func run(
 			max_worker_threads,
 			profile_state if profile_stats else null,
 			write_match_log,
-			aggregate_stats_in_worker
+			aggregate_stats_in_worker,
+			roles_for_workers
 		)
 		if err_sz != OK:
 			return err_sz
@@ -264,7 +279,8 @@ func _run_matches_for_team_size(
 	max_worker_threads: int,
 	profile_state: Variant = null,
 	write_match_log: bool = false,
-	aggregate_stats_in_worker: bool = true
+	aggregate_stats_in_worker: bool = true,
+	role_by_hero_map: Dictionary = {}
 ) -> Error:
 	var worker_count: int = _worker_count_for_export(matches_per_size, max_worker_threads)
 	var slice: int = (matches_per_size + worker_count - 1) / worker_count
@@ -272,6 +288,7 @@ func _run_matches_for_team_size(
 	var worker_runners: Array = []
 	var do_profile: bool = profile_state is Dictionary
 	var startup_start_ns: int = _now_ns()
+	const bench_skip_summaries_chunk: bool = false
 	for worker_index in range(worker_count):
 		var start_index: int = worker_index * slice
 		var end_index: int = mini(matches_per_size, start_index + slice)
@@ -282,11 +299,13 @@ func _run_matches_for_team_size(
 			"end_index": end_index,
 			"team_size": team_size,
 			"base_seed": per_size_seed,
-			"bench_skip_summaries": false,
+			"bench_skip_summaries": bench_skip_summaries_chunk,
 			"allow_native_batch": false,
 			"profile_stats": do_profile,
 			"write_match_log": write_match_log,
 			"aggregate_stats_in_worker": aggregate_stats_in_worker,
+			"role_by_hero_map": role_by_hero_map,
+			"skip_catalog_thread_clear": aggregate_stats_in_worker and not bench_skip_summaries_chunk,
 		}
 		var runner := SimulationBatchWorkerScript.new()
 		worker_runners.append(runner)

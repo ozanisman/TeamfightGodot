@@ -131,6 +131,7 @@ func run_chunk(data: Dictionary) -> Array:
 	var profile_stats: bool = bool(data.get("profile_stats", false))
 	var aggregate_stats_in_worker: bool = bool(data.get("aggregate_stats_in_worker", false))
 	var write_match_log: bool = bool(data.get("write_match_log", true))
+	var skip_catalog_thread_clear: bool = bool(data.get("skip_catalog_thread_clear", false))
 	var chunk_profile: Dictionary = {}
 
 	var cache_clear_ns: int = 0
@@ -194,9 +195,10 @@ func run_chunk(data: Dictionary) -> Array:
 		return results
 
 	t_phase_ns = _now_ns()
-	ChampionCatalogScript.clear_thread_cache()
+	if not skip_catalog_thread_clear:
+		ChampionCatalogScript.clear_thread_cache()
 	cache_clear_ns = _now_ns() - t_phase_ns
-	
+
 	t_phase_ns = _now_ns()
 	ChampionCatalogScript.build_catalog()
 	catalog_build_ns = _now_ns() - t_phase_ns
@@ -220,6 +222,9 @@ func run_chunk(data: Dictionary) -> Array:
 		stats_aggregator = StatsCsvAggregatorScript.new()
 		stats_aggregator.set_write_match_log(write_match_log)
 		stats_aggregator.reset()
+		var preload_roles_variant: Variant = data.get("role_by_hero_map", null)
+		if preload_roles_variant is Dictionary and not (preload_roles_variant as Dictionary).is_empty():
+			stats_aggregator.preload_roles(preload_roles_variant as Dictionary)
 	stats_setup_ns = _now_ns() - t_phase_ns
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_matches_simulation_only"):

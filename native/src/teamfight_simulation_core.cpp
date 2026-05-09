@@ -102,16 +102,12 @@ inline const StringName &sn_heal() {
 	static const StringName s("heal");
 	return s;
 }
-inline const StringName &sn_self_aoe_taunt() {
-	static const StringName s("self_aoe_taunt");
+inline const StringName &sn_aoe_taunt() {
+	static const StringName s("aoe_taunt");
 	return s;
 }
-inline const StringName &sn_self_aoe_damage() {
-	static const StringName s("self_aoe_damage");
-	return s;
-}
-inline const StringName &sn_target_aoe_damage() {
-	static const StringName s("target_aoe_damage");
+inline const StringName &sn_aoe_damage() {
+	static const StringName s("aoe_damage");
 	return s;
 }
 inline const StringName &sn_damage_threshold_trigger() {
@@ -206,44 +202,28 @@ inline const StringName &sn_reflect() {
 	static const StringName s("reflect");
 	return s;
 }
-inline const StringName &sn_self_aoe_slow() {
-	static const StringName s("self_aoe_slow");
+inline const StringName &sn_aoe_slow() {
+	static const StringName s("aoe_slow");
 	return s;
 }
-inline const StringName &sn_self_aoe_root() {
-	static const StringName s("self_aoe_root");
+inline const StringName &sn_aoe_root() {
+	static const StringName s("aoe_root");
 	return s;
 }
-inline const StringName &sn_target_aoe_slow() {
-	static const StringName s("target_aoe_slow");
+inline const StringName &sn_aoe_silence() {
+	static const StringName s("aoe_silence");
 	return s;
 }
-inline const StringName &sn_target_aoe_root() {
-	static const StringName s("target_aoe_root");
+inline const StringName &sn_aoe_disarm() {
+	static const StringName s("aoe_disarm");
 	return s;
 }
-inline const StringName &sn_target_aoe_silence() {
-	static const StringName s("target_aoe_silence");
+inline const StringName &sn_aoe_knockback() {
+	static const StringName s("aoe_knockback");
 	return s;
 }
-inline const StringName &sn_target_aoe_disarm() {
-	static const StringName s("target_aoe_disarm");
-	return s;
-}
-inline const StringName &sn_self_aoe_silence() {
-	static const StringName s("self_aoe_silence");
-	return s;
-}
-inline const StringName &sn_self_aoe_disarm() {
-	static const StringName s("self_aoe_disarm");
-	return s;
-}
-inline const StringName &sn_self_aoe_knockback() {
-	static const StringName s("self_aoe_knockback");
-	return s;
-}
-inline const StringName &sn_self_aoe_reflect() {
-	static const StringName s("self_aoe_reflect");
+inline const StringName &sn_aoe_reflect() {
+	static const StringName s("aoe_reflect");
 	return s;
 }
 inline const StringName &sn_reflect_damage() {
@@ -515,14 +495,11 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("heal")) {
 		return EFFECT_OPCODE_HEAL;
 	}
-	if (kind == StringName("self_aoe_taunt")) {
-		return EFFECT_OPCODE_SELF_AOE_TAUNT;
+	if (kind == StringName("aoe_taunt")) {
+		return EFFECT_OPCODE_AOE_TAUNT;
 	}
-	if (kind == StringName("self_aoe_damage")) {
-		return EFFECT_OPCODE_SELF_AOE_DAMAGE;
-	}
-	if (kind == StringName("target_aoe_damage")) {
-		return EFFECT_OPCODE_TARGET_AOE_DAMAGE;
+	if (kind == StringName("aoe_damage")) {
+		return EFFECT_OPCODE_AOE_DAMAGE;
 	}
 	if (kind == StringName("damage_threshold_trigger")) {
 		return EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER;
@@ -594,35 +571,23 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == StringName("reflect")) {
 		return EFFECT_OPCODE_REFLECT;
 	}
-	if (kind == StringName("self_aoe_slow")) {
-		return EFFECT_OPCODE_SELF_AOE_SLOW;
+	if (kind == StringName("aoe_slow")) {
+		return EFFECT_OPCODE_AOE_SLOW;
 	}
-	if (kind == StringName("self_aoe_root")) {
-		return EFFECT_OPCODE_SELF_AOE_ROOT;
+	if (kind == StringName("aoe_root")) {
+		return EFFECT_OPCODE_AOE_ROOT;
 	}
-	if (kind == StringName("self_aoe_silence")) {
-		return EFFECT_OPCODE_SELF_AOE_SILENCE;
+	if (kind == StringName("aoe_silence")) {
+		return EFFECT_OPCODE_AOE_SILENCE;
 	}
-	if (kind == StringName("self_aoe_disarm")) {
-		return EFFECT_OPCODE_SELF_AOE_DISARM;
+	if (kind == StringName("aoe_disarm")) {
+		return EFFECT_OPCODE_AOE_DISARM;
 	}
-	if (kind == StringName("target_aoe_slow")) {
-		return EFFECT_OPCODE_TARGET_AOE_SLOW;
+	if (kind == StringName("aoe_knockback")) {
+		return EFFECT_OPCODE_AOE_KNOCKBACK;
 	}
-	if (kind == StringName("target_aoe_root")) {
-		return EFFECT_OPCODE_TARGET_AOE_ROOT;
-	}
-	if (kind == StringName("target_aoe_silence")) {
-		return EFFECT_OPCODE_TARGET_AOE_SILENCE;
-	}
-	if (kind == StringName("target_aoe_disarm")) {
-		return EFFECT_OPCODE_TARGET_AOE_DISARM;
-	}
-	if (kind == StringName("self_aoe_knockback")) {
-		return EFFECT_OPCODE_SELF_AOE_KNOCKBACK;
-	}
-	if (kind == StringName("self_aoe_reflect")) {
-		return EFFECT_OPCODE_SELF_AOE_REFLECT;
+	if (kind == StringName("aoe_reflect")) {
+		return EFFECT_OPCODE_AOE_REFLECT;
 	}
 	if (kind == StringName("reflect_damage")) {
 		return EFFECT_OPCODE_REFLECT_DAMAGE;
@@ -654,12 +619,10 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_shield();
 		case EFFECT_OPCODE_HEAL:
 			return sn_heal();
-		case EFFECT_OPCODE_SELF_AOE_TAUNT:
-			return sn_self_aoe_taunt();
-		case EFFECT_OPCODE_SELF_AOE_DAMAGE:
-			return sn_self_aoe_damage();
-		case EFFECT_OPCODE_TARGET_AOE_DAMAGE:
-			return sn_target_aoe_damage();
+		case EFFECT_OPCODE_AOE_TAUNT:
+			return sn_aoe_taunt();
+		case EFFECT_OPCODE_AOE_DAMAGE:
+			return sn_aoe_damage();
 		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER:
 			return sn_damage_threshold_trigger();
 		case EFFECT_OPCODE_DAMAGE_OVER_TIME:
@@ -707,26 +670,18 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_knockback();
 		case EFFECT_OPCODE_REFLECT:
 			return sn_reflect();
-		case EFFECT_OPCODE_SELF_AOE_SLOW:
-			return sn_self_aoe_slow();
-		case EFFECT_OPCODE_SELF_AOE_ROOT:
-			return sn_self_aoe_root();
-		case EFFECT_OPCODE_SELF_AOE_SILENCE:
-			return sn_self_aoe_silence();
-		case EFFECT_OPCODE_SELF_AOE_DISARM:
-			return sn_self_aoe_disarm();
-		case EFFECT_OPCODE_TARGET_AOE_SLOW:
-			return sn_target_aoe_slow();
-		case EFFECT_OPCODE_TARGET_AOE_ROOT:
-			return sn_target_aoe_root();
-		case EFFECT_OPCODE_TARGET_AOE_SILENCE:
-			return sn_target_aoe_silence();
-		case EFFECT_OPCODE_TARGET_AOE_DISARM:
-			return sn_target_aoe_disarm();
-		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK:
-			return sn_self_aoe_knockback();
-		case EFFECT_OPCODE_SELF_AOE_REFLECT:
-			return sn_self_aoe_reflect();
+		case EFFECT_OPCODE_AOE_SLOW:
+			return sn_aoe_slow();
+		case EFFECT_OPCODE_AOE_ROOT:
+			return sn_aoe_root();
+		case EFFECT_OPCODE_AOE_SILENCE:
+			return sn_aoe_silence();
+		case EFFECT_OPCODE_AOE_DISARM:
+			return sn_aoe_disarm();
+		case EFFECT_OPCODE_AOE_KNOCKBACK:
+			return sn_aoe_knockback();
+		case EFFECT_OPCODE_AOE_REFLECT:
+			return sn_aoe_reflect();
 		case EFFECT_OPCODE_REFLECT_DAMAGE:
 			return sn_reflect_damage();
 		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
@@ -795,21 +750,19 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("self_aoe_taunt")) {
+	} else if (kind == StringName("aoe_taunt")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("self_aoe_damage")) {
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+	} else if (kind == StringName("aoe_damage")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("damage_multiplier", 1.0));
-		compiled.scalar2 = double(params.get("flat_amount", 0.0));
+		compiled.scalar1 = double(params.get("damage_ratio", 1.0));
+		compiled.scalar2 = double(params.get("splash_ratio", 1.0));
+		compiled.scalar3 = double(params.get("flat_amount", 0.0));
 		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("target_aoe_damage")) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("ratio", 0.0));
-		compiled.damage_type = StringName(params.get("damage_type", "physical"));
-		compiled.reason = String(params.get("reason", "TargetAoeDamage"));
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == StringName("damage_over_time")) {
 		// Ratio-based parameters
 		compiled.scalar0 = double(params.get("attack_damage_ratio", 0.0));
@@ -857,6 +810,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int0 = int64_t(params.get("max_stacks", 1));
 		compiled.int1 = int64_t(params.get("duration", 0.0));
 		compiled.int2 = params.get("target_self", false) ? 1 : 0;
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == StringName("aoe_heal_over_time")) {
 		// AoE parameters
 		compiled.scalar0 = double(params.get("radius", 0.0));
@@ -872,6 +826,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int1 = int64_t(params.get("duration", 0.0));
 		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
 		compiled.int3 = params.get("target_self", false) ? 1 : 0;
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == StringName("damage_threshold_trigger")) {
 		compiled.scalar0 = double(params.get("threshold_multiplier", 1.0));
 		Variant nested = params.get("effect", Variant());
@@ -937,55 +892,42 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Reflect"));
-	} else if (kind == StringName("self_aoe_slow")) {
+	} else if (kind == StringName("aoe_slow")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Slow"));
-	} else if (kind == StringName("self_aoe_root")) {
+	} else if (kind == StringName("aoe_root")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Root"));
-	} else if (kind == StringName("self_aoe_silence")) {
+	} else if (kind == StringName("aoe_silence")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
 		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Silence"));
-	} else if (kind == StringName("self_aoe_disarm")) {
+	} else if (kind == StringName("aoe_disarm")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Disarm"));
-	} else if (kind == StringName("target_aoe_slow")) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
-		compiled.scalar2 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "TargetAoeSlow"));
-	} else if (kind == StringName("target_aoe_root")) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "TargetAoeRoot"));
-	} else if (kind == StringName("target_aoe_silence")) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("blocks_abilities", false) ? 1 : 0;
-		compiled.int1 = params.get("blocks_ultimates", false) ? 1 : 0;
-		compiled.reason = String(params.get("reason", "TargetAoeSilence"));
-	} else if (kind == StringName("target_aoe_disarm")) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "TargetAoeDisarm"));
-	} else if (kind == StringName("self_aoe_knockback")) {
+	} else if (kind == StringName("aoe_knockback")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("distance", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Knockback"));
-	} else if (kind == StringName("self_aoe_reflect")) {
+	} else if (kind == StringName("aoe_reflect")) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("reflect_percentage", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Reflect"));
 	} else if (kind == StringName("reflect_damage")) {
 		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
@@ -1163,6 +1105,8 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_projectiles.clear();
 	_scratch_projectiles.clear();
 	_scratch_critical_allies.clear();
+	
+		
 	_summary_unit_stats.clear();
 	_summary_cache.clear();
 	_time = 0.0;
@@ -3673,148 +3617,36 @@ void TeamfightSimulationCore::_apply_stealth(UnitState &source, UnitState &targe
 	target.stealth_break_on_damage_taken = break_on_damage_taken;
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration) {
-	if (radius <= 0.0 || duration <= 0.0 || slow_percentage <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_slow"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_slow(source, unit, slow_percentage, duration);
-	});
+void TeamfightSimulationCore::_apply_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_slow_shape(source, nullptr, effect, slow_percentage, duration);
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_root(UnitState &source, double radius, double duration) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_root"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_root(source, unit, duration);
-	});
+void TeamfightSimulationCore::_apply_aoe_root(UnitState &source, double radius, double duration) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_root_shape(source, nullptr, effect, duration);
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_silence"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_silence(source, unit, duration, block_abilities, block_ultimate);
-	});
+void TeamfightSimulationCore::_apply_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_silence_shape(source, nullptr, effect, duration, block_abilities, block_ultimate);
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_disarm(UnitState &source, double radius, double duration) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_disarm"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_disarm(source, unit, duration);
-	});
-}
-
-void TeamfightSimulationCore::_apply_target_aoe_slow(UnitState &source, UnitState &target, double radius, double slow_percentage, double duration) {
-	if (radius <= 0.0 || duration <= 0.0 || slow_percentage <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_slow"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = target.pos_x;
-	cir.center_y = target.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_slow(source, unit, slow_percentage, duration);
-	});
-}
-
-void TeamfightSimulationCore::_apply_target_aoe_root(UnitState &source, UnitState &target, double radius, double duration) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_root"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = target.pos_x;
-	cir.center_y = target.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_root(source, unit, duration);
-	});
-}
-
-void TeamfightSimulationCore::_apply_target_aoe_silence(UnitState &source, UnitState &target, double radius, double duration, bool blocks_abilities, bool blocks_ultimates) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_silence"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = target.pos_x;
-	cir.center_y = target.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_silence(source, unit, duration, blocks_abilities, blocks_ultimates);
-	});
-}
-
-void TeamfightSimulationCore::_apply_target_aoe_disarm(UnitState &source, UnitState &target, double radius, double duration) {
-	if (radius <= 0.0 || duration <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_disarm"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = target.pos_x;
-	cir.center_y = target.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_disarm(source, unit, duration);
-	});
+void TeamfightSimulationCore::_apply_aoe_disarm(UnitState &source, double radius, double duration) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_disarm_shape(source, nullptr, effect, duration);
 }
 
 void TeamfightSimulationCore::_apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types) {
@@ -3830,32 +3662,25 @@ void TeamfightSimulationCore::_apply_reflect_buff(UnitState &unit, double pct, d
 	}
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
-	if (radius <= 0.0 || duration <= 0.0 || pct <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_reflect"));
-	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(source.team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &ally_indices;
-	cir.spatial_team = source.team;
-	_for_each_unit_in_circle(cir, [&](UnitState &ally) {
-		_apply_reflect_buff(ally, pct, duration, all_damage_types);
-	});
+void TeamfightSimulationCore::_apply_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_reflect_shape(source, nullptr, effect, pct, duration, all_damage_types);
 }
 
-void TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source) {
+bool TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source) {
 	if (distance <= 0.0 || !target.alive) {
-		return;
+		return false;
 	}
 	double tenacity = target.combat.tenacity;
 	double effective_distance = distance * (1.0 - tenacity);
 	if (effective_distance <= EPSILON) {
-		return;
+		return false;
 	}
+	double old_x = target.pos_x;
+	double old_y = target.pos_y;
 	double sx = source.pos_x;
 	double sy = source.pos_y;
 	double tx = target.pos_x;
@@ -3882,24 +3707,15 @@ void TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &tar
 	target.pos_x = Math::clamp(static_cast<double>(valid.x), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	target.pos_y = Math::clamp(static_cast<double>(valid.y), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	_sync_targeting_frame_unit(target);
+	return Math::abs(target.pos_x - old_x) > EPSILON || Math::abs(target.pos_y - old_y) > EPSILON;
 }
 
-void TeamfightSimulationCore::_apply_self_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source) {
-	if (radius <= 0.0 || distance <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_knockback"));
-	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_knockback(source, unit, distance, away_from_source);
-	});
+bool TeamfightSimulationCore::_apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source) {
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	return _apply_aoe_knockback_shape(source, nullptr, effect, distance, away_from_source);
 }
 
 double TeamfightSimulationCore::_movement_speed_multiplier(const UnitState &unit) const {
@@ -4579,28 +4395,6 @@ void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitSt
 	}
 }
 
-void TeamfightSimulationCore::_apply_target_aoe_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio) {
-	(void)reason;
-	if (radius <= 0.0) {
-		return;
-	}
-	_viewer_record_aoe_ring_fx(source, target, radius, StringName("aoe_splash"));
-	StringName source_team = source.team;
-	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = target.pos_x;
-	cir.center_y = target.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		double splash_damage = damage * splash_ratio;
-		EffectContext context = _build_context(source, &unit, nullptr, splash_damage, action_kind);
-		_apply_damage(source, unit, splash_damage, damage_type, action_kind, context);
-	});
-}
-
 void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const StringName &action_kind) {
 	// Calculate damage_per_tick from ratios at application time
 	double damage_per_tick = source.combat.attack_damage * attack_damage_ratio;
@@ -4721,18 +4515,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	periodic_effects.push_back(new_effect);
 }
 
-// DoT/HoT Limitations:
-// - Damage multipliers: DoT damage is applied directly without checking damage multiplier effects
-//   (constant_multiplier, hp_threshold_damage_multiplier, target_status_multiplier). This is
-//   intentional for simplicity and performance. DoTs represent fixed damage over time calculated
-//   at application time.
-// - Healing multipliers: HoT healing is applied directly without checking healing multiplier effects.
-//   This is intentional for the same reasons.
-// - Source behavior: When the source unit dies, DoT/HoT continues ticking on the target. The source
-//   is only used for damage/healing attribution (stats tracking). If the source is dead, damage/healing
-//   still occurs but is attributed to the now-dead source.
-// - Visual effects: No visual effect hooks are currently implemented. DoT/HoT ticks do not trigger
-//   damage numbers or particle effects. This will be added in a future update.
 void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double delta) {
 	auto &periodic_effects = _uc(unit).periodic_effects;
 	auto it = periodic_effects.begin();
@@ -4803,56 +4585,181 @@ void TeamfightSimulationCore::_clear_periodic_effects(UnitState &unit) {
 }
 
 void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind) {
-	StringName source_team = source.team;
-	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
-	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	if (!target_self) {
-		cir.exclude_instance_id = source.instance_id;
-	}
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_dot(source, unit, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, action_kind);
-	});
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	effect.damage_type = damage_type;
+	effect.stacking_mode = stacking_mode;
+	effect.effect_type = effect_type;
+	_apply_aoe_dot_shape(source, nullptr, effect, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, target_self, action_kind);
 }
 
 void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind) {
-	// Visual effect: AoE ring
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_hot"));
-	
-	StringName source_team = source.team;
-	StringName ally_team = source_team == StringName("player") ? StringName("player") : StringName("enemy");
-	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(ally_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &ally_indices;
-	cir.spatial_team = ally_team;
-	if (!target_self) {
-		cir.exclude_instance_id = source.instance_id;
-	}
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
-		_apply_hot(source, unit, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, action_kind);
-	});
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	effect.stacking_mode = stacking_mode;
+	effect.effect_type = effect_type;
+	_apply_aoe_hot_shape(source, nullptr, effect, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, target_self, action_kind);
 }
 
 void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius, double duration) {
-	_viewer_record_aoe_ring_fx(source, source, radius, StringName("aoe_taunt"));
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
+	effect.aoe_shape_params.radius = radius;
+	_apply_aoe_taunt_shape(source, nullptr, effect, duration);
+}
+
+double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind) {
+	(void)reason;
+	EffectRecord effect;
+	effect.aoe_shape_params.shape = AoShapeKind::Circle;
+	effect.aoe_shape_params.anchor = AoAnchorKind::Target;
+	effect.aoe_shape_params.radius = radius;
+	effect.damage_type = damage_type;
+	return _apply_aoe_damage_shape(source, &center_source, effect, damage, damage_type, action_kind);
+}
+
+Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override) const {
+	Vector2 forward(1.0, 0.0);
+	
+	const UnitState *target = target_override;
+	if (target == nullptr && params.target_id != 0) {
+		target = _unit_by_id(params.target_id);
+	}
+	
+	if (target != nullptr) {
+		Vector2 diff(target->pos_x - source.pos_x, target->pos_y - source.pos_y);
+		if (diff.length_squared() > EPSILON * EPSILON) {
+			forward = diff.normalized();
+		}
+	} else {
+		// For AOE without explicit target, use source's current attack target
+		int64_t source_target_id = source.target_id;
+		if (source_target_id != 0) {
+			const UnitState *source_target = _unit_by_id(source_target_id);
+			if (source_target != nullptr) {
+				Vector2 diff(source_target->pos_x - source.pos_x, source_target->pos_y - source.pos_y);
+				if (diff.length_squared() > EPSILON * EPSILON) {
+					forward = diff.normalized();
+				}
+			}
+		}
+		
+		// Fallback to enemy team center if no target found
+		if (forward == Vector2(1.0, 0.0)) {
+			StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+			const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+			if (!enemy_indices.empty()) {
+				double cx = 0.0;
+				double cy = 0.0;
+				for (int64_t idx : enemy_indices) {
+					const UnitState &u = _units[static_cast<size_t>(idx)];
+					cx += u.pos_x;
+					cy += u.pos_y;
+				}
+				cx /= double(enemy_indices.size());
+				cy /= double(enemy_indices.size());
+				Vector2 diff(cx - source.pos_x, cy - source.pos_y);
+				if (diff.length_squared() > EPSILON * EPSILON) {
+					forward = diff.normalized();
+				}
+			}
+		}
+	}
+	
+	// Apply rotation if specified
+	if (!Math::is_zero_approx(params.rotation_radians)) {
+		forward = forward.rotated(params.rotation_radians);
+	}
+	
+	return forward;
+}
+
+TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape_metadata(const Dictionary &params) const {
+	AoShapeParams shape_params;
+	shape_params.shape = AoShapeKind::Circle;
+	shape_params.anchor = AoAnchorKind::Source;
+	shape_params.radius = 0.0;
+	shape_params.width = 0.0;
+	shape_params.height = 0.0;
+	shape_params.rotation_radians = 0.0;
+	shape_params.anchor_x = 0.0;
+	shape_params.anchor_y = 0.0;
+	shape_params.target_id = 0;
+	
+	// Parse shape
+	Variant shape_var = params.get("shape", Variant());
+	if (shape_var.get_type() == Variant::STRING) {
+		String shape_str = String(shape_var);
+		if (shape_str == "circle") {
+			shape_params.shape = AoShapeKind::Circle;
+		} else if (shape_str == "cone") {
+			shape_params.shape = AoShapeKind::Cone;
+		} else if (shape_str == "rectangle") {
+			shape_params.shape = AoShapeKind::Rectangle;
+		}
+	}
+	
+	// Parse anchor
+	Variant anchor_var = params.get("anchor", Variant());
+	if (anchor_var.get_type() == Variant::STRING) {
+		String anchor_str = String(anchor_var);
+		if (anchor_str == "source") {
+			shape_params.anchor = AoAnchorKind::Source;
+		} else if (anchor_str == "target") {
+			shape_params.anchor = AoAnchorKind::Target;
+		} else if (anchor_str == "point") {
+			shape_params.anchor = AoAnchorKind::Point;
+		} else if (anchor_str == "forward") {
+			shape_params.anchor = AoAnchorKind::Forward;
+		}
+	}
+	
+	// Parse numeric parameters
+	shape_params.radius = params.get("radius", 0.0);
+	shape_params.width = params.get("width", 0.0);
+	shape_params.height = params.get("height", 0.0);
+	
+	// Parse rotation (degrees to radians)
+	Variant rotation_var = params.get("rotation_degrees", Variant());
+	if (rotation_var.get_type() == Variant::FLOAT || rotation_var.get_type() == Variant::INT) {
+		double rotation_degrees = rotation_var;
+		shape_params.rotation_radians = Math::deg_to_rad(rotation_degrees);
+	}
+	
+	// Parse anchor position for Point anchor
+	shape_params.anchor_x = params.get("anchor_x", 0.0);
+	shape_params.anchor_y = params.get("anchor_y", 0.0);
+	
+	// Parse target_id for Target anchor
+	shape_params.target_id = params.get("target_id", 0);
+	
+	return shape_params;
+}
+
+void TeamfightSimulationCore::_apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-	AoCircleIterationParams cir;
-	cir.center_x = source.pos_x;
-	cir.center_y = source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_taunt"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
 		unit.taunt_target_id = source.instance_id;
 		unit.taunt_remaining = Math::max(unit.taunt_remaining, duration);
 		unit.forced_target_id = source.instance_id;
@@ -4861,24 +4768,220 @@ void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius,
 	});
 }
 
-double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind) {
-	(void)reason;
-	_viewer_record_aoe_ring_fx(source, center_source, radius, StringName("aoe_damage"));
+void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+	StringName source_team = source.team;
+	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_dot"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = target_self ? 0 : source.instance_id;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_dot(source, unit, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, action_kind);
+	});
+}
+
+void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+	StringName source_team = source.team;
+	StringName ally_team = source_team == StringName("player") ? StringName("player") : StringName("enemy");
+	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(ally_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_hot"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &ally_indices;
+	shape_iter.spatial_team = ally_team;
+	shape_iter.exclude_instance_id = target_self ? 0 : source.instance_id;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_hot(source, unit, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, action_kind);
+	});
+}
+
+double TeamfightSimulationCore::_apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind) {
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
 	double total_damage = 0.0;
-	AoCircleIterationParams cir;
-	cir.center_x = center_source.pos_x;
-	cir.center_y = center_source.pos_y;
-	cir.radius = radius;
-	cir.indices = &enemy_indices;
-	cir.spatial_team = enemy_team;
-	_for_each_unit_in_circle(cir, [&](UnitState &unit) {
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_damage"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
 		EffectContext context = _build_context(source, &unit, nullptr, damage, action_kind);
 		total_damage += _apply_damage(source, unit, damage, damage_type, action_kind, context);
 	});
 	return total_damage;
+}
+
+
+void TeamfightSimulationCore::_apply_aoe_slow_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration) {
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_slow"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_slow(source, unit, slow_percentage, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_aoe_root_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_root"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_root(source, unit, duration);
+	});
+}
+
+void TeamfightSimulationCore::_apply_aoe_silence_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate) {
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_silence"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_silence(source, unit, duration, block_abilities, block_ultimate);
+	});
+}
+
+void TeamfightSimulationCore::_apply_aoe_disarm_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_disarm"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		_apply_disarm(source, unit, duration);
+	});
+}
+
+
+
+
+bool TeamfightSimulationCore::_apply_aoe_knockback_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double distance, bool away_from_source) {
+	if (effect.aoe_shape_params.radius <= 0.0 || distance <= 0.0) {
+		return false;
+	}
+	StringName enemy_team = source.team == sn_player() ? sn_enemy() : sn_player();
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_knockback"));
+
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+
+	bool applied = false;
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		applied = _apply_knockback(source, unit, distance, away_from_source) || applied;
+	});
+	return applied;
+}
+
+void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types) {
+	if (effect.aoe_shape_params.radius <= 0.0 || duration <= 0.0 || pct <= 0.0) {
+		return;
+	}
+	StringName ally_team = source.team == sn_player() ? sn_player() : sn_enemy();
+	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(ally_team);
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_reflect"));
+
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &ally_indices;
+	shape_iter.spatial_team = ally_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &ally) {
+		_apply_reflect_buff(ally, pct, duration, all_damage_types);
+	});
 }
 
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
@@ -5608,43 +5711,30 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 }
 
 void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
-	if (_sim_profile_tick_count <= 0) {
-		return;
-	}
-	const double inv = 1.0 / double(_sim_profile_tick_count);
-	auto avg = [&](uint64_t ns) { return double(ns) * inv; };
-	const uint64_t uu_sum = _sim_profile_uu_dead_respawn + _sim_profile_uu_cooldowns_cc + _sim_profile_uu_separation +
-			_sim_profile_uu_threat_and_assist + _sim_profile_uu_regen_on_tick + _sim_profile_uu_casting +
-			_sim_profile_uu_targeting + _sim_profile_uu_combat + _sim_profile_uu_movement;
-	const uint64_t sum = _sim_profile_ns_projectiles + _sim_profile_ns_prepare_tick_ctx +
-			_sim_profile_ns_refresh_pressure_pre + uu_sum + _sim_profile_ns_refresh_pressure_post;
-	const int64_t se_calls = _sim_profile_se_calls;
-	const double se_inv = se_calls > 0 ? 1.0 / double(se_calls) : 0.0;
-	auto se_avg = [&](uint64_t ns) { return double(ns) * se_inv; };
-	std::fprintf(stderr,
-			"{\"sim_profile\":{\"ticks\":%lld,\"ns_per_tick_avg\":{\"projectiles\":%.0f,\"prepare_tick_ctx\":%.0f,\"refresh_pressure_pre\":%.0f,\"update_units\":%.0f,\"refresh_pressure_post\":%.0f},\"update_unit_ns_per_tick_avg\":{\"uu_dead_respawn\":%.0f,\"uu_cooldowns_cc\":%.0f,\"uu_separation\":%.0f,\"uu_threat_and_assist\":%.0f,\"uu_regen_on_tick\":%.0f,\"uu_casting\":%.0f,\"uu_targeting\":%.0f,\"uu_combat\":%.0f,\"uu_movement\":%.0f},\"sum_ns_per_tick_avg\":%.0f,\"score_enemy_ns\":{\"calls\":%lld,\"avg_per_call_ns\":{\"base\":%.0f,\"bodyguard\":%.0f,\"obscurance\":%.0f,\"flanking\":%.0f}}}}\n",
-			static_cast<long long>(_sim_profile_tick_count),
-			avg(_sim_profile_ns_projectiles),
-			avg(_sim_profile_ns_prepare_tick_ctx),
-			avg(_sim_profile_ns_refresh_pressure_pre),
-			avg(uu_sum),
-			avg(_sim_profile_ns_refresh_pressure_post),
-			avg(_sim_profile_uu_dead_respawn),
-			avg(_sim_profile_uu_cooldowns_cc),
-			avg(_sim_profile_uu_separation),
-			avg(_sim_profile_uu_threat_and_assist),
-			avg(_sim_profile_uu_regen_on_tick),
-			avg(_sim_profile_uu_casting),
-			avg(_sim_profile_uu_targeting),
-			avg(_sim_profile_uu_combat),
-			avg(_sim_profile_uu_movement),
-			double(sum) * inv,
-			static_cast<long long>(se_calls),
-			se_avg(_sim_profile_se_base),
-			se_avg(_sim_profile_se_bodyguard),
-			se_avg(_sim_profile_se_obscurance),
-			se_avg(_sim_profile_se_flanking));
-	std::fflush(stderr);
+	Dictionary profile;
+	profile["ns_projectiles"] = _sim_profile_ns_projectiles;
+	profile["ns_prepare_tick_ctx"] = _sim_profile_ns_prepare_tick_ctx;
+	profile["ns_refresh_pressure_pre"] = _sim_profile_ns_refresh_pressure_pre;
+	profile["ns_update_units"] = _sim_profile_ns_update_units;
+	profile["ns_refresh_pressure_post"] = _sim_profile_ns_refresh_pressure_post;
+	profile["tick_count"] = _sim_profile_tick_count;
+	profile["uu_dead_respawn"] = _sim_profile_uu_dead_respawn;
+	profile["uu_cooldowns_cc"] = _sim_profile_uu_cooldowns_cc;
+	profile["uu_separation"] = _sim_profile_uu_separation;
+	profile["uu_threat_and_assist"] = _sim_profile_uu_threat_and_assist;
+	profile["uu_regen_on_tick"] = _sim_profile_uu_regen_on_tick;
+	profile["uu_casting"] = _sim_profile_uu_casting;
+	profile["uu_targeting"] = _sim_profile_uu_targeting;
+	profile["uu_combat"] = _sim_profile_uu_combat;
+	profile["uu_movement"] = _sim_profile_uu_movement;
+	profile["se_base"] = _sim_profile_se_base;
+	profile["se_bodyguard"] = _sim_profile_se_bodyguard;
+	profile["se_obscurance"] = _sim_profile_se_obscurance;
+	profile["se_flanking"] = _sim_profile_se_flanking;
+	profile["se_calls"] = _sim_profile_se_calls;
+	
+	String json = JSON::stringify(profile);
+	UtilityFunctions::print(json);
 }
 
 void TeamfightSimulationCore::_step_tick(bool profile_sim) {
@@ -5830,13 +5920,15 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	// Apply overtime damage during sudden death
 	if (_sudden_death_ticks > 0) {
+		double damage_rate = OVERTIME_DAMAGE_BASE_RATE; //+ (OVERTIME_DAMAGE_INCREASE_RATE * _sudden_death_ticks);
+		
 		for (UnitState &unit : _units) {
 			if (!unit.alive) {
 				continue;
 			}
 			
 			double max_hp = get_effective_max_hp(unit);
-			double damage = (max_hp * OVERTIME_DAMAGE_BASE_RATE) + 1.0;
+			double damage = 1 + max_hp * damage_rate;
 			
 			// Apply shield absorption first (bypass _apply_damage to avoid passives/stats)
 			double shield_before = unit.shield;
@@ -5858,7 +5950,6 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 	}
 
-	// Separation (Python: after CC tick, before threat decay; skipped while stunned or rooted after decrement).
 	{
 		SimProfileAccScope _uu_sep(profile_sim, _sim_profile_uu_separation);
 		if (unit.stun_remaining <= 0.0 && unit.root_remaining <= 0.0) {
@@ -6031,7 +6122,6 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 }
 
 bool TeamfightSimulationCore::_try_cast_ability(UnitState &unit, UnitState &target, double distance) {
-	(void)distance;
 	if (unit.silence_remaining > 0.0 && unit.silence_blocks_abilities) {
 		return false;
 	}
@@ -6059,13 +6149,12 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 }
 
 bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind) {
-	(void)distance;
 	bool has_effect = action_kind == sn_ability() ? unit.has_ability_effect : unit.has_ultimate_effect;
 	if (!has_effect) {
 		return false;
 	}
 	UnitState *target_ally = _select_ally_target(unit);
-	if (action_kind == sn_ability()) {
+	if (action_kind == StringName("ability")) {
 		_uc(unit).abilities += 1;
 	} else {
 		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
@@ -6570,50 +6659,49 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			heal_result["amount"] = heal_amount;
 			return heal_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_TAUNT: {
+		case EFFECT_OPCODE_AOE_TAUNT: {
 			Dictionary taunt_result;
 			taunt_result["success"] = true;
-			_apply_aoe_taunt(source, effect.scalar0, effect.scalar1);
+			_apply_aoe_taunt_shape(source, target, effect, effect.scalar1);
 			taunt_result["taunt_applied"] = true;
 			taunt_result["radius"] = effect.scalar0;
 			taunt_result["duration"] = effect.scalar1;
 			return taunt_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_DAMAGE: {
+		case EFFECT_OPCODE_AOE_DAMAGE: {
 			Dictionary aoe_damage_result;
 			aoe_damage_result["success"] = true;
 			double aoe_damage;
-			if (effect.scalar2 > 0.0) {
-				aoe_damage = effect.scalar2;
+			if (effect.scalar3 > 0.0) {
+				aoe_damage = effect.scalar3;
 			} else {
 				aoe_damage = source.combat.attack_damage * effect.scalar1;
 			}
-			double total_damage = _apply_aoe_damage(source, source, aoe_damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, effect.reason, context.action_kind);
+			double splash_ratio = effect.scalar2;
+			if (splash_ratio != 1.0) {
+				aoe_damage *= splash_ratio;
+			}
+			double total_damage = _apply_aoe_damage_shape(source, target, effect, aoe_damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
+			aoe_damage_result["aoe_damage_applied"] = true;
+			aoe_damage_result["damage"] = total_damage;
 			// Store total damage in context for damage_based_heal to use
 			context.damage = total_damage;
-			aoe_damage_result["damage_dealt"] = total_damage;
 			return aoe_damage_result;
 		}
-		case EFFECT_OPCODE_TARGET_AOE_DAMAGE: {
-			Dictionary splash_result;
-			splash_result["success"] = true;
-			if (target != nullptr) {
-				_apply_target_aoe_damage(source, *target, context.damage, effect.scalar0, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind, effect.reason, effect.scalar1);
-				splash_result["splash_applied"] = true;
-			}
-			return splash_result;
-		}
-		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: {
+	case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: {
+		{
 			Dictionary threshold_result;
 			threshold_result["success"] = true;
 			if (context.damage > source.combat.attack_damage * effect.scalar0 && !effect.children.empty()) {
 				Dictionary child_result = _execute_effect(effect.children[0], context);
 				threshold_result["triggered"] = true;
 				_merge_accumulated_results(threshold_result, child_result);
+				return threshold_result;
 			}
-			return threshold_result;
 		}
-		case EFFECT_OPCODE_DAMAGE_OVER_TIME: {
+		return Dictionary();
+	}
+	case EFFECT_OPCODE_DAMAGE_OVER_TIME: {
 			Dictionary dot_result;
 			dot_result["success"] = true;
 			UnitState *dot_target = (effect.int0 == 1) ? &source : target;
@@ -6633,7 +6721,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				source : 
 				(target_ally == nullptr ? source : *target_ally);
 			_apply_hot(source, hot_target, effect.scalar0, effect.scalar1, effect.scalar3, effect.scalar4,
-					   double(effect.int2), effect.scalar2,
+					   double(effect.int2), effect.scalar5,
 					   effect.stacking_mode, effect.int1, effect.int3 != 0, effect.effect_type, context.action_kind);
 			hot_result["hot_applied"] = true;
 			return hot_result;
@@ -6641,19 +6729,19 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME: {
 			Dictionary aoe_dot_result;
 			aoe_dot_result["success"] = true;
-			_apply_aoe_dot(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.scalar3,
-						   double(effect.int1), effect.scalar4,
-						   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
-						   effect.stacking_mode, effect.int0, effect.effect_type, effect.int2 != 0, context.action_kind);
+			_apply_aoe_dot_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3,
+					   double(effect.int1), effect.scalar4,
+					   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
+					   effect.stacking_mode, effect.int0, effect.effect_type, effect.int2 != 0, context.action_kind);
 			aoe_dot_result["aoe_dot_applied"] = true;
 			return aoe_dot_result;
 		}
 		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME: {
 			Dictionary aoe_hot_result;
 			aoe_hot_result["success"] = true;
-			_apply_aoe_hot(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
-						   double(effect.int1), effect.scalar5,
-						   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.int3 != 0, context.action_kind);
+			_apply_aoe_hot_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
+					   double(effect.int1), effect.scalar5,
+					   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.int3 != 0, context.action_kind);
 			aoe_hot_result["aoe_hot_applied"] = true;
 			return aoe_hot_result;
 		}
@@ -6749,61 +6837,41 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			return stealth_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_SLOW: {
+		case EFFECT_OPCODE_AOE_SLOW: {
 			Dictionary aoe_slow_result;
 			aoe_slow_result["success"] = true;
-			_apply_self_aoe_slow(source, effect.scalar0, effect.scalar1, effect.scalar2);
+			_apply_aoe_slow_shape(source, target, effect, effect.scalar1, effect.scalar2);
 			return aoe_slow_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_ROOT: {
+		case EFFECT_OPCODE_AOE_ROOT: {
 			Dictionary aoe_root_result;
 			aoe_root_result["success"] = true;
-			_apply_self_aoe_root(source, effect.scalar0, effect.scalar1);
+			_apply_aoe_root_shape(source, target, effect, effect.scalar1);
 			return aoe_root_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_SILENCE: {
+		case EFFECT_OPCODE_AOE_SILENCE: {
 			Dictionary aoe_silence_result;
 			aoe_silence_result["success"] = true;
-			_apply_self_aoe_silence(source, effect.scalar0, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
+			_apply_aoe_silence_shape(source, target, effect, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
 			return aoe_silence_result;
 		}
-		case EFFECT_OPCODE_SELF_AOE_DISARM: {
+		case EFFECT_OPCODE_AOE_DISARM: {
 			Dictionary aoe_disarm_result;
 			aoe_disarm_result["success"] = true;
-			_apply_self_aoe_disarm(source, effect.scalar0, effect.scalar1);
+			_apply_aoe_disarm_shape(source, target, effect, effect.scalar1);
 			return aoe_disarm_result;
 		}
-		case EFFECT_OPCODE_TARGET_AOE_SLOW: {
-			Dictionary aoe_slow_result;
-			aoe_slow_result["success"] = true;
-			if (target != nullptr) {
-				_apply_target_aoe_slow(source, *target, effect.scalar0, effect.scalar1, effect.scalar2);
-			}
-			return aoe_slow_result;
+		case EFFECT_OPCODE_AOE_KNOCKBACK: {
+			Dictionary aoe_kb_result;
+			aoe_kb_result["success"] = true;
+			aoe_kb_result["knockback_applied"] = _apply_aoe_knockback_shape(source, target, effect, effect.scalar1, effect.int0 != 0);
+			return aoe_kb_result;
 		}
-		case EFFECT_OPCODE_TARGET_AOE_ROOT: {
-			Dictionary aoe_root_result;
-			aoe_root_result["success"] = true;
-			if (target != nullptr) {
-				_apply_target_aoe_root(source, *target, effect.scalar0, effect.scalar1);
-			}
-			return aoe_root_result;
-		}
-		case EFFECT_OPCODE_TARGET_AOE_SILENCE: {
-			Dictionary aoe_silence_result;
-			aoe_silence_result["success"] = true;
-			if (target != nullptr) {
-				_apply_target_aoe_silence(source, *target, effect.scalar0, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
-			}
-			return aoe_silence_result;
-		}
-		case EFFECT_OPCODE_TARGET_AOE_DISARM: {
-			Dictionary aoe_disarm_result;
-			aoe_disarm_result["success"] = true;
-			if (target != nullptr) {
-				_apply_target_aoe_disarm(source, *target, effect.scalar0, effect.scalar1);
-			}
-			return aoe_disarm_result;
+		case EFFECT_OPCODE_AOE_REFLECT: {
+			Dictionary aoe_rf_result;
+			aoe_rf_result["success"] = true;
+			_apply_aoe_reflect_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.int0 == 1);
+			return aoe_rf_result;
 		}
 		case EFFECT_OPCODE_KNOCKBACK_SHIELD: {
 			Dictionary ks_result;
@@ -6822,9 +6890,9 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary kb_result;
 			kb_result["success"] = false;
 			if (target != nullptr) {
-				_apply_knockback(source, *target, effect.scalar0, effect.int0 != 0);
+				bool knocked_back = _apply_knockback(source, *target, effect.scalar0, effect.int0 != 0);
 				kb_result["success"] = true;
-				kb_result["knockback_applied"] = true;
+				kb_result["knockback_applied"] = knocked_back;
 			}
 			return kb_result;
 		}
@@ -6833,19 +6901,6 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			rf_result["success"] = true;
 			_apply_reflect_buff(source, effect.scalar0, effect.scalar1, effect.int0 == 1);
 			return rf_result;
-		}
-		case EFFECT_OPCODE_SELF_AOE_KNOCKBACK: {
-			Dictionary aoe_kb_result;
-			aoe_kb_result["success"] = true;
-			aoe_kb_result["knockback_applied"] = true;
-			_apply_self_aoe_knockback(source, effect.scalar0, effect.scalar1, effect.int0 != 0);
-			return aoe_kb_result;
-		}
-		case EFFECT_OPCODE_SELF_AOE_REFLECT: {
-			Dictionary aoe_rf_result;
-			aoe_rf_result["success"] = true;
-			_apply_self_aoe_reflect(source, effect.scalar0, effect.scalar1, effect.scalar2, effect.int0 == 1);
-			return aoe_rf_result;
 		}
 		case EFFECT_OPCODE_REFLECT_DAMAGE: {
 			Dictionary rd_noop;
@@ -6991,7 +7046,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			return default_result;
 		}
 	}
-}
+	}
 
 void TeamfightSimulationCore::_merge_accumulated_results(Dictionary &target, const Dictionary &source) {
 	Variant source_variant = source;
@@ -7161,6 +7216,10 @@ Dictionary TeamfightSimulationCore::_build_stats_summary() {
 		unit_summary["kills"] = c.kills;
 		unit_summary["deaths"] = c.deaths;
 		unit_summary["assists"] = c.assists;
+		Dictionary telemetry;
+		telemetry["schema"] = String("teamfight.telemetry.v1");
+		telemetry["hard_cc_seconds"] = unit.hard_cc_seconds;
+		unit_summary["telemetry"] = telemetry;
 		unit_stats.append(unit_summary);
 	}
 	summary["unit_stats"] = unit_stats;
@@ -7468,6 +7527,92 @@ void TeamfightSimulationCore::_viewer_record_aoe_ring_fx(const UnitState &p_sour
 	_viewer_fx_push(ev);
 }
 
+void TeamfightSimulationCore::_viewer_record_aoe_shape_fx(const UnitState &p_source, const UnitState *p_target, const AoShapeParams &params, const StringName &kind) {
+	ViewerFxEvent ev;
+	ev.kind = kind;
+	ev.src_id = p_source.instance_id;
+	ev.target_id = p_target != nullptr ? p_target->instance_id : params.target_id;
+	
+	// Resolve anchor position
+	if (params.anchor == AoAnchorKind::Source) {
+		ev.pos_x = p_source.pos_x;
+		ev.pos_y = p_source.pos_y;
+	} else if (params.anchor == AoAnchorKind::Target) {
+		const UnitState *target = p_target != nullptr ? p_target : _unit_by_id(params.target_id);
+		if (target != nullptr) {
+			ev.pos_x = target->pos_x;
+			ev.pos_y = target->pos_y;
+		} else {
+			ev.pos_x = p_source.pos_x;
+			ev.pos_y = p_source.pos_y;
+		}
+	} else if (params.anchor == AoAnchorKind::Forward) {
+		// Calculate forward position from champion center for visualization
+		Vector2 direction = _resolve_aoe_direction(p_source, params, p_target);
+		if (params.shape == AoShapeKind::Rectangle) {
+			ev.pos_x = p_source.pos_x + direction.x * params.height * 0.5;
+			ev.pos_y = p_source.pos_y + direction.y * params.height * 0.5;
+		} else if (params.shape == AoShapeKind::Cone) {
+			ev.pos_x = p_source.pos_x + direction.x * params.radius * 0.5;
+			ev.pos_y = p_source.pos_y + direction.y * params.radius * 0.5;
+		} else if (params.shape == AoShapeKind::Circle) {
+			ev.pos_x = p_source.pos_x + direction.x * params.radius * 0.5;
+			ev.pos_y = p_source.pos_y + direction.y * params.radius * 0.5;
+		} else {
+			ev.pos_x = p_source.pos_x;
+			ev.pos_y = p_source.pos_y;
+		}
+	} else {
+		ev.pos_x = params.anchor_x;
+		ev.pos_y = params.anchor_y;
+	}
+	
+	// Serialize shape parameters to dictionary
+	Dictionary shape_dict;
+	switch (params.shape) {
+		case AoShapeKind::Circle:
+			shape_dict["shape"] = "circle";
+			break;
+		case AoShapeKind::Cone:
+			shape_dict["shape"] = "cone";
+			break;
+		case AoShapeKind::Rectangle:
+			shape_dict["shape"] = "rectangle";
+			break;
+	}
+	
+	switch (params.anchor) {
+		case AoAnchorKind::Source:
+			shape_dict["anchor"] = "source";
+			break;
+		case AoAnchorKind::Target:
+			shape_dict["anchor"] = "target";
+			break;
+		case AoAnchorKind::Point:
+			shape_dict["anchor"] = "point";
+			break;
+		case AoAnchorKind::Forward:
+			shape_dict["anchor"] = "forward";
+			break;
+	}
+	
+	shape_dict["radius"] = params.radius;
+	shape_dict["width"] = params.width;
+	shape_dict["height"] = params.height;
+	shape_dict["rotation_radians"] = params.rotation_radians;
+	shape_dict["anchor_x"] = params.anchor_x;
+	shape_dict["anchor_y"] = params.anchor_y;
+	shape_dict["target_id"] = ev.target_id;
+	Vector2 forward = _resolve_aoe_direction(p_source, params, p_target);
+	shape_dict["forward_x"] = forward.x;
+	shape_dict["forward_y"] = forward.y;
+	
+	ev.val = 0.0;
+	ev.radius = params.radius;
+	ev.extra = shape_dict;
+	_viewer_fx_push(ev);
+}
+
 void TeamfightSimulationCore::_viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type) {
 	ViewerFxEvent ev;
 	ev.kind = StringName("hot_status");
@@ -7617,6 +7762,9 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		}
 		if (!ve.damage_type.is_empty()) {
 			e["damage_type"] = String(ve.damage_type);
+		}
+		if (ve.extra.get_type() != Variant::NIL) {
+			e["extra"] = ve.extra;
 		}
 		fx.append(e);
 	}

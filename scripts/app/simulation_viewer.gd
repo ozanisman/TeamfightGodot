@@ -102,7 +102,7 @@ var _banned_heroes: Array[StringName] = []
 
 # UI references
 var _world_layer: Node2D
-## Layer 1: AoE / impact rings (above world; helps when native tick_fx is missing aoe_ entries or Line2D glitches)
+## Layer 1: AoE / impact rings above world.
 var _aoe_fx_layer: CanvasLayer
 var _ui_layer: Control
 var _header_panel: Panel
@@ -868,8 +868,21 @@ func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:
 	var snapshot: Dictionary = _backend.get_tick_snapshot()
 	if snapshot.is_empty():
 		return
+	for field in ["time", "match_duration", "time_remaining", "player_kills", "enemy_kills", "live_winner", "units", "projectiles", "tick_fx"]:
+		if not snapshot.has(field):
+			_viewer_contract_mismatch("snapshot", field, "present", snapshot)
+			return
+	if not snapshot.get("units") is Array:
+		_viewer_contract_mismatch("snapshot", "units", "Array", snapshot.get("units"))
+		return
+	if not snapshot.get("projectiles") is Array:
+		_viewer_contract_mismatch("snapshot", "projectiles", "Array", snapshot.get("projectiles"))
+		return
+	if not snapshot.get("tick_fx") is Array:
+		_viewer_contract_mismatch("snapshot", "tick_fx", "Array", snapshot.get("tick_fx"))
+		return
 	_refresh_combat_hud(snapshot)
-	var units: Array = snapshot.get("units", [])
+	var units: Array = snapshot.get("units")
 	for unit_data in units:
 		if unit_data is not Dictionary:
 			continue
@@ -881,7 +894,7 @@ func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:
 		var n: Node2D = _unit_nodes[uid] as Node2D
 		if n != null and n.has_method("set_selected"):
 			n.set_selected(int(uid) == _selected_unit_id)
-	var projectiles: Array = snapshot.get("projectiles", [])
+	var projectiles: Array = snapshot.get("projectiles")
 	_update_projectiles(projectiles)
 	if apply_tick_fx:
 		_apply_tick_fx(snapshot)
@@ -1028,8 +1041,14 @@ func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: Str
 
 func _refresh_combat_hud(snapshot: Dictionary) -> void:
 	if _lbl_timer != null:
-		var time_remaining: float = float(snapshot.get("time_remaining", 0.0))
-		var time: float = float(snapshot.get("time", 0.0))
+		if not snapshot.has("time_remaining"):
+			_viewer_contract_mismatch("snapshot", "time_remaining", "present", snapshot)
+			return
+		if not snapshot.has("time"):
+			_viewer_contract_mismatch("snapshot", "time", "present", snapshot)
+			return
+		var time_remaining: float = float(snapshot.get("time_remaining"))
+		var time: float = float(snapshot.get("time"))
 		if time_remaining <= 0.0:
 			var overtime: float = time - 60.0
 			_lbl_timer.text = "OVERTIME: %.1fs" % overtime
@@ -1042,8 +1061,17 @@ func _refresh_combat_hud(snapshot: Dictionary) -> void:
 			if _overtime_border != null:
 				_overtime_border.visible = false
 	if _lbl_score != null:
-		_lbl_score.text = "SCORE: %d - %d" % [int(snapshot.get("player_kills", 0)), int(snapshot.get("enemy_kills", 0))]
+		if not snapshot.has("player_kills"):
+			_viewer_contract_mismatch("snapshot", "player_kills", "present", snapshot)
+			return
+		if not snapshot.has("enemy_kills"):
+			_viewer_contract_mismatch("snapshot", "enemy_kills", "present", snapshot)
+			return
+		_lbl_score.text = "SCORE: %d - %d" % [int(snapshot.get("player_kills")), int(snapshot.get("enemy_kills"))]
 	if _lbl_combat_state != null and _game_state != PREPARATION:
+		if not snapshot.has("live_winner"):
+			_viewer_contract_mismatch("snapshot", "live_winner", "present", snapshot)
+			return
 		_lbl_combat_state.text = "COMBAT" if _game_state == COMBAT else String(_game_state)
 	if _hud_pause != null:
 		_hud_pause.visible = _combat_paused and _game_state == COMBAT
@@ -1181,20 +1209,196 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		elif k == "melee_slash":
 			_spawn_melee_slash_fx(sp_battle)
 		elif k.begins_with("aoe_"):
-			var r_w: float = float(d.get("r", d.get("radius", 0.0)))
-			if r_w <= 0.0 and k == "aoe_splash":
-				r_w = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
-			if r_w > 0.0:
+			var extra_v: Variant = d.get("extra", null)
+			if extra_v is Dictionary:
+				_spawn_aoe_shape_fx(d, snapshot)
+			else:
+				var r_w: float = float(d.get("r", d.get("radius", 0.0)))
+				if r_w <= 0.0:
+					_viewer_contract_mismatch(k, "r", "positive world radius or explicit extra.shape metadata", d)
+					continue
 				_spawn_aoe_ring_fx(wx, wy, r_w, k, int(d.get("src_id", 0)), snapshot)
 
 
-func _aoe_ring_color_for(kind: String, src_id: int, snapshot: Dictionary) -> Color:
-	var team_s: String = ""
-	if src_id != 0:
-		for u in snapshot.get("units", []):
-			if u is Dictionary and int((u as Dictionary).get("instance_id", 0)) == src_id:
-				team_s = str((u as Dictionary).get("team", ""))
-				break
+func _viewer_contract_mismatch(kind: String, field: String, expected: String, payload: Variant) -> void:
+	push_error(
+		"Viewer contract mismatch [kind=%s field=%s expected=%s] payload=%s"
+		% [kind, field, expected, JSON.stringify(payload, "\t")]
+	)
+
+
+func _snapshot_unit_by_id(snapshot: Dictionary, instance_id: int, scope: String) -> Dictionary:
+	if instance_id == 0:
+		_viewer_contract_mismatch(scope, "instance_id", "non-zero", snapshot)
+		return {}
+	var units: Array = snapshot.get("units", [])
+	for u in units:
+		if u is Dictionary and int((u as Dictionary).get("instance_id", 0)) == instance_id:
+			return u as Dictionary
+	_viewer_contract_mismatch(scope, "instance_id", "present in snapshot.units", snapshot)
+	return {}
+
+
+func _spawn_aoe_shape_fx(ev: Dictionary, snapshot: Dictionary) -> void:
+	var kind: String = str(ev.get("kind", ""))
+	var src_id: int = int(ev.get("src_id", 0))
+	var source_u: Dictionary = _snapshot_unit_by_id(snapshot, src_id, "%s.src_id" % kind)
+	if source_u.is_empty():
+		return
+	var extra_v: Variant = ev.get("extra", null)
+	if not extra_v is Dictionary:
+		_viewer_contract_mismatch(kind, "extra", "Dictionary", ev)
+		return
+	var extra: Dictionary = extra_v
+	if extra.is_empty():
+		_viewer_contract_mismatch(kind, "extra", "non-empty shape metadata", ev)
+		return
+	for field in ["shape", "anchor", "radius", "width", "height", "rotation_radians", "anchor_x", "anchor_y", "target_id", "forward_x", "forward_y"]:
+		if not extra.has(field):
+			_viewer_contract_mismatch(kind, "extra.%s" % field, "present", extra)
+			return
+	var shape: String = str(extra.get("shape", ""))
+	if shape.is_empty():
+		_viewer_contract_mismatch(kind, "extra.shape", "circle, cone, or rectangle", extra)
+		return
+	var anchor: String = str(extra.get("anchor", ""))
+	if anchor.is_empty():
+		_viewer_contract_mismatch(kind, "extra.anchor", "source, target, point, or forward", extra)
+		return
+	var wx: float = float(ev.get("x", 0.0))
+	var wy: float = float(ev.get("y", 0.0))
+	var target_id: int = int(ev.get("target_id", 0))
+	if int(extra.get("target_id", -1)) != target_id:
+		_viewer_contract_mismatch(kind, "target_id", "top-level and extra.target_id must match", ev)
+		return
+	if anchor == "target" and target_id == 0:
+		_viewer_contract_mismatch(kind, "target_id", "non-zero target id for target-anchored AoE", ev)
+		return
+	if anchor == "target":
+		var target_u: Dictionary = _snapshot_unit_by_id(snapshot, target_id, "%s.target_id" % kind)
+		if target_u.is_empty():
+			return
+	var source_team: String = str(source_u.get("team", ""))
+	if source_team != "player" and source_team != "enemy":
+		_viewer_contract_mismatch(kind, "src_id/team", "player or enemy", source_u)
+		return
+	var col: Color = _aoe_ring_color_for(kind, source_team)
+	var direction: Vector2 = Vector2.RIGHT
+	if shape == "cone" or shape == "rectangle":
+		if not extra.has("forward_x") or not extra.has("forward_y"):
+			_viewer_contract_mismatch(kind, "extra.forward_x/extra.forward_y", "present", extra)
+			return
+		direction = Vector2(float(extra.get("forward_x", 0.0)), float(extra.get("forward_y", 0.0)))
+		if direction.length_squared() <= 0.000001:
+			_viewer_contract_mismatch(kind, "extra.forward_x/extra.forward_y", "non-zero direction vector", extra)
+			return
+		direction = direction.normalized()
+	var n: Node2D = null
+	match shape:
+		"circle":
+			n = _render_circle_aoe(extra, wx, wy, col)
+		"cone":
+			n = _render_cone_aoe(extra, wx, wy, direction, col)
+		"rectangle":
+			n = _render_rectangle_aoe(extra, wx, wy, direction, col)
+		_:
+			_viewer_contract_mismatch(kind, "extra.shape", "circle, cone, or rectangle", extra)
+			return
+	if n == null:
+		return
+	if _aoe_fx_layer != null and is_instance_valid(_aoe_fx_layer):
+		n.position = world_to_screen(wx, wy)
+		_aoe_fx_layer.add_child(n)
+	else:
+		n.z_index = 20
+		n.position = world_to_battle_local(wx, wy)
+		_world_layer.add_child(n)
+	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
+	n.modulate = Color(1, 1, 1, 0.92)
+	var tw := create_tween()
+	tw.tween_property(n, "modulate:a", 0.0, dur)
+	tw.tween_callback(n.queue_free)
+
+
+func _render_circle_aoe(params: Dictionary, wx: float, wy: float, col: Color) -> Node2D:
+	var radius: float = float(params.get("radius", 0.0))
+	if radius <= 0.0:
+		_viewer_contract_mismatch("aoe_circle", "radius", "positive world radius", params)
+		return null
+	var screen_radius: float = _world_to_screen_aoe_size(radius)
+	var n: Node2D = AoeRingNodeScript.new()
+	var fill_c := Color(col.r, col.g, col.b, 0.22 * col.a)
+	n.setup(screen_radius, screen_radius, fill_c, col, 3.0)
+	return n
+
+
+# Helper function to convert world units to screen pixels for AOE shapes
+func _world_to_screen_aoe_size(world_size: float) -> float:
+	var vp: Vector2 = get_viewport_rect().size
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
+	var screen_size: float = world_size * (s / SimConstantsScript.WORLD_SIZE)
+	return maxf(screen_size, SimConstantsScript.VIEWER_AOE_MIN_RING_RADIUS_PX)
+
+
+func _render_cone_aoe(params: Dictionary, wx: float, wy: float, direction: Vector2, col: Color) -> Node2D:
+	var radius: float = float(params.get("radius", 0.0))
+	var width_angle: float = float(params.get("width", 0.0))
+	if radius <= 0.0:
+		_viewer_contract_mismatch("aoe_cone", "radius", "positive world radius", params)
+		return null
+	if width_angle <= 0.0 or width_angle > 360.0:
+		_viewer_contract_mismatch("aoe_cone", "width", "degrees in the range (0, 360]", params)
+		return null
+	var screen_radius: float = _world_to_screen_aoe_size(radius)
+	var n := Node2D.new()
+	var cone := Polygon2D.new()
+	var points: PackedVector2Array = []
+	var segments: int = 32
+	var half_angle: float = deg_to_rad(width_angle) * 0.5
+	points.append(Vector2(0, 0))
+	for i in range(segments + 1):
+		var angle: float = (float(i) / float(segments)) * deg_to_rad(width_angle) - half_angle
+		var dir: Vector2 = direction.rotated(angle)
+		points.append(dir * screen_radius)
+	
+	cone.polygon = points
+	cone.color = col
+	n.add_child(cone)
+	
+	return n
+
+
+func _render_rectangle_aoe(params: Dictionary, wx: float, wy: float, direction: Vector2, col: Color) -> Node2D:
+	var width: float = float(params.get("width", 0.0))
+	var height: float = float(params.get("height", 0.0))
+	if width <= 0.0 or height <= 0.0:
+		_viewer_contract_mismatch("aoe_rectangle", "width/height", "positive world dimensions", params)
+		return null
+	var screen_width: float = _world_to_screen_aoe_size(width)
+	var screen_height: float = _world_to_screen_aoe_size(height)
+	var n := Node2D.new()
+	var rect := Polygon2D.new()
+	var points: PackedVector2Array = []
+	var half_w: float = screen_width * 0.5
+	var half_h: float = screen_height * 0.5
+	var right: Vector2 = Vector2(-direction.y, direction.x)
+	var forward: Vector2 = direction
+	
+	points.append(forward * half_h + right * half_w)
+	points.append(forward * half_h - right * half_w)
+	points.append(-forward * half_h - right * half_w)
+	points.append(-forward * half_h + right * half_w)
+	
+	rect.polygon = points
+	rect.color = col
+	n.add_child(rect)
+	
+	return n
+
+
+
+
+func _aoe_ring_color_for(kind: String, team_s: String) -> Color:
 	if kind == "aoe_taunt":
 		return Color(0.72, 0.42, 0.95, 0.62)
 	if kind == "aoe_splash":
@@ -1257,12 +1461,19 @@ func _cleanup_hot_status_ring(target_id: int) -> void:
 func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:
 	if world_r <= 0.0:
 		return
+	var source_u: Dictionary = _snapshot_unit_by_id(snapshot, src_id, "%s.src_id" % kind)
+	if source_u.is_empty():
+		return
+	var source_team: String = str(source_u.get("team", ""))
+	if source_team != "player" and source_team != "enemy":
+		_viewer_contract_mismatch(kind, "src_id/team", "player or enemy", source_u)
+		return
 	var vp: Vector2 = get_viewport_rect().size
 	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
 	var sp: Vector2 = world_to_screen(wx, wy)
 	var rpx: float = world_r * (s / SimConstantsScript.WORLD_SIZE)
 	rpx = maxf(rpx, SimConstantsScript.VIEWER_AOE_MIN_RING_RADIUS_PX)
-	var col: Color = _aoe_ring_color_for(kind, src_id, snapshot)
+	var col: Color = _aoe_ring_color_for(kind, source_team)
 	var n: Node2D = AoeRingNodeScript.new()
 	n.name = "AoeRing"
 	n.position = sp

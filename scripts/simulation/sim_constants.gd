@@ -101,7 +101,6 @@ const BODYGUARD_WEIGHT_SUPPORT: float = 4.0
 const OBSCURANCE_WEIGHT_DEFAULT: float = 4.5
 const EXECUTE_BONUS_WEIGHT_DEFAULT: float = 50.0
 const FLANKING_WEIGHT_ASSASSIN: float = 2.0
-const OBSCURANCE_LINE_RADIUS: float = 0.35
 const FLANKING_TEAM_CENTER_SCALE: float = 0.35
 
 # ========================================

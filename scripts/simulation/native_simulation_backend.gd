@@ -123,6 +123,15 @@ func run_matches(match_inputs: Array):
 	push_error("Native simulation backend is missing run_matches().")
 	return []
 
+func run_matches_stats(match_inputs: Array):
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return []
+	if _backend.has_method("run_matches_stats"):
+		return _detach_native_summary(_backend.call("run_matches_stats", match_inputs))
+	push_error("Native simulation backend is missing run_matches_stats().")
+	return []
+
 func run_match_simulation_only(match_input: Variant) -> void:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")

@@ -1,6 +1,8 @@
 extends SceneTree
 
 ## Headless CSV export for stats dashboard. Run via run_godot.ps1 --generate-stats (forwards args after --).
+## Throughput: [SimulationBatchWorker] batches each worker chunk via native `run_matches_stats` when available,
+## avoiding per-match GDExtension round-trips. Raise `--export-workers=` (or leave 0 for CPU auto-cap) for parallelism across chunks.
 
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")

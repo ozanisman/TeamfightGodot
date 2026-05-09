@@ -99,7 +99,29 @@ Baseline numbers and methodology: [`logs/benchmark_rundown.md`](../logs/benchmar
 `run_godot.ps1` also exposes this via `--check-benchmark-sharded` (same `--batch-count` / `--team-size` flags) plus:
 
 - `--shards=N`: process count (defaults to 8 when not specified)
-- `--workers-per-shard=N`: benchmark workers inside each shard process (default 1)
+- `--workers-per-shard=N`: benchmark threads inside each shard’s Godot process (default 1)
+
+### When to use sharded benchmarks
+
+- **Same total work, more physical parallelism:** each shard is a **separate Godot + native** process. On Windows, heavy in-process multi-threading (`--workers=8` on one process) often hits **contention, thermal throttling, and memory bandwidth** limits; sharding can improve **outer wall-clock** even when per-process `matches_per_sec` is unchanged.
+- **`--check-benchmark-sharded` defaults match the bench-skip throughput path:** [`run_benchmark_sharded.ps1`](../scripts/tools/run_benchmark_sharded.ps1) passes `-BenchSkipSummaries` into each shard (skip full summaries + native **`run_generated_matches_simulation_only`**). Do not rely on sharded runs for fixture parity—they only measure throughput.
+- **How work is split:** shard `s` runs `batch_count_s = ceil(Total/N)` matches with **`--base-seed = s × chunk`** (see driver). That preserves the usual seed sequence **0 .. TotalBatchCount−1** across shards (`run_benchmark_shard_worker.ps1`).
+- **`--workers-per-shard`:** each shard invokes `run_godot.ps1` with `--workers=$WorkersPerShard`. Use **`1`** for predictable scaling (one sim chunk per process); raising it runs multiple Godot threads **inside each shard**, which multiplies parallelism but can re-introduce contention.
+- **What to read:** the driver prints **`aggregate_matches_per_sec`** and **`aggregate_duration_sec`** — those are authoritative for throughput. Lines `matches_per_sec` from individual shards reflect **single-process** duration; averaging them misrepresents the whole run (see [`logs/benchmark_rundown.md`](../logs/benchmark_rundown.md) harness section).
+- **Logs:** per-shard stdout goes to **`logs/bench_shard_<s>.log`**; stderr to **`logs/bench_shard_<s>.log.err`**. Native `bench_phases` / profiling lines may appear in stderr files.
+- **Timeouts:** `--check-benchmark-sharded` uses a **longer default timeout** on the outer `run_godot.ps1` waiter (multiple child processes); override with `RUN_GODOT_CHECK_TIMEOUT_SECONDS` if needed.
+
+Example:
+
+```powershell
+.\run_godot.ps1 -- --check-benchmark-sharded --batch-count=2000 --team-size=5 --bench-skip-summaries --shards=8 --workers-per-shard=1
+```
+
+Direct PowerShell invocation (same driver `run_godot.ps1` uses):
+
+```powershell
+.\scripts\tools\run_benchmark_sharded.ps1 -TotalBatchCount 2000 -ShardCount 8 -TeamSize 5 -WorkersPerShard 1 -BenchSkipSummaries
+```
 
 ---
 

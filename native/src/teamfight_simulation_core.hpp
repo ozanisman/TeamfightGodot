@@ -44,6 +44,14 @@ public:
 		TagCount
 	};
 
+	/// Optional pre-flanking pruning gate for `_score_enemy_target_prefix` (adjusted lexicographic order).
+	struct EnemyPrefixAdjustedEarlyPrune {
+		double best_adjusted = 0.0;
+		int bucket_rank = 0;
+		double bodyguard_bonus_bound = 0.0;
+		bool *early_skip_dest = nullptr;
+	};
+
 	/// AOE shape kinds for expandable shape system.
 	enum class AoShapeKind : int {
 		Circle = 0,
@@ -880,6 +888,8 @@ private:
 	static constexpr int SPATIAL_GRID_DIM = 8;
 	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (4+). Standard 5v5 can enter the spatial path under the current benchmark contract.
 	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4;
+	/// Conservative upper bound on `(align * isolation)` in `_score_enemy_target_prefix` flanking subtract (both in `[0,1]`).
+	static constexpr double TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX = 1.0;
 	/// Separation ally scan uses a grid only at this team alive count or above (custom large teams); 5v5 uses brute O(n) with tiny n.
 	static constexpr int SPATIAL_SEPARATION_TEAM_THRESHOLD = 6;
 
@@ -1049,7 +1059,7 @@ private:
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1, double *base_score_out = nullptr, double *flanking_score_out = nullptr);
+	double _score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1, double *base_score_out = nullptr, double *flanking_score_out = nullptr, const EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune = nullptr);
 	double _score_enemy_target_from_prefix_parts(const UnitState &attacker, const TargetingFrameEntry &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double base_score, double flanking_score);
 	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
@@ -1407,6 +1417,8 @@ public:
 	Dictionary run_match(const Variant &match_input);
 	Dictionary run_match_stats(const Variant &match_input);
 	Array run_matches(const Array &match_inputs);
+	/// Runs `run_match_stats` semantics for each input; clears between matches like `run_matches`.
+	Array run_matches_stats(const Array &match_inputs);
 	void run_match_simulation_only(const Variant &match_input);
 	void run_matches_simulation_only(const Array &match_inputs);
 	void run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size);

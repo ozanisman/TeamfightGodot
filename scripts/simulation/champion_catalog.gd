@@ -2366,6 +2366,16 @@ static func build_catalog() -> Dictionary:
 	
 	return thread_cache["catalog"]
 
+
+static func build_role_by_hero_map() -> Dictionary:
+	var cat := build_catalog()
+	var out: Dictionary = {}
+	for k in cat.keys():
+		var spec: Variant = cat[k]
+		out[String(k)] = String(spec.stats.role)
+	return out
+
+
 static func build_passive_registry() -> Dictionary:
 	# Use thread-local cache for multi-threading safety
 	var thread_cache = _get_thread_cache()

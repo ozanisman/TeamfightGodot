@@ -30,6 +30,11 @@ func set_write_match_log(enabled: bool) -> void:
 		_match_logs.clear()
 
 
+func preload_roles(role_by_hero: Dictionary) -> void:
+	for k in role_by_hero.keys():
+		_role_by_hero[String(k)] = String(role_by_hero[k])
+
+
 func consume_summary(team_size: int, summary_value: Variant) -> void:
 	if summary_value is Dictionary and summary_value.has("match_results"):
 		if _matchup_aggregator == null:

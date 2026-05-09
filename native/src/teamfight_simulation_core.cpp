@@ -20,6 +20,12 @@
 static std::atomic<int64_t> s_benchmark_progress_done{0};
 static std::atomic<bool> s_sim_profile_force_enabled{false};
 
+// When TEAMFIGHT_STATS_EXPORT_MINIMAL=1, skip per-unit telemetry dicts in _build_stats_summary (CSV export path).
+static bool stats_export_minimal_telemetry_enabled() {
+	const char *v = std::getenv("TEAMFIGHT_STATS_EXPORT_MINIMAL");
+	return v != nullptr && std::strcmp(v, "1") == 0;
+}
+
 // Lazy StringName accessors (function-local static): safe under GDExtension; file-scope StringName can fail DLL load.
 namespace {
 inline const StringName &sn_player() {
@@ -7464,6 +7470,7 @@ Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {
 }
 
 Dictionary TeamfightSimulationCore::_build_stats_summary() {
+	const bool omit_unit_telemetry = stats_export_minimal_telemetry_enabled();
 	Dictionary summary;
 	summary["seed"] = _seed;
 	summary["winner_team"] = String(_winner_team);
@@ -7501,10 +7508,12 @@ Dictionary TeamfightSimulationCore::_build_stats_summary() {
 		unit_summary["kills"] = c.kills;
 		unit_summary["deaths"] = c.deaths;
 		unit_summary["assists"] = c.assists;
-		Dictionary telemetry;
-		telemetry["schema"] = String("teamfight.telemetry.v1");
-		telemetry["hard_cc_seconds"] = unit.hard_cc_seconds;
-		unit_summary["telemetry"] = telemetry;
+		if (!omit_unit_telemetry) {
+			Dictionary telemetry;
+			telemetry["schema"] = String("teamfight.telemetry.v1");
+			telemetry["hard_cc_seconds"] = unit.hard_cc_seconds;
+			unit_summary["telemetry"] = telemetry;
+		}
 		unit_stats.append(unit_summary);
 	}
 	summary["unit_stats"] = unit_stats;

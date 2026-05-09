@@ -1136,7 +1136,7 @@ private:
 	// Optimized stack management infrastructure
 	static thread_local std::vector<StackEntry> _stack_pool;
 	static thread_local std::unordered_map<uint64_t, int> _stack_key_to_pool_index;
-	static std::priority_queue<ExpirationEntry> _expiration_queue;
+	std::priority_queue<ExpirationEntry> _expiration_queue;
 	static constexpr int _pool_capacity = 0;
 	
 	// Stat function pointer tables for optimized application

@@ -17,6 +17,10 @@ Use after **every** native change intended to move throughput:
 4. **Guardrail (1v1):** optional `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=1` (full summaries).
 5. **Multi-worker wall-clock (5v5, same batch):** `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=3` — **526** `matches_per_sec` reference (ten-run mean **~526.1**); this replaces the earlier `--workers=8` reference for the current tree. Use the same machine for before/after.
 
+For higher parallelism without in-process contention, use **process sharding**:
+
+`.\run_godot.ps1 -- --check-benchmark-sharded --batch-count=2000 --team-size=5 --bench-skip-summaries --shards=8 --workers-per-shard=1`
+
 If the median in (3) does not improve vs the prior baseline, **revert** or iterate before stacking more optimizations.
 
 ## Environment

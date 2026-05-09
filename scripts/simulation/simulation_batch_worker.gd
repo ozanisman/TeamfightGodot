@@ -103,18 +103,6 @@ static func flush_stdio_if_available() -> void:
 
 func run_chunk(data: Dictionary) -> Array:
 	var chunk_start_ns: int = _now_ns()
-	var t_phase_ns: int = _now_ns()
-	ChampionCatalogScript.clear_thread_cache()
-	var cache_clear_ns: int = _now_ns() - t_phase_ns
-	
-	t_phase_ns = _now_ns()
-	ChampionCatalogScript.build_catalog()
-	var catalog_build_ns: int = _now_ns() - t_phase_ns
-	
-	t_phase_ns = _now_ns()
-	var matchup_tracker = MatchupTrackerScript.new()
-	var matchup_init_ns: int = _now_ns() - t_phase_ns
-	
 	var start_index: int = int(data.get("start_index", 0))
 	var end_index: int = int(data.get("end_index", 0))
 	var team_size: int = int(data.get("team_size", 1))
@@ -125,8 +113,17 @@ func run_chunk(data: Dictionary) -> Array:
 	var aggregate_stats_in_worker: bool = bool(data.get("aggregate_stats_in_worker", false))
 	var write_match_log: bool = bool(data.get("write_match_log", true))
 	var chunk_profile: Dictionary = {}
+
+	var cache_clear_ns: int = 0
+	var catalog_build_ns: int = 0
+	var matchup_init_ns: int = 0
+	var archetypes_ns: int = 0
+	var results_init_ns: int = 0
+	var stats_setup_ns: int = 0
+	var matchup_tracker = null
+	var archetypes: Array[StringName] = []
 	
-	t_phase_ns = _now_ns()
+	var t_phase_ns: int = _now_ns()
 	var backend: Object = NativeSimulationBackendScript.new()
 	var backend_create_ns: int = _now_ns() - t_phase_ns
 	
@@ -136,26 +133,12 @@ func run_chunk(data: Dictionary) -> Array:
 	var backend_available_ns: int = _now_ns() - t_phase_ns
 
 	var chunk_len: int = maxi(0, end_index - start_index)
-	t_phase_ns = _now_ns()
-	var archetypes: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var archetypes_ns: int = _now_ns() - t_phase_ns
-	var players: Array[StringName] = []
-	var enemies: Array[StringName] = []
-	t_phase_ns = _now_ns()
 	var results: Array = []
-	if not aggregate_stats_in_worker or bench_skip_summaries:
-		results.resize(chunk_len)
-	var results_init_ns: int = _now_ns() - t_phase_ns
-	t_phase_ns = _now_ns()
-	var stats_aggregator = null
-	if aggregate_stats_in_worker and not bench_skip_summaries:
-		stats_aggregator = StatsCsvAggregatorScript.new()
-		stats_aggregator.set_write_match_log(write_match_log)
-		stats_aggregator.reset()
-	var stats_setup_ns: int = _now_ns() - t_phase_ns
+	results.resize(chunk_len)
 	var use_compact_stats: bool = backend.has_method("run_match_stats")
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_generated_matches_simulation_only"):
+		# Benchmark-only fast path: no catalog build, no matchups, no per-match input assembly.
 		var t_native_batch_ns: int = _now_ns()
 		backend.run_generated_matches_simulation_only(base_seed + start_index, chunk_len, team_size)
 		var native_batch_ns: int = _now_ns() - t_native_batch_ns
@@ -190,6 +173,35 @@ func run_chunk(data: Dictionary) -> Array:
 				},
 			}]
 		return results
+
+	t_phase_ns = _now_ns()
+	ChampionCatalogScript.clear_thread_cache()
+	cache_clear_ns = _now_ns() - t_phase_ns
+	
+	t_phase_ns = _now_ns()
+	ChampionCatalogScript.build_catalog()
+	catalog_build_ns = _now_ns() - t_phase_ns
+	
+	t_phase_ns = _now_ns()
+	matchup_tracker = MatchupTrackerScript.new()
+	matchup_init_ns = _now_ns() - t_phase_ns
+	
+	t_phase_ns = _now_ns()
+	archetypes = ChampionCatalogScript.get_champion_ids()
+	archetypes_ns = _now_ns() - t_phase_ns
+	var players: Array[StringName] = []
+	var enemies: Array[StringName] = []
+	
+	t_phase_ns = _now_ns()
+	results_init_ns = _now_ns() - t_phase_ns
+	
+	t_phase_ns = _now_ns()
+	var stats_aggregator = null
+	if aggregate_stats_in_worker and not bench_skip_summaries:
+		stats_aggregator = StatsCsvAggregatorScript.new()
+		stats_aggregator.set_write_match_log(write_match_log)
+		stats_aggregator.reset()
+	stats_setup_ns = _now_ns() - t_phase_ns
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_matches_simulation_only"):
 		var inputs: Array = []

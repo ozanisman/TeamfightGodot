@@ -224,7 +224,7 @@ Absolute m/s varies with OS load; compare **before/after** on the same machine u
 
 ## Harness / multi-process sharding
 
-To raise wall-clock without unsafe **multi-thread** native batch on Windows, shard across **processes**:
+For process-level isolation or worker-count comparison, shard across **processes**:
 
 1. **CLI:** `check_benchmark.gd` accepts `--base-seed=N` (printed in JSON as `base_seed`). Worker seeds: `base_seed + match_index` for each chunk item.
 2. **Driver:** `.\scripts\tools\run_benchmark_sharded.ps1` (`-TotalBatchCount`, `-ShardCount`, `-TeamSize`, `-BenchSkipSummaries`, `-WorkersPerShard`) spawns one `powershell.exe` per shard calling `run_benchmark_shard_worker.ps1`.
@@ -251,13 +251,13 @@ Godot may still exit non-zero on teardown warnings; the driver treats a shard as
 
 1. **Throughput:** **1v1** remains **~790+** m/s on 16 workers (guardrail). **5v5** reference baselines with **`--bench-skip-summaries`**: **315** m/s at **`--workers=1`**, **526** m/s at **`--workers=3`** (direct execution means, [Current primary benchmarks](#current-primary-benchmarks-5v5-apr-2026)).
 2. **5v5 scaling:** Broad-phase for targeting/density/kite/obscurance activates at **4+** alive on a team in the current code path, so 5v5 can use the spatial path. **6v6+** or lopsided counts still use grids, but the 5v5 benchmark contract should be read against this current threshold.
-3. **Threading:** For **5v5**, prefer **`--workers=1`** for core sim throughput vs heavy worker counts when using bench-skip + native batch (less contention). **`--workers=3`** is the documented multi-worker reference (**526** m/s mean); tune for your machine.
+3. **Threading:** Current `check_benchmark.gd` enables `allow_native_batch` for every worker when **`--bench-skip-summaries`** is set, and `SimulationBatchWorker` uses `run_generated_matches_simulation_only()` when available. Worker-count recommendations are benchmark-contract choices, not hard safety limits; use direct stress runs on the target machine before changing defaults.
 4. **Memory:** Bench-skip removes most static delta / peak growth from summary retention; full-summary 5v5 still allocates heavily per match.
 5. **Godot exit noise:** `ObjectDB instances leaked` / resources in use may still appear; teardown now waits **two** frames before `quit`. Further reduction may need explicit unrefs or longer drain.
 
 ## Next steps (remaining)
 
-1. **Multi-thread + native batch:** If safe concurrent batched sim is required, profile whether the fault is GDExtension **Variant** marshalling, **Godot core**, or simulator globals; consider a **job queue** on one native runner thread instead of N concurrent cores.
-2. **5v5 wall-clock:** Use [Harness / multi-process sharding](#harness--multi-process-sharding) for parallel processes; tune shard count vs startup overhead on large `--batch-count`.
+1. **Worker-count tuning:** Compare `--workers=1`, documented multi-worker references, and CPU-count defaults with direct median runs before changing benchmark defaults.
+2. **5v5 wall-clock:** Use [Harness / multi-process sharding](#harness--multi-process-sharding) when process isolation is useful; tune shard count vs startup overhead on large `--batch-count`.
 3. **Re-run Run C (10k × 1v1)** when advertising long-run stability; numbers above are **2k** batches only.
 4. **Keep Release builds** and avoid `debug_combat_trace` in batch workloads.

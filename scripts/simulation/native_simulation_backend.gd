@@ -1,7 +1,6 @@
 class_name NativeSimulationBackend
 extends RefCounted
 
-const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const NativeClassName := "TeamfightSimulationCore"
 const NativeExtensionPath := "res://teamfight_simulation_core.gdextension"
 ## Must match [libraries] windows.* entry in teamfight_simulation_core.gdextension.
@@ -195,6 +194,98 @@ func finish_and_summarize() -> Dictionary:
 	push_error("Native simulation backend is missing finish_and_summarize().")
 	return {}
 
+func _snapshot_mismatch(scope: String, field: String, expected: String, payload: Variant) -> void:
+	push_error(
+		"Native snapshot mismatch [%s] field=%s expected=%s payload=%s"
+		% [scope, field, expected, JSON.stringify(payload, "\t")]
+	)
+
+
+func _require_snapshot_array(snapshot: Dictionary, field: String, scope: String) -> Array:
+	if not snapshot.has(field):
+		_snapshot_mismatch(scope, field, "Array", snapshot)
+		return []
+	var value: Variant = snapshot.get(field)
+	if value is Array:
+		return value
+	_snapshot_mismatch(scope, field, "Array", value)
+	return []
+
+
+func _validate_snapshot_unit(unit_data: Dictionary, index: int) -> bool:
+	var scope: String = "snapshot.units[%d]" % index
+	var required_fields: Array[String] = [
+		"instance_id",
+		"archetype_id",
+		"team",
+		"pos_x",
+		"pos_y",
+		"hp",
+		"max_hp",
+		"shield",
+		"mana",
+		"max_mana",
+		"alive",
+		"state",
+		"target_id",
+		"attack_cooldown",
+		"abi",
+		"attack_speed",
+		"casting_remaining",
+		"casting_kind",
+		"stun_remaining",
+		"slow_remaining",
+		"root_remaining",
+		"silence_remaining",
+		"disarm_remaining",
+		"stealth_remaining",
+		"reflect_buff_remaining",
+		"kills",
+		"deaths",
+		"assists",
+		"respawn_timer",
+		"taunt_remaining",
+		"damage_dealt",
+		"healing_done",
+		"damage_mitigated",
+		"attack_range",
+		"in_range",
+	]
+	for field in required_fields:
+		if not unit_data.has(field):
+			_snapshot_mismatch(scope, field, "present", unit_data)
+			return false
+	return true
+
+
+func _validate_snapshot_projectile(projectile_data: Dictionary, index: int) -> bool:
+	var scope: String = "snapshot.projectiles[%d]" % index
+	var required_fields: Array[String] = [
+		"id",
+		"pos_x",
+		"pos_y",
+		"radius",
+		"source_id",
+		"target_id",
+		"team",
+	]
+	for field in required_fields:
+		if not projectile_data.has(field):
+			_snapshot_mismatch(scope, field, "present", projectile_data)
+			return false
+	return true
+
+
+func _validate_snapshot_fx(fx_data: Dictionary, index: int) -> bool:
+	var scope: String = "snapshot.tick_fx[%d]" % index
+	var required_fields: Array[String] = ["kind", "target_id", "src_id", "x", "y", "val"]
+	for field in required_fields:
+		if not fx_data.has(field):
+			_snapshot_mismatch(scope, field, "present", fx_data)
+			return false
+	return true
+
+
 func get_tick_snapshot() -> Dictionary:
 	if not _ensure_native_backend():
 		return {}
@@ -202,52 +293,48 @@ func get_tick_snapshot() -> Dictionary:
 		return {}
 	var snap: Variant = _backend.call("get_tick_snapshot")
 	if not snap is Dictionary:
+		_snapshot_mismatch("snapshot", "root", "Dictionary", snap)
 		return {}
 	var s: Dictionary = snap
-	# Backward compat: older native only exposed id, x, y, target; normalize for viewer.
-	var units: Array = Array(s.get("units", []))
+	var required_top_level_fields: Array[String] = [
+		"time",
+		"match_duration",
+		"time_remaining",
+		"player_kills",
+		"enemy_kills",
+		"live_winner",
+		"units",
+		"projectiles",
+		"tick_fx",
+	]
+	for field in required_top_level_fields:
+		if not s.has(field):
+			_snapshot_mismatch("snapshot", field, "present", s)
+			return {}
+	var units: Array = _require_snapshot_array(s, "units", "snapshot")
 	for i in range(units.size()):
-		if units[i] is Dictionary:
-			var u: Dictionary = units[i]
-			if not u.has("instance_id"):
-				u["instance_id"] = int(u.get("id", 0))
-			if not u.has("pos_x"):
-				u["pos_x"] = float(u.get("x", 0.0))
-			if not u.has("pos_y"):
-				u["pos_y"] = float(u.get("y", 0.0))
-			if not u.has("target_id"):
-				u["target_id"] = int(u.get("target", 0))
-			if not u.has("max_hp"):
-				u["max_hp"] = float(u.get("hp", 0.0))
-			if not u.has("state"):
-				u["state"] = "ALIVE" if bool(u.get("alive", true)) else "DEAD"
-	s["units"] = units
-	if not s.has("tick_fx"):
-		s["tick_fx"] = []
-	if not s.has("projectiles"):
-		s["projectiles"] = []
-	if not s.has("time_remaining"):
-		s["time_remaining"] = 0.0
-	if not s.has("player_kills"):
-		s["player_kills"] = 0
-	if not s.has("enemy_kills"):
-		s["enemy_kills"] = 0
-	if not s.has("live_winner"):
-		s["live_winner"] = "draw"
-	if not s.has("match_duration"):
-		s["match_duration"] = 60.0
-	var tfx: Array = Array(s.get("tick_fx", []))
-	for i in range(tfx.size()):
-		if tfx[i] is not Dictionary:
-			continue
-		var te: Dictionary = tfx[i]
-		var k: String = str(te.get("kind", ""))
-		if (k == "aoe_damage" or k == "aoe_taunt" or k == "aoe_splash" or k.begins_with("aoe_")) and not te.has("r"):
-			if te.has("radius"):
-				te["r"] = float(te.get("radius", 0.0))
-		if k == "aoe_splash" and (not te.has("r") or float(te.get("r", 0.0)) <= 0.0):
-			te["r"] = SimConstantsScript.VIEWER_AOE_FALLBACK_SPLASH_RADIUS_WORLD
-	s["tick_fx"] = tfx
+		var unit_variant: Variant = units[i]
+		if unit_variant is not Dictionary:
+			_snapshot_mismatch("snapshot.units[%d]" % i, "entry", "Dictionary", unit_variant)
+			return {}
+		if not _validate_snapshot_unit(unit_variant as Dictionary, i):
+			return {}
+	var projectiles: Array = _require_snapshot_array(s, "projectiles", "snapshot")
+	for j in range(projectiles.size()):
+		var projectile_variant: Variant = projectiles[j]
+		if projectile_variant is not Dictionary:
+			_snapshot_mismatch("snapshot.projectiles[%d]" % j, "entry", "Dictionary", projectile_variant)
+			return {}
+		if not _validate_snapshot_projectile(projectile_variant as Dictionary, j):
+			return {}
+	var tfx: Array = _require_snapshot_array(s, "tick_fx", "snapshot")
+	for k in range(tfx.size()):
+		var fx_variant: Variant = tfx[k]
+		if fx_variant is not Dictionary:
+			_snapshot_mismatch("snapshot.tick_fx[%d]" % k, "entry", "Dictionary", fx_variant)
+			return {}
+		if not _validate_snapshot_fx(fx_variant as Dictionary, k):
+			return {}
 	return s
 
 func get_trace_events() -> Array:

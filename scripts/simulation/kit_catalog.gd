@@ -49,7 +49,7 @@ const KIT_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_damage",
+						"kind": "aoe_damage",
 						"params": {
 							"damage_type": "physical",
 							"flat_amount": 200.0,
@@ -85,7 +85,7 @@ const KIT_DATA := {
 			"params": {
 				"effects": [
 					{
-						"kind": "self_aoe_heal",
+						"kind": "aoe_heal",
 						"params": {
 							"heal_ratio": 0.3,
 							"radius": 2.5,

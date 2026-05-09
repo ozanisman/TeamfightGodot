@@ -44,6 +44,34 @@ public:
 		TagCount
 	};
 
+	/// AOE shape kinds for expandable shape system.
+	enum class AoShapeKind : int {
+		Circle = 0,
+		Cone = 1,
+		Rectangle = 2,
+	};
+
+	/// AOE anchor kinds for expandable anchor system.
+	enum class AoAnchorKind : int64_t {
+		Source = 0,
+		Target = 1,
+		Point = 2,
+		Forward = 3,
+	};
+
+	/// Parameters for AOE shape iteration.
+	struct AoShapeParams {
+		AoShapeKind shape = AoShapeKind::Circle;
+		AoAnchorKind anchor = AoAnchorKind::Source;
+		double radius = 0.0;
+		double width = 0.0;
+		double height = 0.0;
+		double rotation_radians = 0.0;
+		double anchor_x = 0.0;
+		double anchor_y = 0.0;
+		int64_t target_id = 0;
+	};
+
 protected:
 	static void _bind_methods();
 
@@ -76,6 +104,9 @@ private:
 		// DoT/HoT support
 		StringName stacking_mode;       // "refresh", "extend", "stack_damage", "stack_duration", "separate"
 		StringName effect_type;         // e.g., "burn", "poison", "regen"
+		
+		// AOE shape parameters (replaces scalar0-scalar5 for AOE effects)
+		AoShapeParams aoe_shape_params;
 	};
 
 	struct EffectContext {
@@ -682,10 +713,9 @@ private:
 		EFFECT_OPCODE_STUN = 4,
 		EFFECT_OPCODE_SHIELD = 5,
 		EFFECT_OPCODE_HEAL = 6,
-		EFFECT_OPCODE_SELF_AOE_TAUNT = 9,
-		EFFECT_OPCODE_SELF_AOE_DAMAGE = 10,
-		EFFECT_OPCODE_TARGET_AOE_DAMAGE = 11,
-		EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER = 12,
+		EFFECT_OPCODE_AOE_TAUNT = 9,
+		EFFECT_OPCODE_AOE_DAMAGE = 10,
+		EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER = 11,
 		EFFECT_OPCODE_MANA_REGEN = 13,
 		EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN = 14,
 		EFFECT_OPCODE_DAMAGE_BASED_HEAL = 15,
@@ -704,25 +734,21 @@ private:
 		EFFECT_OPCODE_DISARM = 28,
 		EFFECT_OPCODE_KNOCKBACK = 29,
 		EFFECT_OPCODE_REFLECT = 30,
-		EFFECT_OPCODE_SELF_AOE_SLOW = 31,
-		EFFECT_OPCODE_SELF_AOE_ROOT = 32,
-		EFFECT_OPCODE_SELF_AOE_SILENCE = 33,
-		EFFECT_OPCODE_SELF_AOE_DISARM = 34,
-		EFFECT_OPCODE_SELF_AOE_KNOCKBACK = 35,
-		EFFECT_OPCODE_SELF_AOE_REFLECT = 36,
+		EFFECT_OPCODE_AOE_SLOW = 31,
+		EFFECT_OPCODE_AOE_ROOT = 32,
+		EFFECT_OPCODE_AOE_SILENCE = 33,
+		EFFECT_OPCODE_AOE_DISARM = 34,
+		EFFECT_OPCODE_AOE_KNOCKBACK = 35,
+		EFFECT_OPCODE_AOE_REFLECT = 36,
 		EFFECT_OPCODE_REFLECT_DAMAGE = 37,
 		EFFECT_OPCODE_KNOCKBACK_SHIELD = 38,
 		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
 		EFFECT_OPCODE_STAT_MODIFIER = 40,
 		EFFECT_OPCODE_STEALTH = 41,
-		EFFECT_OPCODE_TARGET_AOE_SLOW = 42,
-		EFFECT_OPCODE_TARGET_AOE_ROOT = 43,
-		EFFECT_OPCODE_TARGET_AOE_SILENCE = 44,
-		EFFECT_OPCODE_TARGET_AOE_DISARM = 45,
-		EFFECT_OPCODE_DAMAGE_OVER_TIME = 46,
-		EFFECT_OPCODE_HEAL_OVER_TIME = 47,
-		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 48,
-		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 49,
+		EFFECT_OPCODE_DAMAGE_OVER_TIME = 42,
+		EFFECT_OPCODE_HEAL_OVER_TIME = 43,
+		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 44,
+		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 45,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -733,7 +759,8 @@ private:
 	static constexpr double ASSIST_WINDOW = 5.0;
 	static constexpr double RETARGET_INTERVAL = 0.5;
 	static constexpr double SHIELD_DECAY_RATE = 0.1;
-	static constexpr double OVERTIME_DAMAGE_BASE_RATE = 0.001;
+	static constexpr double OVERTIME_DAMAGE_BASE_RATE = 0.0001;
+	//Increase rate currently unused.
 	static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.0001;
 	static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
 	static constexpr double TARGET_STICKINESS_THRESHOLD = 20.0;
@@ -916,6 +943,8 @@ private:
 		double radius = 0.0;
 		/// Damage type for coloring (physical/magic/true); empty if unused.
 		StringName damage_type;
+		/// Extra parameters for complex effects (e.g., AOE shape parameters).
+		Variant extra;
 	};
 	static constexpr size_t VIEWER_FX_CAP = 256;
 	std::vector<ViewerFxEvent> _viewer_fx_events;
@@ -925,6 +954,7 @@ private:
 	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
 	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);
+	void _viewer_record_aoe_shape_fx(const UnitState &p_source, const UnitState *p_target, const AoShapeParams &params, const StringName &kind);
 	void _viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type);
 	String _viewer_state_string(const UnitState &p_u) const;
 
@@ -971,6 +1001,7 @@ private:
 	double _randf();
 	Dictionary _load_json_file(const String &path) const;
 	Dictionary _load_json_file_if_exists(const String &path) const;
+	Dictionary _effect_to_dict(const Variant &effect) const;
 	void _ensure_catalog_loaded();
 	void _build_role_configs();
 	void _build_passive_registry();
@@ -993,6 +1024,10 @@ private:
 	void _sync_targeting_frame_unit(const UnitState &unit);
 	UnitStateCold &_uc(UnitState &u);
 	const UnitStateCold &_uc(const UnitState &u) const;
+	UnitState *_unit_by_id(int64_t instance_id);
+	const UnitState *_unit_by_id(int64_t instance_id) const;
+	int64_t _unit_index_by_id(int64_t instance_id) const;
+	void _set_current_target(UnitState &unit, const UnitState &target);
 	std::vector<int64_t> &_alive_indices_for_team(const StringName &team);
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
@@ -1044,10 +1079,10 @@ private:
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
 	void _apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types);
-	void _apply_self_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types);
+	void _apply_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types);
 	void _maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context);
-	void _apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source);
-	void _apply_self_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);
+	bool _apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source);
+	bool _apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
 	void _apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration);
@@ -1055,16 +1090,23 @@ private:
 	void _apply_silence(UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate);
 	void _apply_disarm(UnitState &source, UnitState &target, double duration);
 	void _apply_stealth(UnitState &source, UnitState &target, double duration, bool break_on_attack, bool break_on_ability, bool break_on_damage_taken);
-	void _apply_self_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration);
-	void _apply_self_aoe_root(UnitState &source, double radius, double duration);
-	void _apply_self_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate);
-	void _apply_self_aoe_disarm(UnitState &source, double radius, double duration);
-	void _apply_target_aoe_slow(UnitState &source, UnitState &target, double radius, double slow_percentage, double duration);
-	void _apply_target_aoe_root(UnitState &source, UnitState &target, double radius, double duration);
-	void _apply_target_aoe_silence(UnitState &source, UnitState &target, double radius, double duration, bool blocks_abilities, bool blocks_ultimates);
-	void _apply_target_aoe_disarm(UnitState &source, UnitState &target, double radius, double duration);
+	void _apply_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration);
+	void _apply_aoe_slow_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration);
+	void _apply_aoe_root(UnitState &source, double radius, double duration);
+	void _apply_aoe_root_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
+	void _apply_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate);
+	void _apply_aoe_silence_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate);
+	void _apply_aoe_disarm(UnitState &source, double radius, double duration);
+	void _apply_aoe_disarm_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
+	bool _apply_aoe_knockback_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double distance, bool away_from_source);
+	void _apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types);
 	double _movement_speed_multiplier(const UnitState &unit) const;
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
+	double _distance_between(const UnitState &unit1, const UnitState &unit2) const;
+	double _attack_range(const UnitState &unit) const;
+	double _effective_attack_range(const UnitState &unit) const;
+	int64_t _assign_spawn_slot(const StringName &team);
+	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
@@ -1074,6 +1116,19 @@ private:
 	void _clear_all_stat_modifiers(UnitState &unit);
 	void _update_stat_modifier_durations(UnitState &unit, double delta);
 	void _clear_expired_stat_modifiers(UnitState &unit);
+	void _handle_death(UnitState &killer, UnitState &target);
+	Vector2 _find_valid_dash_position(double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id) const;
+	void _tick_periodic_effects(UnitState &unit, double delta);
+	void _cleanse_dots(UnitState &unit, const StringName &effect_type_filter);
+	void _clear_periodic_effects(UnitState &unit);
+	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
+	UnitState *_select_ally_target(UnitState &unit);
+	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const;
+	void _release_spawn_slot(const StringName &team, int64_t slot_index);
+	StringName _determine_winner() const;
+	void _respawn_unit(UnitState &unit);
+	Dictionary _build_summary();
+	Dictionary _build_stats_summary();
 	
 	// Optimized stack management infrastructure
 	static thread_local std::vector<StackEntry> _stack_pool;
@@ -1119,36 +1174,19 @@ private:
 	void _debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const;
 	String _join_team_names(const Array &team) const;
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
+	void _apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
-	void _apply_target_aoe_damage(UnitState &source, UnitState &target, double damage, double radius, const StringName &damage_type, const StringName &action_kind, const String &reason, double splash_ratio);
+	double _apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind);
 	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const StringName &action_kind);
 	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const StringName &action_kind);
 	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind);
+	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind);
 	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind);
-	void _tick_periodic_effects(UnitState &unit, double delta);
-	void _cleanse_dots(UnitState &unit, const StringName &effect_type_filter);
-	void _clear_periodic_effects(UnitState &unit);
-	double _effective_attack_range(const UnitState &unit) const;
-	double _attack_range(const UnitState &unit) const;
-	double _distance_between(const UnitState &left, const UnitState &right) const;
-	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
-	UnitState *_select_ally_target(UnitState &unit);
-	UnitState *_unit_by_id(int64_t instance_id);
-	const UnitState *_unit_by_id(int64_t instance_id) const;
-	int64_t _unit_index_by_id(int64_t instance_id) const;
-	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id = 0) const;
-	Vector2 _find_valid_dash_position(double start_x, double start_y, double target_x, double target_y, double max_distance, int64_t exclude_instance_id = 0) const;
-	void _handle_death(UnitState &killer, UnitState &target);
-	StringName _determine_winner() const;
-	void _respawn_unit(UnitState &unit);
-	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn = false);
-	int64_t _assign_spawn_slot(const StringName &team);
-	void _release_spawn_slot(const StringName &team, int64_t slot_index);
-	void _set_current_target(UnitState &unit, const UnitState &target);
-	Dictionary _build_summary();
-	Dictionary _build_stats_summary();
-	Dictionary _effect_to_dict(const Variant &effect) const;
+	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind);
 	Dictionary _champion_for(const StringName &archetype_id) const;
+
+	Vector2 _resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override = nullptr) const;
+	AoShapeParams _parse_aoe_shape_metadata(const Dictionary &params) const;
 
 	/// Parameters for circular AoE iteration over an alive-team index list (`_alive_*_indices`).
 	/// `spatial_team` must match `UnitState::team` for units referenced by `indices` (used by broad-phase stamp).
@@ -1159,6 +1197,16 @@ private:
 		const std::vector<int64_t> *indices = nullptr;
 		StringName spatial_team;
 		int64_t exclude_instance_id = 0;
+	};
+
+	/// Parameters for universal AoE shape iteration over an alive-team index list.
+	struct AoShapeIterationParams {
+		AoShapeParams shape_params;
+		const std::vector<int64_t> *indices = nullptr;
+		StringName spatial_team;
+		int64_t exclude_instance_id = 0;
+		const UnitState *source = nullptr;
+		const UnitState *target_override = nullptr;
 	};
 
 	/// Inclusive disk: `dist_sq <= radius²`. Uses spatial broad-phase when enabled (threshold on alive counts).
@@ -1194,6 +1242,132 @@ private:
 		}
 		_spatial_fill_buckets_for_indices(indices);
 		_spatial_stamp_circle(p.center_x, p.center_y, p.radius, p.spatial_team);
+		for (int64_t idx : indices) {
+			if (!_spatial_stamp_has(idx)) {
+				continue;
+			}
+			visit(idx);
+		}
+	}
+
+	/// Universal AoE shape iteration: supports circle, cone, rectangle, line.
+	/// Uses spatial broad-phase when enabled (threshold on alive counts).
+	template<typename Fn>
+	void _for_each_unit_in_shape(const AoShapeIterationParams &p, Fn &&fn) {
+		if (p.indices == nullptr) {
+			return;
+		}
+		const std::vector<int64_t> &indices = *p.indices;
+		
+		// Resolve anchor position
+		double center_x = 0.0;
+		double center_y = 0.0;
+		if (p.shape_params.anchor == AoAnchorKind::Source && p.source != nullptr) {
+			center_x = p.source->pos_x;
+			center_y = p.source->pos_y;
+		} else if (p.shape_params.anchor == AoAnchorKind::Target && p.target_override != nullptr) {
+			center_x = p.target_override->pos_x;
+			center_y = p.target_override->pos_y;
+		} else if (p.shape_params.anchor == AoAnchorKind::Point) {
+			center_x = p.shape_params.anchor_x;
+			center_y = p.shape_params.anchor_y;
+		} else if (p.shape_params.anchor == AoAnchorKind::Forward && p.source != nullptr) {
+			// Calculate forward position from champion center
+			Vector2 direction = _resolve_aoe_direction(*p.source, p.shape_params, p.target_override);
+			if (p.shape_params.shape == AoShapeKind::Rectangle) {
+				center_x = p.source->pos_x + direction.x * p.shape_params.height * 0.5;
+				center_y = p.source->pos_y + direction.y * p.shape_params.height * 0.5;
+			} else if (p.shape_params.shape == AoShapeKind::Cone) {
+				center_x = p.source->pos_x + direction.x * p.shape_params.radius * 0.5;
+				center_y = p.source->pos_y + direction.y * p.shape_params.radius * 0.5;
+			} else if (p.shape_params.shape == AoShapeKind::Circle) {
+				center_x = p.source->pos_x + direction.x * p.shape_params.radius * 0.5;
+				center_y = p.source->pos_y + direction.y * p.shape_params.radius * 0.5;
+			} else {
+				center_x = p.source->pos_x;
+				center_y = p.source->pos_y;
+			}
+		} else if (p.source != nullptr) {
+			center_x = p.source->pos_x;
+			center_y = p.source->pos_y;
+		}
+		
+		// Resolve direction
+		Vector2 forward(1.0, 0.0);
+		if (p.source != nullptr) {
+			forward = _resolve_aoe_direction(*p.source, p.shape_params, p.target_override);
+		}
+		
+		// Shape-specific filtering
+		auto shape_contains = [&](const UnitState &u) -> bool {
+			const double dx = u.pos_x - center_x;
+			const double dy = u.pos_y - center_y;
+			
+			switch (p.shape_params.shape) {
+				case AoShapeKind::Circle: {
+					const double r2 = p.shape_params.radius * p.shape_params.radius;
+					return dx * dx + dy * dy <= r2;
+				}
+				case AoShapeKind::Cone: {
+					const double r2 = p.shape_params.radius * p.shape_params.radius;
+					if (dx * dx + dy * dy > r2) {
+						return false;
+					}
+					const double half_angle = p.shape_params.width * 0.5;
+					Vector2 to_unit(dx, dy);
+					if (to_unit.length_squared() < EPSILON * EPSILON) {
+						return true;
+					}
+					to_unit = to_unit.normalized();
+					const double dot = to_unit.dot(forward);
+					const double angle_cos = Math::cos(half_angle);
+					return dot >= angle_cos;
+				}
+				case AoShapeKind::Rectangle: {
+					const double half_w = p.shape_params.width * 0.5;
+					const double half_h = p.shape_params.height * 0.5;
+					Vector2 to_unit(dx, dy);
+					Vector2 right = Vector2(-forward.y, forward.x);
+					const double forward_dist = to_unit.dot(forward);
+					const double right_dist = to_unit.dot(right);
+					return Math::abs(forward_dist) <= half_h && Math::abs(right_dist) <= half_w;
+				}
+				default:
+					return false;
+			}
+		};
+		
+		auto visit = [&](int64_t idx) {
+			if (idx < 0 || idx >= int64_t(_units.size())) {
+				return;
+			}
+			UnitState &u = _units[static_cast<size_t>(idx)];
+			if (!u.alive) {
+				return;
+			}
+			if (p.exclude_instance_id != 0 && u.instance_id == p.exclude_instance_id) {
+				return;
+			}
+			if (shape_contains(u)) {
+				fn(u);
+			}
+		};
+		
+		if (!_use_spatial_broad_phase()) {
+			for (int64_t idx : indices) {
+				visit(idx);
+			}
+			return;
+		}
+		
+		// For spatial broad-phase, use circle bounds as approximation
+		double bounds_radius = p.shape_params.radius;
+		if (p.shape_params.shape == AoShapeKind::Rectangle) {
+			bounds_radius = Math::sqrt(p.shape_params.width * p.shape_params.width + p.shape_params.height * p.shape_params.height) * 0.5;
+		}
+		
+		_spatial_fill_buckets_for_indices(indices);
+		_spatial_stamp_circle(center_x, center_y, bounds_radius, p.spatial_team);
 		for (int64_t idx : indices) {
 			if (!_spatial_stamp_has(idx)) {
 				continue;

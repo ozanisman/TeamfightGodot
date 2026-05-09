@@ -253,7 +253,7 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_behavior_label.visible = false
 	
 	# Set ability label based on ability cooldown
-	var ability_cd: float = float(ud.get("abi", ud.get("ability_cooldown", 0.0)))
+	var ability_cd: float = float(ud.get("abi", 0.0))
 	var casting_rem: float = float(ud.get("casting_remaining", 0.0))
 	var casting_kind: String = str(ud.get("casting_kind", ""))
 	var ability_text := ""

@@ -327,8 +327,7 @@ private:
 		int64_t respawn_slot_index = -1; // -1 = no assigned slot
 		StringName forced_target_kind;
 		
-		// Per-unit effect timing accumulators for on_tick effects
-		std::unordered_map<size_t, double> effect_accumulators;
+		std::vector<double> on_tick_effect_accumulators;
 
 		// Periodic effects (DoT/HoT)
 		struct PeriodicEffect {
@@ -390,6 +389,7 @@ private:
 		int64_t casting_ally_target_id = 0;
 		bool cast_resolved_this_tick = false;
 		int64_t target_id = 0;
+		int64_t target_index = -1;
 		int64_t current_ally_target_id = 0;
 		double retarget_timer = 0.0;
 		double target_switch_lock_timer = 0.0;
@@ -1021,12 +1021,14 @@ private:
 	void _append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp);
 	std::pair<UnitState, UnitStateCold> _build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id);
 	TargetingFrameEntry _make_targeting_frame_entry(const UnitState &unit) const;
+	void _sync_targeting_frame_index(int64_t index, const UnitState &unit);
 	void _sync_targeting_frame_unit(const UnitState &unit);
 	UnitStateCold &_uc(UnitState &u);
 	const UnitStateCold &_uc(const UnitState &u) const;
 	UnitState *_unit_by_id(int64_t instance_id);
 	const UnitState *_unit_by_id(int64_t instance_id) const;
 	int64_t _unit_index_by_id(int64_t instance_id) const;
+	int64_t _target_index_for_unit(UnitState &unit);
 	void _set_current_target(UnitState &unit, const UnitState &target);
 	std::vector<int64_t> &_alive_indices_for_team(const StringName &team);
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;

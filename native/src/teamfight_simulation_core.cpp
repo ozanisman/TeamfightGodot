@@ -1546,12 +1546,24 @@ TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targ
 	return frame;
 }
 
-void TeamfightSimulationCore::_sync_targeting_frame_unit(const UnitState &unit) {
-	int64_t index = _unit_index_by_id(unit.instance_id);
+void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const UnitState &unit) {
 	if (index < 0 || index >= int64_t(_targeting_frame.size())) {
 		return;
 	}
-	_targeting_frame[static_cast<size_t>(index)] = _make_targeting_frame_entry(unit);
+	TargetingFrameEntry &frame = _targeting_frame[static_cast<size_t>(index)];
+	frame.pos_x = unit.pos_x;
+	frame.pos_y = unit.pos_y;
+	frame.hp = unit.hp;
+	frame.max_hp = get_effective_max_hp(unit);
+	frame.alive = unit.alive;
+	frame.target_id = unit.target_id;
+	frame.incoming_target_count = unit.incoming_target_count;
+	frame.perceived_threat = unit.perceived_threat;
+	frame.stealth_remaining = unit.stealth_remaining;
+}
+
+void TeamfightSimulationCore::_sync_targeting_frame_unit(const UnitState &unit) {
+	_sync_targeting_frame_index(_unit_index_by_id(unit.instance_id), unit);
 }
 
 std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitStateCold> TeamfightSimulationCore::_build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id) {
@@ -1625,6 +1637,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	if (role_take_damage.get_type() != Variant::NIL) {
 		cold.passive_effects[4].push_back(_compile_effect(Dictionary(role_take_damage)));
 	}
+	cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 
 	double max_hp = double(stats.get("max_hp", 0.0));
 	double max_mana = double(stats.get("max_mana", 0.0));
@@ -1714,6 +1727,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.casting_ally_target_id = 0;
 	unit.cast_resolved_this_tick = false;
 	unit.target_id = 0;
+	unit.target_index = -1;
 	unit.current_ally_target_id = 0;
 	unit.retarget_timer = 0.0;
 	unit.target_switch_lock_timer = 0.0;
@@ -1836,7 +1850,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	cold.damage_sources.clear();
 	cold.recent_benefactors.clear();
 	cold.last_hit_time = 0.0;
-	cold.effect_accumulators.clear();
+	std::fill(cold.on_tick_effect_accumulators.begin(), cold.on_tick_effect_accumulators.end(), 0.0);
 	unit.regen_accumulator = 0.0;
 	unit.reflect_buff_remaining = 0.0;
 	unit.reflect_buff_pct_all = 0.0;
@@ -2108,7 +2122,7 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (!u.alive) {
 			continue;
 		}
-		_sync_targeting_frame_unit(_units[idx]);
+		_sync_targeting_frame_index(idx, u);
 		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
 			_tick_ctx.needs_cluster_density = true;
 		}
@@ -2138,7 +2152,7 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (!u.alive) {
 			continue;
 		}
-		_sync_targeting_frame_unit(_units[idx]);
+		_sync_targeting_frame_index(idx, u);
 		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
 			_tick_ctx.needs_cluster_density = true;
 		}
@@ -2167,24 +2181,34 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (!u.alive || u.target_id == 0) {
 			continue;
 		}
-		UnitState *target = _unit_by_id(u.target_id);
-		if (target == nullptr || !target->alive) {
+		UnitState &live_unit = _units[static_cast<size_t>(idx)];
+		int64_t target_index = _target_index_for_unit(live_unit);
+		if (target_index < 0) {
 			continue;
 		}
-		target->incoming_target_count += 1;
-		_sync_targeting_frame_unit(*target);
+		UnitState &target = _units[static_cast<size_t>(target_index)];
+		if (!target.alive) {
+			continue;
+		}
+		target.incoming_target_count += 1;
+		_sync_targeting_frame_index(target_index, target);
 	}
 	for (int64_t idx : _alive_enemy_indices) {
 		const UnitState &u = _units[idx];
 		if (!u.alive || u.target_id == 0) {
 			continue;
 		}
-		UnitState *target = _unit_by_id(u.target_id);
-		if (target == nullptr || !target->alive) {
+		UnitState &live_unit = _units[static_cast<size_t>(idx)];
+		int64_t target_index = _target_index_for_unit(live_unit);
+		if (target_index < 0) {
 			continue;
 		}
-		target->incoming_target_count += 1;
-		_sync_targeting_frame_unit(*target);
+		UnitState &target = _units[static_cast<size_t>(target_index)];
+		if (!target.alive) {
+			continue;
+		}
+		target.incoming_target_count += 1;
+		_sync_targeting_frame_index(target_index, target);
 	}
 }
 
@@ -3156,6 +3180,7 @@ void TeamfightSimulationCore::_set_current_target(UnitState &unit, const UnitSta
 	_adjust_target_pressure(old_target_id, new_target_id);
 	_emit_trace(StringName("target_switch"), unit.instance_id, new_target_id, double(old_target_id));
 	unit.target_id = new_target_id;
+	unit.target_index = _unit_index_by_id(new_target_id);
 	_sync_targeting_frame_unit(unit);
 }
 
@@ -3198,17 +3223,19 @@ void TeamfightSimulationCore::_adjust_target_pressure(int64_t old_target_id, int
 		return;
 	}
 	if (old_target_id != 0) {
-		UnitState *old_unit = _unit_by_id(old_target_id);
-		if (old_unit != nullptr) {
-			old_unit->incoming_target_count = std::max<int64_t>(0, old_unit->incoming_target_count - 1);
-			_sync_targeting_frame_unit(*old_unit);
+		int64_t old_index = _unit_index_by_id(old_target_id);
+		if (old_index >= 0) {
+			UnitState &old_unit = _units[static_cast<size_t>(old_index)];
+			old_unit.incoming_target_count = std::max<int64_t>(0, old_unit.incoming_target_count - 1);
+			_sync_targeting_frame_index(old_index, old_unit);
 		}
 	}
 	if (new_target_id != 0) {
-		UnitState *new_unit = _unit_by_id(new_target_id);
-		if (new_unit != nullptr) {
-			new_unit->incoming_target_count += 1;
-			_sync_targeting_frame_unit(*new_unit);
+		int64_t new_index = _unit_index_by_id(new_target_id);
+		if (new_index >= 0) {
+			UnitState &new_unit = _units[static_cast<size_t>(new_index)];
+			new_unit.incoming_target_count += 1;
+			_sync_targeting_frame_index(new_index, new_unit);
 		}
 	}
 }
@@ -3220,12 +3247,16 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 		if (target_id == 0) {
 			continue;
 		}
-		UnitState *target = _unit_by_id(target_id);
-		if (target == nullptr || !target->alive) {
+		int64_t target_index = _target_index_for_unit(unit);
+		if (target_index < 0) {
 			continue;
 		}
-		target->incoming_target_count += 1;
-		_sync_targeting_frame_unit(*target);
+		UnitState &target = _units[static_cast<size_t>(target_index)];
+		if (!target.alive) {
+			continue;
+		}
+		target.incoming_target_count += 1;
+		_sync_targeting_frame_index(target_index, target);
 	}
 	for (const int64_t index : _alive_enemy_indices) {
 		UnitState &unit = _units[index];
@@ -3233,12 +3264,16 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 		if (target_id == 0) {
 			continue;
 		}
-		UnitState *target = _unit_by_id(target_id);
-		if (target == nullptr || !target->alive) {
+		int64_t target_index = _target_index_for_unit(unit);
+		if (target_index < 0) {
 			continue;
 		}
-		target->incoming_target_count += 1;
-		_sync_targeting_frame_unit(*target);
+		UnitState &target = _units[static_cast<size_t>(target_index)];
+		if (!target.alive) {
+			continue;
+		}
+		target.incoming_target_count += 1;
+		_sync_targeting_frame_index(target_index, target);
 	}
 
 	if (!update_cluster_density) {
@@ -5148,7 +5183,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	// - "forced reasons" (no/invalid/dead target) always evaluate immediately.
 	// - retarget_timer blocks evaluation only if there is no special condition.
 	// - target_switch_lock_timer does NOT block evaluation; it only blocks switching (handled in _should_switch).
-	const int64_t current_target_index = unit.target_id != 0 ? _unit_index_by_id(unit.target_id) : -1;
+	const int64_t current_target_index = _target_index_for_unit(unit);
 	UnitState *current_target_live = current_target_index >= 0 ? &_units[static_cast<size_t>(current_target_index)] : nullptr;
 	const TargetingFrameEntry *current_target = current_target_index >= 0 && current_target_index < int64_t(_targeting_frame.size())
 			? &_targeting_frame[static_cast<size_t>(current_target_index)]
@@ -5330,6 +5365,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	}
 	if (best_live == nullptr) {
 		unit.target_id = 0;
+		unit.target_index = -1;
 		unit.current_target_score = 0.0;
 		_sync_targeting_frame_unit(unit);
 		return nullptr;
@@ -5620,6 +5656,21 @@ int64_t TeamfightSimulationCore::_unit_index_by_id(int64_t instance_id) const {
 	return -1;
 }
 
+int64_t TeamfightSimulationCore::_target_index_for_unit(UnitState &unit) {
+	if (unit.target_id == 0) {
+		unit.target_index = -1;
+		return -1;
+	}
+	if (unit.target_index >= 0 && unit.target_index < int64_t(_units.size())) {
+		const UnitState &target = _units[static_cast<size_t>(unit.target_index)];
+		if (target.instance_id == unit.target_id) {
+			return unit.target_index;
+		}
+	}
+	unit.target_index = _unit_index_by_id(unit.target_id);
+	return unit.target_index;
+}
+
 void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target) {
 	if (!target.alive) {
 		return;
@@ -5639,7 +5690,7 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	target.alive = false;
 	target.respawn_timer = get_effective_respawn_time(target);
 	_uc(target).deaths += 1;
-	_sync_targeting_frame_unit(target);
+	_sync_targeting_frame_index(target_index, target);
 	
 	// Clear periodic effects on death
 	_clear_periodic_effects(target);
@@ -5769,7 +5820,7 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	c.damage_sources.clear();
 	c.recent_benefactors.clear();
 	c.last_hit_time = 0.0;
-	c.effect_accumulators.clear();
+	std::fill(c.on_tick_effect_accumulators.begin(), c.on_tick_effect_accumulators.end(), 0.0);
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;
 	// Clear casting state on respawn
@@ -5815,7 +5866,7 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	if (unit_index >= 0) {
 		_add_alive_index(unit.team, unit_index);
 	}
-	_sync_targeting_frame_unit(unit);
+	_sync_targeting_frame_index(unit_index, unit);
 }
 
 bool TeamfightSimulationCore::_sim_profile_env_enabled() {
@@ -6158,18 +6209,15 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_regen(profile_sim, _sim_profile_uu_regen_on_tick);
-		const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_TICK];
-		for (const EffectRecord &effect : effects) {
-			// Use effect address as unique key for per-unit timing
-			size_t effect_key = reinterpret_cast<size_t>(&effect);
-			
-			// Get or create per-unit accumulator for this effect
-			double &accumulator = _uc(unit).effect_accumulators[effect_key];
-			
-			// Update accumulator
+		UnitStateCold &cold = _uc(unit);
+		const std::vector<EffectRecord> &effects = cold.passive_effects[EFFECT_BUCKET_ON_TICK];
+		if (cold.on_tick_effect_accumulators.size() < effects.size()) {
+			cold.on_tick_effect_accumulators.resize(effects.size(), 0.0);
+		}
+		for (size_t effect_index = 0; effect_index < effects.size(); ++effect_index) {
+			const EffectRecord &effect = effects[effect_index];
+			double &accumulator = cold.on_tick_effect_accumulators[effect_index];
 			accumulator += _tick_rate;
-			
-			// Check if this effect should execute
 			if (accumulator >= effect.on_tick_interval) {
 				accumulator -= effect.on_tick_interval;
 				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
@@ -6204,6 +6252,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		target = _select_enemy_target(unit, profile_sim);
 		if (target == nullptr) {
 			unit.target_id = 0;
+			unit.target_index = -1;
 			_sync_targeting_frame_unit(unit);
 			return;
 		}

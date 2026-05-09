@@ -102,14 +102,18 @@ static func flush_stdio_if_available() -> void:
 		_bench_flush_core.call(&"flush_stdio")
 
 func run_chunk(data: Dictionary) -> Array:
-	# Clear thread cache to ensure fresh data for each chunk
+	var chunk_start_ns: int = _now_ns()
+	var t_phase_ns: int = _now_ns()
 	ChampionCatalogScript.clear_thread_cache()
+	var cache_clear_ns: int = _now_ns() - t_phase_ns
 	
-	# Pre-initialize champion catalog in thread context
+	t_phase_ns = _now_ns()
 	ChampionCatalogScript.build_catalog()
+	var catalog_build_ns: int = _now_ns() - t_phase_ns
 	
-	# Initialize matchup tracker for this chunk
+	t_phase_ns = _now_ns()
 	var matchup_tracker = MatchupTrackerScript.new()
+	var matchup_init_ns: int = _now_ns() - t_phase_ns
 	
 	var start_index: int = int(data.get("start_index", 0))
 	var end_index: int = int(data.get("end_index", 0))
@@ -120,47 +124,116 @@ func run_chunk(data: Dictionary) -> Array:
 	var profile_stats: bool = bool(data.get("profile_stats", false))
 	var aggregate_stats_in_worker: bool = bool(data.get("aggregate_stats_in_worker", false))
 	var write_match_log: bool = bool(data.get("write_match_log", true))
-	var chunk_start_ns: int = _now_ns()
 	var chunk_profile: Dictionary = {}
 	
-	# Match summaries come from native only (telemetry lives under unit_stats[].telemetry).
+	t_phase_ns = _now_ns()
 	var backend: Object = NativeSimulationBackendScript.new()
+	var backend_create_ns: int = _now_ns() - t_phase_ns
 	
+	t_phase_ns = _now_ns()
 	if not backend.is_available():
 		return []
+	var backend_available_ns: int = _now_ns() - t_phase_ns
 
 	var chunk_len: int = maxi(0, end_index - start_index)
+	t_phase_ns = _now_ns()
 	var archetypes: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+	var archetypes_ns: int = _now_ns() - t_phase_ns
 	var players: Array[StringName] = []
 	var enemies: Array[StringName] = []
+	t_phase_ns = _now_ns()
 	var results: Array = []
 	if not aggregate_stats_in_worker or bench_skip_summaries:
 		results.resize(chunk_len)
+	var results_init_ns: int = _now_ns() - t_phase_ns
+	t_phase_ns = _now_ns()
 	var stats_aggregator = null
 	if aggregate_stats_in_worker and not bench_skip_summaries:
 		stats_aggregator = StatsCsvAggregatorScript.new()
 		stats_aggregator.set_write_match_log(write_match_log)
 		stats_aggregator.reset()
+	var stats_setup_ns: int = _now_ns() - t_phase_ns
 	var use_compact_stats: bool = backend.has_method("run_match_stats")
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_generated_matches_simulation_only"):
+		var t_native_batch_ns: int = _now_ns()
 		backend.run_generated_matches_simulation_only(base_seed + start_index, chunk_len, team_size)
+		var native_batch_ns: int = _now_ns() - t_native_batch_ns
 		for i in range(chunk_len):
 			results[i] = true
+		var t_native_clear_ns: int = _now_ns()
 		backend.clear()
+		var native_clear_ns: int = _now_ns() - t_native_clear_ns
+		if profile_stats:
+			return [{
+				"match_results": results,
+				"profile_stats": {
+					"path": "generated_native_batch",
+					"start_index": start_index,
+					"end_index": end_index,
+					"team_size": team_size,
+					"base_seed": base_seed,
+					"match_count": chunk_len,
+					"cache_clear_ns": cache_clear_ns,
+					"catalog_build_ns": catalog_build_ns,
+					"matchup_init_ns": matchup_init_ns,
+					"backend_create_ns": backend_create_ns,
+					"backend_available_ns": backend_available_ns,
+					"archetypes_ns": archetypes_ns,
+					"results_init_ns": results_init_ns,
+					"stats_setup_ns": stats_setup_ns,
+					"assembly_ns": 0,
+					"native_run_ns": native_batch_ns,
+					"matchup_ns": 0,
+					"clear_ns": native_clear_ns,
+					"wall_ns": _now_ns() - chunk_start_ns,
+				},
+			}]
 		return results
 
 	if bench_skip_summaries and allow_native_batch and backend.has_method("run_matches_simulation_only"):
 		var inputs: Array = []
 		inputs.resize(chunk_len)
 		var input_index: int = 0
+		var input_build_ns: int = 0
 		for match_index in range(start_index, end_index):
+			var t_input_build_ns: int = _now_ns()
 			inputs[input_index] = _build_batch_input_for_seed(base_seed + match_index, team_size, archetypes, players, enemies)
+			input_build_ns += _now_ns() - t_input_build_ns
 			input_index += 1
+		var t_native_inputs_ns: int = _now_ns()
 		backend.run_matches_simulation_only(inputs)
+		var native_inputs_ns: int = _now_ns() - t_native_inputs_ns
 		for i in range(chunk_len):
 			results[i] = true
+		var t_clear_inputs_ns: int = _now_ns()
 		backend.clear()
+		var clear_inputs_ns: int = _now_ns() - t_clear_inputs_ns
+		if profile_stats:
+			return [{
+				"match_results": results,
+				"profile_stats": {
+					"path": "input_native_batch",
+					"start_index": start_index,
+					"end_index": end_index,
+					"team_size": team_size,
+					"base_seed": base_seed,
+					"match_count": chunk_len,
+					"cache_clear_ns": cache_clear_ns,
+					"catalog_build_ns": catalog_build_ns,
+					"matchup_init_ns": matchup_init_ns,
+					"backend_create_ns": backend_create_ns,
+					"backend_available_ns": backend_available_ns,
+					"archetypes_ns": archetypes_ns,
+					"results_init_ns": results_init_ns,
+					"stats_setup_ns": stats_setup_ns,
+					"assembly_ns": input_build_ns,
+					"native_run_ns": native_inputs_ns,
+					"matchup_ns": 0,
+					"clear_ns": clear_inputs_ns,
+					"wall_ns": _now_ns() - chunk_start_ns,
+				},
+			}]
 		return results
 
 	var assembly_ns: int = 0
@@ -240,6 +313,14 @@ func run_chunk(data: Dictionary) -> Array:
 				"matchup_pct": 100.0 * float(matchup_ns) / float(total_ns) if total_ns > 0 else 0.0,
 				"clear_ns": clear_ns,
 				"clear_pct": 100.0 * float(clear_ns) / float(total_ns) if total_ns > 0 else 0.0,
+				"cache_clear_ns": cache_clear_ns,
+				"catalog_build_ns": catalog_build_ns,
+				"matchup_init_ns": matchup_init_ns,
+				"backend_create_ns": backend_create_ns,
+				"backend_available_ns": backend_available_ns,
+				"archetypes_ns": archetypes_ns,
+				"results_init_ns": results_init_ns,
+				"stats_setup_ns": stats_setup_ns,
 				"dominant_phase": _dominant_phase({
 					"assembly_ns": assembly_ns,
 					"native_run_ns": native_run_ns,

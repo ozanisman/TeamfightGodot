@@ -39,6 +39,59 @@ func _count_completed_matches(chunk_results: Array) -> int:
 			completed += 1
 	return completed
 
+func _build_worker_profile_summary(worker_profiles: Array) -> Dictionary:
+	var fields: Array[String] = [
+		"cache_clear_ns",
+		"catalog_build_ns",
+		"matchup_init_ns",
+		"backend_create_ns",
+		"backend_available_ns",
+		"archetypes_ns",
+		"results_init_ns",
+		"stats_setup_ns",
+		"assembly_ns",
+		"native_run_ns",
+		"matchup_ns",
+		"clear_ns",
+		"wall_ns",
+	]
+	var sums: Dictionary = {}
+	for field in fields:
+		sums[field] = 0
+	var match_count: int = 0
+	var max_wall_ns: int = 0
+	var min_wall_ns: int = 0
+	var max_native_ns: int = 0
+	var min_native_ns: int = 0
+	for profile_value in worker_profiles:
+		var profile: Dictionary = Dictionary(profile_value)
+		match_count += int(profile.get("match_count", 0))
+		for field in fields:
+			sums[field] = int(sums[field]) + int(profile.get(field, 0))
+		var wall_ns: int = int(profile.get("wall_ns", 0))
+		var native_ns: int = int(profile.get("native_run_ns", 0))
+		if min_wall_ns == 0 or wall_ns < min_wall_ns:
+			min_wall_ns = wall_ns
+		if wall_ns > max_wall_ns:
+			max_wall_ns = wall_ns
+		if min_native_ns == 0 or native_ns < min_native_ns:
+			min_native_ns = native_ns
+		if native_ns > max_native_ns:
+			max_native_ns = native_ns
+	var setup_sum_ns: int = int(sums["cache_clear_ns"]) + int(sums["catalog_build_ns"]) + int(sums["matchup_init_ns"]) + int(sums["backend_create_ns"]) + int(sums["backend_available_ns"]) + int(sums["archetypes_ns"]) + int(sums["results_init_ns"]) + int(sums["stats_setup_ns"])
+	return {
+		"worker_count": worker_profiles.size(),
+		"match_count": match_count,
+		"sum_ns": sums,
+		"setup_sum_ns": setup_sum_ns,
+		"max_wall_ns": max_wall_ns,
+		"min_wall_ns": min_wall_ns,
+		"wall_imbalance_ns": max_wall_ns - min_wall_ns,
+		"max_native_run_ns": max_native_ns,
+		"min_native_run_ns": min_native_ns,
+		"native_imbalance_ns": max_native_ns - min_native_ns,
+	}
+
 func _run_benchmark() -> void:
 	if not NativeSimulationBackendScript.ensure_gdextension_loaded():
 		push_error("Failed to load %s" % NativeExtensionPath)
@@ -67,7 +120,9 @@ func _run_benchmark() -> void:
 	var start_usec: int = Time.get_ticks_usec()
 
 	SimulationBatchWorkerScript.reset_benchmark_progress(batch_count)
-	if _flag_enabled("--sim-profile"):
+	var sim_profile_enabled: bool = _flag_enabled("--sim-profile")
+	var worker_profile_enabled: bool = sim_profile_enabled or _flag_enabled("--worker-profile")
+	if sim_profile_enabled:
 		SimulationBatchWorkerScript.set_sim_profile_enabled(true)
 
 	for worker_index in range(worker_count):
@@ -88,6 +143,7 @@ func _run_benchmark() -> void:
 			"bench_skip_summaries": bench_skip_summaries,
 			# Each worker owns its NativeSimulationBackend instance; simulation-only chunks can stay fully native.
 			"allow_native_batch": bench_skip_summaries,
+			"profile_stats": worker_profile_enabled,
 		}
 		var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))
 		if start_error != OK:
@@ -117,9 +173,19 @@ func _run_benchmark() -> void:
 
 	var completed_matches: int = 0
 	var workers_started: int = threads.size()
+	var worker_profiles: Array = []
 	for thread in threads:
 		var chunk_results: Array = thread.wait_to_finish()
 		completed_matches += _count_completed_matches(chunk_results)
+		if worker_profile_enabled:
+			for entry in chunk_results:
+				if entry is Dictionary:
+					var entry_dict: Dictionary = Dictionary(entry)
+					if entry_dict.has("profile_stats"):
+						var profile: Dictionary = Dictionary(entry_dict.get("profile_stats", {}))
+						if not profile.is_empty():
+							worker_profiles.append(profile)
+							printerr(JSON.stringify({"benchmark_worker_profile": profile}))
 
 	threads.clear()
 	worker_runners.clear()
@@ -150,6 +216,7 @@ func _run_benchmark() -> void:
 		"peak_memory_end": end_peak_memory,
 		"peak_memory_growth": peak_memory_growth,
 		"allocation_churn_estimate": churn_estimate,
+		"worker_profile_summary": _build_worker_profile_summary(worker_profiles) if worker_profile_enabled else {},
 	}, "\t", true, true)
 	print(json_text)
 	SimulationBatchWorkerScript.flush_stdio_if_available()

@@ -236,6 +236,18 @@ For process-level isolation or worker-count comparison, shard across **processes
 
 Godot may still exit non-zero on teardown warnings; the driver treats a shard as OK if stdout contains benchmark JSON (`matches_per_sec`).
 
+### Convenience wrapper (`--check-benchmark-sharded`)
+
+From the repo root, [`run_godot.ps1`](../run_godot.ps1) can invoke the same driver without calling `powershell.exe` manually:
+
+```powershell
+.\run_godot.ps1 -- --check-benchmark-sharded --batch-count=2000 --team-size=5 --bench-skip-summaries --shards=8 --workers-per-shard=1
+```
+
+Parsed flags (passed through to [`run_benchmark_sharded.ps1`](../scripts/tools/run_benchmark_sharded.ps1)): `--batch-count`, `--team-size`, `--shards` (fallback: `--workers` / `--max-workers`, default shard count **8**), `--workers-per-shard`. Shard `s` receives `-BaseSeed (s × ceil(Total/ShardCount))` and `-BatchCount` for its slice—see the driver loop.
+
+`-BenchSkipSummaries` is **enabled by default** in the sharded driver (switch defaults to `$true`). Use this path when **`--workers=8`** in a single process under-scales versus core count due to contention; compare **`aggregate_matches_per_sec`** vs the threaded benchmark’s `matches_per_sec`.
+
 ## Benchmark Methodology Guidance
 
 **Critical Finding:** AI tool usage causes **~25% performance degradation** for single-threaded benchmarks due to system interference and process contention.

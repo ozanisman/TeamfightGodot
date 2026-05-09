@@ -1,6 +1,6 @@
 # Targeting, Scoring, and Spatial Drift Audit
 
-Scope: 5v5 batch runtime in the native core. Analysis only. No gameplay or parity-affecting code changes.
+Scope: 5v5 batch runtime in the native core. **Decision log and measurement context** below are analysis-first; the **pre-flanking pruning** section documents a parity-safe targeting optimization that landed in the native core.
 
 ## Current measurement context
 
@@ -43,3 +43,34 @@ These are the places where performance pressure is real, but the safe action in 
 - If the threshold changes in a later phase, re-run the same benchmark gate before making any other optimization decisions.
 - Batch-worker reuse from row 4 is already implemented.
 - Only after those decisions, consider summary-path cleanup and deeper scoring refactors.
+
+## Pre-flanking adjusted lower bound (`_select_enemy_target` / `_score_enemy_target_prefix`)
+
+**Motivation:** Existing branch pruning compared `best_adjusted` to a lower bound computed **after** the full prefix score (including flanking and taunt bump). Some work can be skipped before flanking when even a **conservative** minimum prefix score cannot beat the current best adjusted score.
+
+**Invariant (lower is better on all tuple fields):** Lexicographic ordering on `(adjusted_score, raw_score, bucket_rank, distance, instance_id)` is unchanged.
+
+**Rule (after computing the non-flanking prefix base `score`, before flanking):**
+
+1. Let `prefix_lb` be a lower bound on the full prefix return (base + flanking + taunt bump in the flanking/tie-in block). With `align * isolation` in `[0,1]`, the flanking subtract `align * isolation * flanking_weight` is bounded above by `flanking_weight`; `TAUNT_SCORE_BONUS` is applied at most once when the forced-target id matches. Hence:
+   - `prefix_lb = score - flanking_weight * TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX` when `flanking_weight > 0` (constant is `1.0`; see `native/src/teamfight_simulation_core.hpp`).
+   - If the forced-target taunt applies (`forced_target_id`, `forced_target_remaining`, `instance_id` match), add `TAUNT_SCORE_BONUS` (`-100`).
+2. Conservative adjusted lower bound matching the **same** bodyguard slack already used post-prefix:  
+   `candidate LB = prefix_lb + bucket_rank * bucket_margin - bodyguard_bonus_bound`.
+3. If `candidate LB > best_adjusted`, return early from prefix processing (skip flanking + skip full scoring for that candidate).
+
+**Why this is parity-safe vs the old post-prefix prune:** The new bound is **looser** than the post-prefix bound that uses the true prefix score (because `prefix_lb` is a lower bound on achievable prefix score). Any candidate skipped by the early gate would also be skipped once the true prefix lower bound from the old check was evaluated; order of candidates does not affect correctness of the skip condition.
+
+**ABI:** `EnemyPrefixAdjustedEarlyPrune` in `teamfight_simulation_core.hpp` bundles `best_adjusted`, `bucket_rank`, `bodyguard_bonus_bound`, and an `early_skip_dest` out-pointer for the call from `_select_enemy_target`. Optional `adjusted_early_prune == nullptr` restores the previous “no early gate” path.
+
+**Spatial iteration reorder (plan phase 3):** **Not implemented.** Sorting or spatially reordering the enemy candidate list can change which candidate wins under **floating‑point** pruning when `best_adjusted` is updated in a different order than the legacy `enemy_indices` walk, even without changing the deterministic tie tuple. Revisit only with a deterministic secondary key (for example stable index order after distance) or a proof that prune decisions are order‑independent under the chosen sort.
+
+## Verification snapshot (local gate, Release native + `run_godot.ps1`)
+
+Run the canonical sequence in `AGENTS.md` when changing this area. Example numbers from one local run after the change (expect machine variance):
+
+- `cmake --build native/build --config Release`
+- `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1` — order of **~200 matches/sec** observed on the same host as a **~211 matches/sec** timing on the immediate pre-change binary (variance + early-gate cost).
+- Workers 8 and `--check-benchmark-sharded` for multi-shard aggregate throughput.
+- Fixture gate: `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json`. This checkout may still report a **pre-existing** mismatch on `effect_control_wall`; compare before/after fingerprints for any **new** regressions when goldens are authoritative on your branch.
+- `TEAMFIGHT_BENCH_PHASES=1` adds a stderr JSON line with `avg_ns_per_match_simulate` alongside the summary object.

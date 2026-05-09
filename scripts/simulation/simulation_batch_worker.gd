@@ -101,6 +101,25 @@ static func flush_stdio_if_available() -> void:
 	if _bench_flush_core != null and _bench_flush_core.has_method(&"flush_stdio"):
 		_bench_flush_core.call(&"flush_stdio")
 
+
+static func _matchup_wall_ns_from_summary(summary: Variant, matchup_tracker: Object) -> int:
+	var t_matchup_ns: int = _now_ns()
+	if summary is Dictionary and matchup_tracker != null:
+		var summary_dict: Dictionary = Dictionary(summary)
+		var winners: Array[StringName] = []
+		var losers: Array[StringName] = []
+		var winner_team: StringName = StringName(String(summary_dict.get("winner_team", "")))
+		if winner_team == &"player":
+			winners = _string_name_array(Array(summary_dict.get("player_comp", [])))
+			losers = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
+		elif winner_team == &"enemy":
+			winners = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
+			losers = _string_name_array(Array(summary_dict.get("player_comp", [])))
+		if not winners.is_empty() and not losers.is_empty():
+			matchup_tracker.process_match_result(winners, losers)
+	return _now_ns() - t_matchup_ns
+
+
 func run_chunk(data: Dictionary) -> Array:
 	var chunk_start_ns: int = _now_ns()
 	var start_index: int = int(data.get("start_index", 0))
@@ -253,50 +272,72 @@ func run_chunk(data: Dictionary) -> Array:
 	var matchup_ns: int = 0
 	var clear_ns: int = 0
 	var result_index: int = 0
-	for match_index in range(start_index, end_index):
-		var t_assembly_ns: int = _now_ns()
-		var batch_match_input = _build_batch_input_for_seed(base_seed + match_index, team_size, archetypes, players, enemies)
-		assembly_ns += _now_ns() - t_assembly_ns
-		if bench_skip_summaries and backend.has_method("run_match_simulation_only"):
-			backend.run_match_simulation_only(batch_match_input)
-			results[result_index] = true
-		else:
-			var t_native_run_ns: int = _now_ns()
-			var summary = backend.run_match_stats(batch_match_input) if use_compact_stats else backend.run_match(batch_match_input)
-			native_run_ns += _now_ns() - t_native_run_ns
+	var batch_stats_via_native: bool = (
+		use_compact_stats
+		and (not bench_skip_summaries)
+		and backend.has_method("run_matches_stats")
+	)
+
+	if batch_stats_via_native:
+		var batch_inputs: Array = []
+		batch_inputs.resize(chunk_len)
+		var slot: int = 0
+		for match_index in range(start_index, end_index):
+			var t_asm: int = _now_ns()
+			batch_inputs[slot] = _build_batch_input_for_seed(
+				base_seed + match_index, team_size, archetypes, players, enemies
+			)
+			assembly_ns += _now_ns() - t_asm
+			slot += 1
+		var t_native_total: int = _now_ns()
+		var summaries_var: Variant = backend.run_matches_stats(batch_inputs)
+		native_run_ns += _now_ns() - t_native_total
+		if typeof(summaries_var) != TYPE_ARRAY:
+			return []
+		var summaries_arr: Array = summaries_var
+		if summaries_arr.size() != chunk_len:
+			return []
+		result_index = 0
+		for summary in summaries_arr:
 			if aggregate_stats_in_worker:
 				stats_aggregator.consume_summary(team_size, summary)
 			else:
 				results[result_index] = summary
-			
-			# Process matchup data from this match result
-			if summary is Dictionary:
-				var t_matchup_ns: int = _now_ns()
-				var winners: Array[StringName] = []
-				var losers: Array[StringName] = []
-				var summary_dict: Dictionary = Dictionary(summary)
-				
-				# Determine winners and losers based on winner_team
-				var winner_team: StringName = StringName(String(summary_dict.get("winner_team", "")))
-				if winner_team == &"player":
-					winners = _string_name_array(Array(summary_dict.get("player_comp", [])))
-					losers = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
-				elif winner_team == &"enemy":
-					winners = _string_name_array(Array(summary_dict.get("enemy_comp", [])))
-					losers = _string_name_array(Array(summary_dict.get("player_comp", [])))
-				
-				# Only process if we have valid winners and losers
-				if not winners.is_empty() and not losers.is_empty():
-					matchup_tracker.process_match_result(winners, losers)
-				matchup_ns += _now_ns() - t_matchup_ns
-		
-		result_index += 1
-		if result_index % 1000 == 0:
-			record_benchmark_progress(1000)
-		var t_clear_ns: int = _now_ns()
-		if backend.has_method("clear"):
-			backend.call("clear")
-		clear_ns += _now_ns() - t_clear_ns
+			matchup_ns += _matchup_wall_ns_from_summary(summary, matchup_tracker)
+			result_index += 1
+			if result_index % 1000 == 0:
+				record_benchmark_progress(1000)
+	else:
+		for match_index in range(start_index, end_index):
+			var t_assembly_ns: int = _now_ns()
+			var batch_match_input = _build_batch_input_for_seed(
+				base_seed + match_index, team_size, archetypes, players, enemies
+			)
+			assembly_ns += _now_ns() - t_assembly_ns
+			if bench_skip_summaries and backend.has_method("run_match_simulation_only"):
+				backend.run_match_simulation_only(batch_match_input)
+				results[result_index] = true
+			else:
+				var t_native_run_ns: int = _now_ns()
+				var summary = (
+					backend.run_match_stats(batch_match_input)
+					if use_compact_stats
+					else backend.run_match(batch_match_input)
+				)
+				native_run_ns += _now_ns() - t_native_run_ns
+				if aggregate_stats_in_worker:
+					stats_aggregator.consume_summary(team_size, summary)
+				else:
+					results[result_index] = summary
+				matchup_ns += _matchup_wall_ns_from_summary(summary, matchup_tracker)
+
+			result_index += 1
+			if result_index % 1000 == 0:
+				record_benchmark_progress(1000)
+			var t_clear_ns_loop: int = _now_ns()
+			if backend.has_method("clear"):
+				backend.call("clear")
+			clear_ns += _now_ns() - t_clear_ns_loop
 
 	var tail: int = chunk_len % 1000
 	if tail != 0:

@@ -1048,6 +1048,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_match", "match_input"), &TeamfightSimulationCore::run_match);
 	ClassDB::bind_method(D_METHOD("run_match_stats", "match_input"), &TeamfightSimulationCore::run_match_stats);
 	ClassDB::bind_method(D_METHOD("run_matches", "match_inputs"), &TeamfightSimulationCore::run_matches);
+	ClassDB::bind_method(D_METHOD("run_matches_stats", "match_inputs"), &TeamfightSimulationCore::run_matches_stats);
 	ClassDB::bind_method(D_METHOD("run_match_simulation_only", "match_input"), &TeamfightSimulationCore::run_match_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_matches_simulation_only", "match_inputs"), &TeamfightSimulationCore::run_matches_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_generated_matches_simulation_only", "base_seed", "batch_count", "team_size"), &TeamfightSimulationCore::run_generated_matches_simulation_only);
@@ -2685,13 +2686,16 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out) {
+double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out, const TeamfightSimulationCore::EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
 	}
 	const bool attacker_is_player = attacker.team == sn_player();
 	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
+	(void)(carry_indices);
+	(void)(frontline_indices);
+
 	const int64_t enemy_role_slot = enemy.role_slot;
 
 	double score = 0.0;
@@ -2769,6 +2773,22 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 	}
 	if (base_score_out != nullptr) {
 		*base_score_out = score;
+	}
+	if (adjusted_early_prune != nullptr && adjusted_early_prune->early_skip_dest != nullptr) {
+		bool *early_skip_dest = adjusted_early_prune->early_skip_dest;
+		*early_skip_dest = false;
+		double prefix_lb = score;
+		if (strategy.flanking_weight > 0.0) {
+			prefix_lb -= strategy.flanking_weight * TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX;
+		}
+		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
+			prefix_lb += TAUNT_SCORE_BONUS;
+		}
+		double conservative_adjusted_lower_bound = prefix_lb + double(adjusted_early_prune->bucket_rank) * strategy.bucket_margin - adjusted_early_prune->bodyguard_bonus_bound;
+		if (conservative_adjusted_lower_bound > adjusted_early_prune->best_adjusted) {
+			*early_skip_dest = true;
+			return 0.0;
+		}
 	}
 
 	{
@@ -5398,7 +5418,16 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		double prefix_base_score = 0.0;
 		double prefix_flanking_score = 0.0;
 		if (best_live != nullptr && enemy_index != current_target_index) {
-			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score);
+			bool prefix_early_skip = false;
+			EnemyPrefixAdjustedEarlyPrune prefix_prune{};
+			prefix_prune.best_adjusted = best_adjusted;
+			prefix_prune.bucket_rank = rank;
+			prefix_prune.bodyguard_bonus_bound = bodyguard_bonus_bound;
+			prefix_prune.early_skip_dest = &prefix_early_skip;
+			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score, &prefix_prune);
+			if (prefix_early_skip) {
+				continue;
+			}
 			has_prefix_parts = true;
 			double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
 			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
@@ -8049,6 +8078,29 @@ Array TeamfightSimulationCore::run_matches(const Array &match_inputs) {
 	summaries.resize(match_inputs.size());
 	for (int64_t index = 0; index < match_inputs.size(); ++index) {
 		summaries[index] = run_match(match_inputs[index]);
+		clear();
+	}
+	return summaries;
+}
+
+Array TeamfightSimulationCore::run_matches_stats(const Array &match_inputs) {
+	_ensure_catalog_loaded();
+	Array summaries;
+	const int64_t n = match_inputs.size();
+	summaries.resize(n);
+	for (int64_t index = 0; index < n; ++index) {
+		Dictionary input = _coerce_match_input(match_inputs[index]);
+		if (input.is_empty()) {
+			UtilityFunctions::push_error(
+					vformat("TeamfightSimulationCore.run_matches_stats(): bad match_input at index %d.", index));
+			summaries[index] = Dictionary();
+			clear();
+			continue;
+		}
+		_reset_runtime_state();
+		_populate_runtime_state(input);
+		_simulate();
+		summaries[index] = _build_stats_summary();
 		clear();
 	}
 	return summaries;

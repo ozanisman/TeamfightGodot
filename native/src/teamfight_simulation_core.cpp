@@ -2596,7 +2596,7 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
+double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
 	}
@@ -2678,9 +2678,13 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 			}
 		}
 	}
+	if (base_score_out != nullptr) {
+		*base_score_out = score;
+	}
 
 	{
 		SimProfileAccScope _se_fl(profile_score, _sim_profile_se_flanking);
+		const double score_before_flanking = score;
 		// Flanking (assassin): reward isolation from enemy team center.
 		double flanking_weight = strategy.flanking_weight;
 		if (flanking_weight > 0.0) {
@@ -2721,9 +2725,141 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
 			score += TAUNT_SCORE_BONUS;
 		}
+		if (flanking_score_out != nullptr) {
+			*flanking_score_out = score - score_before_flanking;
+		}
 	}
 
 	return score;
+}
+
+double TeamfightSimulationCore::_score_enemy_target_from_prefix_parts(const UnitState &attacker, const TargetingFrameEntry &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double base_score, double flanking_score) {
+	const bool attacker_is_player = attacker.team == sn_player();
+	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
+	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
+	double score = base_score;
+	double dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+	double attack_range = score_ctx.attack_range;
+
+	{
+		SimProfileAccScope _se_bg(profile_score, _sim_profile_se_bodyguard);
+		double bodyguard_weight = strategy.bodyguard_weight;
+		if (bodyguard_weight > 0.0) {
+			const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
+			for (int64_t ally_index : carry_indices) {
+				const TargetingFrameEntry &ally = _targeting_frame[static_cast<size_t>(ally_index)];
+				if (!ally.alive) {
+					continue;
+				}
+				double adx = ally.pos_x - enemy.pos_x;
+				double ady = ally.pos_y - enemy.pos_y;
+				double ally_dist_sq = adx * adx + ady * ady;
+				if (ally_dist_sq < bodyguard_r2) {
+					double ally_dist = Math::sqrt(ally_dist_sq);
+					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
+					score -= guard_bonus;
+				}
+			}
+		}
+	}
+
+	{
+		SimProfileAccScope _se_base2(profile_score, _sim_profile_se_base);
+		double cluster_weight = strategy.cluster_weight;
+		if (cluster_weight > 0.0) {
+			int64_t enemy_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
+			int64_t dens = 0;
+			if (enemy_idx >= 0 && enemy_idx < int64_t(ctx.density_by_unit_index.size())) {
+				dens = ctx.density_by_unit_index[static_cast<size_t>(enemy_idx)];
+			}
+			score -= double(dens) * cluster_weight;
+		}
+
+		double spacing_weight = strategy.spacing_weight;
+		if (spacing_weight > 0.0) {
+			score += Math::pow(double(enemy.incoming_target_count), SPACING_EXPONENT) * spacing_weight;
+		}
+
+		double carry_peel_weight = strategy.carry_peel_weight;
+		if (carry_peel_weight > 0.0) {
+			if ((attacker.is_marksman_role || attacker.is_mage_role) && enemy.target_id == attacker.instance_id) {
+				double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
+				score -= carry_peel_weight * falloff;
+			}
+		}
+
+		double projectile_time_weight = strategy.projectile_time_weight;
+		if (projectile_time_weight > 0.0 && attack_range > RANGED_THRESHOLD) {
+			double proj_speed = attacker.combat.projectile_speed;
+			if (proj_speed > EPSILON) {
+				double t_hit = dist / proj_speed;
+				score += t_hit * projectile_time_weight;
+			}
+		}
+
+		if (strategy.prefers_kiting && score_ctx.has_kite_bounds) {
+			double min_w = score_ctx.kite_min_w;
+			double max_w = score_ctx.kite_max_w;
+			if (dist >= min_w && dist <= max_w && max_w > min_w) {
+				double kite_ratio = (dist - min_w) / (max_w - min_w);
+				score -= kite_ratio * SCORE_KITING_WEIGHT_SCALE;
+			}
+		}
+	}
+
+	{
+		SimProfileAccScope _se_obs(profile_score, _sim_profile_se_obscurance);
+		double obscurance_weight = strategy.obscurance_weight;
+		if (obscurance_weight > 0.0) {
+			int blockers = 0;
+			if (score_ctx.use_spatial && score_ctx.has_obscurance_cache) {
+				blockers = _spatial_count_obscurance_blockers_cached(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, enemy.instance_id);
+			} else {
+				double ux = attacker.pos_x;
+				double uy = attacker.pos_y;
+				double tx = enemy.pos_x;
+				double ty = enemy.pos_y;
+				double segx = tx - ux;
+				double segy = ty - uy;
+				double seg_len_sq = segx * segx + segy * segy;
+				for (int64_t idx : frontline_indices) {
+					const UnitState &other = _units[idx];
+					if (!other.alive) {
+						continue;
+					}
+					if (other.instance_id == enemy.instance_id) {
+						continue;
+					}
+					double ox = other.pos_x;
+					double oy = other.pos_y;
+					double odx = ox - ux;
+					double ody = oy - uy;
+					double other_dist_sq = odx * odx + ody * ody;
+					if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
+						continue;
+					}
+					double dist_sq = 0.0;
+					if (seg_len_sq <= EPSILON) {
+						dist_sq = other_dist_sq;
+					} else {
+						double t = (odx * segx + ody * segy) / seg_len_sq;
+						t = Math::clamp(t, 0.0, 1.0);
+						double px = ux + segx * t;
+						double py = uy + segy * t;
+						double ddx = ox - px;
+						double ddy = oy - py;
+						dist_sq = ddx * ddx + ddy * ddy;
+					}
+					if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
+						blockers += 1;
+					}
+				}
+			}
+			score += double(blockers) * obscurance_weight;
+		}
+	}
+
+	return score + flanking_score;
 }
 
 double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
@@ -5158,15 +5294,21 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		double dist = Math::sqrt(dx * dx + dy * dy);
 		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
 		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
-		double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
-		double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
+		bool has_prefix_parts = false;
+		double prefix_base_score = 0.0;
+		double prefix_flanking_score = 0.0;
 		if (best_live != nullptr && enemy_index != current_target_index) {
+			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score);
+			has_prefix_parts = true;
+			double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
 			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
 			if (candidate_lower_bound > best_adjusted) {
 				continue;
 			}
 		}
-		double raw = _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
+		double raw = has_prefix_parts
+				? _score_enemy_target_from_prefix_parts(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, prefix_base_score, prefix_flanking_score)
+				: _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
 		if (current_target_index >= 0 && enemy_index == current_target_index) {
 			current_target_raw = raw;
 			current_target_raw_valid = true;

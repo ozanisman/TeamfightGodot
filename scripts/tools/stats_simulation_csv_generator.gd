@@ -287,16 +287,41 @@ func _run_matches_for_team_size(
 ) -> Error:
 	var worker_count: int = _worker_count_for_export(matches_per_size, max_worker_threads)
 	var slice: int = (matches_per_size + worker_count - 1) / worker_count
-	var threads: Array = []
-	var worker_runners: Array = []
 	var do_profile: bool = profile_state is Dictionary
 	var startup_start_ns: int = _now_ns()
 	const bench_skip_summaries_chunk: bool = false
-	for worker_index in range(worker_count):
+
+	# Prepare context for WorkerThreadPool tasks
+	var task_context := {
+		"team_size": team_size,
+		"base_seed": per_size_seed,
+		"bench_skip_summaries": bench_skip_summaries_chunk,
+		"allow_native_batch": false,
+		"profile_stats": do_profile,
+		"write_match_log": write_match_log,
+		"aggregate_stats_in_worker": aggregate_stats_in_worker,
+		"use_native_generated_stats": use_native_generated_stats,
+		"role_by_hero_map": role_by_hero_map,
+		"skip_catalog_thread_clear": aggregate_stats_in_worker and not bench_skip_summaries_chunk,
+		"matches_per_size": matches_per_size,
+		"slice": slice,
+	}
+
+	# Thread-safe result storage
+	var results_mutex := Mutex.new()
+	var batch_results: Array = []
+	batch_results.resize(worker_count)
+
+	# Task function for WorkerThreadPool
+	var task_func = func(worker_index: int) -> void:
 		var start_index: int = worker_index * slice
 		var end_index: int = mini(matches_per_size, start_index + slice)
 		if start_index >= end_index:
-			break
+			results_mutex.lock()
+			batch_results[worker_index] = []
+			results_mutex.unlock()
+			return
+
 		var thread_data := {
 			"start_index": start_index,
 			"end_index": end_index,
@@ -311,37 +336,29 @@ func _run_matches_for_team_size(
 			"role_by_hero_map": role_by_hero_map,
 			"skip_catalog_thread_clear": aggregate_stats_in_worker and not bench_skip_summaries_chunk,
 		}
+
 		var runner := SimulationBatchWorkerScript.new()
-		worker_runners.append(runner)
-		var thread := Thread.new()
-		threads.append(thread)
-		var start_err: Error = thread.start(Callable(runner, "run_chunk").bind(thread_data))
-		if start_err != OK:
-			for started_thread_obj in threads:
-				var started_thread: Thread = started_thread_obj as Thread
-				if started_thread != null and started_thread.is_started():
-					started_thread.wait_to_finish()
-			return start_err
+		var results: Variant = runner.run_chunk(thread_data)
+
+		results_mutex.lock()
+		batch_results[worker_index] = results if results is Array else []
+		results_mutex.unlock()
+
 	if do_profile:
 		var ps: Dictionary = profile_state
 		ps["worker_startup_ns"] = int(ps.get("worker_startup_ns", 0)) + (_now_ns() - startup_start_ns)
-		ps["worker_count"] = int(ps.get("worker_count", 0)) + threads.size()
+		ps["worker_count"] = worker_count
 
+	# Use WorkerThreadPool instead of manual Thread creation
 	var join_start_ns: int = _now_ns()
-	var batch_results: Array = []
-	batch_results.resize(threads.size())
-	for i in range(threads.size()):
-		var t: Thread = threads[i] as Thread
-		var results: Variant = t.wait_to_finish()
-		if not results is Array:
-			return ERR_SCRIPT_FAILED
-		var arr: Array = results as Array
-		if arr.is_empty():
-			return ERR_SCRIPT_FAILED
-		batch_results[i] = arr
+	var task_id: int = WorkerThreadPool.add_group_task(task_func, worker_count)
+	WorkerThreadPool.wait_for_group_task_completion(task_id)
+
 	if do_profile:
 		var ps_join: Dictionary = profile_state
 		ps_join["worker_join_ns"] = int(ps_join.get("worker_join_ns", 0)) + (_now_ns() - join_start_ns)
+
+	# Process results
 	for batch in batch_results:
 		for entry in (batch as Array):
 			if do_profile and entry is Dictionary:

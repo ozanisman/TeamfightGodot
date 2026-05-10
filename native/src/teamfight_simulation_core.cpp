@@ -2703,7 +2703,7 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out, const TeamfightSimulationCore::EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune) {
+double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, double attacker_enemy_distance_sq, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out, const TeamfightSimulationCore::EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
 	}
@@ -2721,14 +2721,25 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 	double effective_range = score_ctx.effective_range;
 	{
 		SimProfileAccScope _se_base(profile_score, _sim_profile_se_base);
-		dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
-		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
-		// No buffer for testing
 		bool in_range = false;
-		if (attack_range > RANGED_THRESHOLD) {
-			in_range = dist <= attack_range;
+		if (attacker_enemy_distance_sq >= 0.0) {
+			double range_sq = attack_range > RANGED_THRESHOLD ? attack_range * attack_range : effective_range * effective_range;
+			in_range = attacker_enemy_distance_sq <= range_sq;
+			dist = Math::sqrt(attacker_enemy_distance_sq);
+		} else if (attacker_enemy_distance >= 0.0) {
+			dist = attacker_enemy_distance;
+			if (attack_range > RANGED_THRESHOLD) {
+				in_range = dist <= attack_range;
+			} else {
+				in_range = (dist <= effective_range);
+			}
 		} else {
-			in_range = (dist <= effective_range); // || (Math::abs(dist - effective_range) <= MELEE_CONTACT_BUFFER);
+			double dx = enemy.pos_x - attacker.pos_x;
+			double dy = enemy.pos_y - attacker.pos_y;
+			double dist_sq = dx * dx + dy * dy;
+			double range_sq = attack_range > RANGED_THRESHOLD ? attack_range * attack_range : effective_range * effective_range;
+			in_range = dist_sq <= range_sq;
+			dist = Math::sqrt(dist_sq);
 		}
 		double hp_ratio = enemy.hp / Math::max(0.0001, enemy.max_hp);
 		double range_gap = Math::max(0.0, dist - Math::max(effective_range, EPSILON));
@@ -2864,7 +2875,12 @@ double TeamfightSimulationCore::_score_enemy_target_from_prefix_parts(const Unit
 	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
 	double score = base_score;
-	double dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+	double dist = attacker_enemy_distance;
+	if (dist < 0.0) {
+		double dx = enemy.pos_x - attacker.pos_x;
+		double dy = enemy.pos_y - attacker.pos_y;
+		dist = Math::sqrt(dx * dx + dy * dy);
+	}
 	double attack_range = score_ctx.attack_range;
 
 	{
@@ -5381,7 +5397,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const bool unit_can_peel_for_ally = unit_current_ally_target_id != 0 && ally_for_peel_under_threat;
 	const bool prefers_kiting = strategy.prefers_kiting && !unit_under_threat && score_ctx.has_kite_bounds;
 	const bool has_execute_bonus = strategy.execute_bonus_weight > 0.0;
-	auto classify_bucket = [&](const TargetingFrameEntry &candidate, double dist, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
+	auto classify_bucket = [&](const TargetingFrameEntry &candidate, double dist_sq, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
 		if (unit_has_forced_target && candidate.instance_id == unit_forced_target_id) {
 			return TeamfightSimulationCore::TargetBucketTag::Commit;
 		}
@@ -5400,7 +5416,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			}
 		}
 		if (prefers_kiting) {
-			if (dist >= score_ctx.kite_min_w && dist <= score_ctx.kite_max_w) {
+			double kite_min_sq = score_ctx.kite_min_w * score_ctx.kite_min_w;
+			double kite_max_sq = score_ctx.kite_max_w * score_ctx.kite_max_w;
+			if (dist_sq >= kite_min_sq && dist_sq <= kite_max_sq) {
 				return TeamfightSimulationCore::TargetBucketTag::Kite;
 			}
 		}
@@ -5435,8 +5453,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		}
 		double dx = candidate.pos_x - unit_x;
 		double dy = candidate.pos_y - unit_y;
-		double dist = Math::sqrt(dx * dx + dy * dy);
-		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist, strategy);
+		double dist_sq = dx * dx + dy * dy;
+		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist_sq, strategy);
 		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
 		bool has_prefix_parts = false;
 		double prefix_base_score = 0.0;
@@ -5448,7 +5466,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			prefix_prune.bucket_rank = rank;
 			prefix_prune.bodyguard_bonus_bound = bodyguard_bonus_bound;
 			prefix_prune.early_skip_dest = &prefix_early_skip;
-			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score, &prefix_prune);
+			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, -1.0, dist_sq, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score, &prefix_prune);
 			if (prefix_early_skip) {
 				if (_sim_profile_targeting_active) {
 					_sim_profile_tgt_candidates_prefix_pruned += 1;
@@ -5468,6 +5486,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		if (_sim_profile_targeting_active) {
 			_sim_profile_tgt_candidates_scored += 1;
 		}
+		double dist = Math::sqrt(dist_sq);
 		double raw = has_prefix_parts
 				? _score_enemy_target_from_prefix_parts(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, prefix_base_score, prefix_flanking_score)
 				: _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
@@ -6440,9 +6459,13 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_combat(profile_sim, _sim_profile_uu_combat);
-		double distance = _distance_between(unit, *target);
 		double effective_range = _effective_attack_range(unit);
-		bool in_contact = (distance <= effective_range); // No buffer for testing
+		double dx = target->pos_x - unit.pos_x;
+		double dy = target->pos_y - unit.pos_y;
+		double dist_sq = dx * dx + dy * dy;
+		double range_sq = effective_range * effective_range;
+		bool in_contact = (dist_sq <= range_sq); // No buffer for testing
+		double distance = Math::sqrt(dist_sq);
 
 		// Action priority: check range requirements per action type
 		bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;

@@ -10,6 +10,13 @@ static func set_sim_profile_enabled(on: bool) -> void:
 		_bench_flush_core.call(&"sim_profile_set_enabled", on)
 
 
+static func set_targeting_profile_enabled(on: bool) -> void:
+	if _bench_flush_core == null and ClassDB.can_instantiate(&"TeamfightSimulationCore"):
+		_bench_flush_core = ClassDB.instantiate(&"TeamfightSimulationCore")
+	if _bench_flush_core != null and _bench_flush_core.has_method(&"targeting_profile_set_enabled"):
+		_bench_flush_core.call(&"targeting_profile_set_enabled", on)
+
+
 static func release_benchmark_handles() -> void:
 	if _bench_flush_core != null and _bench_flush_core.has_method(&"flush_stdio"):
 		_bench_flush_core.call(&"flush_stdio")

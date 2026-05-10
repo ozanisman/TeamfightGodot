@@ -219,7 +219,7 @@ This audit maps the current batch simulation and statistics pipeline, records fr
 
 On representative `--generate-stats --profile-stats` runs, summed worker phases showed **`native_run_ns` ~93–95%** of chunk work and **`assembly_ns`** a distant second (`docs/performance_audit_batch_stats.md`, § Bottleneck Attribution). Subsequent “big-win” optimizations should prioritize **fewer/heavier FFI summaries** or **native-generated drafts** before micro-tuning `_simulate()`, unless profiling on a frozen recipe shows assembly or marshalling creeping up after batching fixes.
 
-Native `_simulate()` remains the correctness-critical hot path (`TEAMFIGHT_SIM_PROFILE=1` / `--sim-profile`): target targeting/tick/context only behind full parity gates.
+Native `_simulate()` remains the correctness-critical hot path (`TEAMFIGHT_SIM_PROFILE=1` / `--sim-profile`): target targeting/tick/context only behind full parity gates. Use `--targeting-profile` or `TEAMFIGHT_TARGETING_PROFILE=1` only with small profiling probes when the extra `tgt_*` counters are needed.
 
 ## 2026-05 Stats Generator Throughput Snapshot
 

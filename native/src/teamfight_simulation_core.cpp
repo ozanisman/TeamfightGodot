@@ -20,6 +20,7 @@
 
 static std::atomic<int64_t> s_benchmark_progress_done{0};
 static std::atomic<bool> s_sim_profile_force_enabled{false};
+static std::atomic<bool> s_targeting_profile_force_enabled{false};
 
 // When TEAMFIGHT_STATS_EXPORT_MINIMAL=1, skip per-unit telemetry dicts in _build_stats_summary (CSV export path).
 static bool stats_export_minimal_telemetry_enabled() {
@@ -1073,6 +1074,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("benchmark_progress_add", "delta_matches"), &TeamfightSimulationCore::benchmark_progress_add);
 	ClassDB::bind_method(D_METHOD("benchmark_progress_read"), &TeamfightSimulationCore::benchmark_progress_read);
 	ClassDB::bind_method(D_METHOD("sim_profile_set_enabled", "enabled"), &TeamfightSimulationCore::sim_profile_set_enabled);
+	ClassDB::bind_method(D_METHOD("targeting_profile_set_enabled", "enabled"), &TeamfightSimulationCore::targeting_profile_set_enabled);
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -1097,6 +1099,10 @@ int64_t TeamfightSimulationCore::benchmark_progress_read() {
 
 void TeamfightSimulationCore::sim_profile_set_enabled(bool enabled) {
 	s_sim_profile_force_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+void TeamfightSimulationCore::targeting_profile_set_enabled(bool enabled) {
+	s_targeting_profile_force_enabled.store(enabled, std::memory_order_relaxed);
 }
 
 double TeamfightSimulationCore::_randf() {
@@ -1623,6 +1629,9 @@ TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targ
 void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const UnitState &unit) {
 	if (index < 0 || index >= int64_t(_targeting_frame.size())) {
 		return;
+	}
+	if (_sim_profile_targeting_active) {
+		_sim_profile_tgt_frame_syncs += 1;
 	}
 	TargetingFrameEntry &frame = _targeting_frame[static_cast<size_t>(index)];
 	frame.pos_x = unit.pos_x;
@@ -5302,6 +5311,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 
 	// Periodic keep path: if we are within retarget interval and no special conditions, just keep current target.
 	if (!forced_reason && unit.retarget_timer > 0.0 && !assassin_pressuring_frontline) {
+		if (_sim_profile_targeting_active) {
+			_sim_profile_tgt_retarget_keeps += 1;
+		}
 		// Score is diagnostic-only; retarget cooldown means no gameplay decision needs recomputing.
 		if (current_target_live != nullptr) {
 			_set_current_target(unit, *current_target_live);
@@ -5412,6 +5424,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double best_raw = std::numeric_limits<double>::infinity();
 	int best_bucket_rank = 0;
 	double best_dist = std::numeric_limits<double>::infinity();
+	if (_sim_profile_targeting_active) {
+		_sim_profile_tgt_enemy_scans += 1;
+	}
 	for (int64_t enemy_index : enemy_indices) {
 		const TargetingFrameEntry &candidate = _targeting_frame[static_cast<size_t>(enemy_index)];
 		// Skip stealthed enemy units (cannot be targeted)
@@ -5435,14 +5450,23 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			prefix_prune.early_skip_dest = &prefix_early_skip;
 			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score, &prefix_prune);
 			if (prefix_early_skip) {
+				if (_sim_profile_targeting_active) {
+					_sim_profile_tgt_candidates_prefix_pruned += 1;
+				}
 				continue;
 			}
 			has_prefix_parts = true;
 			double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
 			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
 			if (candidate_lower_bound > best_adjusted) {
+				if (_sim_profile_targeting_active) {
+					_sim_profile_tgt_candidates_prefix_pruned += 1;
+				}
 				continue;
 			}
+		}
+		if (_sim_profile_targeting_active) {
+			_sim_profile_tgt_candidates_scored += 1;
 		}
 		double raw = has_prefix_parts
 				? _score_enemy_target_from_prefix_parts(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, prefix_base_score, prefix_flanking_score)
@@ -5554,6 +5578,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 	if (ally_indices.empty()) {
 		unit.current_ally_target_id = 0;
 		return nullptr;
+	}
+	if (_sim_profile_targeting_active) {
+		_sim_profile_tgt_ally_scans += 1;
 	}
 	_scratch_critical_allies.clear();
 	for (int64_t ally_index : ally_indices) {
@@ -5999,6 +6026,19 @@ bool TeamfightSimulationCore::_sim_profile_env_enabled() {
 	return !(v[0] == '0' && v[1] == '\0');
 }
 
+namespace {
+bool targeting_profile_enabled() {
+	if (s_targeting_profile_force_enabled.load(std::memory_order_relaxed)) {
+		return true;
+	}
+	const char *v = std::getenv("TEAMFIGHT_TARGETING_PROFILE");
+	if (v == nullptr || v[0] == '\0') {
+		return false;
+	}
+	return !(v[0] == '0' && v[1] == '\0');
+}
+} // namespace
+
 void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_ns_projectiles = 0;
 	_sim_profile_ns_prepare_tick_ctx = 0;
@@ -6020,6 +6060,12 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_se_obscurance = 0;
 	_sim_profile_se_flanking = 0;
 	_sim_profile_se_calls = 0;
+	_sim_profile_tgt_retarget_keeps = 0;
+	_sim_profile_tgt_enemy_scans = 0;
+	_sim_profile_tgt_candidates_scored = 0;
+	_sim_profile_tgt_candidates_prefix_pruned = 0;
+	_sim_profile_tgt_ally_scans = 0;
+	_sim_profile_tgt_frame_syncs = 0;
 }
 
 void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
@@ -6044,6 +6090,14 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	profile["se_obscurance"] = _sim_profile_se_obscurance;
 	profile["se_flanking"] = _sim_profile_se_flanking;
 	profile["se_calls"] = _sim_profile_se_calls;
+	if (_sim_profile_targeting_active) {
+		profile["tgt_retarget_keeps"] = _sim_profile_tgt_retarget_keeps;
+		profile["tgt_enemy_scans"] = _sim_profile_tgt_enemy_scans;
+		profile["tgt_candidates_scored"] = _sim_profile_tgt_candidates_scored;
+		profile["tgt_candidates_prefix_pruned"] = _sim_profile_tgt_candidates_prefix_pruned;
+		profile["tgt_ally_scans"] = _sim_profile_tgt_ally_scans;
+		profile["tgt_frame_syncs"] = _sim_profile_tgt_frame_syncs;
+	}
 	
 	String json = JSON::stringify(profile);
 	UtilityFunctions::print(json);
@@ -6093,6 +6147,8 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 // Profile with TEAMFIGHT_SIM_PROFILE=1 (benchmark: --sim-profile) before altering targeting tick order/_step_tick hot paths.
 void TeamfightSimulationCore::_simulate() {
 	const bool profile = _sim_profile_env_enabled();
+	_sim_profile_active = profile;
+	_sim_profile_targeting_active = profile && targeting_profile_enabled();
 	if (profile) {
 		_sim_profile_reset();
 	}
@@ -6130,6 +6186,8 @@ void TeamfightSimulationCore::_simulate() {
 	if (profile) {
 		_sim_profile_emit_json_stderr();
 	}
+	_sim_profile_active = false;
+	_sim_profile_targeting_active = false;
 }
 
 void TeamfightSimulationCore::_prune_assist_window(UnitState &unit) {

@@ -44,6 +44,7 @@ Enabling:
 
 - CLI: `--sim-profile` (calls native `sim_profile_set_enabled`), and/or
 - Env: `TEAMFIGHT_SIM_PROFILE=1` (see native `TeamfightSimulationCore`).
+- Targeting counters: add `--targeting-profile` with `--sim-profile`, or set `TEAMFIGHT_TARGETING_PROFILE=1`. This adds `tgt_*` fields for retarget keeps, full scans, candidates scored/pruned, ally scans, and targeting-frame syncs. Leave off for median throughput runs.
 
 ## OS sampling (manual)
 

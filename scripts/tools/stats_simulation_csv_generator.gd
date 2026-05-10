@@ -6,7 +6,6 @@ extends RefCounted
 
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
-
 const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 
@@ -149,7 +148,8 @@ func run_packed(p: Dictionary) -> int:
 		bool(p.get("profile_stats", false)),
 		bool(p.get("write_match_log", false)),
 		bool(p.get("aggregate_stats_in_worker", true)),
-		role_dict
+		role_dict,
+		bool(p.get("use_native_generated_stats", true))
 	)
 
 
@@ -162,7 +162,8 @@ func run(
 	profile_stats: bool = false,
 	write_match_log: bool = false,
 	aggregate_stats_in_worker: bool = true,
-	role_by_hero_map_override: Dictionary = {}
+	role_by_hero_map_override: Dictionary = {},
+	use_native_generated_stats: bool = true
 ) -> Error:
 	if output_dir.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -215,7 +216,7 @@ func run(
 	SimulationBatchWorkerScript.reset_benchmark_progress(total_matches)
 	if profile_stats:
 		profile_state["progress_reset_ns"] = _now_ns() - reset_start_ns
-	var aggregator := StatsCsvAggregator.new()
+	var aggregator := StatsCsvAggregatorScript.new()
 	aggregator.set_write_match_log(write_match_log)
 	aggregator.reset()
 	for sz in team_sizes:
@@ -230,7 +231,8 @@ func run(
 			profile_state if profile_stats else null,
 			write_match_log,
 			aggregate_stats_in_worker,
-			roles_for_workers
+			roles_for_workers,
+			use_native_generated_stats
 		)
 		if err_sz != OK:
 			return err_sz
@@ -238,7 +240,7 @@ func run(
 			var team_ns: Dictionary = Dictionary(profile_state.get("team_size_ns", {}))
 			team_ns[int(sz)] = _now_ns() - size_start_ns
 			profile_state["team_size_ns"] = team_ns
-	
+
 	# Write regular CSV files
 	var csv_start_ns: int = _now_ns()
 	var csv_err: Error = aggregator.write_to_dir(output_dir)
@@ -280,7 +282,8 @@ func _run_matches_for_team_size(
 	profile_state: Variant = null,
 	write_match_log: bool = false,
 	aggregate_stats_in_worker: bool = true,
-	role_by_hero_map: Dictionary = {}
+	role_by_hero_map: Dictionary = {},
+	use_native_generated_stats: bool = true
 ) -> Error:
 	var worker_count: int = _worker_count_for_export(matches_per_size, max_worker_threads)
 	var slice: int = (matches_per_size + worker_count - 1) / worker_count
@@ -304,6 +307,7 @@ func _run_matches_for_team_size(
 			"profile_stats": do_profile,
 			"write_match_log": write_match_log,
 			"aggregate_stats_in_worker": aggregate_stats_in_worker,
+			"use_native_generated_stats": use_native_generated_stats,
 			"role_by_hero_map": role_by_hero_map,
 			"skip_catalog_thread_clear": aggregate_stats_in_worker and not bench_skip_summaries_chunk,
 		}

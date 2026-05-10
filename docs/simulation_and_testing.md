@@ -29,6 +29,7 @@ Special **first-flag** modes (select a different `--script` and shorter timeouts
 | `--check-balance-patches` | [`scripts/tools/check_balance_patches.gd`](../scripts/tools/check_balance_patches.gd) | Native balance-patch API and overlay behavior smoke suite. |
 | `--check-stats-dashboard` | [`scripts/tools/check_stats_dashboard_load.gd`](../scripts/tools/check_stats_dashboard_load.gd) | Loads fixture CSVs and instantiates the stats dashboard scene. |
 | `--check-stats-aggregator` | [`scripts/tools/check_stats_aggregator_roundtrip.gd`](../scripts/tools/check_stats_aggregator_roundtrip.gd) | Writes synthetic summaries through [`stats_csv_aggregator.gd`](../scripts/tools/stats_csv_aggregator.gd) and reloads with [`stats_dashboard_loader.gd`](../scripts/tools/stats_dashboard_loader.gd). |
+| `--check-stats-csv-determinism` | [`scripts/tools/check_stats_csv_determinism.gd`](../scripts/tools/check_stats_csv_determinism.gd) | Two identical small `--generate-stats` runs compare canonical CSV payloads (parity harness before aggregation optimizations). Timeout 240s default. |
 | `--generate-stats` | [`scripts/tools/generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats.gd) | Headless native batch → CSV bundle under `res://stats_output` (or override with flags below). Default timeout 600s; override with `RUN_GODOT_GENERATE_STATS_TIMEOUT_SECONDS`. |
 
 If **none** of the above are present, the default headless path is [`scripts/tools/headless_bootstrap.gd`](../scripts/tools/headless_bootstrap.gd) → [`scripts/simulation/headless_runner.gd`](../scripts/simulation/headless_runner.gd).
@@ -162,6 +163,7 @@ Runs [`generate_simulation_stats.gd`](../scripts/tools/generate_simulation_stats
 | `--profile-stats` | off | Print JSON timing attribution lines to stderr (see [`stats_simulation_csv_generator.gd`](../scripts/tools/stats_simulation_csv_generator.gd)). |
 | `--write-match-log` | off | Write `match_log.csv`; omitted by default to avoid retaining one row per match. |
 | `--no-worker-aggregate` | off | Disable worker-local stats aggregation and return per-match summaries to the main thread. |
+| `--no-native-generated-stats` | off | Disable the native generated-stats fast path and use the GDScript match-input fallback. |
 
 `generate_simulation_stats` sets process env **`TEAMFIGHT_STATS_EXPORT_MINIMAL=1`** so native `run_matches_stats` / batch stats summaries omit per-unit **`telemetry`** dictionaries (CSV aggregation does not use them). Other entry points leave summaries unchanged unless you set that env yourself.
 
@@ -199,6 +201,7 @@ Take the **median** of the outer seconds (`Measure-Command`); optionally add `--
 | `.\run_godot.ps1 -- --check-determinism` | Regression: same seed → same outcome on repeated backend instances (subset of goldens). |
 | `.\run_godot.ps1 -- --check-balance-patches` | Balance patch overlays and `get_balance_patches` round-trip. |
 | `.\run_godot.ps1 --check-stats-aggregator` | Aggregator CSV shape + loader round-trip (no heavy sim). |
+| `.\run_godot.ps1 --check-stats-csv-determinism` | Two-pass stats CSV determinism harness (adjust args after `--`; defaults are small/fast). |
 | `.\run_godot.ps1 --generate-stats` | Full native CSV generation (long-running; see table above). |
 
 ---

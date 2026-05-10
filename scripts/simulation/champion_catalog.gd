@@ -18,6 +18,13 @@ static var _role_kits_loaded: bool = false
 static var _thread_local_caches: Dictionary = {}
 static var _cache_mutex: Mutex = Mutex.new()
 
+# One deep snapshot from the main thread; workers skip rebuilding heavy specs (read-only after freeze).
+static var _frozen_worker_specs_active: bool = false
+static var _frozen_catalog: Dictionary = {}
+static var _frozen_role_config: Dictionary = {}
+static var _frozen_passive: Dictionary = {}
+static var _frozen_champion_ids: Array[StringName] = []
+
 static func _get_thread_id() -> int:
 	# Get current thread ID for thread-local storage
 	return OS.get_thread_caller_id()
@@ -71,6 +78,11 @@ static func clear_all_caches() -> void:
 	_role_config_cache.clear()
 	_champion_ids_cache.clear()
 	_thread_local_caches.clear()
+	_frozen_worker_specs_active = false
+	_frozen_catalog.clear()
+	_frozen_role_config.clear()
+	_frozen_passive.clear()
+	_frozen_champion_ids.clear()
 	_cache_mutex.unlock()
 	
 	# Clear array pool
@@ -81,6 +93,39 @@ static func clear_all_caches() -> void:
 static func clear_export_caches() -> void:
 	# Clear caches before export to ensure fresh data
 	clear_all_caches()
+
+
+## Builds catalog/role/passive on the caller thread once, deep-copies once; workers reuse snapshots from [method build_catalog] / [method build_role_configs] / [method build_passive_registry].[br]Must not mutate shared champion specs after freezing. [method clear_all_caches] clears snapshots.
+static func freeze_built_specs_for_worker_reuse() -> void:
+	var cat := build_catalog()
+	var roles := build_role_configs()
+	var passives := build_passive_registry()
+	var ids: Array[StringName] = []
+	for unit_id in cat.keys():
+		ids.append(StringName(String(unit_id)))
+	_cache_mutex.lock()
+	_frozen_catalog = cat.duplicate(true)
+	_frozen_role_config = roles.duplicate(true)
+	_frozen_passive = passives.duplicate(true)
+	_frozen_champion_ids = ids.duplicate()
+	_frozen_worker_specs_active = true
+	_cache_mutex.unlock()
+
+
+static func _maybe_install_frozen_specs(thread_cache: Dictionary) -> void:
+	if not _frozen_worker_specs_active:
+		return
+	var copy_cat: Dictionary = _frozen_catalog
+	var copy_roles: Dictionary = _frozen_role_config
+	var copy_passive: Dictionary = _frozen_passive
+	var copy_ids: Array[StringName] = _frozen_champion_ids
+	if copy_cat.is_empty():
+		return
+	thread_cache["catalog"] = copy_cat
+	thread_cache["role_config"] = copy_roles
+	thread_cache["passive"] = copy_passive
+	thread_cache["champion_ids"] = copy_ids.duplicate()
+
 
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
@@ -2334,7 +2379,11 @@ const ROLE_CONFIG_DATA := {
 
 static func build_role_configs() -> Dictionary:
 	# Use thread-local cache for multi-threading safety
-	var thread_cache = _get_thread_cache()
+	var thread_cache := _get_thread_cache()
+	if not thread_cache["role_config"].is_empty():
+		return thread_cache["role_config"]
+
+	_maybe_install_frozen_specs(thread_cache)
 	if not thread_cache["role_config"].is_empty():
 		return thread_cache["role_config"]
 
@@ -2356,7 +2405,11 @@ static func build_role_configs() -> Dictionary:
 
 static func build_catalog() -> Dictionary:
 	# Use thread-local cache for multi-threading safety
-	var thread_cache = _get_thread_cache()
+	var thread_cache := _get_thread_cache()
+	if not thread_cache["catalog"].is_empty():
+		return thread_cache["catalog"]
+
+	_maybe_install_frozen_specs(thread_cache)
 	if not thread_cache["catalog"].is_empty():
 		return thread_cache["catalog"]
 
@@ -2378,7 +2431,11 @@ static func build_role_by_hero_map() -> Dictionary:
 
 static func build_passive_registry() -> Dictionary:
 	# Use thread-local cache for multi-threading safety
-	var thread_cache = _get_thread_cache()
+	var thread_cache := _get_thread_cache()
+	if not thread_cache["passive"].is_empty():
+		return thread_cache["passive"]
+
+	_maybe_install_frozen_specs(thread_cache)
 	if not thread_cache["passive"].is_empty():
 		return thread_cache["passive"]
 
@@ -2401,7 +2458,8 @@ static func get_passive_entry(passive_id: StringName):
 	return build_passive_registry().get(passive_id, {})
 
 static func get_champion_ids() -> Array[StringName]:
-	var thread_cache = _get_thread_cache()
+	var thread_cache := _get_thread_cache()
+	_maybe_install_frozen_specs(thread_cache)
 	if thread_cache["champion_ids"].is_empty():
 		var ids: Array[StringName] = []
 		for unit_id in build_catalog().keys():

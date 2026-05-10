@@ -64,7 +64,11 @@ static func _build_batch_input_for_seed(
 		var indices: Array[int] = []
 		for i in range(archetypes.size()):
 			indices.append(i)
-		indices.shuffle()
+		for i in range(indices.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp := indices[i]
+			indices[i] = indices[j]
+			indices[j] = tmp
 		for i in range(team_size):
 			players.append(archetypes[indices[i]])
 		for i in range(team_size, team_size * 2):
@@ -130,6 +134,7 @@ func run_chunk(data: Dictionary) -> Array:
 	var allow_native_batch: bool = bool(data.get("allow_native_batch", false))
 	var profile_stats: bool = bool(data.get("profile_stats", false))
 	var aggregate_stats_in_worker: bool = bool(data.get("aggregate_stats_in_worker", false))
+	var use_native_generated_stats: bool = bool(data.get("use_native_generated_stats", true))
 	var write_match_log: bool = bool(data.get("write_match_log", true))
 	var skip_catalog_thread_clear: bool = bool(data.get("skip_catalog_thread_clear", false))
 	var chunk_profile: Dictionary = {}
@@ -193,6 +198,56 @@ func run_chunk(data: Dictionary) -> Array:
 				},
 			}]
 		return results
+
+	if (
+		use_native_generated_stats
+		and aggregate_stats_in_worker
+		and not bench_skip_summaries
+		and backend.has_method("run_generated_matches_stats_partial")
+	):
+		var t_generated_stats_ns: int = _now_ns()
+		var generated_partial_var: Variant = backend.call(
+			"run_generated_matches_stats_partial",
+			base_seed + start_index,
+			chunk_len,
+			team_size,
+			write_match_log
+		)
+		var generated_stats_ns: int = _now_ns() - t_generated_stats_ns
+		if generated_partial_var is not Dictionary:
+			return []
+		var generated_partial: Dictionary = Dictionary(generated_partial_var)
+		if not generated_partial.has("stats_partial"):
+			return []
+		var t_generated_clear_ns: int = _now_ns()
+		backend.clear()
+		var generated_clear_ns: int = _now_ns() - t_generated_clear_ns
+		if profile_stats:
+			generated_partial["profile_stats"] = {
+				"path": "generated_native_stats_partial",
+				"start_index": start_index,
+				"end_index": end_index,
+				"team_size": team_size,
+				"base_seed": base_seed,
+				"match_count": chunk_len,
+				"cache_clear_ns": cache_clear_ns,
+				"catalog_build_ns": catalog_build_ns,
+				"matchup_init_ns": matchup_init_ns,
+				"backend_create_ns": backend_create_ns,
+				"backend_available_ns": backend_available_ns,
+				"archetypes_ns": archetypes_ns,
+				"results_init_ns": results_init_ns,
+				"stats_setup_ns": stats_setup_ns,
+				"assembly_ns": 0,
+				"native_run_ns": generated_stats_ns,
+				"matchup_ns": 0,
+				"clear_ns": generated_clear_ns,
+				"dominant_phase": "native_run_ns",
+				"avg_ns_per_match": float(generated_stats_ns) / float(chunk_len) if chunk_len > 0 else 0.0,
+				"wall_ns": _now_ns() - chunk_start_ns,
+				"wall_pct": 100.0,
+			}
+		return [generated_partial]
 
 	t_phase_ns = _now_ns()
 	if not skip_catalog_thread_clear:

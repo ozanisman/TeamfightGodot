@@ -1002,6 +1002,14 @@ private:
 	uint64_t _sim_profile_se_obscurance = 0;
 	uint64_t _sim_profile_se_flanking = 0;
 	int64_t _sim_profile_se_calls = 0;
+	bool _sim_profile_active = false;
+	bool _sim_profile_targeting_active = false;
+	int64_t _sim_profile_tgt_retarget_keeps = 0;
+	int64_t _sim_profile_tgt_enemy_scans = 0;
+	int64_t _sim_profile_tgt_candidates_scored = 0;
+	int64_t _sim_profile_tgt_candidates_prefix_pruned = 0;
+	int64_t _sim_profile_tgt_ally_scans = 0;
+	int64_t _sim_profile_tgt_frame_syncs = 0;
 
 	static bool _sim_profile_env_enabled();
 	void _sim_profile_reset();
@@ -1453,6 +1461,7 @@ public:
 
 	/// When true (or env TEAMFIGHT_SIM_PROFILE), _simulate emits one stderr JSON line per match with per-section tick timings.
 	void sim_profile_set_enabled(bool enabled);
+	void targeting_profile_set_enabled(bool enabled);
 };
 
 #endif

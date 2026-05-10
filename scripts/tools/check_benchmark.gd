@@ -121,9 +121,11 @@ func _run_benchmark() -> void:
 
 	SimulationBatchWorkerScript.reset_benchmark_progress(batch_count)
 	var sim_profile_enabled: bool = _flag_enabled("--sim-profile")
+	var targeting_profile_enabled: bool = sim_profile_enabled and _flag_enabled("--targeting-profile")
 	var worker_profile_enabled: bool = sim_profile_enabled or _flag_enabled("--worker-profile")
 	if sim_profile_enabled:
 		SimulationBatchWorkerScript.set_sim_profile_enabled(true)
+	SimulationBatchWorkerScript.set_targeting_profile_enabled(targeting_profile_enabled)
 
 	for worker_index in range(worker_count):
 		var start_index: int = worker_index * chunk_size

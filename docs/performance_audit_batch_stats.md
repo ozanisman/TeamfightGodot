@@ -166,12 +166,13 @@ This audit maps the current batch simulation and statistics pipeline, records fr
 
 ### P1: Optimize native/stats boundary
 
-- **Native batch stats API**
+- **Native generated stats API**
   - **Files:** `native/src/teamfight_simulation_core.*`, `native_simulation_backend.gd`, `simulation_batch_worker.gd`.
-  - **Change:** add a native method that runs generated matches and returns either compact partial aggregates or a lower-allocation packed stats representation.
-  - **Impact:** potentially high for full stats generation because it removes per-match input assembly and many Dictionary/Array allocations.
-  - **Risk:** high; touches native API and deterministic aggregation semantics.
-  - **Validation:** fixture parity, telemetry check, stats CSV golden/diff, direct-run benchmark medians.
+  - **Status:** Active target; replace the noise-level `run_matches_stats_partial` experiment with generated native stats.
+  - **Change:** native method generates draft teams, builds units directly, simulates, and returns a compact stats partial plus matchup data.
+  - **Impact:** removes GDScript match-input assembly and native dictionary parsing from generated stats.
+  - **Risk:** medium; native draft generation must stay byte-equivalent with the GDScript fallback.
+  - **Validation:** fixture parity, telemetry check, direct-vs-fallback stats CSV equality, direct-run benchmark medians.
 
 - **Generated stats input path**
   - **Files:** `simulation_batch_worker.gd`, `teamfight_simulation_core.cpp`.
@@ -214,6 +215,21 @@ This audit maps the current batch simulation and statistics pipeline, records fr
 4. Implement chunk-local or native-side aggregation experiments behind a flag.
 5. Only then tune native targeting/simulation hot paths using direct-run medians and parity gates.
 
+## Spike note (stats FFI vs native `_simulate`)
+
+On representative `--generate-stats --profile-stats` runs, summed worker phases showed **`native_run_ns` ~93–95%** of chunk work and **`assembly_ns`** a distant second (`docs/performance_audit_batch_stats.md`, § Bottleneck Attribution). Subsequent “big-win” optimizations should prioritize **fewer/heavier FFI summaries** or **native-generated drafts** before micro-tuning `_simulate()`, unless profiling on a frozen recipe shows assembly or marshalling creeping up after batching fixes.
+
+Native `_simulate()` remains the correctness-critical hot path (`TEAMFIGHT_SIM_PROFILE=1` / `--sim-profile`): target targeting/tick/context only behind full parity gates.
+
+## 2026-05 Stats Generator Throughput Snapshot
+
+Frozen workload: `--matches-per-size=200 "--team-sizes=1,2,3,4,5"`.
+
+- Direct generator medians: `workers=1` 3.412s, `workers=3` 1.824s, `workers=8` 1.825s.
+- Sharded process-per-size median with `ExportWorkers=1`: 2.960s; stats sharding was rejected.
+- Native partial aggregate vs fallback at `workers=3`: 200-per-size was noise/slightly worse (1.824s vs 1.813s); 1000-per-size was noise/slightly better (7.983s vs 8.024s). This experiment was removed.
+- Profile still attributes ~99% of summed chunk work to native simulation. The next high-impact pass should target generated-draft/native sim cost.
+
 ## Direct-Run Measurement Matrix Still Needed
 
 Run outside the IDE/tool path before accepting any throughput claim:
@@ -223,6 +239,7 @@ cmake --build native/build --config Release
 .\run_godot.ps1 -- --check-only
 .\run_godot.ps1 -- --check-native-load
 .\run_godot.ps1 -- --check-match-telemetry
+.\run_godot.ps1 --check-stats-csv-determinism -- --matches-per-size=12 "--team-sizes=3,5" --export-workers=2
 .\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
 .\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
 .\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=3

@@ -33,6 +33,7 @@ const GenerateSimulationStatsScript := preload("res://scripts/tools/generate_sim
 const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_stats_aggregator_roundtrip.gd")
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const CheckMatchTelemetryScript := preload("res://scripts/tools/check_match_telemetry.gd")
+const CheckStatsCsvDeterminismScript := preload("res://scripts/tools/check_stats_csv_determinism.gd")
 
 
 func _init() -> void:

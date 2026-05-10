@@ -204,8 +204,9 @@ func write_to_dir(dir_path: String) -> Error:
 	if _by_size.is_empty():
 		return ERR_INVALID_DATA
 	var abs_base := ProjectSettings.globalize_path(dir_path)
-	var mk := DirAccess.make_dir_recursive_absolute(abs_base)
+	var mk := _ensure_output_dir(dir_path)
 	if mk != OK and mk != ERR_ALREADY_EXISTS:
+		push_error("StatsCsvAggregator.write_to_dir: mkdir failed %s for %s" % [error_string(mk), abs_base])
 		return mk
 	var summary_csv := _build_summary_csv()
 	var hero_csv := _build_combat_csv()
@@ -224,8 +225,34 @@ func write_to_dir(dir_path: String) -> Error:
 		var text: String = String(pair[1])
 		var err := _write_text_atomic("%s/%s" % [dir_path.rstrip("/"), name], text)
 		if err != OK:
+			push_error("StatsCsvAggregator.write_to_dir: write failed %s for %s" % [error_string(err), name])
 			return err
 	return OK
+
+
+static func _ensure_output_dir(dir_path: String) -> Error:
+	var abs_path := ProjectSettings.globalize_path(dir_path)
+	var mk := DirAccess.make_dir_recursive_absolute(abs_path)
+	if DirAccess.dir_exists_absolute(abs_path):
+		return OK
+	if dir_path.begins_with("user://"):
+		var user_dir := DirAccess.open("user://")
+		if user_dir == null:
+			return ERR_CANT_OPEN
+		return user_dir.make_dir_recursive(dir_path.substr("user://".length()))
+	if dir_path.begins_with("res://"):
+		var res_dir := DirAccess.open("res://")
+		if res_dir == null:
+			return ERR_CANT_OPEN
+		return res_dir.make_dir_recursive(dir_path.substr("res://".length()))
+	return mk
+
+
+static func _path_parent(path: String) -> String:
+	var slash := path.rfind("/")
+	if slash < 0:
+		return ""
+	return path.substr(0, slash)
 
 
 func _bucket(sz: int) -> Dictionary:
@@ -469,9 +496,14 @@ func _csv_cell(raw: String) -> String:
 func _write_text_atomic(res_path: String, content: String) -> Error:
 	var abs_path := ProjectSettings.globalize_path(res_path)
 	var abs_tmp := abs_path + ".tmp"
+	var mk := _ensure_output_dir(_path_parent(res_path))
+	if mk != OK and mk != ERR_ALREADY_EXISTS:
+		return mk
 	var f := FileAccess.open(abs_tmp, FileAccess.WRITE)
 	if f == null:
-		return FileAccess.get_open_error()
+		var open_err := FileAccess.get_open_error()
+		push_error("StatsCsvAggregator._write_text_atomic: temp open failed %s for %s" % [error_string(open_err), abs_tmp])
+		return open_err
 	f.store_string(content)
 	f.flush()
 	f.close()
@@ -479,7 +511,18 @@ func _write_text_atomic(res_path: String, content: String) -> Error:
 		var rm := DirAccess.remove_absolute(abs_path)
 		if rm != OK:
 			return rm
-	return DirAccess.rename_absolute(abs_tmp, abs_path)
+	var ren := DirAccess.rename_absolute(abs_tmp, abs_path)
+	if ren == OK:
+		return OK
+	var direct := FileAccess.open(abs_path, FileAccess.WRITE)
+	if direct == null:
+		push_error("StatsCsvAggregator._write_text_atomic: rename failed %s and direct open failed %s for %s" % [error_string(ren), error_string(FileAccess.get_open_error()), abs_path])
+		return ren
+	direct.store_string(content)
+	direct.flush()
+	direct.close()
+	DirAccess.remove_absolute(abs_tmp)
+	return OK
 
 
 func _build_summary_csv() -> String:

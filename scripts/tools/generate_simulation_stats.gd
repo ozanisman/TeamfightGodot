@@ -35,6 +35,9 @@ func _run() -> void:
 	OS.set_environment("TEAMFIGHT_STATS_EXPORT_MINIMAL", "1")
 	# Pre-initialize champion catalog static cache to avoid threading issues
 	ChampionCatalogScript.build_catalog()
+	ChampionCatalogScript.build_role_configs()
+	ChampionCatalogScript.build_passive_registry()
+	ChampionCatalogScript.freeze_built_specs_for_worker_reuse()
 	
 	var out_dir := _extract_argument("--out-dir=", "res://stats_output")
 	var sizes_raw := _extract_argument("--team-sizes=", "1,2,3,4,5")
@@ -44,6 +47,7 @@ func _run() -> void:
 	var profile_enabled := _flag_enabled("--profile-stats")
 	var write_match_log := _flag_enabled("--write-match-log")
 	var aggregate_stats_in_worker := not _flag_enabled("--no-worker-aggregate")
+	var use_native_generated_stats := not _flag_enabled("--no-native-generated-stats")
 	var arr: Array[int] = []
 	for part in sizes_raw.split(","):
 		var t: String = part.strip_edges()
@@ -55,7 +59,18 @@ func _run() -> void:
 		quit(1)
 		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
-	var err: Error = gen.run(out_dir, arr, matches, seed, export_workers, profile_enabled, write_match_log, aggregate_stats_in_worker)
+	var err: Error = gen.run(
+		out_dir,
+		arr,
+		matches,
+		seed,
+		export_workers,
+		profile_enabled,
+		write_match_log,
+		aggregate_stats_in_worker,
+		{},
+		use_native_generated_stats
+	)
 	if err != OK:
 		push_error("generate_simulation_stats failed: %s" % error_string(err))
 		quit(1)

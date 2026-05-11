@@ -161,6 +161,19 @@ func run_generated_matches_simulation_only(base_seed: int, batch_count: int, tea
 		return
 	push_error("Native simulation backend is missing run_generated_matches_simulation_only().")
 
+## Stats generation fast path: native owns deterministic draft generation and aggregates stats.
+func run_generated_matches_stats_partial(base_seed: int, batch_count: int, team_size: int, include_match_log: bool) -> Dictionary:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return {}
+	if _backend.has_method("run_generated_matches_stats_partial"):
+		var result: Variant = _backend.call("run_generated_matches_stats_partial", base_seed, batch_count, team_size, include_match_log)
+		if result is Dictionary:
+			return result
+		return {}
+	push_error("Native simulation backend is missing run_generated_matches_stats_partial().")
+	return {}
+
 ## Incremental match API (used by simulation viewer and gameplay loops).
 func begin_match(match_input: Variant) -> void:
 	if not _ensure_native_backend():

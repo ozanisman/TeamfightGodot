@@ -2201,7 +2201,7 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	double pcy = 0.0;
 	int pc = 0;
 	for (int64_t idx : _alive_player_indices) {
-		const UnitState &u = _units[idx];
+		UnitState &u = _units[static_cast<size_t>(idx)];
 		if (!u.alive) {
 			continue;
 		}
@@ -2214,6 +2214,9 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		pc += 1;
 		if (u.is_marksman_role || u.is_mage_role || u.is_support_role) {
 			_tick_ctx.player_backliner_indices.push_back(idx);
+			u.is_backliner = true;
+		} else {
+			u.is_backliner = false;
 		}
 		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.player_frontline_indices.push_back(idx);
@@ -2231,7 +2234,7 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	double ecy = 0.0;
 	int ec = 0;
 	for (int64_t idx : _alive_enemy_indices) {
-		const UnitState &u = _units[idx];
+		UnitState &u = _units[static_cast<size_t>(idx)];
 		if (!u.alive) {
 			continue;
 		}
@@ -2244,6 +2247,9 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		ec += 1;
 		if (u.is_marksman_role || u.is_mage_role || u.is_support_role) {
 			_tick_ctx.enemy_backliner_indices.push_back(idx);
+			u.is_backliner = true;
+		} else {
+			u.is_backliner = false;
 		}
 		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.enemy_frontline_indices.push_back(idx);
@@ -2762,13 +2768,8 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
 				const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
 				int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
-				bool self_in_bl = false;
-				for (int64_t idx : bl) {
-					if (idx == enemy_self_idx) {
-						self_in_bl = true;
-						break;
-					}
-				}
+				const UnitState &enemy_unit = _units[static_cast<size_t>(enemy_self_idx)];
+				bool self_in_bl = enemy_unit.is_backliner;
 				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
 				if (n_alive - subtract > 0) {
 					score += ASSASSIN_TANK_CONTEXT_PENALTY;
@@ -3049,13 +3050,8 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
 				const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
 				int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
-				bool self_in_bl = false;
-				for (int64_t idx : bl) {
-					if (idx == enemy_self_idx) {
-						self_in_bl = true;
-						break;
-					}
-				}
+				const UnitState &enemy_unit = _units[static_cast<size_t>(enemy_self_idx)];
+				bool self_in_bl = enemy_unit.is_backliner;
 				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
 				if (n_alive - subtract > 0) {
 					score += ASSASSIN_TANK_CONTEXT_PENALTY;

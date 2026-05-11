@@ -207,6 +207,57 @@ func run_chunk(data: Dictionary) -> Array:
 		return results
 
 	if (
+		bench_skip_summaries
+		and allow_native_batch
+		and use_native_generated_stats
+		and backend.has_method("run_generated_matches_stats_partial")
+	):
+		# Benchmark with compact stats: native draft generation, simulation, and aggregation.
+		var t_generated_stats_ns: int = _now_ns()
+		var generated_partial_var: Variant = backend.call(
+			"run_generated_matches_stats_partial",
+			base_seed + start_index,
+			chunk_len,
+			team_size,
+			false
+		)
+		var generated_stats_ns: int = _now_ns() - t_generated_stats_ns
+		if generated_partial_var is not Dictionary:
+			return []
+		var generated_partial: Dictionary = Dictionary(generated_partial_var)
+		if not generated_partial.has("stats_partial"):
+			return []
+		var t_generated_clear_ns: int = _now_ns()
+		backend.clear()
+		var generated_clear_ns: int = _now_ns() - t_generated_clear_ns
+		if profile_stats:
+			generated_partial["profile_stats"] = {
+				"path": "generated_native_batch_with_stats",
+				"start_index": start_index,
+				"end_index": end_index,
+				"team_size": team_size,
+				"base_seed": base_seed,
+				"match_count": chunk_len,
+				"cache_clear_ns": cache_clear_ns,
+				"catalog_build_ns": catalog_build_ns,
+				"matchup_init_ns": matchup_init_ns,
+				"backend_create_ns": backend_create_ns,
+				"backend_available_ns": backend_available_ns,
+				"archetypes_ns": archetypes_ns,
+				"results_init_ns": results_init_ns,
+				"stats_setup_ns": stats_setup_ns,
+				"assembly_ns": 0,
+				"native_run_ns": generated_stats_ns,
+				"matchup_ns": 0,
+				"clear_ns": generated_clear_ns,
+				"dominant_phase": "native_run_ns",
+				"avg_ns_per_match": float(generated_stats_ns) / float(chunk_len) if chunk_len > 0 else 0.0,
+				"wall_ns": _now_ns() - chunk_start_ns,
+				"wall_pct": 100.0,
+			}
+		return [generated_partial]
+
+	if (
 		use_native_generated_stats
 		and aggregate_stats_in_worker
 		and not bench_skip_summaries

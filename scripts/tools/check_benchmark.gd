@@ -103,6 +103,7 @@ func _run_benchmark() -> void:
 	var batch_count: int = maxi(1, _parse_int("--batch-count=", 100000))
 	var team_size: int = maxi(1, _parse_int("--team-size=", 1))
 	var bench_skip_summaries: bool = _flag_enabled("--bench-skip-summaries")
+	var bench_with_stats: bool = _flag_enabled("--bench-with-stats")
 	var base_seed: int = _parse_int("--base-seed=", 0)
 	var cpu_count: int = maxi(1, OS.get_processor_count())
 	var worker_cap: int = _parse_int("--workers=", _parse_int("--max-workers=", 0))
@@ -145,6 +146,7 @@ func _run_benchmark() -> void:
 			"bench_skip_summaries": bench_skip_summaries,
 			# Each worker owns its NativeSimulationBackend instance; simulation-only chunks can stay fully native.
 			"allow_native_batch": bench_skip_summaries,
+			"use_native_generated_stats": bench_with_stats,
 			"profile_stats": worker_profile_enabled,
 		}
 		var start_error: int = thread.start(Callable(worker_runner, "run_chunk").bind(thread_data))

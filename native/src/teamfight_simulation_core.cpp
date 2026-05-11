@@ -5514,7 +5514,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	}
 	if (best_live == nullptr) {
 		unit.target_id = 0;
-		unit.target_index = -1;
+			unit.target_index = -1;
 		unit.current_target_score = 0.0;
 		_sync_targeting_frame_unit(unit);
 		return nullptr;
@@ -6266,7 +6266,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
 		unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
-		if (unit.shield > 0.0) {
+			if (unit.shield > 0.0) {
 			unit.shield *= (1.0 - SHIELD_DECAY_RATE * _tick_rate);
 			if (unit.shield < 0.01) {
 				unit.shield = 0.0;
@@ -6274,7 +6274,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 		if (unit.stealth_remaining <= 0.0) {
 			unit.stealth_remaining = 0.0;
-			unit.stealth_break_on_attack = false;
+					unit.stealth_break_on_attack = false;
 			unit.stealth_break_on_ability = false;
 			unit.stealth_break_on_damage_taken = false;
 		}
@@ -6324,11 +6324,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			unit.shield = Math::max(0.0, shield_before - absorbed);
 			double hp_loss = Math::max(0.0, damage - absorbed);
 			unit.hp = Math::max(0.0, unit.hp - hp_loss);
-			
+				
 			// Handle death
 			if (unit.hp <= 0.0 && unit.alive) {
 				unit.alive = false;
-				// Update kill counters
+							// Update kill counters
 				if (unit.team == sn_player()) {
 					_enemy_kills++;
 				} else {
@@ -6389,7 +6389,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 					double ny = sep_y * nudge_speed;
 					unit.pos_x = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 					unit.pos_y = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-				}
+								}
 			}
 		}
 	}
@@ -6397,7 +6397,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	{
 		SimProfileAccScope _uu_ta(profile_sim, _sim_profile_uu_threat_and_assist);
 		unit.perceived_threat = Math::max(0.0, unit.perceived_threat - strategy.threat_decay_rate * _tick_rate);
-		_sync_targeting_frame_unit(unit);
+			_sync_targeting_frame_unit(unit);
 
 		_prune_assist_window(unit);
 	}
@@ -6447,7 +6447,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		target = _select_enemy_target(unit, profile_sim);
 		if (target == nullptr) {
 			unit.target_id = 0;
-			unit.target_index = -1;
+				unit.target_index = -1;
 			_sync_targeting_frame_unit(unit);
 			return;
 		}

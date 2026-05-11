@@ -444,6 +444,7 @@ private:
 		bool is_marksman_role = false;
 		bool is_mage_role = false;
 		bool is_support_role = false;
+		bool is_backliner = false;  // Cached backliner status for O(1) lookup
 		
 		// Stat modifier system - additive and multiplicative modifiers for each stat
 		double stat_additive_max_hp = 0.0;

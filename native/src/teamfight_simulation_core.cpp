@@ -1210,19 +1210,8 @@ Dictionary TeamfightSimulationCore::_effect_to_dict(const Variant &effect) const
 }
 
 void TeamfightSimulationCore::_ensure_catalog_loaded() {
-	if (_catalog_loaded) {
-		return;
-	}
-	// Godot FileAccess / JSON from multiple threads during first load has faulted on Windows.
-	// Use a single global parse (call_once) and then share the read-only catalog payloads across
-	// core instances to avoid per-worker serialization during benchmarks.
-	static std::once_flag s_catalog_once;
-	static Dictionary s_champion_catalog;
-	static Dictionary s_role_configs;
-	static Dictionary s_passive_registry;
-	static Dictionary s_ability_kits;
-	static std::vector<BalancePatch> s_balance_patches;
-
+	// Load catalog every time to pick up changes from champion_schema.json
+	// This ensures stats generation uses the most recent champion data
 	auto load_json_required = [](const String &path) -> Dictionary {
 		Dictionary empty;
 		Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
@@ -1251,63 +1240,61 @@ void TeamfightSimulationCore::_ensure_catalog_loaded() {
 		return Dictionary(parsed);
 	};
 
-	std::call_once(s_catalog_once, [&]() {
-		s_champion_catalog = load_json_required(String(CHAMPION_SCHEMA_PATH));
+	Dictionary champion_catalog = load_json_required(String(CHAMPION_SCHEMA_PATH));
 
-		// role_configs
-		s_role_configs.clear();
-		if (!s_champion_catalog.has("role_configs")) {
-			UtilityFunctions::push_error("Champion schema missing 'role_configs' key");
-		} else {
-			Dictionary role_configs_dict = Dictionary(s_champion_catalog.get("role_configs", Dictionary()));
-			Array role_keys = role_configs_dict.keys();
-			for (int64_t i = 0; i < role_keys.size(); ++i) {
-				StringName role_id = StringName(String(role_keys[i]));
-				Dictionary role_entry = Dictionary(role_configs_dict.get(role_id, Dictionary()));
-				s_role_configs[role_id] = role_entry;
-			}
+	// role_configs
+	Dictionary role_configs;
+	if (!champion_catalog.has("role_configs")) {
+		UtilityFunctions::push_error("Champion schema missing 'role_configs' key");
+	} else {
+		Dictionary role_configs_dict = Dictionary(champion_catalog.get("role_configs", Dictionary()));
+		Array role_keys = role_configs_dict.keys();
+		for (int64_t i = 0; i < role_keys.size(); ++i) {
+			StringName role_id = StringName(String(role_keys[i]));
+			Dictionary role_entry = Dictionary(role_configs_dict.get(role_id, Dictionary()));
+			role_configs[role_id] = role_entry;
 		}
+	}
 
-		// passives
-		s_passive_registry.clear();
-		if (!s_champion_catalog.has("passives")) {
-			UtilityFunctions::push_error("Champion schema missing 'passives' key");
-		} else {
-			Dictionary passives_dict = Dictionary(s_champion_catalog.get("passives", Dictionary()));
-			Array passive_keys = passives_dict.keys();
-			for (int64_t i = 0; i < passive_keys.size(); ++i) {
-				StringName passive_id = StringName(String(passive_keys[i]));
-				Dictionary passive_entry = Dictionary(passives_dict.get(passive_id, Dictionary()));
-				s_passive_registry[passive_id] = passive_entry;
-			}
+	// passives
+	Dictionary passive_registry;
+	if (!champion_catalog.has("passives")) {
+		UtilityFunctions::push_error("Champion schema missing 'passives' key");
+	} else {
+		Dictionary passives_dict = Dictionary(champion_catalog.get("passives", Dictionary()));
+		Array passive_keys = passives_dict.keys();
+		for (int64_t i = 0; i < passive_keys.size(); ++i) {
+			StringName passive_id = StringName(String(passive_keys[i]));
+			Dictionary passive_entry = Dictionary(passives_dict.get(passive_id, Dictionary()));
+			passive_registry[passive_id] = passive_entry;
 		}
+	}
 
-		// balance patches (required file, but contents may be empty)
-		s_balance_patches.clear();
-		Dictionary bp_root = load_json_required(String(BALANCE_PATCHES_PATH));
-		if (!bp_root.is_empty()) {
-			Array patches = Array(bp_root.get("patches", Array()));
-			for (int64_t i = 0; i < patches.size(); ++i) {
-				Dictionary pd = Dictionary(patches[i]);
-				BalancePatch patch;
-				_parse_balance_patch_from_dict(pd, patch);
-				s_balance_patches.push_back(patch);
-			}
+	// balance patches (required file, but contents may be empty)
+	std::vector<BalancePatch> balance_patches;
+	Dictionary bp_root = load_json_required(String(BALANCE_PATCHES_PATH));
+	if (!bp_root.is_empty()) {
+		Array patches = Array(bp_root.get("patches", Array()));
+		for (int64_t i = 0; i < patches.size(); ++i) {
+			Dictionary pd = Dictionary(patches[i]);
+			BalancePatch patch;
+			_parse_balance_patch_from_dict(pd, patch);
+			balance_patches.push_back(patch);
 		}
+	}
 
-		// champion kits (optional)
-		s_ability_kits.clear();
-		Dictionary kits_root = load_json_optional(String(CHAMPION_KITS_PATH));
-		if (!kits_root.is_empty()) {
-			s_ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
-		}
-	});
+	// champion kits (optional)
+	Dictionary ability_kits;
+	Dictionary kits_root = load_json_optional(String(CHAMPION_KITS_PATH));
+	if (!kits_root.is_empty()) {
+		ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
+	}
 
-	_champion_catalog = s_champion_catalog;
-	_role_configs = s_role_configs;
-	_passive_registry = s_passive_registry;
-	_ability_kits = s_ability_kits;
-	_balance_patches = s_balance_patches;
+	_champion_catalog = champion_catalog;
+	_role_configs = role_configs;
+	_passive_registry = passive_registry;
+	_ability_kits = ability_kits;
+	_balance_patches = balance_patches;
 
 	_rebuild_effective_champion_cache();
 	_catalog_loaded = true;

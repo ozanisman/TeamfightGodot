@@ -98,6 +98,7 @@ private:
 		int64_t int1 = 0;
 		int64_t int2 = 0;
 		int64_t int3 = 0;
+		int64_t int4 = 0;
 		StringName damage_type;
 		String reason;
 		std::vector<EffectRecord> children;
@@ -115,6 +116,10 @@ private:
 		
 		// AOE shape parameters (replaces scalar0-scalar5 for AOE effects)
 		AoShapeParams aoe_shape_params;
+		
+		// Multi-target effect parameters
+		StringName team_filter;         // "player", "enemy", or empty for auto-detect
+		std::vector<EffectRecord> sub_effects;  // Sub-effects to apply to each target
 	};
 
 	struct EffectContext {
@@ -714,6 +719,21 @@ private:
 		return Math::max(0.0, (unit.combat.cast_range + unit.stat_additive_cast_range) * unit.stat_multiplicative_cast_range);
 	}
 
+	enum TargetSelectionStrategy : int64_t {
+		TARGET_SELECTION_CLOSEST = 0,
+		TARGET_SELECTION_RANDOM = 1,
+		TARGET_SELECTION_LOWEST_HP = 2,
+		TARGET_SELECTION_HIGHEST_HP = 3,
+		TARGET_SELECTION_CLOSEST_TO_TARGET = 4,
+		TARGET_SELECTION_LOWEST_PERCENT_HP = 5,
+		TARGET_SELECTION_HIGHEST_PERCENT_HP = 6,
+	};
+
+	enum ExcessTargetHandling : int64_t {
+		EXCESS_TARGET_DROP = 0,
+		EXCESS_TARGET_STACK = 1,
+	};
+
 	enum EffectOpcode : int64_t {
 		EFFECT_OPCODE_UNKNOWN = 0,
 		EFFECT_OPCODE_MULTI = 1,
@@ -758,6 +778,7 @@ private:
 		EFFECT_OPCODE_HEAL_OVER_TIME = 43,
 		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 44,
 		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 45,
+		EFFECT_OPCODE_MULTIPLE_TARGET = 46,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1123,6 +1144,7 @@ private:
 	void _apply_aoe_disarm_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
 	bool _apply_aoe_knockback_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double distance, bool away_from_source);
 	void _apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types);
+	std::vector<UnitState*> _select_targets(UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter);
 	double _movement_speed_multiplier(const UnitState &unit) const;
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
 	double _distance_between(const UnitState &unit1, const UnitState &unit2) const;

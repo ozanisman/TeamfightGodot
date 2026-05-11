@@ -15,7 +15,6 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
-#include <mutex>
 #include <utility>
 
 static std::atomic<int64_t> s_benchmark_progress_done{0};
@@ -248,6 +247,10 @@ inline const StringName &sn_target_status_multiplier() {
 }
 inline const StringName &sn_stat_modifier() {
 	static const StringName s("stat_modifier");
+	return s;
+}
+inline const StringName &sn_multiple_target() {
+	static const StringName s("multiple_target");
 	return s;
 }
 inline const StringName &sn_ability() {
@@ -698,6 +701,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_target_status_multiplier();
 		case EFFECT_OPCODE_STAT_MODIFIER:
 			return sn_stat_modifier();
+		case EFFECT_OPCODE_MULTIPLE_TARGET:
+			return sn_multiple_target();
 		default:
 			return empty_kind;
 	}
@@ -972,6 +977,42 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.int3 = 0;
 		}
 		compiled.reason = String(params.get("reason", "Stat modifier"));
+	} else if (kind == StringName("multiple_target")) {
+		// Multi-target effect parameters
+		compiled.int0 = int64_t(params.get("target_count", 1));
+		String strategy_str = String(params.get("selection_strategy", "closest"));
+		if (strategy_str == "random") {
+			compiled.int1 = TARGET_SELECTION_RANDOM;
+		} else if (strategy_str == "lowest_hp") {
+			compiled.int1 = TARGET_SELECTION_LOWEST_HP;
+		} else if (strategy_str == "highest_hp") {
+			compiled.int1 = TARGET_SELECTION_HIGHEST_HP;
+		} else if (strategy_str == "closest_to_target") {
+			compiled.int1 = TARGET_SELECTION_CLOSEST_TO_TARGET;
+		} else if (strategy_str == "lowest_percent_hp") {
+			compiled.int1 = TARGET_SELECTION_LOWEST_PERCENT_HP;
+		} else if (strategy_str == "highest_percent_hp") {
+			compiled.int1 = TARGET_SELECTION_HIGHEST_PERCENT_HP;
+		} else {
+			compiled.int1 = TARGET_SELECTION_CLOSEST;
+		}
+		compiled.int2 = params.get("include_source", false) ? 1 : 0;
+		String handling_str = String(params.get("excess_handling", "drop"));
+		compiled.int3 = (handling_str == "stack") ? EXCESS_TARGET_STACK : EXCESS_TARGET_DROP;
+		compiled.int4 = int64_t(params.get("repeat_count", 1));
+		compiled.team_filter = StringName(String(params.get("team_filter", "")));
+		
+		// Compile sub_effects
+		Variant sub_effects_value = params.get("sub_effects", Variant());
+		if (sub_effects_value.get_type() == Variant::ARRAY) {
+			Array sub_effects_array = sub_effects_value;
+			compiled.sub_effects = _compile_effect_array(sub_effects_array);
+		} else if (sub_effects_value.get_type() == Variant::DICTIONARY) {
+			Dictionary sub_effect_dict = sub_effects_value;
+			compiled.sub_effects.push_back(_compile_effect(sub_effect_dict));
+		}
+		
+		compiled.reason = String(params.get("reason", "Multiple target"));
 	}
 	
 	// Handle conditional execution parameters
@@ -5256,6 +5297,150 @@ void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitSt
 	});
 }
 
+std::vector<TeamfightSimulationCore::UnitState*> TeamfightSimulationCore::_select_targets(UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter) {
+	std::vector<UnitState*> selected;
+	
+	// Get the team to filter by
+	StringName target_team = team_filter;
+	if (target_team.is_empty()) {
+		// Default to enemies if not specified
+		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
+	} else if (target_team != sn_player() && target_team != sn_enemy()) {
+		UtilityFunctions::push_error(vformat("Invalid team_filter '%s', must be 'player' or 'enemy'", String(target_team)));
+		return selected;
+	}
+	
+	// Get alive indices for the target team
+	const std::vector<int64_t> &alive_indices = _alive_indices_for_team(target_team);
+	
+	if (alive_indices.empty()) {
+		UtilityFunctions::push_error(vformat("No alive units found for team '%s'", String(target_team)));
+		return selected;
+	}
+	
+	// Collect potential targets
+	std::vector<UnitState*> candidates;
+	for (int64_t idx : alive_indices) {
+		if (idx < 0 || idx >= int64_t(_units.size())) {
+			continue;
+		}
+		UnitState *unit = &_units[static_cast<size_t>(idx)];
+		if (unit == nullptr || !unit->alive) {
+			continue;
+		}
+		
+		// Exclude source if not including source
+		if (!include_source && unit->instance_id == source.instance_id) {
+			continue;
+		}
+		
+		candidates.push_back(unit);
+	}
+	
+	// If no candidates, return empty
+	if (candidates.empty()) {
+		return selected;
+	}
+	
+	// Sort/select based on strategy
+	switch (strategy) {
+		case TARGET_SELECTION_CLOSEST: {
+			// Sort by distance to source
+			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+				double dist_a = _distance_between(source, *a);
+				double dist_b = _distance_between(source, *b);
+				return dist_a < dist_b;
+			});
+			break;
+		}
+		case TARGET_SELECTION_RANDOM: {
+			// Simple random shuffle using _rng.random_random()
+			for (size_t i = candidates.size(); i > 1; --i) {
+				double rand_val = _rng.random_random();
+				size_t j = static_cast<size_t>(rand_val * i);
+				std::swap(candidates[i - 1], candidates[j]);
+			}
+			break;
+		}
+		case TARGET_SELECTION_LOWEST_HP: {
+			// Sort by HP ascending
+			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+				return a->hp < b->hp;
+			});
+			break;
+		}
+		case TARGET_SELECTION_HIGHEST_HP: {
+			// Sort by HP descending
+			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+				return a->hp > b->hp;
+			});
+			break;
+		}
+		case TARGET_SELECTION_LOWEST_PERCENT_HP: {
+			// Sort by HP percentage ascending
+			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+				double pct_a = (a->combat.max_hp > EPSILON) ? (a->hp / a->combat.max_hp) : 0.0;
+				double pct_b = (b->combat.max_hp > EPSILON) ? (b->hp / b->combat.max_hp) : 0.0;
+				return pct_a < pct_b;
+			});
+			break;
+		}
+		case TARGET_SELECTION_HIGHEST_PERCENT_HP: {
+			// Sort by HP percentage descending
+			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+				double pct_a = (a->combat.max_hp > EPSILON) ? (a->hp / a->combat.max_hp) : 0.0;
+				double pct_b = (b->combat.max_hp > EPSILON) ? (b->hp / b->combat.max_hp) : 0.0;
+				return pct_a > pct_b;
+			});
+			break;
+		}
+		case TARGET_SELECTION_CLOSEST_TO_TARGET: {
+			// Sort by distance to target
+			if (target != nullptr) {
+				std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+					double dist_a = _distance_between(*target, *a);
+					double dist_b = _distance_between(*target, *b);
+					return dist_a < dist_b;
+				});
+			} else {
+				// Fall back to closest to source if no target
+				std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
+					double dist_a = _distance_between(source, *a);
+					double dist_b = _distance_between(source, *b);
+					return dist_a < dist_b;
+				});
+			}
+			break;
+		}
+	}
+	
+	// Determine how many targets to select
+	int64_t num_to_select = target_count;
+	if (target_count == -1) {
+		// Select all candidates
+		num_to_select = candidates.size();
+	} else if (target_count > int64_t(candidates.size())) {
+		// Handle excess targets
+		if (excess_handling == EXCESS_TARGET_DROP) {
+			num_to_select = candidates.size();
+		} else {
+			// STACK: cycle through candidates to reach target_count, then effect_count applies to each position in cycled list
+			// Example: 2 enemies, request 3 targets with STACK → [A, B, A], effect_count=2 → A gets 4 instances, B gets 2
+			for (int64_t i = 0; i < target_count; ++i) {
+				selected.push_back(candidates[i % candidates.size()]);
+			}
+			return selected;
+		}
+	}
+	
+	// Select the first N candidates
+	for (int64_t i = 0; i < num_to_select && i < int64_t(candidates.size()); ++i) {
+		selected.push_back(candidates[i]);
+	}
+	
+	return selected;
+}
+
 TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
 	// Python forced-target model: if a forced target is active, selection collapses to it.
 	int64_t forced_target_id = unit.forced_target_id;
@@ -7416,6 +7601,146 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			return stat_result;
 		}
+		case EFFECT_OPCODE_MULTIPLE_TARGET: {
+			Dictionary multi_result;
+			multi_result["success"] = true;
+			
+			// Extract multi-target parameters
+			int64_t target_count = effect.int0;
+			TargetSelectionStrategy strategy = static_cast<TargetSelectionStrategy>(effect.int1);
+			bool include_source = effect.int2 != 0;
+			ExcessTargetHandling excess_handling = static_cast<ExcessTargetHandling>(effect.int3);
+			int64_t repeat_count = effect.int4;
+			
+			// Validate target_count (must be >= -1, where -1 means "all")
+			if (target_count < -1) {
+				UtilityFunctions::push_error(vformat("Invalid target_count %d, must be >= -1 (-1 for all targets)", target_count));
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			// Validate repeat_count (must be >= 0)
+			if (repeat_count < 0) {
+				UtilityFunctions::push_error(vformat("Invalid repeat_count %d, must be >= 0", repeat_count));
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			// Validate sub_effects
+			if (effect.sub_effects.empty()) {
+				UtilityFunctions::push_error("No sub_effects provided for multiple_target effect");
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			// Validate team_filter is explicitly provided
+			if (effect.team_filter.is_empty()) {
+				UtilityFunctions::push_error("team_filter is required for multiple_target effect, must be 'player' or 'enemy'");
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			// Warn about sub-effects with target_self=true
+			for (const EffectRecord &sub_effect : effect.sub_effects) {
+				if (sub_effect.int0 == 1) {
+					UtilityFunctions::push_warning("Sub-effect has target_self=true in multiple_target effect, which may override selected targets");
+				}
+			}
+			
+			// Select targets
+			std::vector<UnitState*> targets = _select_targets(source, target, target_count, strategy, include_source, excess_handling, effect.team_filter);
+			
+			if (targets.empty()) {
+				UtilityFunctions::push_error("No targets selected for multiple_target effect");
+				multi_result["success"] = false;
+				multi_result["targets_affected"] = 0;
+				return multi_result;
+			}
+			
+			// Apply each sub-effect to each target repeat_count times
+			Dictionary nested_results;
+			for (UnitState *current_target : targets) {
+				if (current_target == nullptr) {
+					continue;
+				}
+				
+				int64_t target_id = current_target->instance_id;
+				
+				for (const EffectRecord &sub_effect : effect.sub_effects) {
+					for (int64_t i = 0; i < repeat_count; ++i) {
+						EffectContext sub_context = context;
+						sub_context.target = current_target;
+						
+						// Execute sub-effect
+						Dictionary sub_result = _execute_effect(sub_effect, sub_context);
+						
+						// Check if sub-effect failed
+						if (!sub_result.has("success") || !bool(sub_result.get("success", false))) {
+							continue;
+						}
+						
+						// Get effect kind for nesting
+						const StringName &effect_kind = _kind_for_opcode(sub_effect.opcode);
+						if (effect_kind.is_empty()) {
+							continue;
+						}
+						
+						// Ensure nested structure exists for this effect kind
+						if (!nested_results.has(effect_kind)) {
+							Dictionary effect_dict;
+							Dictionary by_target_dict;
+							effect_dict["by_target"] = by_target_dict;
+							effect_dict["total"] = 0.0;
+							nested_results[effect_kind] = effect_dict;
+						}
+						
+						Dictionary effect_dict = nested_results[effect_kind];
+						Dictionary by_target = effect_dict["by_target"];
+						
+						// Add result to by_target
+						if (!by_target.has(target_id)) {
+							by_target[target_id] = 0.0;
+						}
+						
+						// Extract numeric value from result
+						double value = 0.0;
+						if (effect_kind == sn_damage()) {
+							value = double(sub_result.get("damage_dealt", 0.0));
+						} else if (effect_kind == sn_heal()) {
+							value = double(sub_result.get("amount", 0.0));
+						} else if (effect_kind == sn_shield()) {
+							value = double(sub_result.get("amount", 0.0));
+						}
+						// For CC effects, just count applications
+						else {
+							value = 1.0;
+						}
+						
+						by_target[target_id] = double(by_target[target_id]) + value;
+						effect_dict["total"] = double(effect_dict["total"]) + value;
+						nested_results[effect_kind] = effect_dict;
+					}
+				}
+			}
+			
+			multi_result["targets_affected"] = targets.size();
+			multi_result["results"] = nested_results;
+			
+			// Result structure:
+			// {
+			//   "targets_affected": N,
+			//   "results": {
+			//     "damage": { "by_target": { "unit_id": value, ... }, "total": sum },
+			//     "heal": { "by_target": { "unit_id": value, ... }, "total": sum },
+			//     "shield": { "by_target": { "unit_id": value, ... }, "total": sum },
+			//     "slow": { "by_target": { "unit_id": 1.0, ... }, "total": count },
+			//     ...
+			//   }
+			// }
+			// Numeric effects (damage, heal, shield) sum values, CC effects count applications
+			
+			return multi_result;
+		}
 		default: {
 			// Opcodes without runtime execution resolve here (unknown kinds compile to UNKNOWN).
 			Dictionary default_result;
@@ -7423,7 +7748,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			return default_result;
 		}
 	}
-	}
+}
 
 void TeamfightSimulationCore::_merge_accumulated_results(Dictionary &target, const Dictionary &source) {
 	Variant source_variant = source;

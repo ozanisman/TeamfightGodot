@@ -312,13 +312,13 @@ const CHAMPION_DATA := {
 			"max_hp": 150.0,
 			"attack_damage": 18.0,
 			"attack_range": 3.5,
-			"attack_speed": 1.2,
+			"attack_speed": 1.0,
 			"move_speed": 0.6,
 			"armor": 0.08,
 			"magic_resist": 0.8,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 60.0,
+			"max_mana": 80.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 5.5,
 			"projectile_speed": 8.0,
@@ -327,17 +327,28 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A swift ranged attacker who fires volleys of arrows and excels at picking off distant targets.",
-		"ability_desc": "Fires a volley for 140% damage.",
+		"ability_desc": "Fires a volley of three arrows at the closest enemy, each dealing 50% physical damage.",
 		"ultimate_desc": "Rain of Arrows for 380% damage with splash.",
-		"passive_desc": "Increases attack damage by 25%. Rain of Arrows deals 50% splash damage in a 2.0 unit radius.",
+		"passive_desc": "Increases attack damage by 15%. [MAKE MORE INTERESTING]",
 		"passive_name": "Eagle Eye",
 		"ability_name": "Volley",
 		"ultimate_name": "Rain of Arrows",
 		"ability": {
-			"kind": &"projectile",
+			"kind": &"multi_target",
 			"params": {
-				"damage_ratio": 1.4,
-				"reason": "Volley"
+				"target_count": 1,
+				"repeat_count": 3,
+				"selection_strategy": "closest",
+				"team_filter": "enemy",
+				"include_self": false,
+				"excess_handling": "drop",
+				"sub_effects": {
+					"kind": &"projectile",
+					"params": {
+						"damage_ratio": 0.5,
+						"reason": "Volley"
+					}
+				}
 			}
 		},
 		"ultimate": {
@@ -971,7 +982,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"damage_based_heal",
 						"params": {
-							"heal_ratio": 0.1,
+							"damage_ratio": 0.1,
 							"reason": "Soul Siphon"
 						}
 					}
@@ -1189,11 +1200,11 @@ const CHAMPION_DATA := {
 		},
 		"description": "A dedicated holy healer who constantly heals her allies instead of attacking enemies.",
 		"ability_desc": "Heals an ally or self for 25 Health.",
-		"ultimate_desc": "Heals for 25% missing Health.",
+		"ultimate_desc": "Heals ALL allies for 25% missing Health.",
 		"passive_desc": "Can't attack, but gains 10 mana per second passively.",
 		"passive_name": "Devotion",
 		"ability_name": "Heal",
-		"ultimate_name": "Mass Heal",
+		"ultimate_name": "Mass Restoration",
 		"ability": {
 			"kind": &"heal",
 			"params": {
@@ -1203,18 +1214,18 @@ const CHAMPION_DATA := {
 			"requires_target_in_range": false
 		},
 		"ultimate": {
-			"kind": &"multi_effect",
+			"kind": &"multi_target",
 			"params": {
-				"effects": [
-					{
-						"kind": &"heal",
-						"params": {
-							"missing_hp_ratio": 0.25,
-							"reason": "Divine Aura"
-						}
-					},
-				],
-				"reason": "Divine Aura"
+				"target_count": -1,  # -1 means all targets
+				"team_filter": "player",
+				"include_self": true,
+				"sub_effects": {
+					"kind": &"heal",
+					"params": {
+						"missing_hp_ratio": 0.25,
+						"reason": "Mass Restoration"
+					}
+				},
 			}
 		},
 		"passive_ids": [&"devotion"],
@@ -1900,7 +1911,7 @@ const CHAMPION_DATA := {
 			"params": {
 				"missing_hp_ratio": 0.03,
 				"duration": 5.0,
-				"heal_tick_interval": 0.5,
+				"tick_interval": 0.5,
 				"stacking_mode": "refresh",
 				"reason": "Healing Bloom"
 			}
@@ -1913,7 +1924,7 @@ const CHAMPION_DATA := {
 				"radius": 3.0,
 				"max_hp_ratio": 0.04,
 				"duration": 5.0,
-				"heal_tick_interval": 0.5,
+				"tick_interval": 0.5,
 				"target_self": true,
 				"allow_overheal": true,
 				"stacking_mode": "refresh",
@@ -1943,29 +1954,9 @@ const PASSIVE_DATA := {
 		&"on_attack": [{
 			"kind": &"constant_multiplier",
 			"params": {
-				"multiplier": 1.25
+				"multiplier": 1.15
 			}
 		}],
-		&"post_attack": [
-			{
-				"kind": &"damage_threshold_trigger",
-				"params": {
-					"threshold_multiplier": 3.0,
-					"effect": {
-						"kind": &"aoe_damage",
-						"params": {
-							"shape": "circle",
-							"anchor": "target",
-							"radius": 2.0,
-							"damage_ratio": 0.5,
-							"damage_type": "physical",
-							"reason": "Rain of Arrows",
-							"color": [34, 139, 34],
-						},
-					},
-				},
-			},
-		],
 	},
 	&"bastion": {
 		&"on_defense": [{
@@ -2019,7 +2010,7 @@ const PASSIVE_DATA := {
 		&"post_attack": [{
 			"kind": &"damage_based_heal",
 			"params": {
-				"heal_ratio": 0.15
+				"damage_ratio": 0.15
 			}
 		}],
 	},
@@ -2143,7 +2134,7 @@ const PASSIVE_DATA := {
 					{
 						"kind": &"damage_based_heal",
 						"params": {
-							"heal_ratio": 1.0
+							"damage_ratio": 1.0
 						}
 					}
 				],
@@ -2246,7 +2237,7 @@ const PASSIVE_DATA := {
 				"on_tick_interval": 5.0,
 				"missing_hp_ratio": 0.02,
 				"duration": 5.0,
-				"heal_tick_interval": 0.5,
+				"tick_interval": 0.5,
 				"target_self": true,
 				"reason": "Restorative Mist"
 			}

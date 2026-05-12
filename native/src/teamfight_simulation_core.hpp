@@ -418,6 +418,8 @@ private:
 		/// Cannot move (separation / kite / chase) while > 0; can still cast and auto if in range.
 		double root_remaining = 0.0;
 		double silence_remaining = 0.0;
+		double silence_ability_remaining = 0.0;
+		double silence_ultimate_remaining = 0.0;
 		bool silence_blocks_abilities = false;
 		bool silence_blocks_ultimates = false;
 		double disarm_remaining = 0.0;
@@ -535,6 +537,7 @@ private:
 
 		// Per-source stack tracking for stat modifiers
 		Dictionary stat_stacks;  // key: "stat_name|reason", value: StackInfo
+		Dictionary stat_modifiers;  // key: "stat_name|reason", value: simple modifier info
 	};
 
 	struct UnitStrategy {
@@ -1158,6 +1161,7 @@ private:
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
 	void _apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
+	void _apply_simple_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason);
 	void _set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration);
 	void _apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
 	void _clear_all_stat_modifiers(UnitState &unit);
@@ -1224,10 +1228,10 @@ private:
 	void _apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
 	double _apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind);
-	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const StringName &action_kind);
+	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind);
 	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind);
-	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind);
-	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind);
+	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
+	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
 	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
 	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
 	Dictionary _champion_for(const StringName &archetype_id) const;

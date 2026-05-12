@@ -85,8 +85,8 @@ inline const StringName &sn_auto() {
 	static const StringName s("auto");
 	return s;
 }
-inline const StringName &sn_multi() {
-	static const StringName s("multi");
+inline const StringName &sn_multi_effect() {
+	static const StringName s("multi_effect");
 	return s;
 }
 inline const StringName &sn_damage() {
@@ -488,8 +488,8 @@ static Dictionary effect_dict(const StringName &kind, const Dictionary &params =
 }
 
 int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
-	if (kind == StringName("multi")) {
-		return EFFECT_OPCODE_MULTI;
+	if (kind == StringName("multi_effect")) {
+		return EFFECT_OPCODE_MULTI_EFFECT;
 	}
 	if (kind == StringName("damage")) {
 		return EFFECT_OPCODE_DAMAGE;
@@ -618,8 +618,8 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 	static const StringName empty_kind;
 	switch (opcode) {
-		case EFFECT_OPCODE_MULTI:
-			return sn_multi();
+		case EFFECT_OPCODE_MULTI_EFFECT:
+			return sn_multi_effect();
 		case EFFECT_OPCODE_DAMAGE:
 			return sn_damage();
 		case EFFECT_OPCODE_PROJECTILE:
@@ -713,7 +713,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	StringName kind = StringName(String(effect.get("kind", "")));
 	compiled.opcode = _opcode_for_kind(kind);
 	Dictionary params = Dictionary(effect.get("params", Dictionary()));
-	if (kind == StringName("multi")) {
+	if (kind == StringName("multi_effect")) {
 		Variant effects_value = params.get("effects", Variant());
 		Array effects = effects_value.get_type() == Variant::ARRAY ? Array(effects_value) : Array();
 		compiled.children = _compile_effect_array(effects);
@@ -6769,7 +6769,7 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	// Extended: also fail when target is stealthed (target no longer valid).
 	auto _effect_uses_projectile = [](const EffectRecord &e) -> bool {
 		if (e.opcode == EFFECT_OPCODE_PROJECTILE) return true;
-		if (e.opcode == EFFECT_OPCODE_MULTI) {
+		if (e.opcode == EFFECT_OPCODE_MULTI_EFFECT) {
 			for (const EffectRecord &child : e.children) {
 				if (child.opcode == EFFECT_OPCODE_PROJECTILE) return true;
 			}
@@ -7073,7 +7073,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 	}
 	
 	switch (effect.opcode) {
-		case EFFECT_OPCODE_MULTI: {
+		case EFFECT_OPCODE_MULTI_EFFECT: {
 			Dictionary combined_results;
 			for (const EffectRecord &child : effect.children) {
 				// Update context with accumulated results before executing child

@@ -257,7 +257,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Cleave",
 		"ultimate_name": "Whirlwind",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -280,7 +280,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -387,7 +387,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -441,7 +441,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Shadow Dash",
 		"ultimate_name": "Execute",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -560,7 +560,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Blood Sacrifice",
 		"ultimate_name": "Ravage",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -633,7 +633,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -688,7 +688,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Backstab",
 		"ultimate_name": "Execute",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -749,7 +749,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -802,7 +802,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Taunt",
 		"ultimate_name": "Colossal Impact",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -831,7 +831,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -885,7 +885,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Spectral Strike",
 		"ultimate_name": "Haunt",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -902,7 +902,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -957,7 +957,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Life Drain",
 		"ultimate_name": "Rift",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1070,7 +1070,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Pressure Point",
 		"ultimate_name": "Drunken Stance",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1093,7 +1093,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1203,7 +1203,7 @@ const CHAMPION_DATA := {
 			"requires_target_in_range": false
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1256,7 +1256,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1311,7 +1311,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Shield Bash",
 		"ultimate_name": "War Cry",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1334,7 +1334,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1388,7 +1388,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Ice Bolt",
 		"ultimate_name": "Blizzard",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1413,7 +1413,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1474,7 +1474,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Ground Slam",
 		"ultimate_name": "Earthquake",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1497,7 +1497,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1556,7 +1556,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Arcane Strike",
 		"ultimate_name": "Silence Zone",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1581,7 +1581,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1642,7 +1642,7 @@ const CHAMPION_DATA := {
 		"ability_name": "Disarm",
 		"ultimate_name": "Weapon Suppression",
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1665,7 +1665,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1715,7 +1715,7 @@ const CHAMPION_DATA := {
 		"ultimate_name": "Tornado",
 		"passive_ids": [&"gust_protection"],
 		"ability": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1758,7 +1758,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -1837,7 +1837,7 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -2126,7 +2126,7 @@ const PASSIVE_DATA := {
 	},
 	&"sweeping_strikes": {
 		&"post_attack": [{
-			"kind": &"multi",
+			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{

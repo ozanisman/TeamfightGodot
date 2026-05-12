@@ -936,6 +936,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		}
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.reason = String(params.get("reason", ""));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.int1 = int64_t(params.get("max_stacks", 1));
 		compiled.int2 = int64_t(params.get("duration", 0.0));
@@ -975,6 +976,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar5 = double(params.get("tick_interval", 1.0));
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.reason = String(params.get("reason", ""));
 		compiled.int0 = int64_t(params.get("max_stacks", 1));
 		compiled.int1 = int64_t(params.get("duration", 0.0));
 		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
@@ -4944,7 +4946,7 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	periodic_effects.push_back(new_effect);
 }
 
-void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind) {
 	// Calculate heal_per_tick from ratios at application time
 	double heal_per_tick = target.combat.max_hp * max_hp_ratio;
 	heal_per_tick += target.hp * current_hp_ratio;
@@ -4968,6 +4970,7 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = StringName();
 	new_effect.stacking_mode = stacking_mode;
+	new_effect.reason = reason;
 	new_effect.allow_overheal = allow_overheal;
 	new_effect.stack_count = 1;
 	new_effect.max_stacks = max_stacks;
@@ -4976,9 +4979,11 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	// Search for existing effect with same type and source
 	auto &periodic_effects = _uc(target).periodic_effects;
 	for (auto &existing : periodic_effects) {
-		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id) {
+		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
 			// Apply stacking logic
 			if (stacking_mode == StringName("refresh")) {
+				existing.heal_per_tick = heal_per_tick;
+				existing.allow_overheal = allow_overheal;
 				existing.remaining_duration = duration;
 				return;
 			} else if (stacking_mode == StringName("extend")) {
@@ -5092,14 +5097,14 @@ void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, d
 	_apply_aoe_dot_shape(source, nullptr, effect, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, target_self, action_kind);
 }
 
-void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind) {
 	EffectRecord effect;
 	effect.aoe_shape_params.shape = AoShapeKind::Circle;
 	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
 	effect.aoe_shape_params.radius = radius;
 	effect.stacking_mode = stacking_mode;
 	effect.effect_type = effect_type;
-	_apply_aoe_hot_shape(source, nullptr, effect, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, target_self, action_kind);
+	_apply_aoe_hot_shape(source, nullptr, effect, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, reason, target_self, action_kind);
 }
 
 void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius, double duration) {
@@ -5288,7 +5293,7 @@ void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState 
 	});
 }
 
-void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind) {
 	StringName source_team = source.team;
 	StringName ally_team = source_team == StringName("player") ? StringName("player") : StringName("enemy");
 	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(ally_team);
@@ -5307,7 +5312,7 @@ void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState 
 	shape_iter.target_override = shape_target;
 	
 	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
-		_apply_hot(source, unit, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, action_kind);
+		_apply_hot(source, unit, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, reason, action_kind);
 	});
 }
 
@@ -7494,7 +7499,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				(target_ally == nullptr ? source : *target_ally);
 			_apply_hot(source, hot_target, effect.scalar0, effect.scalar1, effect.scalar3, effect.scalar4,
 					   double(effect.int2), effect.scalar5,
-					   effect.stacking_mode, effect.int1, effect.int3 != 0, effect.effect_type, context.action_kind);
+					   effect.stacking_mode, effect.int1, effect.int3 != 0, effect.effect_type, effect.reason, context.action_kind);
 			hot_result["hot_applied"] = true;
 			return hot_result;
 		}
@@ -7513,7 +7518,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			aoe_hot_result["success"] = true;
 			_apply_aoe_hot_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
 					   double(effect.int1), effect.scalar5,
-					   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.int3 != 0, context.action_kind);
+					   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.reason, effect.int3 != 0, context.action_kind);
 			aoe_hot_result["aoe_hot_applied"] = true;
 			return aoe_hot_result;
 		}

@@ -111,7 +111,7 @@ private:
 		double accumulator = 0.0;       // Per-effect timing accumulator
 		
 		// DoT/HoT support
-		StringName stacking_mode;       // "refresh", "extend", "stack_damage", "stack_duration", "separate"
+		StringName stacking_mode;       // "refresh", "extend", "stack_damage", "separate"
 		StringName effect_type;         // e.g., "burn", "poison", "regen"
 		
 		// AOE shape parameters (replaces scalar0-scalar5 for AOE effects)
@@ -352,7 +352,7 @@ private:
 			double tick_accumulator = 0.0;
 			int64_t source_instance_id = 0;
 			StringName damage_type;  // "physical", "magical", "true"
-			StringName stacking_mode;  // "refresh", "extend", "stack_damage", "stack_duration", "separate"
+			StringName stacking_mode;  // "refresh", "extend", "stack_damage", "separate"
 			bool allow_overheal = false;
 			int stack_count = 0;
 			int max_stacks = 1;

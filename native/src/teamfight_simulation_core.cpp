@@ -5331,11 +5331,15 @@ void TeamfightSimulationCore::_apply_aoe_taunt_shape(UnitState &source, UnitStat
 	shape_iter.target_override = shape_target;
 	
 	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
-		unit.taunt_target_id = source.instance_id;
-		unit.taunt_remaining = Math::max(unit.taunt_remaining, duration);
-		unit.forced_target_id = source.instance_id;
-		unit.forced_target_remaining = Math::max(unit.forced_target_remaining, duration);
-		_uc(unit).forced_target_kind = StringName("taunt");
+		double tenacity = unit.combat.tenacity;
+		double effective_duration = duration * (1.0 - tenacity);
+		if (effective_duration > 0.0) {
+			unit.taunt_target_id = source.instance_id;
+			unit.taunt_remaining = Math::max(unit.taunt_remaining, effective_duration);
+			unit.forced_target_id = source.instance_id;
+			unit.forced_target_remaining = Math::max(unit.forced_target_remaining, effective_duration);
+			_uc(unit).forced_target_kind = StringName("taunt");
+		}
 	});
 }
 

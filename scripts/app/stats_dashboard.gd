@@ -175,9 +175,12 @@ var _export_popup_content: VBoxContainer
 var _matchup_loader: RefCounted
 var _matchup_vb: VBoxContainer
 var _matchup_right_panel: VBoxContainer
+var _aggregate_extremes_panel: VBoxContainer
+var _champion_list: ItemList
 var _current_champion: String = ""
 var _current_view_mode: int = 2  # 0=vs, 1=with, 2=both
 var _current_sort_mode: int = 0  # 0=winrate_desc, 1=winrate_asc, 2=wins, 3=losses, 4=alpha
+var _restoring_selection: bool = false  # Flag to prevent recursive calls during selection restore
 var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
@@ -377,7 +380,7 @@ func _build_ui() -> void:
 	# Add New Data button to top bar (after spacer, before Quit)
 	var new_data_button := Button.new()
 	new_data_button.text = "Generate Data"
-	new_data_button.custom_minimum_size = Vector2(120, UI_MIN_CONTROL_H)
+	new_data_button.custom_minimum_size = Vector2(140, UI_MIN_CONTROL_H)
 	new_data_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	new_data_button.pressed.connect(_on_new_data_pressed)
 	top.add_child(new_data_button)
@@ -1696,13 +1699,13 @@ func _on_new_data_pressed() -> void:
 	if _export_popup == null:
 		_build_export_popup()
 		add_child(_export_popup)  # Add to scene tree before showing
-	_export_popup.popup_centered(Vector2i(700, 900))
+	_export_popup.popup_centered(Vector2i(500, 900))
 
 
 func _build_export_popup() -> void:
 	_export_popup = Window.new()
 	_export_popup.title = "Generate New Data"
-	_export_popup.min_size = Vector2i(700, 900)
+	_export_popup.min_size = Vector2i(500, 900)
 	_export_popup.unresizable = false
 	_export_popup.close_requested.connect(func(): _export_popup.hide())
 	
@@ -1733,7 +1736,16 @@ func _build_export_popup() -> void:
 
 func _build_export_ui_content() -> void:
 	_export_popup_content.add_child(_section_label("EXPORT"))
+	
+	# MarginContainer to add padding around export_card
+	var margin_container := MarginContainer.new()
+	margin_container.add_theme_constant_override("margin_left", 25)
+	margin_container.add_theme_constant_override("margin_right", 25)
+	margin_container.add_theme_constant_override("margin_top", 25)
+	_export_popup_content.add_child(margin_container)
+	
 	var export_card := PanelContainer.new()
+	export_card.custom_minimum_size = Vector2(450, 600)
 	var export_card_style := StyleBoxFlat.new()
 	export_card_style.bg_color = COLOR_SECTION_BG
 	export_card_style.set_corner_radius_all(8)
@@ -1742,13 +1754,13 @@ func _build_export_ui_content() -> void:
 	var export_inner := VBoxContainer.new()
 	export_inner.add_theme_constant_override("separation", 18)
 	export_card.add_child(export_inner)
-	_export_popup_content.add_child(export_card)
+	margin_container.add_child(export_card)
 
 	_native_required_notice = Label.new()
 	_native_required_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_native_required_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_native_required_notice.add_theme_color_override("font_color", COLOR_RED)
-	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY + 2)
 	_native_required_notice.text = (
 		"Native simulation is required for export and batch tooling. "
 		+ "Build and place teamfight_simulation_core.dll in native/bin/."
@@ -1761,7 +1773,7 @@ func _build_export_ui_content() -> void:
 	regen_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	regen_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	regen_hint.add_theme_color_override("font_color", COLOR_SUBTLE)
-	regen_hint.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	regen_hint.add_theme_font_size_override("font_size", UI_FONT_BODY + 2)
 	export_inner.add_child(regen_hint)
 
 	var modes_row := HFlowContainer.new()
@@ -1847,6 +1859,7 @@ func _build_matchup_ui() -> void:
 	var main_hb := HBoxContainer.new()
 	main_hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_hb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_hb.add_theme_constant_override("separation", 32)
 	_matchup_vb.add_child(main_hb)
 	
 	# Left sidebar
@@ -1871,6 +1884,7 @@ func _build_matchup_ui() -> void:
 	champion_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_panel.add_child(champion_list)
 	champion_list.item_selected.connect(_on_champion_selected)
+	_champion_list = champion_list  # Store reference for refresh
 	
 	# Populate champion list
 	for champion in _matchup_loader.champions:
@@ -1884,6 +1898,7 @@ func _build_matchup_ui() -> void:
 	view_mode.add_item("Counters (vs)")
 	view_mode.add_item("Synergies (with)")
 	view_mode.add_item("Both")
+	view_mode.selected = 2  # Set default to Both
 	view_mode.item_selected.connect(_on_view_mode_changed)
 	left_panel.add_child(view_mode)
 	
@@ -1921,6 +1936,169 @@ func _build_matchup_ui() -> void:
 	
 	# Content will be populated when champion is selected
 	_show_matchup_placeholder(right_panel)
+	
+	# Create aggregate extremes panel
+	_aggregate_extremes_panel = _create_aggregate_extremes_panel()
+	main_hb.add_child(_aggregate_extremes_panel)
+
+
+func _create_aggregate_extremes_panel() -> VBoxContainer:
+	# Create container for aggregate extremes (right half of screen)
+	var aggregate_container := VBoxContainer.new()
+	aggregate_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	aggregate_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	aggregate_container.size_flags_stretch_ratio = 1.0
+	aggregate_container.add_theme_constant_override("separation", 20)
+	
+	# Header
+	var header := Label.new()
+	header.text = "GLOBAL EXTREMES"
+	header.add_theme_color_override("font_color", COLOR_HIGHLIGHT)
+	header.add_theme_font_size_override("font_size", UI_FONT_SECTION)
+	aggregate_container.add_child(header)
+	
+	# Get aggregate data
+	var extremes = _matchup_loader.get_aggregate_extremes()
+	
+	# Horizontal container for counters/synergies side by side
+	var both_hb := HBoxContainer.new()
+	both_hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	both_hb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	both_hb.add_theme_constant_override("separation", 16)
+	aggregate_container.add_child(both_hb)
+	
+	# Counters section (left side)
+	var counters_vb := VBoxContainer.new()
+	counters_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	counters_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	counters_vb.size_flags_stretch_ratio = 1.0
+	counters_vb.add_theme_constant_override("separation", 12)
+	both_hb.add_child(counters_vb)
+	
+	var counters_title := Label.new()
+	counters_title.text = "BEST COUNTERS"
+	counters_title.add_theme_color_override("font_color", COLOR_TEXT)
+	counters_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	counters_vb.add_child(counters_title)
+	
+	var counters_table := _create_aggregate_table(extremes.best_counters, "vs")
+	counters_vb.add_child(counters_table)
+	
+	# Synergies section (right side)
+	var synergies_vb := VBoxContainer.new()
+	synergies_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	synergies_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	synergies_vb.size_flags_stretch_ratio = 1.0
+	synergies_vb.add_theme_constant_override("separation", 12)
+	both_hb.add_child(synergies_vb)
+	
+	var synergies_title := Label.new()
+	synergies_title.text = "BEST SYNERGIES"
+	synergies_title.add_theme_color_override("font_color", COLOR_TEXT)
+	synergies_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	synergies_vb.add_child(synergies_title)
+	
+	var synergies_table := _create_aggregate_table(extremes.best_synergies, "with")
+	synergies_vb.add_child(synergies_table)
+	
+	return aggregate_container
+
+
+func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
+	var main_container := VBoxContainer.new()
+	main_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	# Fixed header
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 8)
+	
+	var champion_label := Label.new()
+	champion_label.text = ("Champion" if matchup_type == "vs" else "Champion").to_upper()
+	champion_label.custom_minimum_size.x = 160
+	champion_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(champion_label)
+	
+	var opponent_label := Label.new()
+	opponent_label.text = ("Vs" if matchup_type == "vs" else "With").to_upper()
+	opponent_label.custom_minimum_size.x = 150
+	opponent_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(opponent_label)
+	
+	var wins_label := Label.new()
+	wins_label.text = "WINS"
+	wins_label.custom_minimum_size.x = 70
+	wins_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(wins_label)
+	
+	var losses_label := Label.new()
+	losses_label.text = "LOSSES"
+	losses_label.custom_minimum_size.x = 70
+	losses_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(losses_label)
+	
+	var winrate_label := Label.new()
+	winrate_label.text = "WINRATE"
+	winrate_label.custom_minimum_size.x = 90
+	winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+	header_row.add_child(winrate_label)
+	
+	main_container.add_child(header_row)
+	
+	# Scrollable data area
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	main_container.add_child(scroll)
+	
+	var table := VBoxContainer.new()
+	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(table)
+	
+	# Data rows
+	for item in data:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		
+		var champion_name: String = item.champion
+		var opponent_name: String = item.opponent if matchup_type == "vs" else item.ally
+		
+		var champion_label_data := Label.new()
+		champion_label_data.text = champion_name
+		champion_label_data.custom_minimum_size.x = 160
+		champion_label_data.add_theme_color_override("font_color", COLOR_TEXT)
+		row.add_child(champion_label_data)
+		
+		var opponent_label_data := Label.new()
+		opponent_label_data.text = opponent_name
+		opponent_label_data.custom_minimum_size.x = 150
+		opponent_label_data.add_theme_color_override("font_color", COLOR_TEXT)
+		row.add_child(opponent_label_data)
+		
+		var data_wins_label := Label.new()
+		data_wins_label.text = str(item.wins)
+		data_wins_label.custom_minimum_size.x = 70
+		data_wins_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		row.add_child(data_wins_label)
+		
+		var data_losses_label := Label.new()
+		data_losses_label.text = str(item.losses)
+		data_losses_label.custom_minimum_size.x = 70
+		data_losses_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		row.add_child(data_losses_label)
+		
+		var data_winrate_label := Label.new()
+		data_winrate_label.text = "%.2f%%" % (item.winrate * 100)
+		data_winrate_label.custom_minimum_size.x = 90
+		var color = _get_winrate_color(item.winrate)
+		data_winrate_label.add_theme_color_override("font_color", color)
+		row.add_child(data_winrate_label)
+		
+		table.add_child(row)
+	
+	return main_container
 
 
 func _set_matchup_right_panel_to_center() -> void:
@@ -1957,10 +2135,13 @@ func _on_champion_search_changed(text: String) -> void:
 
 
 func _on_champion_selected(index: int) -> void:
-	if index < 0 or index >= _matchup_loader.champions.size():
+	if _restoring_selection:
+		return  # Skip during restore to prevent recursion
+	
+	if _champion_list == null or index < 0 or index >= _champion_list.get_item_count():
 		return
 	
-	_current_champion = _matchup_loader.champions[index]
+	_current_champion = _champion_list.get_item_text(index)
 	_update_matchup_display()
 
 
@@ -1982,8 +2163,12 @@ func _update_matchup_display() -> void:
 	if _matchup_vb.get_child_count() == 0:
 		_build_matchup_ui()
 	
-	# Clear existing content
-	var right_panel = _matchup_vb.get_child(0).get_child(1)  # Get right panel
+	# Clear existing content using stored reference
+	var right_panel = _matchup_right_panel
+	if right_panel == null:
+		# Fallback to traversing UI hierarchy if reference not set
+		right_panel = _matchup_vb.get_child(0).get_child(1)  # Get right panel
+	
 	for child in right_panel.get_children():
 		child.queue_free()
 	
@@ -2013,13 +2198,20 @@ func _show_vs_matchups(parent: Control, matchups: Dictionary) -> void:
 		_show_no_data(parent, "No counter matchup data available")
 		return
 	
+	# Create VBoxContainer to match both view mode spacing
+	var content_vb := VBoxContainer.new()
+	content_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_vb.add_theme_constant_override("separation", 12)
+	parent.add_child(content_vb)
+	
 	# Summary section
 	var summary_card := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
-	parent.add_child(summary_card)
+	content_vb.add_child(summary_card)
 	
 	# Matchup table
 	var table := _create_matchup_table(vs_data, "vs")
-	parent.add_child(table)
+	content_vb.add_child(table)
 
 
 func _show_with_matchups(parent: Control, matchups: Dictionary) -> void:
@@ -2028,13 +2220,20 @@ func _show_with_matchups(parent: Control, matchups: Dictionary) -> void:
 		_show_no_data(parent, "No synergy matchup data available")
 		return
 	
+	# Create VBoxContainer to match both view mode spacing
+	var content_vb := VBoxContainer.new()
+	content_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_vb.add_theme_constant_override("separation", 12)
+	parent.add_child(content_vb)
+	
 	# Summary section
 	var summary_card := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
-	parent.add_child(summary_card)
+	content_vb.add_child(summary_card)
 	
 	# Matchup table
 	var table := _create_matchup_table(with_data, "with")
-	parent.add_child(table)
+	content_vb.add_child(table)
 
 
 func _show_both_matchups(parent: Control, matchups: Dictionary) -> void:
@@ -2263,12 +2462,20 @@ func _sort_matchup_data(data: Dictionary, matchup_type: String) -> Array:
 
 
 func _get_winrate_color(winrate: float) -> Color:
-	if winrate >= 0.6:
-		return COLOR_GREEN
-	elif winrate >= 0.4:
-		return COLOR_SUBTLE
+	# Multi-stop gradient: Red (0%) -> Gray (50%) -> Green (75%) -> Blue (100%)
+	winrate = clampf(winrate, 0.0, 1.0)
+	if winrate <= 0.5:
+		# Interpolate from Red to Gray
+		var t = winrate * 2.0  # 0.0 to 1.0
+		return Color(1.0 - t * 0.3, t * 0.7, t * 0.7)
+	elif winrate <= 0.75:
+		# Interpolate from Gray to Green
+		var t = (winrate - 0.5) / 0.25  # 0.0 to 1.0
+		return Color(0.7 * (1.0 - t), 0.7 + t * 0.3, 0.7 * (1.0 - t))
 	else:
-		return COLOR_RED
+		# Interpolate from Green to Blue
+		var t = (winrate - 0.75) / 0.25  # 0.0 to 1.0
+		return Color(0.0, 1.0 - t * 0.5, t)
 
 
 func _show_no_data(parent: Control, message: String) -> void:
@@ -2283,6 +2490,9 @@ func _show_no_data(parent: Control, message: String) -> void:
 
 
 func _refresh_matchup_data() -> void:
+	# Save current champion selection before refresh
+	var saved_champion: String = _current_champion
+	
 	var loaded = _matchup_loader.load_data()
 	
 	# Rebuild the matchup UI to update champion dropdown
@@ -2292,6 +2502,26 @@ func _refresh_matchup_data() -> void:
 			child.queue_free()
 		# Rebuild with new data
 		_build_matchup_ui()
+		
+		# Try to restore champion selection if it still exists in new data
+		if not saved_champion.is_empty() and _champion_list != null:
+			var champion_index = -1
+			for i in range(_champion_list.get_item_count()):
+				if _champion_list.get_item_text(i) == saved_champion:
+					champion_index = i
+					break
+			
+			if champion_index >= 0:
+				# Champion exists in new data, restore selection
+				_restoring_selection = true
+				_champion_list.select(champion_index)
+				_current_champion = saved_champion
+				_restoring_selection = false
+				_update_matchup_display()
+			else:
+				# Champion doesn't exist in new data, show placeholder
+				_current_champion = ""
+				_show_matchup_placeholder(_matchup_right_panel)
 
 
 func _on_back_to_menu() -> void:

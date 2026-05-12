@@ -205,3 +205,47 @@ func search_champions(query: String) -> Array[String]:
 			results.append(champion)
 	
 	return results
+
+
+func get_aggregate_extremes() -> Dictionary:
+	var all_vs := []
+	var all_with := []
+	
+	# Aggregate all counter matchups
+	for champion in vs_data.keys():
+		for opponent in vs_data[champion].keys():
+			var data = vs_data[champion][opponent]
+			all_vs.append({
+				"champion": champion,
+				"opponent": opponent,
+				"wins": data.wins,
+				"losses": data.losses,
+				"winrate": data.winrate
+			})
+	
+	# Aggregate all synergy matchups
+	for champion in with_data.keys():
+		for ally in with_data[champion].keys():
+			var data = with_data[champion][ally]
+			all_with.append({
+				"champion": champion,
+				"ally": ally,
+				"wins": data.wins,
+				"losses": data.losses,
+				"winrate": data.winrate
+			})
+	
+	# Sort counters by winrate (highest = best counter, lowest = worst counter)
+	all_vs.sort_custom(func(a, b): return a.winrate > b.winrate)
+	
+	# Sort synergies by winrate (highest = best synergy, lowest = worst synergy)
+	all_with.sort_custom(func(a, b): return a.winrate > b.winrate)
+	
+	# Get top 50 best for each
+	var best_counters = all_vs.slice(0, 50)
+	var best_synergies = all_with.slice(0, 50)
+	
+	return {
+		"best_counters": best_counters,
+		"best_synergies": best_synergies
+	}

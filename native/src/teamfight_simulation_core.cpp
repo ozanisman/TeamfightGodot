@@ -1157,9 +1157,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else if (strategy_str == "closest") {
 			compiled.int1 = TARGET_SELECTION_CLOSEST;
 		} else {
-			if (_debug_combat_trace) {
-				UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
-			}
+			UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
 			compiled.int1 = -1;
 		}
 		compiled.int2 = params.get("include_self", false) ? 1 : 0;
@@ -1169,9 +1167,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else if (handling_str == "drop") {
 			compiled.int3 = EXCESS_TARGET_DROP;
 		} else {
-			if (_debug_combat_trace) {
-				UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
-			}
+			UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
 			compiled.int3 = -1;
 		}
 		compiled.int4 = int64_t(params.get("repeat_count", 1));
@@ -8056,7 +8052,9 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				}
 				summary += vformat("\n  total: %.3f", double(effect_dict["total"]));
 			}
-			UtilityFunctions::print(summary);
+			if (_debug_combat_trace) {
+				UtilityFunctions::print(summary);
+			}
 			
 			multi_result["targets_affected"] = targets.size();
 			multi_result["results"] = nested_results;
@@ -9638,5 +9636,5 @@ void TeamfightSimulationCore::_debug_log_stack_operation(const String &operation
 		reason
 	);
 	
-	UtilityFunctions::push_warning(debug_msg);
+	UtilityFunctions::print(debug_msg);
 }

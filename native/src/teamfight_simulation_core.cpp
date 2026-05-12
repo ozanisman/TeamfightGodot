@@ -4993,9 +4993,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 					existing.remaining_duration = duration;
 				}
 				return;
-			} else if (stacking_mode == StringName("stack_duration")) {
-				existing.remaining_duration += duration;
-				return;
 			}
 			// "separate" mode: do not modify existing, fall through to add new instance
 		}

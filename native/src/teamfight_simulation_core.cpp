@@ -920,6 +920,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		}
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.reason = String(params.get("reason", ""));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.int1 = int64_t(params.get("max_stacks", 1));
 		compiled.int2 = int64_t(params.get("duration", 0.0));
@@ -961,6 +962,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		}
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
+		compiled.reason = String(params.get("reason", ""));
 		compiled.int0 = int64_t(params.get("max_stacks", 1));
 		compiled.int1 = int64_t(params.get("duration", 0.0));
 		compiled.int2 = params.get("target_self", false) ? 1 : 0;
@@ -2029,6 +2031,8 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.slow_move_mult = 1.0;
 	unit.root_remaining = 0.0;
 	unit.silence_remaining = 0.0;
+	unit.silence_ability_remaining = 0.0;
+	unit.silence_ultimate_remaining = 0.0;
 	unit.silence_blocks_abilities = false;
 	unit.silence_blocks_ultimates = false;
 	unit.disarm_remaining = 0.0;
@@ -4075,13 +4079,15 @@ void TeamfightSimulationCore::_apply_silence(UnitState &source, UnitState &targe
 	if (effective_duration <= 0.0) {
 		return;
 	}
-	target.silence_remaining = Math::max(target.silence_remaining, effective_duration);
 	if (block_abilities) {
-		target.silence_blocks_abilities = true;
+		target.silence_ability_remaining = Math::max(target.silence_ability_remaining, effective_duration);
 	}
 	if (block_ultimate) {
-		target.silence_blocks_ultimates = true;
+		target.silence_ultimate_remaining = Math::max(target.silence_ultimate_remaining, effective_duration);
 	}
+	target.silence_remaining = Math::max(target.silence_ability_remaining, target.silence_ultimate_remaining);
+	target.silence_blocks_abilities = target.silence_ability_remaining > 0.0;
+	target.silence_blocks_ultimates = target.silence_ultimate_remaining > 0.0;
 }
 
 void TeamfightSimulationCore::_apply_disarm(UnitState &source, UnitState &target, double duration) {
@@ -4467,6 +4473,35 @@ void TeamfightSimulationCore::_apply_stat_modifier(UnitState &source, UnitState 
 	}
 }
 
+void TeamfightSimulationCore::_apply_simple_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason) {
+	if (additive == 0.0 && multiplicative == 1.0) {
+		return;
+	}
+	if (duration <= 0.0) {
+		_apply_stat_modifier(source, target, stat_name, additive, multiplicative, duration, is_match_duration);
+		return;
+	}
+
+	String modifier_key = _get_stack_key(stat_name, reason);
+	Dictionary existing = Dictionary(target.stat_modifiers.get(modifier_key, Dictionary()));
+	if (!existing.is_empty()) {
+		double previous_additive = double(existing.get("additive", 0.0));
+		double previous_multiplicative = double(existing.get("multiplicative", 1.0));
+		double inverse_multiplicative = previous_multiplicative != 0.0 ? 1.0 / previous_multiplicative : 1.0;
+		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
+	}
+
+	_apply_stat_modifier(source, target, stat_name, additive, multiplicative, 0.0, false);
+
+	Dictionary entry;
+	entry["stat_name"] = stat_name;
+	entry["additive"] = additive;
+	entry["multiplicative"] = multiplicative;
+	entry["duration"] = duration;
+	entry["is_match_duration"] = is_match_duration;
+	target.stat_modifiers[modifier_key] = entry;
+}
+
 void TeamfightSimulationCore::_set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration) {
 	if (duration < 0.0) {
 		duration = 0.0;
@@ -4654,6 +4689,7 @@ void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
 	
 	// Clear stack tracking
 	unit.stat_stacks.clear();
+	unit.stat_modifiers.clear();
 }
 
 bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) const {
@@ -4677,6 +4713,36 @@ bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) c
 }
 
 void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, double delta) {
+	Array keys_to_remove;
+	Array modifier_keys = unit.stat_modifiers.keys();
+	for (int i = 0; i < modifier_keys.size(); i++) {
+		Variant key_variant = modifier_keys[i];
+		if (key_variant.get_type() != Variant::STRING) {
+			continue;
+		}
+		String key = key_variant;
+		Dictionary modifier = unit.stat_modifiers[key];
+		bool is_match_duration = bool(modifier.get("is_match_duration", false));
+		if (is_match_duration) {
+			continue;
+		}
+		double duration = double(modifier.get("duration", 0.0)) - delta;
+		if (duration > 0.0) {
+			modifier["duration"] = duration;
+			unit.stat_modifiers[key] = modifier;
+			continue;
+		}
+		StringName stat_name = StringName(String(modifier.get("stat_name", "")));
+		double additive = double(modifier.get("additive", 0.0));
+		double multiplicative = double(modifier.get("multiplicative", 1.0));
+		double inverse_multiplicative = multiplicative != 0.0 ? 1.0 / multiplicative : 1.0;
+		_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
+		keys_to_remove.append(key);
+	}
+	for (int i = 0; i < keys_to_remove.size(); i++) {
+		unit.stat_modifiers.erase(String(keys_to_remove[i]));
+	}
+
 	// Update temporary modifier durations
 	unit.stat_temp_max_hp = Math::max(0.0, unit.stat_temp_max_hp - delta);
 	unit.stat_temp_attack_damage = Math::max(0.0, unit.stat_temp_attack_damage - delta);
@@ -4697,6 +4763,8 @@ void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, d
 }
 
 void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
+	(void)unit;
+	return;
 	// Clear expired temporary modifiers
 	if (unit.stat_temp_max_hp <= 0.0) {
 		unit.stat_additive_max_hp = 0.0;
@@ -4887,7 +4955,7 @@ void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitSt
 	}
 }
 
-void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind) {
 	// Calculate damage_per_tick from ratios at application time
 	double damage_per_tick = source.combat.attack_damage * attack_damage_ratio;
 	damage_per_tick += target.combat.max_hp * max_hp_ratio;
@@ -4899,7 +4967,7 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	
 	auto &periodic_effects = _uc(target).periodic_effects;
 	for (auto &existing : periodic_effects) {
-		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id) {
+		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
 			// Apply stacking logic
 			if (stacking_mode == StringName("refresh")) {
 				existing.remaining_duration = duration;
@@ -4939,6 +5007,7 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = damage_type;
 	new_effect.stacking_mode = stacking_mode;
+	new_effect.reason = reason;
 	new_effect.allow_overheal = false;
 	new_effect.stack_count = 1;
 	new_effect.max_stacks = max_stacks;
@@ -5086,7 +5155,7 @@ void TeamfightSimulationCore::_clear_periodic_effects(UnitState &unit) {
 	_uc(unit).periodic_effects.clear();
 }
 
-void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind) {
 	EffectRecord effect;
 	effect.aoe_shape_params.shape = AoShapeKind::Circle;
 	effect.aoe_shape_params.anchor = AoAnchorKind::Source;
@@ -5094,7 +5163,7 @@ void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, d
 	effect.damage_type = damage_type;
 	effect.stacking_mode = stacking_mode;
 	effect.effect_type = effect_type;
-	_apply_aoe_dot_shape(source, nullptr, effect, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, target_self, action_kind);
+	_apply_aoe_dot_shape(source, nullptr, effect, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, reason, target_self, action_kind);
 }
 
 void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind) {
@@ -5270,7 +5339,7 @@ void TeamfightSimulationCore::_apply_aoe_taunt_shape(UnitState &source, UnitStat
 	});
 }
 
-void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, bool target_self, const StringName &action_kind) {
+void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind) {
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
@@ -5289,7 +5358,7 @@ void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState 
 	shape_iter.target_override = shape_target;
 	
 	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
-		_apply_dot(source, unit, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, action_kind);
+		_apply_dot(source, unit, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, reason, action_kind);
 	});
 }
 
@@ -6325,6 +6394,8 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.slow_move_mult = 1.0;
 	unit.root_remaining = 0.0;
 	unit.silence_remaining = 0.0;
+	unit.silence_ability_remaining = 0.0;
+	unit.silence_ultimate_remaining = 0.0;
 	unit.silence_blocks_abilities = false;
 	unit.silence_blocks_ultimates = false;
 	unit.disarm_remaining = 0.0;
@@ -6624,12 +6695,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			unit.slow_move_mult = 1.0;
 		}
 		unit.root_remaining = Math::max(0.0, unit.root_remaining - _tick_rate);
-		unit.silence_remaining = Math::max(0.0, unit.silence_remaining - _tick_rate);
-		if (unit.silence_remaining <= 0.0) {
-			unit.silence_remaining = 0.0;
-			unit.silence_blocks_abilities = false;
-			unit.silence_blocks_ultimates = false;
-		}
+		unit.silence_ability_remaining = Math::max(0.0, unit.silence_ability_remaining - _tick_rate);
+		unit.silence_ultimate_remaining = Math::max(0.0, unit.silence_ultimate_remaining - _tick_rate);
+		unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
+		unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
+		unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
 		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
 		unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
 			if (unit.shield > 0.0) {
@@ -7486,7 +7556,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				_apply_dot(source, *dot_target, effect.scalar0, effect.scalar1, effect.scalar3,
 						   double(effect.int2), effect.scalar2,
 						   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
-						   effect.stacking_mode, effect.int1, effect.effect_type, context.action_kind);
+						   effect.stacking_mode, effect.int1, effect.effect_type, effect.reason, context.action_kind);
 				dot_result["dot_applied"] = true;
 			}
 			return dot_result;
@@ -7509,7 +7579,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			_apply_aoe_dot_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3,
 					   double(effect.int1), effect.scalar4,
 					   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
-					   effect.stacking_mode, effect.int0, effect.effect_type, effect.int2 != 0, context.action_kind);
+					   effect.stacking_mode, effect.int0, effect.effect_type, effect.reason, effect.int2 != 0, context.action_kind);
 			aoe_dot_result["aoe_dot_applied"] = true;
 			return aoe_dot_result;
 		}
@@ -7800,8 +7870,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 					stat_result["max_stacks"] = effect.int2;
 					stat_result["stack_behavior"] = effect.int3;
 				} else {
-					// Use original simple application
-					_apply_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0);
+					_apply_simple_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0, effect.reason);
 					stat_result["stat_modifier_applied"] = true;
 					stat_result["use_stacking"] = false;
 				}
@@ -7885,6 +7954,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			
 			// Apply each sub-effect to each target repeat_count times
 			Dictionary nested_results;
+			Dictionary summary_applications;
 			for (UnitState *current_target : targets) {
 				if (current_target == nullptr) {
 					continue;
@@ -7896,6 +7966,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 					for (int64_t i = 0; i < repeat_count; ++i) {
 						EffectContext sub_context = context;
 						sub_context.target = current_target;
+						sub_context.target_ally = current_target;
 						
 						// Execute sub-effect
 						Dictionary sub_result = _execute_effect(sub_effect, sub_context);
@@ -7929,6 +8000,15 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						if (!by_target.has(target_id)) {
 							by_target[target_id] = 0.0;
 						}
+						if (!summary_applications.has(effect_kind_str)) {
+							Dictionary summary_by_target;
+							summary_applications[effect_kind_str] = summary_by_target;
+						}
+						Dictionary summary_by_target = summary_applications[effect_kind_str];
+						if (!summary_by_target.has(target_id)) {
+							Array applications;
+							summary_by_target[target_id] = applications;
+						}
 						
 						// Extract numeric value from result
 						double value = 0.0;
@@ -7944,12 +8024,42 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 							value = 1.0;
 						}
 						
+						Array applications = summary_by_target[target_id];
+						applications.append(value);
+						summary_by_target[target_id] = applications;
+						summary_applications[effect_kind_str] = summary_by_target;
 						by_target[target_id] = double(by_target[target_id]) + value;
 						effect_dict["total"] = double(effect_dict["total"]) + value;
 						nested_results[effect_kind_str] = effect_dict;
 					}
 				}
 			}
+			
+			String summary = vformat("multi_target summary source=%d targets=%d", source.instance_id, targets.size());
+			Array effect_keys = nested_results.keys();
+			for (int64_t effect_index = 0; effect_index < effect_keys.size(); ++effect_index) {
+				String effect_key = String(effect_keys[effect_index]);
+				Dictionary effect_dict = nested_results[effect_key];
+				Dictionary by_target = effect_dict["by_target"];
+				Dictionary summary_by_target = summary_applications[effect_key];
+				summary += vformat("\n%s:", effect_key);
+				Array target_keys = by_target.keys();
+				for (int64_t target_index = 0; target_index < target_keys.size(); ++target_index) {
+					Variant target_key = target_keys[target_index];
+					Array applications = summary_by_target[target_key];
+					String values = "[";
+					for (int64_t application_index = 0; application_index < applications.size(); ++application_index) {
+						if (application_index > 0) {
+							values += ", ";
+						}
+						values += vformat("%.3f", double(applications[application_index]));
+					}
+					values += "]";
+					summary += vformat("\n  target %s: %s total=%.3f", String(target_key), values, double(by_target[target_key]));
+				}
+				summary += vformat("\n  total: %.3f", double(effect_dict["total"]));
+			}
+			UtilityFunctions::print(summary);
 			
 			multi_result["targets_affected"] = targets.size();
 			multi_result["results"] = nested_results;

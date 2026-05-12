@@ -249,8 +249,8 @@ inline const StringName &sn_stat_modifier() {
 	static const StringName s("stat_modifier");
 	return s;
 }
-inline const StringName &sn_multiple_target() {
-	static const StringName s("multiple_target");
+inline const StringName &sn_multi_target() {
+	static const StringName s("multi_target");
 	return s;
 }
 inline const StringName &sn_ability() {
@@ -488,128 +488,131 @@ static Dictionary effect_dict(const StringName &kind, const Dictionary &params =
 }
 
 int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
-	if (kind == StringName("multi_effect")) {
+	if (kind == sn_multi_target()) {
+		return EFFECT_OPCODE_MULTI_TARGET;
+	}
+	if (kind == sn_multi_effect()) {
 		return EFFECT_OPCODE_MULTI_EFFECT;
 	}
-	if (kind == StringName("damage")) {
+	if (kind == sn_damage()) {
 		return EFFECT_OPCODE_DAMAGE;
 	}
-	if (kind == StringName("projectile")) {
+	if (kind == sn_projectile()) {
 		return EFFECT_OPCODE_PROJECTILE;
 	}
-	if (kind == StringName("stun")) {
+	if (kind == sn_stun()) {
 		return EFFECT_OPCODE_STUN;
 	}
-	if (kind == StringName("shield")) {
+	if (kind == sn_shield()) {
 		return EFFECT_OPCODE_SHIELD;
 	}
-	if (kind == StringName("heal")) {
+	if (kind == sn_heal()) {
 		return EFFECT_OPCODE_HEAL;
 	}
-	if (kind == StringName("aoe_taunt")) {
+	if (kind == sn_aoe_taunt()) {
 		return EFFECT_OPCODE_AOE_TAUNT;
 	}
-	if (kind == StringName("aoe_damage")) {
+	if (kind == sn_aoe_damage()) {
 		return EFFECT_OPCODE_AOE_DAMAGE;
 	}
-	if (kind == StringName("damage_threshold_trigger")) {
+	if (kind == sn_damage_threshold_trigger()) {
 		return EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER;
 	}
-	if (kind == StringName("damage_over_time")) {
+	if (kind == sn_damage_over_time()) {
 		return EFFECT_OPCODE_DAMAGE_OVER_TIME;
 	}
-	if (kind == StringName("heal_over_time")) {
+	if (kind == sn_heal_over_time()) {
 		return EFFECT_OPCODE_HEAL_OVER_TIME;
 	}
-	if (kind == StringName("aoe_damage_over_time")) {
+	if (kind == sn_aoe_damage_over_time()) {
 		return EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME;
 	}
-	if (kind == StringName("aoe_heal_over_time")) {
+	if (kind == sn_aoe_heal_over_time()) {
 		return EFFECT_OPCODE_AOE_HEAL_OVER_TIME;
 	}
-	if (kind == StringName("mana_regen")) {
+	if (kind == sn_mana_regen()) {
 		return EFFECT_OPCODE_MANA_REGEN;
 	}
-	if (kind == StringName("post_damage_mana_gain")) {
+	if (kind == sn_post_damage_mana_gain()) {
 		return EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN;
 	}
-	if (kind == StringName("damage_based_heal")) {
+	if (kind == sn_damage_based_heal()) {
 		return EFFECT_OPCODE_DAMAGE_BASED_HEAL;
 	}
-	if (kind == StringName("mana_restore_on_hit")) {
+	if (kind == sn_mana_restore_on_hit()) {
 		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
 	}
-	if (kind == StringName("drain_target_mana_on_hit")) {
+	if (kind == sn_drain_target_mana_on_hit()) {
 		return EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT;
 	}
-	if (kind == StringName("every_n_attacks_stun")) {
+	if (kind == sn_every_n_attacks_stun()) {
 		return EFFECT_OPCODE_EVERY_N_ATTACKS_STUN;
 	}
-	if (kind == StringName("self_dash")) {
+	if (kind == sn_self_dash()) {
 		return EFFECT_OPCODE_SELF_DASH;
 	}
-	if (kind == StringName("auto_dodge")) {
+	if (kind == sn_auto_dodge()) {
 		return EFFECT_OPCODE_AUTO_DODGE;
 	}
-	if (kind == StringName("constant_multiplier")) {
+	if (kind == sn_constant_multiplier()) {
 		return EFFECT_OPCODE_CONSTANT_MULTIPLIER;
 	}
-	if (kind == StringName("hp_threshold_damage_multiplier")) {
+	if (kind == sn_hp_threshold_damage_multiplier()) {
 		return EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER;
 	}
-	if (kind == StringName("distance_threshold_multiplier")) {
+	if (kind == sn_distance_threshold_multiplier()) {
 		return EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER;
 	}
 	// New effect kinds
-	if (kind == StringName("slow")) {
+	if (kind == sn_slow()) {
 		return EFFECT_OPCODE_SLOW;
 	}
-	if (kind == StringName("root")) {
+	if (kind == sn_root()) {
 		return EFFECT_OPCODE_ROOT;
 	}
-	if (kind == StringName("silence")) {
+	if (kind == sn_silence()) {
 		return EFFECT_OPCODE_SILENCE;
 	}
-	if (kind == StringName("disarm")) {
+	if (kind == sn_disarm()) {
 		return EFFECT_OPCODE_DISARM;
 	}
-	if (kind == StringName("stealth")) {
+	if (kind == sn_stealth()) {
 		return EFFECT_OPCODE_STEALTH;
 	}
-	if (kind == StringName("knockback")) {
+	if (kind == sn_knockback()) {
 		return EFFECT_OPCODE_KNOCKBACK;
 	}
-	if (kind == StringName("reflect")) {
+	if (kind == sn_reflect()) {
 		return EFFECT_OPCODE_REFLECT;
 	}
-	if (kind == StringName("aoe_slow")) {
+	if (kind == sn_aoe_slow()) {
 		return EFFECT_OPCODE_AOE_SLOW;
 	}
-	if (kind == StringName("aoe_root")) {
+	if (kind == sn_aoe_root()) {
 		return EFFECT_OPCODE_AOE_ROOT;
 	}
-	if (kind == StringName("aoe_silence")) {
+	if (kind == sn_aoe_silence()) {
 		return EFFECT_OPCODE_AOE_SILENCE;
 	}
-	if (kind == StringName("aoe_disarm")) {
+	if (kind == sn_aoe_disarm()) {
 		return EFFECT_OPCODE_AOE_DISARM;
 	}
-	if (kind == StringName("aoe_knockback")) {
+	if (kind == sn_aoe_knockback()) {
 		return EFFECT_OPCODE_AOE_KNOCKBACK;
 	}
-	if (kind == StringName("aoe_reflect")) {
+	if (kind == sn_aoe_reflect()) {
 		return EFFECT_OPCODE_AOE_REFLECT;
 	}
-	if (kind == StringName("reflect_damage")) {
+	if (kind == sn_reflect_damage()) {
 		return EFFECT_OPCODE_REFLECT_DAMAGE;
 	}
-	if (kind == StringName("knockback_shield")) {
+	if (kind == sn_knockback_shield()) {
 		return EFFECT_OPCODE_KNOCKBACK_SHIELD;
 	}
-	if (kind == StringName("target_status_multiplier")) {
+	if (kind == sn_target_status_multiplier()) {
 		return EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER;
 	}
-	if (kind == StringName("stat_modifier")) {
+	if (kind == sn_stat_modifier()) {
 		return EFFECT_OPCODE_STAT_MODIFIER;
 	}
 	return EFFECT_OPCODE_UNKNOWN;
@@ -701,8 +704,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_target_status_multiplier();
 		case EFFECT_OPCODE_STAT_MODIFIER:
 			return sn_stat_modifier();
-		case EFFECT_OPCODE_MULTIPLE_TARGET:
-			return sn_multiple_target();
+		case EFFECT_OPCODE_MULTI_TARGET:
+			return sn_multi_target();
 		default:
 			return empty_kind;
 	}
@@ -710,93 +713,217 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 
 TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
 	EffectRecord compiled;
-	StringName kind = StringName(String(effect.get("kind", "")));
+	String kind_str = String(effect.get("kind", ""));
+	StringName kind;
+	if (kind_str == "multi_target") {
+		kind = sn_multi_target();
+	} else if (kind_str == "multi_effect") {
+		kind = sn_multi_effect();
+	} else if (kind_str == "damage") {
+		kind = sn_damage();
+	} else if (kind_str == "projectile") {
+		kind = sn_projectile();
+	} else if (kind_str == "stun") {
+		kind = sn_stun();
+	} else if (kind_str == "shield") {
+		kind = sn_shield();
+	} else if (kind_str == "heal") {
+		kind = sn_heal();
+	} else if (kind_str == "aoe_taunt") {
+		kind = sn_aoe_taunt();
+	} else if (kind_str == "aoe_damage") {
+		kind = sn_aoe_damage();
+	} else if (kind_str == "damage_threshold_trigger") {
+		kind = sn_damage_threshold_trigger();
+	} else if (kind_str == "damage_over_time") {
+		kind = sn_damage_over_time();
+	} else if (kind_str == "heal_over_time") {
+		kind = sn_heal_over_time();
+	} else if (kind_str == "aoe_damage_over_time") {
+		kind = sn_aoe_damage_over_time();
+	} else if (kind_str == "aoe_heal_over_time") {
+		kind = sn_aoe_heal_over_time();
+	} else if (kind_str == "mana_regen") {
+		kind = sn_mana_regen();
+	} else if (kind_str == "post_damage_mana_gain") {
+		kind = sn_post_damage_mana_gain();
+	} else if (kind_str == "damage_based_heal") {
+		kind = sn_damage_based_heal();
+	} else if (kind_str == "mana_restore_on_hit") {
+		kind = sn_mana_restore_on_hit();
+	} else if (kind_str == "drain_target_mana_on_hit") {
+		kind = sn_drain_target_mana_on_hit();
+	} else if (kind_str == "every_n_attacks_stun") {
+		kind = sn_every_n_attacks_stun();
+	} else if (kind_str == "self_dash") {
+		kind = sn_self_dash();
+	} else if (kind_str == "auto_dodge") {
+		kind = sn_auto_dodge();
+	} else if (kind_str == "constant_multiplier") {
+		kind = sn_constant_multiplier();
+	} else if (kind_str == "hp_threshold_damage_multiplier") {
+		kind = sn_hp_threshold_damage_multiplier();
+	} else if (kind_str == "distance_threshold_multiplier") {
+		kind = sn_distance_threshold_multiplier();
+	} else if (kind_str == "slow") {
+		kind = sn_slow();
+	} else if (kind_str == "root") {
+		kind = sn_root();
+	} else if (kind_str == "silence") {
+		kind = sn_silence();
+	} else if (kind_str == "disarm") {
+		kind = sn_disarm();
+	} else if (kind_str == "stealth") {
+		kind = sn_stealth();
+	} else if (kind_str == "knockback") {
+		kind = sn_knockback();
+	} else if (kind_str == "reflect") {
+		kind = sn_reflect();
+	} else if (kind_str == "aoe_slow") {
+		kind = sn_aoe_slow();
+	} else if (kind_str == "aoe_root") {
+		kind = sn_aoe_root();
+	} else if (kind_str == "aoe_silence") {
+		kind = sn_aoe_silence();
+	} else if (kind_str == "aoe_disarm") {
+		kind = sn_aoe_disarm();
+	} else if (kind_str == "aoe_knockback") {
+		kind = sn_aoe_knockback();
+	} else if (kind_str == "aoe_reflect") {
+		kind = sn_aoe_reflect();
+	} else if (kind_str == "reflect_damage") {
+		kind = sn_reflect_damage();
+	} else if (kind_str == "knockback_shield") {
+		kind = sn_knockback_shield();
+	} else if (kind_str == "target_status_multiplier") {
+		kind = sn_target_status_multiplier();
+	} else if (kind_str == "stat_modifier") {
+		kind = sn_stat_modifier();
+	} else {
+		kind = StringName(kind_str);
+	}
 	compiled.opcode = _opcode_for_kind(kind);
 	Dictionary params = Dictionary(effect.get("params", Dictionary()));
-	if (kind == StringName("multi_effect")) {
+	if (kind == sn_multi_effect()) {
 		Variant effects_value = params.get("effects", Variant());
 		Array effects = effects_value.get_type() == Variant::ARRAY ? Array(effects_value) : Array();
 		compiled.children = _compile_effect_array(effects);
 		return compiled;
 	}
-	if (kind == StringName("constant_multiplier")) {
+	if (kind == sn_constant_multiplier()) {
 		compiled.scalar0 = double(params.get("multiplier", 1.0));
-	} else if (kind == StringName("hp_threshold_damage_multiplier")) {
+	} else if (kind == sn_hp_threshold_damage_multiplier()) {
 		compiled.scalar0 = double(params.get("above_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("below_hp_ratio", 0.0));
 		compiled.scalar2 = double(params.get("multiplier", 1.0));
-	} else if (kind == StringName("distance_threshold_multiplier")) {
+	} else if (kind == sn_distance_threshold_multiplier()) {
 		compiled.scalar0 = double(params.get("min_distance", 0.0));
 		compiled.scalar1 = double(params.get("multiplier", 1.0));
-	} else if (kind == StringName("damage")) {
+	} else if (kind == sn_damage()) {
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.scalar3 = bool(params.get("trigger_on_hit", false)) ? 1.0 : 0.0;
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
-		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
+		String damage_type_str = String(params.get("damage_type", "physical"));
+		if (damage_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (damage_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (damage_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else {
+			compiled.damage_type = StringName(damage_type_str);
+		}
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("projectile")) {
+	} else if (kind == sn_projectile()) {
 		// Use -1.0 as sentinel for "use unit's projectile_speed/radius stat" when override is null.
 		// Python parity: speed_override=None → unit.stats.projectile_speed, radius_override=None → unit.stats.projectile_radius.
 		Variant speed_v = params.get("speed_override", Variant());
 		compiled.scalar0 = (speed_v.get_type() == Variant::NIL) ? -1.0 : double(speed_v);
 		Variant radius_v = params.get("radius_override", Variant());
 		compiled.scalar1 = (radius_v.get_type() == Variant::NIL) ? -1.0 : double(radius_v);
-		compiled.scalar2 = double(params.get("damage_multiplier", 1.0));
+		compiled.scalar2 = double(params.get("damage_ratio", 1.0));
 		compiled.scalar3 = double(params.get("stun_duration", 0.0));
-		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
+		String damage_type_str = String(params.get("damage_type", "physical"));
+		if (damage_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (damage_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (damage_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else {
+			compiled.damage_type = StringName(damage_type_str);
+		}
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("stun")) {
+	} else if (kind == sn_stun()) {
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("shield")) {
+	} else if (kind == sn_shield()) {
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("heal")) {
+	} else if (kind == sn_heal()) {
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("aoe_taunt")) {
+	} else if (kind == sn_aoe_taunt()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", ""));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-	} else if (kind == StringName("aoe_damage")) {
+	} else if (kind == sn_aoe_damage()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("damage_ratio", 1.0));
 		compiled.scalar2 = double(params.get("splash_ratio", 1.0));
 		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		compiled.damage_type = StringName(String(params.get("damage_type", "physical")));
+		String damage_type_str = String(params.get("damage_type", "physical"));
+		if (damage_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (damage_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (damage_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else {
+			compiled.damage_type = StringName(damage_type_str);
+		}
 		compiled.reason = String(params.get("reason", ""));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-	} else if (kind == StringName("damage_over_time")) {
+	} else if (kind == sn_damage_over_time()) {
 		// Ratio-based parameters
-		compiled.scalar0 = double(params.get("attack_damage_ratio", 0.0));
+		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
 		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("damage_tick_interval", 1.0));
+		compiled.scalar2 = double(params.get("tick_interval", 1.0));
 		compiled.scalar3 = double(params.get("flat_amount", 0.0));
 		// Backward compatibility: damage_per_tick maps to flat_amount
 		if (params.has("damage_per_tick") && !params.has("flat_amount")) {
 			compiled.scalar3 = double(params.get("damage_per_tick", 0.0));
 		}
-		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		String damage_type_str = String(params.get("damage_type", "physical"));
+		if (damage_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (damage_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (damage_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else {
+			compiled.damage_type = StringName(damage_type_str);
+		}
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
 		compiled.int1 = int64_t(params.get("max_stacks", 1));
 		compiled.int2 = int64_t(params.get("duration", 0.0));
-	} else if (kind == StringName("heal_over_time")) {
+	} else if (kind == sn_heal_over_time()) {
 		// Ratio-based parameters
 		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("heal_tick_interval", 1.0));
+		compiled.scalar2 = double(params.get("tick_interval", 1.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.scalar4 = double(params.get("flat_amount", 0.0));
 		// Backward compatibility: heal_per_tick maps to flat_amount
@@ -809,22 +936,31 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int1 = int64_t(params.get("max_stacks", 1));
 		compiled.int2 = int64_t(params.get("duration", 0.0));
 		compiled.int3 = bool(params.get("allow_overheal", false)) ? 1 : 0;
-	} else if (kind == StringName("aoe_damage_over_time")) {
+	} else if (kind == sn_aoe_damage_over_time()) {
 		// AoE parameters
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		// DoT ratio parameters
-		compiled.scalar1 = double(params.get("attack_damage_ratio", 0.0));
+		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(params.get("max_hp_ratio", 0.0));
 		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		compiled.scalar4 = double(params.get("damage_tick_interval", 1.0));
-		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		compiled.scalar4 = double(params.get("tick_interval", 1.0));
+		String damage_type_str = String(params.get("damage_type", "physical"));
+		if (damage_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (damage_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (damage_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else {
+			compiled.damage_type = StringName(damage_type_str);
+		}
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
 		compiled.int0 = int64_t(params.get("max_stacks", 1));
 		compiled.int1 = int64_t(params.get("duration", 0.0));
 		compiled.int2 = params.get("target_self", false) ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-	} else if (kind == StringName("aoe_heal_over_time")) {
+	} else if (kind == sn_aoe_heal_over_time()) {
 		// AoE parameters
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		// HoT ratio parameters
@@ -832,7 +968,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("current_hp_ratio", 0.0));
 		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
 		compiled.scalar4 = double(params.get("flat_amount", 0.0));
-		compiled.scalar5 = double(params.get("heal_tick_interval", 1.0));
+		compiled.scalar5 = double(params.get("tick_interval", 1.0));
 		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(params.get("effect_type", "generic"));
 		compiled.int0 = int64_t(params.get("max_stacks", 1));
@@ -840,54 +976,54 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
 		compiled.int3 = params.get("target_self", false) ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-	} else if (kind == StringName("damage_threshold_trigger")) {
+	} else if (kind == sn_damage_threshold_trigger()) {
 		compiled.scalar0 = double(params.get("threshold_multiplier", 1.0));
 		Variant nested = params.get("effect", Variant());
 		if (nested.get_type() == Variant::DICTIONARY) {
 			compiled.children.push_back(_compile_effect(Dictionary(nested)));
 		}
-	} else if (kind == StringName("mana_regen")) {
+	} else if (kind == sn_mana_regen()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
 		compiled.scalar1 = double(params.get("max_mana_ratio", 0.0));
-	} else if (kind == StringName("post_damage_mana_gain")) {
+	} else if (kind == sn_post_damage_mana_gain()) {
 		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-	} else if (kind == StringName("damage_based_heal")) {
-		compiled.scalar0 = double(params.get("heal_ratio", 0.0));
-	} else if (kind == StringName("mana_restore_on_hit")) {
+	} else if (kind == sn_damage_based_heal()) {
+		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
+	} else if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
-	} else if (kind == StringName("drain_target_mana_on_hit")) {
+	} else if (kind == sn_drain_target_mana_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
-	} else if (kind == StringName("every_n_attacks_stun")) {
+	} else if (kind == sn_every_n_attacks_stun()) {
 		compiled.int0 = int64_t(params.get("every_n", 0));
 		compiled.scalar0 = double(params.get("stun_duration", 0.0));
 		compiled.reason = String(params.get("reason", ""));
-	} else if (kind == StringName("self_dash")) {
+	} else if (kind == sn_self_dash()) {
 		compiled.scalar0 = double(params.get("distance", 1.0));
 		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
-	} else if (kind == StringName("auto_dodge")) {
+	} else if (kind == sn_auto_dodge()) {
 		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
 		compiled.scalar2 = double(params.get("on_hit_multiplier", 1.0));
 	}
 	// New effect compilation
-	else if (kind == StringName("slow")) {
+	else if (kind == sn_slow()) {
 		compiled.scalar0 = double(params.get("slow_percentage", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", "Slow"));
-	} else if (kind == StringName("root")) {
+	} else if (kind == sn_root()) {
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", "Root"));
-	} else if (kind == StringName("silence")) {
+	} else if (kind == sn_silence()) {
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
 		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Silence"));
-	} else if (kind == StringName("disarm")) {
+	} else if (kind == sn_disarm()) {
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.reason = String(params.get("reason", "Disarm"));
-	} else if (kind == StringName("stealth")) {
+	} else if (kind == sn_stealth()) {
 		Dictionary break_conditions = Dictionary(params.get("break_conditions", Dictionary()));
 		compiled.scalar0 = double(params.get("duration", 0.0));
 		compiled.int0 = bool(break_conditions.get("on_attack", false)) ? 1 : 0;
@@ -895,65 +1031,82 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int2 = bool(break_conditions.get("on_damage_taken", false)) ? 1 : 0;
 		compiled.int3 = params.get("target_self", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Stealth"));
-	} else if (kind == StringName("knockback")) {
+	} else if (kind == sn_knockback()) {
 		compiled.scalar0 = double(params.get("distance", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Knockback"));
-	} else if (kind == StringName("reflect")) {
+	} else if (kind == sn_reflect()) {
 		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Reflect"));
-	} else if (kind == StringName("aoe_slow")) {
+	} else if (kind == sn_aoe_slow()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Slow"));
-	} else if (kind == StringName("aoe_root")) {
+	} else if (kind == sn_aoe_root()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Root"));
-	} else if (kind == StringName("aoe_silence")) {
+	} else if (kind == sn_aoe_silence()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
 		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Silence"));
-	} else if (kind == StringName("aoe_disarm")) {
+	} else if (kind == sn_aoe_disarm()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Disarm"));
-	} else if (kind == StringName("aoe_knockback")) {
+	} else if (kind == sn_aoe_knockback()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("distance", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Knockback"));
-	} else if (kind == StringName("aoe_reflect")) {
+	} else if (kind == sn_aoe_reflect()) {
 		compiled.scalar0 = double(params.get("radius", 0.0));
 		compiled.scalar1 = double(params.get("reflect_percentage", 0.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
 		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 		compiled.reason = String(params.get("reason", "AOE Reflect"));
-	} else if (kind == StringName("reflect_damage")) {
+	} else if (kind == sn_reflect_damage()) {
 		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
 		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.reason = String(params.get("reason", "Reflect damage"));
-	} else if (kind == StringName("knockback_shield")) {
+	} else if (kind == sn_knockback_shield()) {
 		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
 		compiled.reason = String(params.get("reason", "Knockback shield"));
-	} else if (kind == StringName("target_status_multiplier")) {
+	} else if (kind == sn_target_status_multiplier()) {
 		compiled.scalar0 = double(params.get("multiplier", 1.0));
-		compiled.damage_type = StringName(String(params.get("status_kind", "")));
+		String status_kind_str = String(params.get("status_kind", ""));
+		if (status_kind_str == "slow") {
+			compiled.damage_type = sn_slow();
+		} else if (status_kind_str == "root") {
+			compiled.damage_type = sn_root();
+		} else if (status_kind_str == "silence") {
+			compiled.damage_type = sn_silence();
+		} else if (status_kind_str == "disarm") {
+			compiled.damage_type = sn_disarm();
+		} else if (status_kind_str == "stealth") {
+			compiled.damage_type = sn_stealth();
+		} else if (status_kind_str == "stun") {
+			compiled.damage_type = sn_stun();
+		} else if (status_kind_str == "reflect") {
+			compiled.damage_type = sn_reflect();
+		} else {
+			compiled.damage_type = StringName(status_kind_str);
+		}
 		compiled.reason = String(params.get("reason", "Target status multiplier"));
-	} else if (kind == StringName("stat_modifier")) {
+	} else if (kind == sn_stat_modifier()) {
 		// Validate stat name
 		StringName stat_name = StringName(String(params.get("stat_name", "")));
 		if (!_is_valid_stat_name(stat_name)) {
@@ -977,7 +1130,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.int3 = 0;
 		}
 		compiled.reason = String(params.get("reason", "Stat modifier"));
-	} else if (kind == StringName("multiple_target")) {
+	} else if (kind == sn_multi_target()) {
 		// Multi-target effect parameters
 		compiled.int0 = int64_t(params.get("target_count", 1));
 		String strategy_str = String(params.get("selection_strategy", "closest"));
@@ -996,11 +1149,18 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.int1 = TARGET_SELECTION_CLOSEST;
 		}
-		compiled.int2 = params.get("include_source", false) ? 1 : 0;
+		compiled.int2 = params.get("include_self", false) ? 1 : 0;
 		String handling_str = String(params.get("excess_handling", "drop"));
 		compiled.int3 = (handling_str == "stack") ? EXCESS_TARGET_STACK : EXCESS_TARGET_DROP;
 		compiled.int4 = int64_t(params.get("repeat_count", 1));
-		compiled.team_filter = StringName(String(params.get("team_filter", "")));
+		String team_filter_str = String(params.get("team_filter", ""));
+		if (team_filter_str == "player") {
+			compiled.team_filter = sn_player();
+		} else if (team_filter_str == "enemy") {
+			compiled.team_filter = sn_enemy();
+		} else {
+			compiled.team_filter = StringName(team_filter_str);
+		}
 		
 		// Compile sub_effects
 		Variant sub_effects_value = params.get("sub_effects", Variant());
@@ -1080,6 +1240,7 @@ void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitSt
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
 	_scratch_projectiles.reserve(32);
+	_active_projectiles.reserve(32);
 	for (auto &bucket : _spatial_buckets) {
 		bucket.reserve(4);
 	}
@@ -1159,7 +1320,9 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_units.clear();
 	_unit_cold.clear();
 	_projectiles.clear();
+	_projectiles.reserve(128);
 	_scratch_projectiles.clear();
+	_active_projectiles.clear();
 	_scratch_critical_allies.clear();
 	
 		
@@ -1693,25 +1856,25 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	Dictionary role_config = Dictionary(_role_configs.get(role_name, Dictionary()));
 
 	auto passive_bucket_index = [](const StringName &kind) -> int {
-		if (kind == StringName("on_attack")) {
+		if (kind == sn_on_attack()) {
 			return 0;
 		}
-		if (kind == StringName("on_defense")) {
+		if (kind == sn_on_defense()) {
 			return 1;
 		}
-		if (kind == StringName("on_tick")) {
+		if (kind == sn_on_tick()) {
 			return 2;
 		}
-		if (kind == StringName("post_attack")) {
+		if (kind == sn_post_attack()) {
 			return 3;
 		}
-		if (kind == StringName("post_take_damage")) {
+		if (kind == sn_post_take_damage()) {
 			return 4;
 		}
-		if (kind == StringName("on_ability")) {
+		if (kind == sn_on_ability()) {
 			return 5;
 		}
-		if (kind == StringName("on_ultimate")) {
+		if (kind == sn_on_ultimate()) {
 			return 6;
 		}
 		return 4;
@@ -1761,12 +1924,12 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	// Override Y coordinate with assigned slot position
 	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
 	if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
-		double x_base = (team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+		double x_base = (team == sn_player()) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
 		
 		// Adjust melee champions to spawn 0.5 tiles closer to center
 		double attack_range = double(stats.get("attack_range", 0.0));
 		if (attack_range <= 1.0) {  // Melee threshold
-			if (team == StringName("player")) {
+			if (team == sn_player()) {
 				x_base += 0.5;
 			} else {
 				x_base -= 0.5;
@@ -1786,12 +1949,12 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.team = team;
 	cold.role_id = role_name;
 	unit.role_slot = role_slot_for_name(role_name);
-	unit.is_tank_role = role_name == StringName("tank");
-	unit.is_fighter_role = role_name == StringName("fighter");
-	unit.is_assassin_role = role_name == StringName("assassin");
-	unit.is_marksman_role = role_name == StringName("marksman");
-	unit.is_mage_role = role_name == StringName("mage");
-	unit.is_support_role = role_name == StringName("support");
+	unit.is_tank_role = role_name == sn_tank();
+	unit.is_fighter_role = role_name == sn_fighter();
+	unit.is_assassin_role = role_name == sn_assassin();
+	unit.is_marksman_role = role_name == sn_marksman();
+	unit.is_mage_role = role_name == sn_mage();
+	unit.is_support_role = role_name == sn_support();
 	cold.stats = stats;
 	unit.combat.max_hp = max_hp;
 	unit.combat.max_mana = max_mana;
@@ -3327,14 +3490,14 @@ void TeamfightSimulationCore::_set_current_target(UnitState &unit, const UnitSta
 }
 
 std::vector<int64_t> &TeamfightSimulationCore::_alive_indices_for_team(const StringName &team) {
-	if (team == StringName("player")) {
+	if (team == sn_player()) {
 		return _alive_player_indices;
 	}
 	return _alive_enemy_indices;
 }
 
 const std::vector<int64_t> &TeamfightSimulationCore::_alive_indices_for_team(const StringName &team) const {
-	if (team == StringName("player")) {
+	if (team == sn_player()) {
 		return _alive_player_indices;
 	}
 	return _alive_enemy_indices;
@@ -4830,9 +4993,9 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 
 void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double delta) {
 	auto &periodic_effects = _uc(unit).periodic_effects;
-	auto it = periodic_effects.begin();
-	while (it != periodic_effects.end()) {
-		auto &effect = *it;
+	size_t index = 0;
+	while (index < periodic_effects.size()) {
+		UnitStateCold::PeriodicEffect effect = periodic_effects[index];
 		
 		// Update accumulator
 		effect.tick_accumulator += delta;
@@ -4847,6 +5010,9 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 				if (source != nullptr) {
 					EffectContext context = _build_context(*source, &unit, nullptr, effect.damage_per_tick, effect.action_kind);
 					_apply_damage(*source, unit, effect.damage_per_tick, effect.damage_type, effect.action_kind, context);
+					if (!unit.alive) {
+						return;
+					}
 				}
 			}
 			
@@ -4856,18 +5022,25 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 				if (source != nullptr) {
 					EffectContext context = _build_context(*source, &unit, nullptr, 0.0, effect.action_kind);
 					_heal_unit(*source, unit, effect.heal_per_tick, effect.action_kind, effect.allow_overheal);
+					if (!unit.alive) {
+						return;
+					}
 				}
 			}
 		}
 		
 		// Update remaining duration
 		effect.remaining_duration -= delta;
+		if (index >= periodic_effects.size()) {
+			continue;
+		}
 		
 		// Remove expired effects
 		if (effect.remaining_duration <= 0.0) {
-			it = periodic_effects.erase(it);
+			periodic_effects.erase(periodic_effects.begin() + static_cast<std::ptrdiff_t>(index));
 		} else {
-			++it;
+			periodic_effects[index] = effect;
+			++index;
 		}
 	}
 }
@@ -5305,7 +5478,13 @@ std::vector<TeamfightSimulationCore::UnitState*> TeamfightSimulationCore::_selec
 	if (target_team.is_empty()) {
 		// Default to enemies if not specified
 		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
-	} else if (target_team != sn_player() && target_team != sn_enemy()) {
+	} else if (target_team == sn_enemy()) {
+		// "enemy" means the opposite team from the source (semantically: the enemy of the caster)
+		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
+	} else if (target_team == sn_player()) {
+		// "player" explicitly means the player team
+		target_team = sn_player();
+	} else {
 		UtilityFunctions::push_error(vformat("Invalid team_filter '%s', must be 'player' or 'enemy'", String(target_team)));
 		return selected;
 	}
@@ -6496,7 +6675,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			unit.shield = Math::max(0.0, shield_before - absorbed);
 			double hp_loss = Math::max(0.0, damage - absorbed);
 			unit.hp = Math::max(0.0, unit.hp - hp_loss);
-				
+
 			// Handle death
 			if (unit.hp <= 0.0 && unit.alive) {
 				unit.alive = false;
@@ -6561,7 +6740,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 					double ny = sep_y * nudge_speed;
 					unit.pos_x = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 					unit.pos_y = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-								}
+				}
 			}
 		}
 	}
@@ -6600,6 +6779,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 	}
 
+	bool should_return_casting = false;
 	if (unit.casting_remaining > 0.0) {
 		SimProfileAccScope _uu_cast(profile_sim, _sim_profile_uu_casting);
 		unit.casting_remaining = Math::max(0.0, unit.casting_remaining - _tick_rate);
@@ -6607,6 +6787,9 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			_resolve_cast(unit);
 			unit.cast_resolved_this_tick = true;
 		}
+		should_return_casting = true;
+	}
+	if (should_return_casting) {
 		return;
 	}
 
@@ -6659,27 +6842,34 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 	}
 
+	bool should_return = false;
 	{
 		SimProfileAccScope _uu_move(profile_sim, _sim_profile_uu_movement);
 		if (unit.root_remaining > 0.0) {
-			return;
-		}
-		// Movement: kite first if applicable, else move toward.
-		if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
-			if (_kite_from_enemies(unit)) {
-				return;
+			should_return = true;
+		} else {
+			// Movement: kite first if applicable, else move toward.
+			if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
+				if (_kite_from_enemies(unit)) {
+					should_return = true;
+				}
+			}
+			// For melee champions: move while attacking until reaching actual attack range
+			if (!should_return) {
+				double distance = _distance_between(unit, *target);
+				double effective_range = _effective_attack_range(unit);
+				double actual_attack_range = _attack_range(unit);
+
+				// Move if not at actual attack range yet (allows movement while attacking at effective range)
+				if (distance > actual_attack_range) {
+					// Use actual attack range for movement target (allows closing gap while attacking)
+					_move_toward_target_with_range(unit, *target, actual_attack_range);
+				}
 			}
 		}
-		// For melee champions: move while attacking until reaching actual attack range
-		double distance = _distance_between(unit, *target);
-		double effective_range = _effective_attack_range(unit);
-		double actual_attack_range = _attack_range(unit);
-		
-		// Move if not at actual attack range yet (allows movement while attacking at effective range)
-		if (distance > actual_attack_range) {
-			// Use actual attack range for movement target (allows closing gap while attacking)
-			_move_toward_target_with_range(unit, *target, actual_attack_range);
-		}
+	}
+	if (should_return) {
+		return;
 	}
 }
 
@@ -6786,7 +6976,7 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 		return;
 	}
 	EffectContext context = _build_context(unit, target, target_ally, 0.0, action_kind);
-	_execute_effect(effect, context);
+	Dictionary result = _execute_effect(effect, context);
 }
 
 void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &target, double distance) {
@@ -6808,13 +6998,13 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		projectile.source_id = unit.instance_id;
 		projectile.target_id = target.instance_id;
 		projectile.damage = damage;
-		projectile.damage_type = StringName("physical");
+		projectile.damage_type = sn_physical();
 		projectile.stun_duration = DEFAULT_PROJECTILE_STUN_DURATION;
 		projectile.radius = get_effective_projectile_radius(unit);
 		projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
 		projectile.pos_x = unit.pos_x;
 		projectile.pos_y = unit.pos_y;
-		projectile.action_kind = StringName("auto");
+		projectile.action_kind = sn_auto();
 		projectile.reason = String("Auto Attack");
 		_projectiles.push_back(projectile);
 		_emit_trace(StringName("projectile"), unit.instance_id, target.instance_id, damage);
@@ -7019,8 +7209,11 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 void TeamfightSimulationCore::_update_projectiles() {
 	// Python world.py: each tick, projectiles step toward the target's *current* position
 	// (homing); hit when dist <= speed * dt + radius.
+	using std::swap;
+	_active_projectiles.clear();
+	swap(_active_projectiles, _projectiles);
 	_scratch_projectiles.clear();
-	for (const ProjectileState &data : _projectiles) {
+	for (const ProjectileState &data : _active_projectiles) {
 		UnitState *target = _unit_by_id(data.target_id);
 		if (target == nullptr || !target->alive) {
 			continue;
@@ -7030,7 +7223,8 @@ void TeamfightSimulationCore::_update_projectiles() {
 		double dist = Math::sqrt(dx * dx + dy * dy);
 		double move_dist = data.speed * _tick_rate;
 		if (dist <= move_dist + data.radius) {
-			_resolve_projectile(data);
+			ProjectileState hit = data;
+			_resolve_projectile(hit);
 			// Check if match ended after this projectile (only during overtime)
 			if (_sudden_death_ticks > 0 && _player_kills != _enemy_kills) {
 				// Match ended, discard remaining projectiles
@@ -7049,7 +7243,9 @@ void TeamfightSimulationCore::_update_projectiles() {
 			_scratch_projectiles.push_back(data);
 		}
 	}
-	using std::swap;
+	if (!_projectiles.empty()) {
+		_scratch_projectiles.insert(_scratch_projectiles.end(), _projectiles.begin(), _projectiles.end());
+	}
 	swap(_projectiles, _scratch_projectiles);
 	_scratch_projectiles.clear();
 }
@@ -7160,11 +7356,10 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			projectile_state.pos_x = source.pos_x;
 			projectile_state.pos_y = source.pos_y;
 			projectile_state.action_kind = context.action_kind;
-			projectile_state.reason = effect.reason;
+			projectile_state.reason = String(effect.reason);
 			_projectiles.push_back(projectile_state);
 			projectile_result["success"] = true;
 			projectile_result["projectile_created"] = true;
-			projectile_result["damage"] = projectile_state.damage;
 			return projectile_result;
 		}
 		case EFFECT_OPCODE_STUN: {
@@ -7601,14 +7796,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			return stat_result;
 		}
-		case EFFECT_OPCODE_MULTIPLE_TARGET: {
+		case EFFECT_OPCODE_MULTI_TARGET: {
 			Dictionary multi_result;
 			multi_result["success"] = true;
 			
 			// Extract multi-target parameters
 			int64_t target_count = effect.int0;
 			TargetSelectionStrategy strategy = static_cast<TargetSelectionStrategy>(effect.int1);
-			bool include_source = effect.int2 != 0;
+			bool include_self = effect.int2 != 0;
 			ExcessTargetHandling excess_handling = static_cast<ExcessTargetHandling>(effect.int3);
 			int64_t repeat_count = effect.int4;
 			
@@ -7628,14 +7823,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			
 			// Validate sub_effects
 			if (effect.sub_effects.empty()) {
-				UtilityFunctions::push_error("No sub_effects provided for multiple_target effect");
+				UtilityFunctions::push_error("No sub_effects provided for multi_target effect");
 				multi_result["success"] = false;
 				return multi_result;
 			}
 			
 			// Validate team_filter is explicitly provided
 			if (effect.team_filter.is_empty()) {
-				UtilityFunctions::push_error("team_filter is required for multiple_target effect, must be 'player' or 'enemy'");
+				UtilityFunctions::push_error("team_filter is required for multi_target effect, must be 'player' or 'enemy'");
 				multi_result["success"] = false;
 				return multi_result;
 			}
@@ -7643,15 +7838,15 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// Warn about sub-effects with target_self=true
 			for (const EffectRecord &sub_effect : effect.sub_effects) {
 				if (sub_effect.int0 == 1) {
-					UtilityFunctions::push_warning("Sub-effect has target_self=true in multiple_target effect, which may override selected targets");
+					UtilityFunctions::push_warning("Sub-effect has target_self=true in multi_target effect, which may override selected targets");
 				}
 			}
 			
 			// Select targets
-			std::vector<UnitState*> targets = _select_targets(source, target, target_count, strategy, include_source, excess_handling, effect.team_filter);
+			std::vector<UnitState*> targets = _select_targets(source, target, target_count, strategy, include_self, excess_handling, effect.team_filter);
 			
 			if (targets.empty()) {
-				UtilityFunctions::push_error("No targets selected for multiple_target effect");
+				UtilityFunctions::push_error("No targets selected for multi_target effect");
 				multi_result["success"] = false;
 				multi_result["targets_affected"] = 0;
 				return multi_result;
@@ -7686,15 +7881,17 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						}
 						
 						// Ensure nested structure exists for this effect kind
-						if (!nested_results.has(effect_kind)) {
+						// Convert to String for safer Dictionary key handling across GDExtension
+						String effect_kind_str = String(effect_kind);
+						if (!nested_results.has(effect_kind_str)) {
 							Dictionary effect_dict;
 							Dictionary by_target_dict;
 							effect_dict["by_target"] = by_target_dict;
 							effect_dict["total"] = 0.0;
-							nested_results[effect_kind] = effect_dict;
+							nested_results[effect_kind_str] = effect_dict;
 						}
 						
-						Dictionary effect_dict = nested_results[effect_kind];
+						Dictionary effect_dict = nested_results[effect_kind_str];
 						Dictionary by_target = effect_dict["by_target"];
 						
 						// Add result to by_target
@@ -7718,27 +7915,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						
 						by_target[target_id] = double(by_target[target_id]) + value;
 						effect_dict["total"] = double(effect_dict["total"]) + value;
-						nested_results[effect_kind] = effect_dict;
+						nested_results[effect_kind_str] = effect_dict;
 					}
 				}
 			}
 			
 			multi_result["targets_affected"] = targets.size();
 			multi_result["results"] = nested_results;
-			
-			// Result structure:
-			// {
-			//   "targets_affected": N,
-			//   "results": {
-			//     "damage": { "by_target": { "unit_id": value, ... }, "total": sum },
-			//     "heal": { "by_target": { "unit_id": value, ... }, "total": sum },
-			//     "shield": { "by_target": { "unit_id": value, ... }, "total": sum },
-			//     "slow": { "by_target": { "unit_id": 1.0, ... }, "total": count },
-			//     ...
-			//   }
-			// }
-			// Numeric effects (damage, heal, shield) sum values, CC effects count applications
-			
+			multi_result["success"] = true;
 			return multi_result;
 		}
 		default: {
@@ -7748,20 +7932,21 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			return default_result;
 		}
 	}
+
+	// Should never reach here - all cases should return
+	UtilityFunctions::push_error(vformat("_execute_effect: fell through switch for opcode %d", effect.opcode));
+	Dictionary fallback_result;
+	fallback_result["success"] = false;
+	fallback_result["error"] = "Unhandled opcode in _execute_effect";
+	return fallback_result;
 }
 
 void TeamfightSimulationCore::_merge_accumulated_results(Dictionary &target, const Dictionary &source) {
-	Variant source_variant = source;
-	Variant iter;
-	bool valid = false;
-	if (!source_variant.iter_init(iter, valid)) {
-		return;
-	}
-	while (valid) {
-		Variant key = source_variant.iter_get(iter, valid);
+	Array keys = source.keys();
+	for (int64_t i = 0; i < keys.size(); ++i) {
+		Variant key = keys[i];
 		Variant source_value = source[key];
 		target[key] = source_value;
-		source_variant.iter_next(iter, valid);
 	}
 }
 
@@ -7795,14 +7980,9 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 }
 
 void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dictionary &source_result) {
-	Variant source_variant = source_result;
-	Variant iter;
-	bool valid = false;
-	if (!source_variant.iter_init(iter, valid)) {
-		return;
-	}
-	while (valid) {
-		Variant key = source_variant.iter_get(iter, valid);
+	Array keys = source_result.keys();
+	for (int64_t i = 0; i < keys.size(); ++i) {
+		Variant key = keys[i];
 		Variant source_value = source_result[key];
 		if (target_result.has(key) && source_value.get_type() == Variant::FLOAT && target_result[key].get_type() == Variant::FLOAT) {
 			target_result[key] = double(target_result[key]) + double(source_value);
@@ -7811,7 +7991,6 @@ void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dic
 		} else {
 			target_result[key] = source_value;
 		}
-		source_variant.iter_next(iter, valid);
 	}
 }
 

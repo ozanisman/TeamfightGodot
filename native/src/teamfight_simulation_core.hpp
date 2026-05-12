@@ -778,7 +778,7 @@ private:
 		EFFECT_OPCODE_HEAL_OVER_TIME = 43,
 		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 44,
 		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 45,
-		EFFECT_OPCODE_MULTIPLE_TARGET = 46,
+		EFFECT_OPCODE_MULTI_TARGET = 46,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -925,6 +925,7 @@ private:
 	std::vector<UnitStateCold> _unit_cold;
 	std::vector<ProjectileState> _projectiles;
 	std::vector<ProjectileState> _scratch_projectiles;
+	std::vector<ProjectileState> _active_projectiles;
 	std::vector<int64_t> _scratch_critical_allies;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
@@ -1261,7 +1262,7 @@ private:
 			return;
 		}
 		const double r2 = p.radius * p.radius;
-		const std::vector<int64_t> &indices = *p.indices;
+		const std::vector<int64_t> indices = *p.indices;
 		auto visit = [&](int64_t idx) {
 			if (idx < 0 || idx >= int64_t(_units.size())) {
 				return;
@@ -1302,7 +1303,7 @@ private:
 		if (p.indices == nullptr) {
 			return;
 		}
-		const std::vector<int64_t> &indices = *p.indices;
+		const std::vector<int64_t> indices = *p.indices;
 		
 		// Resolve anchor position
 		double center_x = 0.0;

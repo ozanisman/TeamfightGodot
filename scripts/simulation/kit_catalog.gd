@@ -15,7 +15,7 @@ const KIT_DATA := {
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 0.05,
+				"damage_ratio": 0.05,
 				"damage_type": "physical",
 				"radius_override": null,
 				"reason": "Balance suite kit_id test",
@@ -31,7 +31,7 @@ const KIT_DATA := {
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_multiplier": 3.0,
+				"damage_ratio": 3.0,
 				"damage_type": "magic",
 				"radius_override": 2.0,
 				"reason": "Artillery Nuke",
@@ -87,7 +87,7 @@ const KIT_DATA := {
 					{
 						"kind": "aoe_heal",
 						"params": {
-							"heal_ratio": 0.3,
+							"damage_ratio": 0.3,
 							"radius": 2.5,
 							"reason": "Support Heal Ultimate"
 						},

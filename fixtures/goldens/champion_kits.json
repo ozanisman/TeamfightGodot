@@ -4,7 +4,7 @@
 			"ability": {
 				"kind": "projectile",
 				"params": {
-					"damage_multiplier": 1.0,
+					"damage_ratio": 1.0,
 					"damage_type": "physical",
 					"reason": "Test"
 				},
@@ -19,13 +19,13 @@
 		},
 		"test_ultimate": {
 			"ultimate": {
-				"kind": "multi",
+				"kind": "multi_effect",
 				"params": {
 					"effects": [
 						{
 							"kind": "damage",
 							"params": {
-								"damage_multiplier": 2.0,
+								"damage_ratio": 2.0,
 								"reason": "Test Ultimate"
 							},
 							"requires_target_in_range": true

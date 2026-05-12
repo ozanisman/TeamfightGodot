@@ -43,8 +43,8 @@ func _load_native() -> Object:
 
 
 func _duel_artillery_guardian(seed: int) -> Dictionary:
-	var players = [&"artillery"]
-	var enemies = [&"guardian"]
+	var players: Array[StringName] = [&"artillery"]
+	var enemies: Array[StringName] = [&"guardian"]
 	var match_input_obj = MatchReplayInputScript.build_match_input(
 		seed,
 		players,
@@ -102,7 +102,7 @@ func test_inline_ability_reduces_ability_damage(core: Object) -> void:
 	var weak_ability := {
 		"kind": "projectile",
 		"params": {
-			"damage_multiplier": 0.05,
+			"damage_ratio": 0.05,
 			"damage_type": "physical",
 			"radius_override": null,
 			"reason": "suite_inline_weak",

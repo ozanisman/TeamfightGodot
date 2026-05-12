@@ -118,7 +118,7 @@ private:
 		AoShapeParams aoe_shape_params;
 		
 		// Multi-target effect parameters
-		StringName team_filter;         // "player", "enemy", or empty for auto-detect
+		StringName team_filter;         // "ally", "enemy", or empty for auto-detect
 		std::vector<EffectRecord> sub_effects;  // Sub-effects to apply to each target
 	};
 

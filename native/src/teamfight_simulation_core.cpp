@@ -37,6 +37,10 @@ inline const StringName &sn_enemy() {
 	static const StringName s("enemy");
 	return s;
 }
+inline const StringName &sn_ally() {
+	static const StringName s("ally");
+	return s;
+}
 inline const StringName &sn_tank() {
 	static const StringName s("tank");
 	return s;
@@ -1146,16 +1150,26 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.int1 = TARGET_SELECTION_LOWEST_PERCENT_HP;
 		} else if (strategy_str == "highest_percent_hp") {
 			compiled.int1 = TARGET_SELECTION_HIGHEST_PERCENT_HP;
-		} else {
+		} else if (strategy_str == "closest") {
 			compiled.int1 = TARGET_SELECTION_CLOSEST;
+		} else {
+			UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
+			compiled.int1 = -1;
 		}
 		compiled.int2 = params.get("include_self", false) ? 1 : 0;
 		String handling_str = String(params.get("excess_handling", "drop"));
-		compiled.int3 = (handling_str == "stack") ? EXCESS_TARGET_STACK : EXCESS_TARGET_DROP;
+		if (handling_str == "stack") {
+			compiled.int3 = EXCESS_TARGET_STACK;
+		} else if (handling_str == "drop") {
+			compiled.int3 = EXCESS_TARGET_DROP;
+		} else {
+			UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
+			compiled.int3 = -1;
+		}
 		compiled.int4 = int64_t(params.get("repeat_count", 1));
 		String team_filter_str = String(params.get("team_filter", ""));
-		if (team_filter_str == "player") {
-			compiled.team_filter = sn_player();
+		if (team_filter_str == "ally") {
+			compiled.team_filter = sn_ally();
 		} else if (team_filter_str == "enemy") {
 			compiled.team_filter = sn_enemy();
 		} else {
@@ -5481,11 +5495,11 @@ std::vector<TeamfightSimulationCore::UnitState*> TeamfightSimulationCore::_selec
 	} else if (target_team == sn_enemy()) {
 		// "enemy" means the opposite team from the source (semantically: the enemy of the caster)
 		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
-	} else if (target_team == sn_player()) {
-		// "player" explicitly means the player team
-		target_team = sn_player();
+	} else if (target_team == sn_ally()) {
+		// "ally" means the same team as the source (semantically: the allies of the caster)
+		target_team = source.team;
 	} else {
-		UtilityFunctions::push_error(vformat("Invalid team_filter '%s', must be 'player' or 'enemy'", String(target_team)));
+		UtilityFunctions::push_error(vformat("Invalid team_filter '%s', must be 'ally' or 'enemy'", String(target_team)));
 		return selected;
 	}
 	
@@ -5493,7 +5507,6 @@ std::vector<TeamfightSimulationCore::UnitState*> TeamfightSimulationCore::_selec
 	const std::vector<int64_t> &alive_indices = _alive_indices_for_team(target_team);
 	
 	if (alive_indices.empty()) {
-		UtilityFunctions::push_error(vformat("No alive units found for team '%s'", String(target_team)));
 		return selected;
 	}
 	
@@ -6957,16 +6970,21 @@ void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
 	// Self-targeting abilities (shield, heal) always succeed using source as fallback.
 	// Matches Python's execute_ability which returns False only for use_projectile with dead target.
 	// Extended: also fail when target is stealthed (target no longer valid).
-	auto _effect_uses_projectile = [](const EffectRecord &e) -> bool {
+	auto _effect_uses_projectile = [](const EffectRecord &e, const auto &self) -> bool {
 		if (e.opcode == EFFECT_OPCODE_PROJECTILE) return true;
 		if (e.opcode == EFFECT_OPCODE_MULTI_EFFECT) {
 			for (const EffectRecord &child : e.children) {
-				if (child.opcode == EFFECT_OPCODE_PROJECTILE) return true;
+				if (self(child, self)) return true;
+			}
+		}
+		if (e.opcode == EFFECT_OPCODE_MULTI_TARGET) {
+			for (const EffectRecord &sub_effect : e.sub_effects) {
+				if (self(sub_effect, self)) return true;
 			}
 		}
 		return false;
 	};
-	if (_effect_uses_projectile(effect) && (target == nullptr || !target->alive || target->stealth_remaining > 0.0)) {
+	if (_effect_uses_projectile(effect, _effect_uses_projectile) && (target == nullptr || !target->alive || target->stealth_remaining > 0.0)) {
 		if (action_kind == StringName("ability")) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == StringName("ultimate")) {
@@ -7807,16 +7825,28 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			ExcessTargetHandling excess_handling = static_cast<ExcessTargetHandling>(effect.int3);
 			int64_t repeat_count = effect.int4;
 			
-			// Validate target_count (must be >= -1, where -1 means "all")
-			if (target_count < -1) {
-				UtilityFunctions::push_error(vformat("Invalid target_count %d, must be >= -1 (-1 for all targets)", target_count));
+			// Validate target_count (must be >= 1, where -1 means "all")
+			if (target_count != -1 && target_count < 1) {
+				UtilityFunctions::push_error(vformat("Invalid target_count %d, must be >= 1 (-1 for all targets)", target_count));
 				multi_result["success"] = false;
 				return multi_result;
 			}
 			
-			// Validate repeat_count (must be >= 0)
-			if (repeat_count < 0) {
-				UtilityFunctions::push_error(vformat("Invalid repeat_count %d, must be >= 0", repeat_count));
+			// Validate repeat_count (must be >= 1)
+			if (repeat_count < 1) {
+				UtilityFunctions::push_error(vformat("Invalid repeat_count %d, must be >= 1", repeat_count));
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			if (effect.int1 < TARGET_SELECTION_CLOSEST || effect.int1 > TARGET_SELECTION_HIGHEST_PERCENT_HP) {
+				UtilityFunctions::push_error(vformat("Invalid selection_strategy opcode %d for multi_target effect", effect.int1));
+				multi_result["success"] = false;
+				return multi_result;
+			}
+			
+			if (effect.int3 != EXCESS_TARGET_DROP && effect.int3 != EXCESS_TARGET_STACK) {
+				UtilityFunctions::push_error(vformat("Invalid excess_handling opcode %d for multi_target effect", effect.int3));
 				multi_result["success"] = false;
 				return multi_result;
 			}
@@ -7830,7 +7860,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			
 			// Validate team_filter is explicitly provided
 			if (effect.team_filter.is_empty()) {
-				UtilityFunctions::push_error("team_filter is required for multi_target effect, must be 'player' or 'enemy'");
+				UtilityFunctions::push_error("team_filter is required for multi_target effect, must be 'ally' or 'enemy'");
 				multi_result["success"] = false;
 				return multi_result;
 			}
@@ -7846,7 +7876,6 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			std::vector<UnitState*> targets = _select_targets(source, target, target_count, strategy, include_self, excess_handling, effect.team_filter);
 			
 			if (targets.empty()) {
-				UtilityFunctions::push_error("No targets selected for multi_target effect");
 				multi_result["success"] = false;
 				multi_result["targets_affected"] = 0;
 				return multi_result;

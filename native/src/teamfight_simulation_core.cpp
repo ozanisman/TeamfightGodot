@@ -1157,7 +1157,9 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else if (strategy_str == "closest") {
 			compiled.int1 = TARGET_SELECTION_CLOSEST;
 		} else {
-			UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
+			if (_debug_combat_trace) {
+				UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
+			}
 			compiled.int1 = -1;
 		}
 		compiled.int2 = params.get("include_self", false) ? 1 : 0;
@@ -1167,7 +1169,9 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else if (handling_str == "drop") {
 			compiled.int3 = EXCESS_TARGET_DROP;
 		} else {
-			UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
+			if (_debug_combat_trace) {
+				UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
+			}
 			compiled.int3 = -1;
 		}
 		compiled.int4 = int64_t(params.get("repeat_count", 1));
@@ -3021,9 +3025,6 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 		if (strategy.flanking_weight > 0.0) {
 			prefix_lb -= strategy.flanking_weight * TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX;
 		}
-		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
-			prefix_lb += TAUNT_SCORE_BONUS;
-		}
 		double conservative_adjusted_lower_bound = prefix_lb + double(adjusted_early_prune->bucket_rank) * strategy.bucket_margin - adjusted_early_prune->bodyguard_bonus_bound;
 		if (conservative_adjusted_lower_bound > adjusted_early_prune->best_adjusted) {
 			*early_skip_dest = true;
@@ -3069,10 +3070,6 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 					score -= align * isolation * flanking_weight;
 				}
 			}
-		}
-		// Commit bucket: forced target is massively preferred (Python TAUNT_SCORE_BONUS).
-		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
-			score += TAUNT_SCORE_BONUS;
 		}
 		if (flanking_score_out != nullptr) {
 			*flanking_score_out = score - score_before_flanking;
@@ -3456,10 +3453,6 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 					score -= align * isolation * flanking_weight;
 				}
 			}
-		}
-		// Commit bucket: forced target is massively preferred (Python TAUNT_SCORE_BONUS).
-		if (attacker.forced_target_id != 0 && attacker.forced_target_remaining > 0.0 && enemy.instance_id == attacker.forced_target_id) {
-			score += TAUNT_SCORE_BONUS;
 		}
 	}
 	return score;

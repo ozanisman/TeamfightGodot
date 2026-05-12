@@ -835,7 +835,6 @@ private:
 	static constexpr double THREAT_RESPONSE_RANGE_FALLOFF = 0.6;
 	static constexpr double THREAT_BURST_THRESHOLD = 0.1;
 	static constexpr double THREAT_BURST_MULTIPLIER = 5.0;
-	static constexpr double TAUNT_SCORE_BONUS = -100.0;
 	static constexpr double THREAT_DECAY_DEFAULT = 2.0;
 	static constexpr double THREAT_DECAY_TANK = 4.0;
 	static constexpr double THREAT_DECAY_FIGHTER = 4.5;

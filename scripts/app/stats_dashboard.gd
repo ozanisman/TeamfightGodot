@@ -174,8 +174,9 @@ var _export_popup: Window
 var _export_popup_content: VBoxContainer
 var _matchup_loader: RefCounted
 var _matchup_vb: VBoxContainer
+var _matchup_right_panel: VBoxContainer
 var _current_champion: String = ""
-var _current_view_mode: int = 0  # 0=vs, 1=with, 2=both
+var _current_view_mode: int = 2  # 0=vs, 1=with, 2=both
 var _current_sort_mode: int = 0  # 0=winrate_desc, 1=winrate_asc, 2=wins, 3=losses, 4=alpha
 var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
@@ -1852,6 +1853,7 @@ func _build_matchup_ui() -> void:
 	var left_panel := VBoxContainer.new()
 	left_panel.custom_minimum_size.x = UI_SIDEBAR_MIN_W
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_panel.size_flags_stretch_ratio = 0.0
 	left_panel.add_theme_constant_override("separation", 12)
 	main_hb.add_child(left_panel)
 	
@@ -1908,13 +1910,27 @@ func _build_matchup_ui() -> void:
 	
 	# Right content area
 	var right_panel := VBoxContainer.new()
-	right_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	right_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_panel.add_theme_constant_override("separation", 16)
 	main_hb.add_child(right_panel)
 	
+	# Store reference for deferred call
+	_matchup_right_panel = right_panel
+	call_deferred("_set_matchup_right_panel_to_center")
+	
 	# Content will be populated when champion is selected
 	_show_matchup_placeholder(right_panel)
+
+
+func _set_matchup_right_panel_to_center() -> void:
+	await get_tree().process_frame
+	if _matchup_right_panel == null:
+		return
+	var viewport_width: int = get_viewport().get_visible_rect().size.x
+	var center_width: int = viewport_width / 2
+	var right_panel_width: int = center_width - UI_SIDEBAR_MIN_W
+	_matchup_right_panel.custom_minimum_size.x = right_panel_width
 
 
 func _show_matchup_error(error_message: String) -> void:
@@ -1998,7 +2014,7 @@ func _show_vs_matchups(parent: Control, matchups: Dictionary) -> void:
 		return
 	
 	# Summary section
-	var summary_card := _create_summary_card("MATCHUP ANALYSIS", _current_champion, "vs")
+	var summary_card := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
 	parent.add_child(summary_card)
 	
 	# Matchup table
@@ -2029,19 +2045,40 @@ func _show_both_matchups(parent: Control, matchups: Dictionary) -> void:
 		_show_no_data(parent, "No matchup data available")
 		return
 	
-	# Counters section
-	if not vs_data.is_empty():
-		var vs_summary := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
-		parent.add_child(vs_summary)
-		var vs_table := _create_matchup_table(vs_data, "vs")
-		parent.add_child(vs_table)
+	# Create horizontal container for side-by-side layout
+	var both_hb := HBoxContainer.new()
+	both_hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	both_hb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	both_hb.add_theme_constant_override("separation", 16)
+	parent.add_child(both_hb)
 	
-	# Synergies section
+	# Synergies section (left side)
 	if not with_data.is_empty():
+		var with_vb := VBoxContainer.new()
+		with_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		with_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		with_vb.size_flags_stretch_ratio = 1.0
+		with_vb.add_theme_constant_override("separation", 12)
+		both_hb.add_child(with_vb)
+		
 		var with_summary := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
-		parent.add_child(with_summary)
+		with_vb.add_child(with_summary)
 		var with_table := _create_matchup_table(with_data, "with")
-		parent.add_child(with_table)
+		with_vb.add_child(with_table)
+	
+	# Counters section (right side)
+	if not vs_data.is_empty():
+		var vs_vb := VBoxContainer.new()
+		vs_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vs_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		vs_vb.size_flags_stretch_ratio = 1.0
+		vs_vb.add_theme_constant_override("separation", 12)
+		both_hb.add_child(vs_vb)
+		
+		var vs_summary := _create_summary_card("COUNTER ANALYSIS", _current_champion, "vs")
+		vs_vb.add_child(vs_summary)
+		var vs_table := _create_matchup_table(vs_data, "vs")
+		vs_vb.add_child(vs_table)
 
 
 func _create_summary_card(title: String, champion: String, matchup_type: String) -> PanelContainer:
@@ -2211,16 +2248,10 @@ func _sort_matchup_data(data: Dictionary, matchup_type: String) -> Array:
 		})
 	
 	match _current_sort_mode:
-		0:  # Winrate (High to Low) - invert for counters
-			if matchup_type == "vs":
-				items.sort_custom(func(a, b): return a.winrate < b.winrate)  # Lowest first for counters
-			else:
-				items.sort_custom(func(a, b): return a.winrate > b.winrate)  # Highest first for synergies
-		1:  # Winrate (Low to High) - invert for counters
-			if matchup_type == "vs":
-				items.sort_custom(func(a, b): return a.winrate > b.winrate)  # Highest first for counters
-			else:
-				items.sort_custom(func(a, b): return a.winrate < b.winrate)  # Lowest first for synergies
+		0:  # Winrate (High to Low)
+			items.sort_custom(func(a, b): return a.winrate > b.winrate)
+		1:  # Winrate (Low to High)
+			items.sort_custom(func(a, b): return a.winrate < b.winrate)
 		2:  # Wins
 			items.sort_custom(func(a, b): return a.wins > b.wins)
 		3:  # Losses

@@ -100,6 +100,9 @@ private:
 		int64_t int3 = 0;
 		int64_t int4 = 0;
 		StringName damage_type;
+		StringName stat_name;  // For consume_stacks effects
+		String string0;  // General purpose string (stacking_mode for consume_stacks)
+		String string1;  // General purpose string (stack_reason for consume_stacks)
 		String reason;
 		std::vector<EffectRecord> children;
 		StringName requires_result_from;  // Which previous effect to check
@@ -786,6 +789,9 @@ private:
 		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 46,
 		EFFECT_OPCODE_MULTI_TARGET = 47,
 		EFFECT_OPCODE_DAMAGE_BASED_SHIELD = 48,
+		EFFECT_OPCODE_CONSUME_STACKS_DAMAGE = 49,
+		EFFECT_OPCODE_CONSUME_STACKS_HEAL = 50,
+		EFFECT_OPCODE_CONSUME_STACKS_SHIELD = 51,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1223,6 +1229,7 @@ private:
 	void _update_stacks(UnitState &unit, double delta, double current_time);
 	void _cleanup_expired_stacks(UnitState &unit, double current_time);
 	bool _is_valid_stat_name(const StringName &stat_name) const;
+	int _consume_stat_stacks(UnitState &unit, StringName stat_name, String reason);
 	
 	// Stack debugging functions
 	void _debug_print_stack_state(const UnitState &unit) const;

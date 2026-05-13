@@ -169,6 +169,10 @@ inline const StringName &sn_consume_stacks_shield() {
 	static const StringName s("consume_stacks_shield");
 	return s;
 }
+inline const StringName &sn_set_stacks() {
+	static const StringName s("set_stacks");
+	return s;
+}
 inline const StringName &sn_mana_restore_on_hit() {
 	static const StringName s("mana_restore_on_hit");
 	return s;
@@ -575,6 +579,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_consume_stacks_shield()) {
 		return EFFECT_OPCODE_CONSUME_STACKS_SHIELD;
 	}
+	if (kind == sn_set_stacks()) {
+		return EFFECT_OPCODE_SET_STACKS;
+	}
 	if (kind == sn_mana_restore_on_hit()) {
 		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
 	}
@@ -700,6 +707,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_consume_stacks_heal();
 		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD:
 			return sn_consume_stacks_shield();
+		case EFFECT_OPCODE_SET_STACKS:
+			return sn_set_stacks();
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 			return sn_mana_restore_on_hit();
 		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
@@ -806,6 +815,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		kind = sn_consume_stacks_heal();
 	} else if (kind_str == "consume_stacks_shield") {
 		kind = sn_consume_stacks_shield();
+	} else if (kind_str == "set_stacks") {
+		kind = sn_set_stacks();
 	} else if (kind_str == "mana_restore_on_hit") {
 		kind = sn_mana_restore_on_hit();
 	} else if (kind_str == "drain_target_mana_on_hit") {
@@ -1083,6 +1094,16 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
 		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
 		compiled.string1 = String(params.get("stack_reason", ""));
+		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_set_stacks()) {
+		compiled.stat_name = StringName(params.get("stat_name", ""));
+		compiled.int0 = int64_t(params.get("stack_count", 0));
+		compiled.int1 = params.get("to_max", false);
+		compiled.int2 = int64_t(params.get("max_stacks", 0));  // Fallback max_stacks when entry doesn't exist
+		compiled.scalar0 = double(params.get("duration", 0.0));
+		compiled.scalar1 = double(params.get("additive_per_stack", 0.0));  // Fallback when entry doesn't exist
+		compiled.scalar2 = double(params.get("multiplicative_per_stack", 1.0));  // Fallback when entry doesn't exist
+		compiled.string0 = String(params.get("reason", ""));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
@@ -5012,6 +5033,77 @@ int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName st
 	return current_stacks;
 }
 
+void TeamfightSimulationCore::_set_stat_stacks(UnitState &unit, StringName stat_name, String reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack) {
+	if (!_is_valid_stat_name(stat_name)) {
+		return;
+	}
+	
+	String stack_key = _get_stack_key(stat_name, reason);
+	Dictionary stack_entry = Dictionary(unit.stat_stacks.get(stack_key, Dictionary()));
+	
+	int max_stacks = fallback_max_stacks > 0 ? fallback_max_stacks : 1;
+	double additive_per_stack = fallback_additive_per_stack;
+	double multiplicative_per_stack = fallback_multiplicative_per_stack;
+	double current_duration = duration;
+	int stack_behavior = int(StackBehavior::Refresh);
+	bool is_match_duration = false;
+	bool entry_existed = !stack_entry.is_empty();
+	
+	if (entry_existed) {
+		// Entry exists, undo current modifiers
+		double applied_additive = double(stack_entry.get("applied_additive", 0.0));
+		double applied_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
+		double inverse_multiplicative = applied_multiplicative != 0.0 ? 1.0 / applied_multiplicative : 1.0;
+		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
+		
+		// Get parameters from existing entry
+		max_stacks = int(stack_entry.get("max_stacks", max_stacks));
+		additive_per_stack = double(stack_entry.get("additive_per_stack", additive_per_stack));
+		multiplicative_per_stack = double(stack_entry.get("multiplicative_per_stack", multiplicative_per_stack));
+		if (duration <= 0.0) {
+			current_duration = double(stack_entry.get("duration", 0.0));
+		}
+		stack_behavior = int(stack_entry.get("stack_behavior", int(StackBehavior::Refresh)));
+		is_match_duration = bool(stack_entry.get("is_match_duration", false));
+	}
+	
+	// Determine final stack count
+	int final_stacks = stack_count;
+	if (to_max) {
+		final_stacks = max_stacks;
+	}
+	if (final_stacks < 0) {
+		final_stacks = 0;
+	}
+	if (final_stacks > max_stacks) {
+		final_stacks = max_stacks;
+	}
+	
+	// Calculate new applied values
+	double new_applied_additive = additive_per_stack * double(final_stacks);
+	double new_applied_multiplicative = 1.0;
+	if (!Math::is_equal_approx(multiplicative_per_stack, 1.0)) {
+		new_applied_multiplicative = Math::pow(multiplicative_per_stack, double(final_stacks));
+	}
+	
+	// Apply new modifiers
+	_apply_stat_modifier(unit, unit, stat_name, new_applied_additive, new_applied_multiplicative, 0.0, false);
+	
+	// Update or create stack entry
+	stack_entry["current_stacks"] = final_stacks;
+	stack_entry["max_stacks"] = max_stacks;
+	stack_entry["duration"] = current_duration;
+	stack_entry["additive_per_stack"] = additive_per_stack;
+	stack_entry["multiplicative_per_stack"] = multiplicative_per_stack;
+	stack_entry["applied_additive"] = new_applied_additive;
+	stack_entry["applied_multiplicative"] = new_applied_multiplicative;
+	stack_entry["stack_behavior"] = stack_behavior;
+	stack_entry["is_match_duration"] = is_match_duration;
+	unit.stat_stacks[stack_key] = stack_entry;
+	_set_stat_modifier_duration(unit, stat_name, current_duration, is_match_duration);
+	_debug_log_stack_operation("SET", String(stat_name), final_stacks, max_stacks, current_duration, reason);
+}
+
 
 void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, double current_time) {
 	(void)current_time;
@@ -7777,6 +7869,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			if (target == nullptr) {
 				result["damage_dealt"] = 0.0;
 				result["stacks_consumed"] = 0;
+				result["target_killed"] = false;
 				return result;
 			}
 			double attack_damage = get_effective_attack_damage(source);
@@ -7794,6 +7887,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			_apply_damage(source, *target, damage, effect.damage_type, context.action_kind, context);
 			result["damage_dealt"] = damage;
 			result["stacks_consumed"] = stacks;
+			result["target_killed"] = !target->alive;
 			return result;
 		}
 		case EFFECT_OPCODE_CONSUME_STACKS_HEAL: {
@@ -7836,6 +7930,24 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			result["shield_applied"] = true;
 			result["amount"] = shield_amount;
 			result["stacks_consumed"] = stacks;
+			return result;
+		}
+		case EFFECT_OPCODE_SET_STACKS: {
+			Dictionary result;
+			result["success"] = true;
+			int stack_count = int(effect.int0);
+			bool to_max = effect.int1 != 0;
+			int fallback_max_stacks = int(effect.int2);
+			double duration = effect.scalar0;
+			double fallback_additive_per_stack = effect.scalar1;
+			double fallback_multiplicative_per_stack = effect.scalar2;
+			String stack_reason = effect.string0;
+			_set_stat_stacks(source, effect.stat_name, stack_reason, stack_count, duration, to_max, fallback_max_stacks, fallback_additive_per_stack, fallback_multiplicative_per_stack);
+			// Return the actual stack count after setting (accounting for to_max and clamping)
+			String stack_key = _get_stack_key(effect.stat_name, stack_reason);
+			Dictionary stack_entry = Dictionary(source.stat_stacks.get(stack_key, Dictionary()));
+			int final_stacks = int(stack_entry.get("current_stacks", stack_count));
+			result["stacks_set"] = final_stacks;
 			return result;
 		}
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {

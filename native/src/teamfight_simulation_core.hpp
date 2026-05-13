@@ -792,6 +792,7 @@ private:
 		EFFECT_OPCODE_CONSUME_STACKS_DAMAGE = 49,
 		EFFECT_OPCODE_CONSUME_STACKS_HEAL = 50,
 		EFFECT_OPCODE_CONSUME_STACKS_SHIELD = 51,
+		EFFECT_OPCODE_SET_STACKS = 52,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1230,6 +1231,7 @@ private:
 	void _cleanup_expired_stacks(UnitState &unit, double current_time);
 	bool _is_valid_stat_name(const StringName &stat_name) const;
 	int _consume_stat_stacks(UnitState &unit, StringName stat_name, String reason);
+	void _set_stat_stacks(UnitState &unit, StringName stat_name, String reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack);
 	
 	// Stack debugging functions
 	void _debug_print_stack_state(const UnitState &unit) const;

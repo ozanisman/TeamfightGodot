@@ -79,9 +79,8 @@ func _draw_hp_ticks(o: Vector2, hp_x: float, hp_y: float, bar_w: float, bar_h: f
 func _lunge_offset_screen() -> Vector2:
 	if _u.is_empty():
 		return Vector2.ZERO
-	var as_m: float = maxf(0.0001, float(_u.get("attack_speed", 1.0)))
 	var acd: float = maxf(0.0, float(_u.get("attack_cooldown", 0.0)))
-	var period: float = 1.0 / as_m
+	var period: float = maxf(0.0001, float(_u.get("attack_period", 1.0)))
 	var elapsed: float = period - acd
 	var lunge_dur: float = 0.12
 	if not (elapsed >= 0.0 and elapsed < lunge_dur and bool(_u.get("alive", true))):

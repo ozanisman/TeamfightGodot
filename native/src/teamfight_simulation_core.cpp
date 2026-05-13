@@ -2052,6 +2052,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.shield = 0.0;
 	unit.mana = 0.0;
 	unit.attack_cooldown = 0.0;
+	unit.attack_period = 0.0;
 	unit.ability_cooldown = unit.combat.ability_cd;
 	unit.casting_remaining = 0.0;
 	cold.casting_kind = StringName();
@@ -7181,6 +7182,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 	// Python parity: attack cooldown set after mana gain.
 	double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
 	unit.attack_cooldown = 1.0 / attack_speed;
+	unit.attack_period = unit.attack_cooldown;
 }
 
 void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
@@ -9143,6 +9145,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["acd"] = u.attack_cooldown;
 		d["abi"] = u.ability_cooldown;
 		d["attack_cooldown"] = u.attack_cooldown;
+		d["attack_period"] = u.attack_period;
 		d["attack_range"] = get_effective_attack_range(u);
 		d["attack_speed"] = u.combat.attack_speed;
 		d["casting_remaining"] = u.casting_remaining;

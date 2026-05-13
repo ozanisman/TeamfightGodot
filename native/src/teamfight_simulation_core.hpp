@@ -396,6 +396,7 @@ private:
 		double shield = 0.0;
 		double mana = 0.0;
 		double attack_cooldown = 0.0;
+		double attack_period = 0.0;
 		double ability_cooldown = 0.0;
 		double casting_remaining = 0.0;
 		bool has_casting_effect = false;

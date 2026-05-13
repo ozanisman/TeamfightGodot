@@ -153,6 +153,10 @@ inline const StringName &sn_damage_based_heal() {
 	static const StringName s("damage_based_heal");
 	return s;
 }
+inline const StringName &sn_damage_based_shield() {
+	static const StringName s("damage_based_shield");
+	return s;
+}
 inline const StringName &sn_mana_restore_on_hit() {
 	static const StringName s("mana_restore_on_hit");
 	return s;
@@ -547,6 +551,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_damage_based_heal()) {
 		return EFFECT_OPCODE_DAMAGE_BASED_HEAL;
 	}
+	if (kind == sn_damage_based_shield()) {
+		return EFFECT_OPCODE_DAMAGE_BASED_SHIELD;
+	}
 	if (kind == sn_mana_restore_on_hit()) {
 		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
 	}
@@ -664,6 +671,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_post_damage_mana_gain();
 		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
 			return sn_damage_based_heal();
+		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD:
+			return sn_damage_based_shield();
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 			return sn_mana_restore_on_hit();
 		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
@@ -762,6 +771,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		kind = sn_post_damage_mana_gain();
 	} else if (kind_str == "damage_based_heal") {
 		kind = sn_damage_based_heal();
+	} else if (kind_str == "damage_based_shield") {
+		kind = sn_damage_based_shield();
 	} else if (kind_str == "mana_restore_on_hit") {
 		kind = sn_mana_restore_on_hit();
 	} else if (kind_str == "drain_target_mana_on_hit") {
@@ -1014,7 +1025,10 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_damage_based_heal()) {
 		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_damage_based_shield()) {
+		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
+		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
 		// INCONSISTENT: no reason string
@@ -7666,6 +7680,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			heal_result["amount"] = context.damage * effect.scalar0;
 			return heal_result;
 		}
+		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: {
+			Dictionary shield_result;
+			shield_result["success"] = true;
+			_add_shield(source, source, context.damage * effect.scalar0, context.action_kind);
+			shield_result["shield_applied"] = true;
+			shield_result["amount"] = context.damage * effect.scalar0;
+			return shield_result;
+		}
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {
 			Dictionary mana_result;
 			mana_result["success"] = true;
@@ -8979,8 +9001,9 @@ void TeamfightSimulationCore::_viewer_record_aoe_shape_fx(const UnitState &p_sou
 			ev.pos_x = p_source.pos_x + direction.x * params.height * 0.5;
 			ev.pos_y = p_source.pos_y + direction.y * params.height * 0.5;
 		} else if (params.shape == AoShapeKind::Cone) {
-			ev.pos_x = p_source.pos_x + direction.x * params.radius * 0.5;
-			ev.pos_y = p_source.pos_y + direction.y * params.radius * 0.5;
+			// Cone apex at source, no offset needed (cone extends forward from apex)
+			ev.pos_x = p_source.pos_x;
+			ev.pos_y = p_source.pos_y;
 		} else if (params.shape == AoShapeKind::Circle) {
 			ev.pos_x = p_source.pos_x + direction.x * params.radius * 0.5;
 			ev.pos_y = p_source.pos_y + direction.y * params.radius * 0.5;

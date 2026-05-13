@@ -61,7 +61,7 @@ public:
 
 	/// AOE anchor kinds for expandable anchor system.
 	enum class AoAnchorKind : int64_t {
-		Source = 0,
+		Self = 0,
 		Target = 1,
 		Point = 2,
 		Forward = 3,
@@ -70,7 +70,7 @@ public:
 	/// Parameters for AOE shape iteration.
 	struct AoShapeParams {
 		AoShapeKind shape = AoShapeKind::Circle;
-		AoAnchorKind anchor = AoAnchorKind::Source;
+		AoAnchorKind anchor = AoAnchorKind::Self;
 		double radius = 0.0;
 		double width = 0.0;
 		double height = 0.0;
@@ -773,16 +773,17 @@ private:
 		EFFECT_OPCODE_AOE_DISARM = 34,
 		EFFECT_OPCODE_AOE_KNOCKBACK = 35,
 		EFFECT_OPCODE_AOE_REFLECT = 36,
-		EFFECT_OPCODE_REFLECT_DAMAGE = 37,
-		EFFECT_OPCODE_KNOCKBACK_SHIELD = 38,
-		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 39,
-		EFFECT_OPCODE_STAT_MODIFIER = 40,
-		EFFECT_OPCODE_STEALTH = 41,
-		EFFECT_OPCODE_DAMAGE_OVER_TIME = 42,
-		EFFECT_OPCODE_HEAL_OVER_TIME = 43,
-		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 44,
-		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 45,
-		EFFECT_OPCODE_MULTI_TARGET = 46,
+		EFFECT_OPCODE_AOE_STUN = 37,
+		EFFECT_OPCODE_REFLECT_DAMAGE = 38,
+		EFFECT_OPCODE_KNOCKBACK_SHIELD = 39,
+		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 40,
+		EFFECT_OPCODE_STAT_MODIFIER = 41,
+		EFFECT_OPCODE_STEALTH = 42,
+		EFFECT_OPCODE_DAMAGE_OVER_TIME = 43,
+		EFFECT_OPCODE_HEAL_OVER_TIME = 44,
+		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 45,
+		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 46,
+		EFFECT_OPCODE_MULTI_TARGET = 47,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1146,6 +1147,8 @@ private:
 	void _apply_aoe_silence_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate);
 	void _apply_aoe_disarm(UnitState &source, double radius, double duration);
 	void _apply_aoe_disarm_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
+	void _apply_aoe_stun(UnitState &source, double radius, double duration);
+	void _apply_aoe_stun_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
 	bool _apply_aoe_knockback_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double distance, bool away_from_source);
 	void _apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types);
 	std::vector<UnitState*> _select_targets(UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter);
@@ -1312,7 +1315,7 @@ private:
 		// Resolve anchor position
 		double center_x = 0.0;
 		double center_y = 0.0;
-		if (p.shape_params.anchor == AoAnchorKind::Source && p.source != nullptr) {
+		if (p.shape_params.anchor == AoAnchorKind::Self && p.source != nullptr) {
 			center_x = p.source->pos_x;
 			center_y = p.source->pos_y;
 		} else if (p.shape_params.anchor == AoAnchorKind::Target && p.target_override != nullptr) {

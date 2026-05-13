@@ -784,6 +784,7 @@ private:
 		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 45,
 		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 46,
 		EFFECT_OPCODE_MULTI_TARGET = 47,
+		EFFECT_OPCODE_DAMAGE_BASED_SHIELD = 48,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1331,8 +1332,9 @@ private:
 				center_x = p.source->pos_x + direction.x * p.shape_params.height * 0.5;
 				center_y = p.source->pos_y + direction.y * p.shape_params.height * 0.5;
 			} else if (p.shape_params.shape == AoShapeKind::Cone) {
-				center_x = p.source->pos_x + direction.x * p.shape_params.radius * 0.5;
-				center_y = p.source->pos_y + direction.y * p.shape_params.radius * 0.5;
+				// Cone apex at source, no offset needed (cone extends forward from apex)
+				center_x = p.source->pos_x;
+				center_y = p.source->pos_y;
 			} else if (p.shape_params.shape == AoShapeKind::Circle) {
 				center_x = p.source->pos_x + direction.x * p.shape_params.radius * 0.5;
 				center_y = p.source->pos_y + direction.y * p.shape_params.radius * 0.5;

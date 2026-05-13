@@ -289,6 +289,14 @@ inline const StringName &sn_ultimate() {
 	static const StringName s("ultimate");
 	return s;
 }
+inline const StringName &sn_source() {
+	static const StringName s("source");
+	return s;
+}
+inline const StringName &sn_target() {
+	static const StringName s("target");
+	return s;
+}
 inline const StringName &sn_physical() {
 	static const StringName s("physical");
 	return s;
@@ -1314,6 +1322,14 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	compiled.requires_result_from = StringName(String(params.get("requires_result_from", "")));
 	compiled.requires_field = StringName(String(params.get("requires_field", "")));
 	compiled.requires_value = params.get("requires_value", Variant());
+	compiled.requires_target_status = StringName(String(params.get("requires_target_status", "")));
+	compiled.status_target = StringName(String(params.get("status_target", "target")));
+	
+	// Validate status_target parameter
+	if (!compiled.status_target.is_empty() && compiled.status_target != sn_source() && compiled.status_target != sn_target()) {
+		UtilityFunctions::push_error(vformat("Invalid status_target '%s' in effect parameters. Valid values: 'source', 'target'", String(compiled.status_target)));
+		compiled.status_target = sn_target();  // Default to target on error
+	}
 	
 	// Handle on_tick_interval parameter for timing control
 	compiled.on_tick_interval = double(params.get("on_tick_interval", 1.0));
@@ -7590,7 +7606,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 	UnitState *target_ally = context.target_ally;
 	
 	// Check conditional requirements
-	if (!_check_condition(effect, context.accumulated_results)) {
+	if (!_check_all_conditions(effect, context.accumulated_results, context)) {
 		Dictionary failed_result;
 		failed_result["success"] = false;
 		failed_result["condition_failed"] = true;
@@ -8464,6 +8480,54 @@ bool TeamfightSimulationCore::_check_condition(const EffectRecord &effect, const
 
 	Variant actual_value = required_result[effect.requires_field];
 	return actual_value == effect.requires_value;
+}
+
+bool TeamfightSimulationCore::_check_target_status_condition(const EffectRecord &effect, const EffectContext &context) {
+	if (effect.requires_target_status.is_empty()) {
+		return true;  // No condition
+	}
+	
+	// Validate status string
+	StringName status_to_check = effect.requires_target_status;
+	bool is_valid_status = (status_to_check == sn_slow() || status_to_check == sn_root() || 
+	                       status_to_check == sn_silence() || status_to_check == sn_disarm() || 
+	                       status_to_check == sn_stealth() || status_to_check == sn_stun() || 
+	                       status_to_check == sn_reflect());
+	if (!is_valid_status) {
+		UtilityFunctions::push_error(vformat("Invalid requires_target_status '%s' for effect '%s'. Valid statuses: slow, root, silence, disarm, stealth, stun, reflect", 
+			String(status_to_check), String(effect.reason)));
+		return false;
+	}
+	
+	UnitState *unit_to_check = nullptr;
+	if (effect.status_target == sn_source()) {
+		unit_to_check = context.source;
+	} else if (effect.status_target == sn_target()) {
+		unit_to_check = context.target;
+	} else {
+		UtilityFunctions::push_error(vformat("Invalid status_target '%s' for effect '%s'", String(effect.status_target), String(effect.reason)));
+		return false;
+	}
+	
+	if (unit_to_check == nullptr) {
+		return false;
+	}
+	
+	return _target_has_status(*unit_to_check, status_to_check);
+}
+
+bool TeamfightSimulationCore::_check_all_conditions(const EffectRecord &effect, const Dictionary &results, const EffectContext &context) {
+	// Check requires_result_from condition
+	if (!_check_condition(effect, results)) {
+		return false;
+	}
+	
+	// Check requires_target_status condition
+	if (!_check_target_status_condition(effect, context)) {
+		return false;
+	}
+	
+	return true;
 }
 
 void TeamfightSimulationCore::_merge_result(Dictionary &target_result, const Dictionary &source_result) {

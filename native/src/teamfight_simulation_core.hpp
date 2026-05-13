@@ -108,6 +108,8 @@ private:
 		StringName requires_result_from;  // Which previous effect to check
 		StringName requires_field;        // Which field to check
 		Variant requires_value;           // What value to require
+		StringName requires_target_status;  // Status to check on unit (e.g., "disarm")
+		StringName status_target;         // "source" or "target", default "target"
 		
 		// on_tick_interval timing support for on_tick effects
 		double on_tick_interval = 1.0;  // Custom interval (seconds), default 1.0
@@ -1129,10 +1131,12 @@ private:
 	double _auto_dodge_multiplier(UnitState &target, UnitState &source, double damage);
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
 	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
-		Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
-		void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
-		bool _check_condition(const EffectRecord &effect, const Dictionary &results);
-		void _merge_result(Dictionary &target_result, const Dictionary &source_result);
+	Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
+	void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
+	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
+	bool _check_target_status_condition(const EffectRecord &effect, const EffectContext &context);
+	bool _check_all_conditions(const EffectRecord &effect, const Dictionary &results, const EffectContext &context);
+	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
 	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);

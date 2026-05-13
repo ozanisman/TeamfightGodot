@@ -157,6 +157,18 @@ inline const StringName &sn_damage_based_shield() {
 	static const StringName s("damage_based_shield");
 	return s;
 }
+inline const StringName &sn_consume_stacks_damage() {
+	static const StringName s("consume_stacks_damage");
+	return s;
+}
+inline const StringName &sn_consume_stacks_heal() {
+	static const StringName s("consume_stacks_heal");
+	return s;
+}
+inline const StringName &sn_consume_stacks_shield() {
+	static const StringName s("consume_stacks_shield");
+	return s;
+}
 inline const StringName &sn_mana_restore_on_hit() {
 	static const StringName s("mana_restore_on_hit");
 	return s;
@@ -554,6 +566,15 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_damage_based_shield()) {
 		return EFFECT_OPCODE_DAMAGE_BASED_SHIELD;
 	}
+	if (kind == sn_consume_stacks_damage()) {
+		return EFFECT_OPCODE_CONSUME_STACKS_DAMAGE;
+	}
+	if (kind == sn_consume_stacks_heal()) {
+		return EFFECT_OPCODE_CONSUME_STACKS_HEAL;
+	}
+	if (kind == sn_consume_stacks_shield()) {
+		return EFFECT_OPCODE_CONSUME_STACKS_SHIELD;
+	}
 	if (kind == sn_mana_restore_on_hit()) {
 		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
 	}
@@ -673,6 +694,12 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_damage_based_heal();
 		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD:
 			return sn_damage_based_shield();
+		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE:
+			return sn_consume_stacks_damage();
+		case EFFECT_OPCODE_CONSUME_STACKS_HEAL:
+			return sn_consume_stacks_heal();
+		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD:
+			return sn_consume_stacks_shield();
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 			return sn_mana_restore_on_hit();
 		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
@@ -773,6 +800,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		kind = sn_damage_based_heal();
 	} else if (kind_str == "damage_based_shield") {
 		kind = sn_damage_based_shield();
+	} else if (kind_str == "consume_stacks_damage") {
+		kind = sn_consume_stacks_damage();
+	} else if (kind_str == "consume_stacks_heal") {
+		kind = sn_consume_stacks_heal();
+	} else if (kind_str == "consume_stacks_shield") {
+		kind = sn_consume_stacks_shield();
 	} else if (kind_str == "mana_restore_on_hit") {
 		kind = sn_mana_restore_on_hit();
 	} else if (kind_str == "drain_target_mana_on_hit") {
@@ -1028,6 +1061,28 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_damage_based_shield()) {
 		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
+		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_consume_stacks_damage()) {
+		compiled.stat_name = StringName(params.get("stat_name", ""));
+		compiled.scalar0 = double(params.get("base_damage_ratio", 1.0));
+		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
+		compiled.damage_type = StringName(params.get("damage_type", "physical"));
+		compiled.string1 = String(params.get("stack_reason", ""));
+		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_consume_stacks_heal()) {
+		compiled.stat_name = StringName(params.get("stat_name", ""));
+		compiled.scalar0 = double(params.get("base_heal_ratio", 1.0));
+		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
+		compiled.string1 = String(params.get("stack_reason", ""));
+		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_consume_stacks_shield()) {
+		compiled.stat_name = StringName(params.get("stat_name", ""));
+		compiled.scalar0 = double(params.get("base_shield_ratio", 1.0));
+		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
+		compiled.string1 = String(params.get("stack_reason", ""));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
@@ -4931,6 +4986,32 @@ String TeamfightSimulationCore::_get_stack_key(StringName stat_name, const Strin
 	return String(stat_name) + "|" + reason;
 }
 
+int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName stat_name, String reason) {
+	if (!_is_valid_stat_name(stat_name)) {
+		return 0;
+	}
+	
+	String stack_key = _get_stack_key(stat_name, reason);
+	Dictionary stack_entry = Dictionary(unit.stat_stacks.get(stack_key, Dictionary()));
+	int current_stacks = int(stack_entry.get("current_stacks", 0));
+	
+	if (current_stacks > 0) {
+		double applied_additive = double(stack_entry.get("applied_additive", 0.0));
+		double applied_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
+		
+		// Undo the stat modifiers
+		double inverse_multiplicative = applied_multiplicative != 0.0 ? 1.0 / applied_multiplicative : 1.0;
+		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
+		
+		// Remove the stack entry
+		unit.stat_stacks.erase(stack_key);
+		
+		_debug_log_stack_operation("CONSUME", String(stat_name), current_stacks, int(stack_entry.get("max_stacks", 1)), 0.0, reason);
+	}
+	
+	return current_stacks;
+}
+
 
 void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, double current_time) {
 	(void)current_time;
@@ -7689,6 +7770,73 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			shield_result["shield_applied"] = true;
 			shield_result["amount"] = context.damage * effect.scalar0;
 			return shield_result;
+		}
+		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE: {
+			Dictionary result;
+			result["success"] = true;
+			if (target == nullptr) {
+				result["damage_dealt"] = 0.0;
+				result["stacks_consumed"] = 0;
+				return result;
+			}
+			double attack_damage = get_effective_attack_damage(source);
+			int stacks = _consume_stat_stacks(source, effect.stat_name, effect.string1);
+			double base_ratio = effect.scalar0;
+			double stack_bonus = effect.scalar1;
+			String stacking_mode = effect.string0;
+			double final_ratio = base_ratio;
+			if (stacking_mode == "multiplicative") {
+				final_ratio = base_ratio * (1.0 + double(stacks) * stack_bonus);
+			} else {
+				final_ratio = base_ratio + (double(stacks) * stack_bonus);
+			}
+			double damage = attack_damage * final_ratio;
+			_apply_damage(source, *target, damage, effect.damage_type, context.action_kind, context);
+			result["damage_dealt"] = damage;
+			result["stacks_consumed"] = stacks;
+			return result;
+		}
+		case EFFECT_OPCODE_CONSUME_STACKS_HEAL: {
+			Dictionary result;
+			result["success"] = true;
+			double max_hp = get_effective_max_hp(source);
+			int stacks = _consume_stat_stacks(source, effect.stat_name, effect.string1);
+			double base_ratio = effect.scalar0;
+			double stack_bonus = effect.scalar1;
+			String stacking_mode = effect.string0;
+			double final_ratio = base_ratio;
+			if (stacking_mode == "multiplicative") {
+				final_ratio = base_ratio * (1.0 + double(stacks) * stack_bonus);
+			} else {
+				final_ratio = base_ratio + (double(stacks) * stack_bonus);
+			}
+			double heal_amount = max_hp * final_ratio;
+			_heal_unit(source, source, heal_amount, context.action_kind);
+			result["heal_applied"] = true;
+			result["amount"] = heal_amount;
+			result["stacks_consumed"] = stacks;
+			return result;
+		}
+		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD: {
+			Dictionary result;
+			result["success"] = true;
+			double max_hp = get_effective_max_hp(source);
+			int stacks = _consume_stat_stacks(source, effect.stat_name, effect.string1);
+			double base_ratio = effect.scalar0;
+			double stack_bonus = effect.scalar1;
+			String stacking_mode = effect.string0;
+			double final_ratio = base_ratio;
+			if (stacking_mode == "multiplicative") {
+				final_ratio = base_ratio * (1.0 + double(stacks) * stack_bonus);
+			} else {
+				final_ratio = base_ratio + (double(stacks) * stack_bonus);
+			}
+			double shield_amount = max_hp * final_ratio;
+			_add_shield(source, source, shield_amount, context.action_kind);
+			result["shield_applied"] = true;
+			result["amount"] = shield_amount;
+			result["stacks_consumed"] = stacks;
+			return result;
 		}
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {
 			Dictionary mana_result;

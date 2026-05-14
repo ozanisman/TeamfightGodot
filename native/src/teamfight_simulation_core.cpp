@@ -5531,14 +5531,16 @@ void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delt
 				cold.channel_accumulated_damage += double(result["damage"]);
 			}
 		} else {
-			// Log warning when no valid target exists
-			String warning_msg = "Channel tick skipped: no valid target. Unit ID: ";
-			warning_msg += String::num_int64(unit.instance_id);
-			warning_msg += ", Channel reason: ";
-			warning_msg += cold.channel_reason;
-			warning_msg += ", Target mode: ";
-			warning_msg += cold.channel_target_mode;
-			UtilityFunctions::push_warning(warning_msg);
+			// Log warning when no valid target exists (only in debug mode)
+			if (_debug_combat_trace) {
+				String warning_msg = "Channel tick skipped: no valid target. Unit ID: ";
+				warning_msg += String::num_int64(unit.instance_id);
+				warning_msg += ", Channel reason: ";
+				warning_msg += cold.channel_reason;
+				warning_msg += ", Target mode: ";
+				warning_msg += cold.channel_target_mode;
+				UtilityFunctions::push_warning(warning_msg);
+			}
 		}
 	}
 	

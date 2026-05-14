@@ -345,6 +345,10 @@ inline const StringName &sn_on_ultimate() {
 	static const StringName s("on_ultimate");
 	return s;
 }
+inline const StringName &sn_post_heal() {
+	static const StringName s("post_heal");
+	return s;
+}
 inline const StringName &sn_cast_start() {
 	static const StringName s("cast_start");
 	return s;
@@ -432,6 +436,7 @@ constexpr size_t EFFECT_BUCKET_POST_ATTACK = 3;
 constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 4;
 constexpr size_t EFFECT_BUCKET_ON_ABILITY = 5;
 constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 6;
+constexpr size_t EFFECT_BUCKET_POST_HEAL = 7;
 } // namespace
 
 namespace {
@@ -1281,11 +1286,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.opcode = EFFECT_OPCODE_UNKNOWN;
 			return compiled;
 		}
-		
+
 		compiled.damage_type = stat_name;
 		compiled.scalar0 = double(params.get("additive", 0.0));
 		compiled.scalar1 = double(params.get("multiplicative", 1.0));
 		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.scalar3 = double(params.get("heal_gained_ratio", 0.0));
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
 		compiled.int1 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
 		compiled.int2 = int64_t(params.get("max_stacks", 1));
@@ -2063,6 +2069,9 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 		if (kind == sn_on_ultimate()) {
 			return 6;
 		}
+		if (kind == sn_post_heal()) {
+			return 7;
+		}
 		return 4;
 	};
 
@@ -2081,6 +2090,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 		effect_kinds.append(StringName("post_take_damage"));
 		effect_kinds.append(StringName("on_ability"));
 		effect_kinds.append(StringName("on_ultimate"));
+		effect_kinds.append(StringName("post_heal"));
 		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
 			Variant kind_value = effect_kinds[kind_index];
 			Array effects = Array(entry.get(kind_value, Array()));
@@ -3890,6 +3900,9 @@ const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCor
 	if (kind == sn_on_ultimate()) {
 		return _uc(unit).passive_effects[6];
 	}
+	if (kind == sn_post_heal()) {
+		return _uc(unit).passive_effects[7];
+	}
 	return EMPTY_EFFECTS;
 }
 
@@ -5218,6 +5231,22 @@ void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitSt
 	}
 }
 
+void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const StringName &action_kind, const EffectContext &base_context) {
+	const std::vector<EffectRecord> &post_heal_effects = _uc(target).passive_effects[EFFECT_BUCKET_POST_HEAL];
+	if (post_heal_effects.empty()) {
+		return;
+	}
+	EffectContext effect_context = base_context;
+	effect_context.heal_amount = heal_amount;
+	effect_context.heal_gained = heal_gained;
+	effect_context.action_kind = action_kind;
+	effect_context.source = &source;
+	effect_context.target = &target;
+	for (const EffectRecord &effect : post_heal_effects) {
+		_execute_effect(effect, effect_context);
+	}
+}
+
 void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind) {
 	// Calculate damage_per_tick from ratios at application time
 	double damage_per_tick = source.combat.attack_damage * attack_damage_ratio;
@@ -5369,7 +5398,10 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 				UnitState *source = _unit_by_id(effect.source_instance_id);
 				if (source != nullptr) {
 					EffectContext context = _build_context(*source, &unit, nullptr, 0.0, effect.action_kind);
+					double old_hp = unit.hp;
 					_heal_unit(*source, unit, effect.heal_per_tick, effect.action_kind, effect.allow_overheal);
+					double heal_gained = unit.hp - old_hp;
+					_run_post_heal_effects(*source, unit, effect.heal_per_tick, heal_gained, effect.action_kind, context);
 					if (!unit.alive) {
 						return;
 					}
@@ -7600,7 +7632,11 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 		_run_post_attack_effects(unit, target, dealt, context);
 		double life_steal = get_effective_life_steal(unit);
 		if (life_steal > 0.0) {
-			_heal_unit(unit, unit, dealt * life_steal, StringName("auto"));
+			double old_hp = unit.hp;
+			double heal_amount = dealt * life_steal;
+			_heal_unit(unit, unit, heal_amount, StringName("auto"));
+			double heal_gained = unit.hp - old_hp;
+			_run_post_heal_effects(unit, unit, heal_amount, heal_gained, StringName("auto"), context);
 		}
 	}
 	// Python parity: mana gain happens after attack resolution.
@@ -7784,7 +7820,11 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 	if (projectile.action_kind == sn_auto()) {
 		double life_steal = get_effective_life_steal(*source);
 		if (life_steal > 0.0) {
-			_heal_unit(*source, *source, dealt * life_steal, sn_auto());
+			double old_hp = source->hp;
+			double heal_amount = dealt * life_steal;
+			_heal_unit(*source, *source, heal_amount, sn_auto());
+			double heal_gained = source->hp - old_hp;
+			_run_post_heal_effects(*source, *source, heal_amount, heal_gained, sn_auto(), context);
 		}
 	}
 	if (projectile.stun_duration > 0.0 && target->alive) {
@@ -7996,16 +8036,19 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_HEAL: {
 			Dictionary heal_result;
 			heal_result["success"] = true;
-			UnitState &heal_target = (effect.int0 == 1) ? 
-				source : 
+			UnitState &heal_target = (effect.int0 == 1) ?
+				source :
 				(target_ally == nullptr ? source : *target_ally);
 			double heal_amount = source.combat.max_hp * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
 			// Add missing HP scaling
 			double missing_hp = heal_target.combat.max_hp - heal_target.hp;
 			heal_amount += missing_hp * effect.scalar3;
+			double old_hp = heal_target.hp;
 			_heal_unit(source, heal_target, heal_amount, context.action_kind);
+			double heal_gained = heal_target.hp - old_hp;
+			_run_post_heal_effects(source, heal_target, heal_amount, heal_gained, context.action_kind, context);
 			heal_result["heal_applied"] = true;
-			heal_result["amount"] = heal_amount;
+			heal_result["amount"] = heal_gained;
 			return heal_result;
 		}
 		case EFFECT_OPCODE_AOE_TAUNT: {
@@ -8118,9 +8161,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			if (effect.int0 != 0 && context.channel_accumulated_damage > 0.0) {
 				damage_to_use = context.channel_accumulated_damage;
 			}
-			_heal_unit(source, source, damage_to_use * effect.scalar0, context.action_kind);
+			double old_hp = source.hp;
+			double heal_amount = damage_to_use * effect.scalar0;
+			_heal_unit(source, source, heal_amount, context.action_kind);
+			double heal_gained = source.hp - old_hp;
+			_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
 			heal_result["heal_applied"] = true;
-			heal_result["amount"] = damage_to_use * effect.scalar0;
+			heal_result["amount"] = heal_gained;
 			return heal_result;
 		}
 		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: {
@@ -8173,9 +8220,12 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				final_ratio = base_ratio + (double(stacks) * stack_bonus);
 			}
 			double heal_amount = max_hp * final_ratio;
+			double old_hp = source.hp;
 			_heal_unit(source, source, heal_amount, context.action_kind);
+			double heal_gained = source.hp - old_hp;
+			_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
 			result["heal_applied"] = true;
-			result["amount"] = heal_amount;
+			result["amount"] = heal_gained;
 			result["stacks_consumed"] = stacks;
 			return result;
 		}
@@ -8525,7 +8575,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			stat_result["success"] = true;
 			if (target != nullptr) {
 				UnitState &modifier_target = (effect.int0 == 1) ? source : *target;
-				
+
+				// Calculate heal-based additive value if heal_gained_ratio is set
+				double additive_value = effect.scalar0;
+				if (effect.scalar3 > 0.0) {
+					additive_value += context.heal_gained * effect.scalar3;
+				}
+
 				bool use_stacking = effect.int2 > 1 || effect.int3 != 0;
 				if (use_stacking) {
 					StackBehavior stack_behavior = StackBehavior::Refresh;
@@ -8538,7 +8594,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						source,
 						modifier_target,
 						effect.damage_type,
-						effect.scalar0,
+						additive_value,
 						effect.scalar1,
 						effect.scalar2,
 						effect.int1 != 0,
@@ -8551,13 +8607,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 					stat_result["max_stacks"] = effect.int2;
 					stat_result["stack_behavior"] = effect.int3;
 				} else {
-					_apply_simple_stat_modifier(source, modifier_target, effect.damage_type, effect.scalar0, effect.scalar1, effect.scalar2, effect.int1 != 0, effect.reason);
+					_apply_simple_stat_modifier(source, modifier_target, effect.damage_type, additive_value, effect.scalar1, effect.scalar2, effect.int1 != 0, effect.reason);
 					stat_result["stat_modifier_applied"] = true;
 					stat_result["use_stacking"] = false;
 				}
-				
+
 				stat_result["stat_name"] = String(effect.damage_type);
-				stat_result["additive"] = effect.scalar0;
+				stat_result["additive"] = additive_value;
 				stat_result["multiplicative"] = effect.scalar1;
 				stat_result["duration"] = effect.scalar2;
 				stat_result["is_match_duration"] = effect.int1 != 0;

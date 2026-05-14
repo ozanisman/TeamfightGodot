@@ -691,7 +691,8 @@ private:
 
 	// Stat getter functions with modifier application
 	static inline double get_effective_max_hp(const UnitState& unit) {
-		return Math::max(1.0, (unit.combat.max_hp + unit.stat_additive_max_hp) * unit.stat_multiplicative_max_hp);
+		double effective = Math::max(1.0, (unit.combat.max_hp + unit.stat_additive_max_hp) * unit.stat_multiplicative_max_hp);
+		return effective;
 	}
 
 	static inline double get_effective_attack_damage(const UnitState& unit) {

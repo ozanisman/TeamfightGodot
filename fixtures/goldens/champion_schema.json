@@ -1548,6 +1548,22 @@
 				}
 			]
 		},
+		"soul_feast": {
+			"post_heal": [
+				{
+					"kind": "stat_modifier",
+					"params": {
+						"duration_type": "match",
+						"heal_gained_ratio": 0.3,
+						"reason": "Soul Feast",
+						"stack_behavior": "stack",
+						"stat_name": "max_hp",
+						"target_self": true
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"speed_burst": {
 			"on_attack": [
 				{
@@ -1628,18 +1644,6 @@
 					"params": {
 						"every_n": 3,
 						"stun_duration": 0.5
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"vampirism": {
-			"post_attack": [
-				{
-					"kind": "heal",
-					"params": {
-						"flat_amount": 5.0,
-						"reason": "Vampirism"
 					},
 					"requires_target_in_range": true
 				}
@@ -2207,63 +2211,6 @@
 	},
 	"warlock": {
 		"ability": {
-			"kind": "multi_effect",
-			"params": {
-				"effects": [
-					{
-						"kind": "projectile",
-						"params": {
-							"damage_ratio": 1.0,
-							"damage_type": "magic",
-							"reason": "Soul Siphon"
-						},
-						"requires_target_in_range": true
-					},
-					{
-						"kind": "damage_based_heal",
-						"params": {
-							"damage_ratio": 0.1,
-							"reason": "Soul Siphon"
-						},
-						"requires_target_in_range": true
-					}
-				],
-				"reason": "Soul Siphon"
-			},
-			"requires_target_in_range": true
-		},
-		"ability_desc": "Deals 100% magic damage and heals self for 10% of it.",
-		"ability_name": "Life Drain",
-		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
-		"name": "Warlock",
-		"passive_desc": "Heals for 5 HP after each auto-attack.",
-		"passive_ids": [
-			"vampirism"
-		],
-		"passive_name": "Vampirism",
-		"role": "mage",
-		"stats": {
-			"ability_cd": 6.5,
-			"armor": 0.05,
-			"attack_damage": 20.0,
-			"attack_range": 0.3,
-			"attack_speed": 0.8,
-			"life_steal": 0.0,
-			"magic_resist": 0.1,
-			"mana_per_attack": 10.0,
-			"max_hp": 200.0,
-			"max_mana": 50.0,
-			"move_speed": 0.65,
-			"name": "Warlock",
-			"passive_id": "vampirism",
-			"projectile_radius": 0.03,
-			"projectile_speed": 5.0,
-			"respawn_time": 5.0,
-			"role": "mage",
-			"tenacity": 0.0,
-			"unit_id": "warlock"
-		},
-		"ultimate": {
 			"kind": "channel",
 			"params": {
 				"allow_movement": false,
@@ -2328,7 +2275,7 @@
 							{
 								"kind": "aoe_damage",
 								"params": {
-									"damage_ratio": 0.5,
+									"damage_ratio": 0.75,
 									"damage_type": "magic",
 									"radius": 1.5,
 									"reason": "Chaos Rift"
@@ -2351,8 +2298,40 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals or 50% of damage dealt. At the end, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
-		"ultimate_name": "Rift",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 75% magic damage in a 1.5 tile radius and heals for 50% of damage dealt. At the end, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
+		"ability_name": "Chaos Rift",
+		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
+		"name": "Warlock",
+		"passive_desc": "Gains permanent max HP equal to 30% of all self healing.",
+		"passive_ids": [
+			"soul_feast"
+		],
+		"passive_name": "Soul Feast",
+		"role": "mage",
+		"stats": {
+			"ability_cd": 4.0,
+			"armor": 0.15,
+			"attack_damage": 20.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.15,
+			"mana_per_attack": 10.0,
+			"max_hp": 250.0,
+			"max_mana": 30.0,
+			"move_speed": 0.65,
+			"name": "Warlock",
+			"passive_id": "soul_feast",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 5.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"unit_id": "warlock"
+		},
+		"ultimate": null,
+		"ultimate_desc": "",
+		"ultimate_name": "",
 		"unit_id": "warlock"
 	},
 	"windcaller": {

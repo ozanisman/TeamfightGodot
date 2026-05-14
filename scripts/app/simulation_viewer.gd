@@ -1883,7 +1883,7 @@ func _on_start_match_clicked() -> void:
 	if not _can_start_match():
 		return
 	var match_input: Object = MatchReplayInputScript.build_match_input(
-		0,
+		int(Time.get_ticks_msec() & 0x7FFFFFFF),
 		_player_picks,
 		_enemy_picks,
 		SimConstantsScript.DEFAULT_TICK_RATE,
@@ -2085,7 +2085,7 @@ func _enter_preparation() -> void:
 	if not _can_start_match():
 		return
 	var match_input: Object = MatchReplayInputScript.build_match_input(
-		0,
+		int(Time.get_ticks_msec() & 0x7FFFFFFF),
 		_player_picks,
 		_enemy_picks,
 		SimConstantsScript.DEFAULT_TICK_RATE

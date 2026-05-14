@@ -1002,54 +1002,31 @@ const CHAMPION_DATA := {
 			"unit_id": &"warlock",
 			"name": &"Warlock",
 			"role": &"mage",
-			"max_hp": 200.0,
+			"max_hp": 250.0,
 			"attack_damage": 20.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.8,
 			"move_speed": 0.65,
-			"armor": 0.05,
-			"magic_resist": 0.10,
+			"armor": 0.15,
+			"magic_resist": 0.15,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 30.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 6.5,
+			"ability_cd": 4.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
-			"passive_id": &"vampirism",
+			"passive_id": &"soul_feast",
 			"respawn_time": 0.0,
 		},
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
-		"ability_desc": "Deals 100% magic damage and heals self for 10% of it.",
-		"ultimate_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 50% of damage dealt. At the end, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
-		"passive_desc": "Heals for 5 HP after each auto-attack.",
-		"passive_name": "Vampirism",
-		"ability_name": "Life Drain",
-		"ultimate_name": "Chaos Rift",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 75% magic damage in a 1.5 tile radius and heals for 50% of damage dealt. At the end, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
+		"ultimate_desc": "",
+		"passive_desc": "Gains permanent max HP equal to 30% of all self healing.",
+		"passive_name": "Soul Feast",
+		"ability_name": "Chaos Rift",
+		"ultimate_name": "",
 		"ability": {
-			"kind": &"multi_effect",
-			"params": {
-				"effects": [
-					{
-						"kind": &"projectile",
-						"params": {
-							"damage_ratio": 1.0,
-							"damage_type": "magic",
-							"reason": "Soul Siphon"
-						}
-					},
-					{
-						"kind": &"damage_based_heal",
-						"params": {
-							"damage_ratio": 0.1,
-							"reason": "Soul Siphon"
-						}
-					}
-				],
-				"reason": "Soul Siphon"
-			}
-		},
-		"ultimate": {
 			"kind": &"channel",
 			"params": {
 				"duration": 3.0,
@@ -1065,7 +1042,7 @@ const CHAMPION_DATA := {
 								"kind": &"aoe_damage",
 								"params": {
 									"radius": 1.5,
-									"damage_ratio": 0.50,
+									"damage_ratio": 0.75,
 									"damage_type": "magic",
 									"reason": "Chaos Rift"
 								}
@@ -1136,7 +1113,10 @@ const CHAMPION_DATA := {
 				}
 			}
 		},
-		"passive_ids": [&"vampirism"],
+		"ultimate": {
+			
+		},
+		"passive_ids": [&"soul_feast"],
 	},
 	&"wizard": {
 		"stats": {
@@ -2210,14 +2190,18 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
-	&"vampirism": {
-		&"post_attack": [{
-			"kind": &"heal",
+	&"soul_feast": {
+		&"post_heal": [{
+			"kind": &"stat_modifier",
 			"params": {
-				"flat_amount": 5.0,
-				"reason": "Vampirism"
+				"stat_name": "max_hp",
+				"heal_gained_ratio": 0.30,
+				"duration_type": "match",
+				"stack_behavior": "stack",
+				"target_self": true,
+				"reason": "Soul Feast"
 			}
-		}],
+		}]
 	},
 	&"technique": {
 		&"post_attack": [{

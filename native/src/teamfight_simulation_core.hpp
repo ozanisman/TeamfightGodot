@@ -236,6 +236,12 @@ private:
 		Dictionary accumulated_results;
 		/// Prevents reflected damage from chaining into further reflects.
 		bool suppress_reflect_chain = false;
+
+		// Channel-specific context
+		double channel_remaining_duration = 0.0;
+		int64_t channel_tick_count = 0;
+		double channel_accumulated_damage = 0.0;
+		bool channel_completed = false;
 	};
 
 	/// Stack behavior types for stat modifier stacking
@@ -365,6 +371,22 @@ private:
 			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
 		};
 		std::vector<PeriodicEffect> periodic_effects;
+
+		// Channel effect state
+		bool is_channeling = false;
+		double channel_remaining_duration = 0.0;
+		double channel_tick_interval = 0.0;
+		double channel_tick_accumulator = 0.0;
+		double channel_accumulated_damage = 0.0;
+		int64_t channel_target_instance_id = 0;
+		int64_t channel_source_instance_id = 0;
+		StringName channel_reason;
+		StringName channel_action_kind;
+		bool channel_allow_movement = false;
+		StringName channel_target_mode;  // "fixed" or "dynamic"
+		EffectRecord channel_sub_effect;
+		EffectRecord channel_post_complete_effect;
+		EffectRecord channel_post_interrupt_effect;
 	};
 
 	/// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.
@@ -795,6 +817,7 @@ private:
 		EFFECT_OPCODE_CONSUME_STACKS_HEAL = 50,
 		EFFECT_OPCODE_CONSUME_STACKS_SHIELD = 51,
 		EFFECT_OPCODE_SET_STACKS = 52,
+		EFFECT_OPCODE_CHANNEL = 53,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1251,6 +1274,15 @@ private:
 	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
 	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
 	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
+
+	// Channel effect functions
+	void _process_channel_tick(UnitState &unit, double delta);
+	bool _should_interrupt_channel(UnitState &unit, const UnitStateCold &cold);
+	void _complete_channel(UnitState &unit, UnitStateCold &cold);
+	void _interrupt_channel(UnitState &unit, UnitStateCold &cold);
+	void _clear_channel_state(UnitStateCold &cold);
+	int64_t _get_channel_tick_count(const UnitStateCold &cold);
+
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
 	Vector2 _resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override = nullptr) const;

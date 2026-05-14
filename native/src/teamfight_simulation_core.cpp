@@ -173,6 +173,10 @@ inline const StringName &sn_set_stacks() {
 	static const StringName s("set_stacks");
 	return s;
 }
+inline const StringName &sn_channel() {
+	static const StringName s("channel");
+	return s;
+}
 inline const StringName &sn_mana_restore_on_hit() {
 	static const StringName s("mana_restore_on_hit");
 	return s;
@@ -590,6 +594,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_set_stacks()) {
 		return EFFECT_OPCODE_SET_STACKS;
 	}
+	if (kind == sn_channel()) {
+		return EFFECT_OPCODE_CHANNEL;
+	}
 	if (kind == sn_mana_restore_on_hit()) {
 		return EFFECT_OPCODE_MANA_RESTORE_ON_HIT;
 	}
@@ -717,6 +724,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_consume_stacks_shield();
 		case EFFECT_OPCODE_SET_STACKS:
 			return sn_set_stacks();
+		case EFFECT_OPCODE_CHANNEL:
+			return sn_channel();
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 			return sn_mana_restore_on_hit();
 		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
@@ -906,6 +915,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("flat_amount", 0.0));
 		compiled.scalar3 = bool(params.get("trigger_on_hit", false)) ? 1.0 : 0.0;
 		compiled.int0 = params.get("target_self", false) ? 1 : 0;
+		compiled.int1 = params.get("use_accumulated_damage", false) ? 1 : 0;
 		String damage_type_str = String(params.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
@@ -1077,6 +1087,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_damage_based_heal()) {
 		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
+		compiled.int0 = params.get("use_accumulated_damage", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_damage_based_shield()) {
 		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
@@ -1113,6 +1124,30 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(params.get("multiplicative_per_stack", 1.0));  // Fallback when entry doesn't exist
 		compiled.string0 = String(params.get("reason", ""));
 		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_channel()) {
+		compiled.scalar0 = double(params.get("duration", 0.0));  // total duration
+		compiled.scalar1 = double(params.get("tick_interval", 0.5));  // tick interval
+		compiled.int0 = params.get("allow_movement", false) ? 1 : 0;
+		compiled.string0 = String(params.get("target_mode", "fixed"));  // "fixed" or "dynamic"
+		compiled.reason = String(params.get("reason", ""));
+		
+		// Parse sub_effect (required)
+		if (params.has("sub_effect")) {
+			Dictionary sub_effect_dict = params["sub_effect"];
+			compiled.children.push_back(_compile_effect(sub_effect_dict));
+		}
+		
+		// Parse post_complete_effect (optional)
+		if (params.has("post_complete_effect")) {
+			Dictionary post_complete_dict = params["post_complete_effect"];
+			compiled.sub_effects.push_back(_compile_effect(post_complete_dict));
+		}
+		
+		// Parse post_interrupt_effect (optional)
+		if (params.has("post_interrupt_effect")) {
+			Dictionary post_interrupt_dict = params["post_interrupt_effect"];
+			compiled.sub_effects.push_back(_compile_effect(post_interrupt_dict));
+		}
 	} else if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(params.get("flat_amount", 0.0));
 		// INCONSISTENT: no reason string
@@ -5358,6 +5393,196 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 	}
 }
 
+// Channel effect functions
+
+int64_t TeamfightSimulationCore::_get_channel_tick_count(const UnitStateCold &cold) {
+	if (cold.channel_tick_interval <= 0.0) {
+		return 0;
+	}
+	double total_ticked = cold.channel_tick_accumulator;
+	return static_cast<int64_t>(total_ticked / cold.channel_tick_interval);
+}
+
+void TeamfightSimulationCore::_clear_channel_state(UnitStateCold &cold) {
+	cold.is_channeling = false;
+	cold.channel_remaining_duration = 0.0;
+	cold.channel_tick_interval = 0.0;
+	cold.channel_tick_accumulator = 0.0;
+	cold.channel_accumulated_damage = 0.0;
+	cold.channel_target_instance_id = 0;
+	cold.channel_source_instance_id = 0;
+	cold.channel_reason = StringName();
+	cold.channel_action_kind = StringName();
+	cold.channel_allow_movement = false;
+	cold.channel_target_mode = StringName();
+	cold.channel_sub_effect = EffectRecord();
+	cold.channel_post_complete_effect = EffectRecord();
+	cold.channel_post_interrupt_effect = EffectRecord();
+}
+
+bool TeamfightSimulationCore::_should_interrupt_channel(UnitState &unit, const UnitStateCold &cold) {
+	// Death interrupts
+	if (!unit.alive) return true;
+	
+	// Stun interrupts
+	if (unit.stun_remaining > 0.0) return true;
+	
+	// Silence interrupts (check relevant type)
+	if (cold.channel_action_kind == sn_ability() && unit.silence_blocks_abilities) return true;
+	if (cold.channel_action_kind == sn_ultimate() && unit.silence_blocks_ultimates) return true;
+	
+	// Movement interrupts (if not allowed and not rooted)
+	if (!cold.channel_allow_movement && unit.root_remaining <= 0.0) {
+		// Interrupt if no valid targets in attack range
+		StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
+		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+		double attack_range = get_effective_attack_range(unit);
+		bool has_target_in_range = false;
+		
+		for (int64_t index : enemy_indices) {
+			UnitState &enemy = _units[static_cast<size_t>(index)];
+			double dx = enemy.pos_x - unit.pos_x;
+			double dy = enemy.pos_y - unit.pos_y;
+			double dist = Math::sqrt(dx * dx + dy * dy);
+			if (dist <= attack_range) {
+				has_target_in_range = true;
+				break;
+			}
+		}
+		
+		if (!has_target_in_range) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+void TeamfightSimulationCore::_complete_channel(UnitState &unit, UnitStateCold &cold) {
+	cold.is_channeling = false;
+	
+	// Execute post-complete effect
+	if (cold.channel_post_complete_effect.opcode != 0) {
+		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
+		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_complete"));
+		context.channel_remaining_duration = cold.channel_remaining_duration;
+		context.channel_tick_count = _get_channel_tick_count(cold);
+		context.channel_accumulated_damage = cold.channel_accumulated_damage;
+		context.channel_completed = true;
+		_execute_effect(cold.channel_post_complete_effect, context);
+	}
+	
+	// Start cooldown
+	if (cold.channel_action_kind == sn_ability()) {
+		unit.ability_cooldown = get_effective_ability_cd(unit);
+	}
+	// Ultimates use mana-based cooldowns (mana consumed on cast start, no refund on completion)
+	
+	_clear_channel_state(cold);
+}
+
+void TeamfightSimulationCore::_interrupt_channel(UnitState &unit, UnitStateCold &cold) {
+	cold.is_channeling = false;
+	
+	// Execute post-interrupt effect
+	if (cold.channel_post_interrupt_effect.opcode != 0) {
+		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
+		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_interrupted"));
+		context.channel_remaining_duration = cold.channel_remaining_duration;
+		context.channel_tick_count = _get_channel_tick_count(cold);
+		context.channel_accumulated_damage = cold.channel_accumulated_damage;
+		context.channel_completed = false;
+		_execute_effect(cold.channel_post_interrupt_effect, context);
+	}
+	
+	// Apply cooldown on interrupt (no refund)
+	if (cold.channel_action_kind == sn_ability()) {
+		unit.ability_cooldown = get_effective_ability_cd(unit);
+	}
+	// Ultimates: mana already consumed on cast, no additional action needed
+	
+	_clear_channel_state(cold);
+}
+
+void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delta) {
+	UnitStateCold &cold = _uc(unit);
+	
+	// Check interrupt conditions
+	if (_should_interrupt_channel(unit, cold)) {
+		_interrupt_channel(unit, cold);
+		return;
+	}
+	
+	// Update tick accumulator
+	cold.channel_tick_accumulator += delta;
+	
+	// Execute sub-effect on each tick
+	if (cold.channel_tick_accumulator >= cold.channel_tick_interval) {
+		cold.channel_tick_accumulator -= cold.channel_tick_interval;
+		
+		// Select target
+		UnitState *target = nullptr;
+		if (cold.channel_target_mode == StringName("fixed")) {
+			target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
+		} else if (cold.channel_target_mode == StringName("dynamic")) {
+			// For dynamic target mode, use the closest enemy for now
+			// This can be extended later to support other selection strategies
+			StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
+			const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+			
+			if (!enemy_indices.empty()) {
+				// Find closest enemy
+				UnitState *closest = nullptr;
+				double closest_dist = std::numeric_limits<double>::max();
+				
+				for (int64_t index : enemy_indices) {
+					UnitState &enemy = _units[static_cast<size_t>(index)];
+					double dx = enemy.pos_x - unit.pos_x;
+					double dy = enemy.pos_y - unit.pos_y;
+					double dist = Math::sqrt(dx * dx + dy * dy);
+					if (dist < closest_dist) {
+						closest_dist = dist;
+						closest = &enemy;
+					}
+				}
+				
+				target = closest;
+			}
+		}
+		
+		if (target != nullptr && target->alive) {
+			EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_tick"));
+			context.channel_remaining_duration = cold.channel_remaining_duration;
+			context.channel_tick_count = _get_channel_tick_count(cold);
+			context.channel_accumulated_damage = cold.channel_accumulated_damage;
+			
+			Dictionary result = _execute_effect(cold.channel_sub_effect, context);
+			
+			// Accumulate damage from result
+			if (result.has("damage")) {
+				cold.channel_accumulated_damage += double(result["damage"]);
+			}
+		} else {
+			// Log warning when no valid target exists
+			String warning_msg = "Channel tick skipped: no valid target. Unit ID: ";
+			warning_msg += String::num_int64(unit.instance_id);
+			warning_msg += ", Channel reason: ";
+			warning_msg += cold.channel_reason;
+			warning_msg += ", Target mode: ";
+			warning_msg += cold.channel_target_mode;
+			UtilityFunctions::push_warning(warning_msg);
+		}
+	}
+	
+	// Update duration
+	cold.channel_remaining_duration -= delta;
+	
+	// Check if channel completed
+	if (cold.channel_remaining_duration <= 0.0) {
+		_complete_channel(unit, cold);
+	}
+}
+
 void TeamfightSimulationCore::_cleanse_dots(UnitState &unit, const StringName &effect_type_filter) {
 	auto &periodic_effects = _uc(unit).periodic_effects;
 	if (effect_type_filter.is_empty()) {
@@ -7113,6 +7338,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		// Tick periodic effects (DoT/HoT)
 		_tick_periodic_effects(unit, _tick_rate);
 
+		// Process channel effects
+		if (_uc(unit).is_channeling) {
+			_process_channel_tick(unit, _tick_rate);
+		}
+
 		if (unit.stun_remaining > 0.0) {
 			return;
 		}
@@ -7173,9 +7403,12 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		}
 		if (in_contact) {
 			if (unit.attack_cooldown <= 0.0) {
-				if (unit.combat.attack_speed > 0.0) {
-					_perform_auto_attack(unit, *target, distance);
-					return;
+				// Block auto-attack while channeling
+				if (!_uc(unit).is_channeling) {
+					if (unit.combat.attack_speed > 0.0) {
+						_perform_auto_attack(unit, *target, distance);
+						return;
+					}
 				}
 			}
 		}
@@ -7222,6 +7455,10 @@ bool TeamfightSimulationCore::_try_cast_ability(UnitState &unit, UnitState &targ
 	if (unit.ability_cooldown > 0.0) {
 		return false;
 	}
+	// Block ability cast while channeling
+	if (_uc(unit).is_channeling) {
+		return false;
+	}
 	return _start_cast(unit, target, distance, StringName("ability"));
 }
 
@@ -7230,6 +7467,10 @@ bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &tar
 		return false;
 	}
 	if (unit.root_remaining > 0.0 && unit.has_ultimate_effect && _effect_record_contains_opcode(_uc(unit).ultimate_effect, EFFECT_OPCODE_SELF_DASH)) {
+		return false;
+	}
+	// Block ultimate cast while channeling
+	if (_uc(unit).is_channeling) {
 		return false;
 	}
 	double max_mana = get_effective_max_mana(unit);
@@ -7641,9 +7882,15 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			}
 			
 			// Unified damage calculation
-			double damage = source.combat.max_hp * effect.scalar0;  // max_hp_ratio
-			damage += source.combat.attack_damage * effect.scalar1;  // damage_ratio
-			damage += effect.scalar2;  // flat_amount
+			double damage;
+			// Use accumulated damage if requested
+			if (effect.int1 != 0 && context.channel_accumulated_damage > 0.0) {
+				damage = context.channel_accumulated_damage * effect.scalar1;
+			} else {
+				damage = source.combat.max_hp * effect.scalar0;  // max_hp_ratio
+				damage += source.combat.attack_damage * effect.scalar1;  // damage_ratio
+				damage += effect.scalar2;  // flat_amount
+			}
 			
 			// Apply ability/ultimate modifiers if applicable
 			if (context.action_kind == sn_ability()) {
@@ -7866,9 +8113,14 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_DAMAGE_BASED_HEAL: {
 			Dictionary heal_result;
 			heal_result["success"] = true;
-			_heal_unit(source, source, context.damage * effect.scalar0, context.action_kind);
+			double damage_to_use = context.damage;
+			// Use accumulated damage from channel if requested
+			if (effect.int0 != 0 && context.channel_accumulated_damage > 0.0) {
+				damage_to_use = context.channel_accumulated_damage;
+			}
+			_heal_unit(source, source, damage_to_use * effect.scalar0, context.action_kind);
 			heal_result["heal_applied"] = true;
-			heal_result["amount"] = context.damage * effect.scalar0;
+			heal_result["amount"] = damage_to_use * effect.scalar0;
 			return heal_result;
 		}
 		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: {
@@ -7965,6 +8217,75 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			int final_stacks = int(stack_entry.get("current_stacks", stack_count));
 			result["stacks_set"] = final_stacks;
 			return result;
+		}
+		case EFFECT_OPCODE_CHANNEL: {
+			Dictionary channel_result;
+			channel_result["success"] = true;
+			
+			// Check if already channeling
+			if (_uc(source).is_channeling) {
+				UtilityFunctions::push_error("Unit is already channeling");
+				// Apply cooldown on start failure
+				if (context.action_kind == sn_ability()) {
+					source.ability_cooldown = get_effective_ability_cd(source);
+				}
+				// Ultimates: mana already consumed on cast, no additional action needed
+				channel_result["success"] = false;
+				return channel_result;
+			}
+			
+			// Initialize channel state
+			UnitStateCold &cold = _uc(source);
+			cold.is_channeling = true;
+			cold.channel_remaining_duration = effect.scalar0;  // duration
+			cold.channel_tick_interval = effect.scalar1;  // tick_interval
+			cold.channel_allow_movement = effect.int0 != 0;
+			cold.channel_target_mode = effect.string0;
+			cold.channel_reason = effect.reason;
+			cold.channel_action_kind = context.action_kind;
+			cold.channel_source_instance_id = source.instance_id;
+			cold.channel_tick_accumulator = 0.0;
+			cold.channel_accumulated_damage = 0.0;
+			
+			// Set target
+			if (target != nullptr) {
+				cold.channel_target_instance_id = target->instance_id;
+			}
+			
+			// Set sub-effect (required for channel to function)
+			if (!effect.children.empty()) {
+				cold.channel_sub_effect = effect.children[0];
+				// Validate sub-effect is valid
+				if (cold.channel_sub_effect.opcode == 0) {
+					String error_msg = "Channel sub-effect has invalid opcode. Channel reason: ";
+					error_msg += cold.channel_reason;
+					UtilityFunctions::push_error(error_msg);
+					channel_result["success"] = false;
+					return channel_result;
+				}
+			} else {
+				String error_msg = "Channel missing required sub-effect. Channel reason: ";
+				error_msg += cold.channel_reason;
+				UtilityFunctions::push_error(error_msg);
+				channel_result["success"] = false;
+				return channel_result;
+			}
+			
+			// Set post-complete effect
+			if (effect.sub_effects.size() > 0) {
+				cold.channel_post_complete_effect = effect.sub_effects[0];
+			}
+			
+			// Set post-interrupt effect
+			if (effect.sub_effects.size() > 1) {
+				cold.channel_post_interrupt_effect = effect.sub_effects[1];
+			}
+			
+			// Process first tick immediately to avoid 1-tick delay
+			_process_channel_tick(source, cold.channel_tick_interval);
+			
+			channel_result["channel_started"] = true;
+			return channel_result;
 		}
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: {
 			Dictionary mana_result;

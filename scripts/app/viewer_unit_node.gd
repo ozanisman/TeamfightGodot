@@ -188,6 +188,12 @@ func _draw() -> void:
 			label += " [ULTIMATE]"
 		else:
 			label += " [ABILITY]"
+	elif bool(_u.get("is_channeling", false)):
+		var ckind: String = str(_u.get("channel_action_kind", ""))
+		if ckind.to_lower().contains("ult"):
+			label += " [CHANNELING ULT]"
+		else:
+			label += " [CHANNELING]"
 	elif int(_u.get("target_id", 0)) > 0 and bool(_u.get("in_range", false)):
 		label += " [ATTACKING]"
 	elif int(_u.get("target_id", 0)) > 0:

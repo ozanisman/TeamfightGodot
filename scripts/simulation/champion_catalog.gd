@@ -128,7 +128,11 @@ static func _maybe_install_frozen_specs(thread_cache: Dictionary) -> void:
 
 
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
-	var params: Dictionary = data["params"].duplicate()
+	# Handle empty effect dictionaries (e.g., champions without ultimates)
+	if not data.has("kind"):
+		return null
+	
+	var params: Dictionary = data.get("params", {}).duplicate() if data.has("params") else {}
 	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
 	var pooled_arrays: Array[Array] = []
 	
@@ -190,11 +194,11 @@ static func _build_stats(data: Dictionary) -> ChampionStatsScript:
 	return stats
 
 static func _build_champion(data: Dictionary) -> ChampionSpecScript:
-	var stats := _build_stats(data["stats"])
-	var ability := _build_effect(data["ability"])
-	var ultimate := _build_effect(data["ultimate"])
+	var stats := _build_stats(data.get("stats", {}))
+	var ability := _build_effect(data.get("ability", {}))
+	var ultimate := _build_effect(data.get("ultimate", {}))
 	var passive_ids: Array[StringName] = []
-	for id in data["passive_ids"]:
+	for id in data.get("passive_ids", []):
 		passive_ids.append(id)
 	
 	return ChampionSpecScript.new(
@@ -212,14 +216,14 @@ static func _build_champion(data: Dictionary) -> ChampionSpecScript:
 	)
 
 static func _build_role_config(data: Dictionary) -> RoleConfigSpecScript:
-	var stat_mods: Dictionary = data["stat_mods"]
+	var stat_mods: Dictionary = data.get("stat_mods", {})
 	var passive_on_tick = null
-	if data["passive_on_tick"] != null:
-		passive_on_tick = _build_effect(data["passive_on_tick"])
+	if data.get("passive_on_tick") != null:
+		passive_on_tick = _build_effect(data.get("passive_on_tick", {}))
 	
 	var passive_post_take_damage = null
-	if data["passive_post_take_damage"] != null:
-		passive_post_take_damage = _build_effect(data["passive_post_take_damage"])
+	if data.get("passive_post_take_damage") != null:
+		passive_post_take_damage = _build_effect(data.get("passive_post_take_damage", {}))
 	
 	return RoleConfigSpecScript.new(stat_mods, passive_on_tick, passive_post_take_damage)
 
@@ -2510,15 +2514,15 @@ static func build_role_configs() -> Dictionary:
 
 	for role_id in ROLE_CONFIG_DATA:
 		var data: Dictionary = ROLE_CONFIG_DATA[role_id]
-		var stat_mods: Dictionary = data["stat_mods"].duplicate()
+		var stat_mods: Dictionary = data.get("stat_mods", {}).duplicate()
 		
 		var passive_on_tick = null
-		if data["passive_on_tick"] != null:
-			passive_on_tick = _build_effect(data["passive_on_tick"])
+		if data.get("passive_on_tick") != null:
+			passive_on_tick = _build_effect(data.get("passive_on_tick", {}))
 		
 		var passive_post_take_damage = null
-		if data["passive_post_take_damage"] != null:
-			passive_post_take_damage = _build_effect(data["passive_post_take_damage"])
+		if data.get("passive_post_take_damage") != null:
+			passive_post_take_damage = _build_effect(data.get("passive_post_take_damage", {}))
 		
 		thread_cache["role_config"][role_id] = RoleConfigSpecScript.new(stat_mods, passive_on_tick, passive_post_take_damage)
 	

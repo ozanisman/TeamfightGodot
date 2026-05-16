@@ -31,14 +31,17 @@ static func _normalize_passives(passives: Dictionary) -> Dictionary:
 		var passive_data: Dictionary = passives[passive_id]
 		var normalized_passive: Dictionary = {}
 		for hook in passive_data:
-			var effects: Array = passive_data[hook]
-			var normalized_effects: Array = []
-			for effect in effects:
-				if effect is EffectSpecScript:
-					normalized_effects.append(effect.to_dict())
-				else:
-					normalized_effects.append(effect)
-			normalized_passive[hook] = normalized_effects
+			var hook_data: Variant = passive_data[hook]
+			if hook_data is Array:
+				var normalized_effects: Array = []
+				for effect in hook_data:
+					if effect is EffectSpecScript:
+						normalized_effects.append(effect.to_dict())
+					else:
+						normalized_effects.append(effect)
+				normalized_passive[hook] = normalized_effects
+			else:
+				normalized_passive[hook] = _normalize_numbers(hook_data)
 		normalized[String(passive_id)] = normalized_passive
 	return normalized
 

@@ -427,7 +427,7 @@ const CHAMPION_DATA := {
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
 		"ability_desc": "Grants a 20% max HP shield to himself AND the closest ally. If alone, he gains a 40% max HP shield instead.",
 		"ultimate_desc": "Slams the ground for 300% damage and a 3.5s stun.",
-		"passive_desc": "Reduces incoming damage by 10%.",
+		"passive_desc": "Blocks 25% of damage taken by allies within 3 unit radius.",
 		"passive_name": "Bastion",
 		"ability_name": "Protection",
 		"ultimate_name": "Ground Slam",
@@ -2095,12 +2095,17 @@ const PASSIVE_DATA := {
 		}],
 	},
 	&"bastion": {
-		&"on_defense": [{
-			"kind": &"constant_multiplier",
+		&"on_ally_defense": [{
+			"kind": &"redirect_damage",
 			"params": {
-				"multiplier": 0.9
+				"redirect_ratio": 0.25,
+				"reduction_ratio": 0.0,
+				"redirect_cap": 0.0,
+				"reason": "Bastion"
 			}
 		}],
+		"radius": 3.0,
+		"trigger_phase": "before",
 	},
 	&"executioner": {
 		&"on_attack": [{
@@ -2569,11 +2574,14 @@ static func build_passive_registry() -> Dictionary:
 		var result: Dictionary = {}
 		
 		for hook in data:
-			var effects_data: Array = data[hook]
-			var built_effects: Array = []
-			for effect_data in effects_data:
-				built_effects.append(_build_effect(effect_data))
-			result[hook] = built_effects
+			var hook_data: Variant = data[hook]
+			if hook_data is Array:
+				var built_effects: Array = []
+				for effect_data in hook_data:
+					built_effects.append(_build_effect(effect_data))
+				result[hook] = built_effects
+			else:
+				result[hook] = hook_data
 		
 		thread_cache["passive"][passive_id] = result
 	

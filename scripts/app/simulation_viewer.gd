@@ -91,6 +91,7 @@ var _unit_nodes: Dictionary = {}  # instance_id -> Node2D
 var _projectile_nodes: Dictionary = {}  # projectile_id -> Node2D
 var _floating_texts: Array = []  # Array of floating text nodes
 var _hot_status_rings: Dictionary = {}  # instance_id -> Node2D (current HoT ring per unit)
+var _passive_aoe_rings: Dictionary = {}  # instance_id -> Array[Node2D] (persistent passive AOE rings)
 
 # Selection
 var _selected_unit_id: int = 0
@@ -1206,6 +1207,11 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 			var target_id: int = int(d.get("target_id", 0))
 			var duration: float = float(d.get("val", 0.0))
 			_spawn_hot_status_ring(target_id, duration, snapshot)
+		elif k == "passive_aoe":
+			var target_id: int = int(d.get("target_id", 0))
+			var radius: float = float(d.get("radius", 0.0))
+			var kind: String = str(d.get("extra", ""))
+			_update_passive_aoe_ring(target_id, radius, kind, snapshot)
 		elif k == "melee_slash":
 			_spawn_melee_slash_fx(sp_battle)
 		elif k.begins_with("aoe_"):
@@ -1405,6 +1411,12 @@ func _aoe_ring_color_for(kind: String, team_s: String) -> Color:
 		return Color(1.0, 0.78, 0.2, 0.75)
 	if kind == "aoe_hot":
 		return Color(0.2, 0.9, 0.3, 0.7)
+	if kind == "passive_aoe":
+		# Team-colored with 50% opacity for both fill and border
+		if team_s == "player":
+			return Color(0.275, 0.51, 1.0, 0.5)
+		if team_s == "enemy":
+			return Color(0.882, 0.314, 0.314, 0.5)
 	# aoe_damage: tint by team
 	if team_s == "player":
 		return Color(0.35, 0.55, 1.0, 0.58)
@@ -1455,7 +1467,57 @@ func _cleanup_hot_status_ring(target_id: int) -> void:
 	var ring: Node2D = _hot_status_rings.get(target_id) as Node2D
 	if ring != null and is_instance_valid(ring):
 		ring.queue_free()
-	_hot_status_rings.erase(target_id)
+		_hot_status_rings.erase(target_id)
+
+## Creates or updates a persistent AOE ring for passive effects
+func _update_passive_aoe_ring(target_id: int, radius: float, kind: String, snapshot: Dictionary) -> void:
+	if target_id == 0:
+		return
+	
+	# Get unit node to parent the ring to it
+	var unit_node: Node2D = _unit_nodes.get(target_id) as Node2D
+	if unit_node == null or not is_instance_valid(unit_node):
+		return
+	
+	# If radius is 0, cleanup all rings for this unit (death signal)
+	if radius <= 0.0:
+		var rings: Array = _passive_aoe_rings.get(target_id, [])
+		for ring in rings:
+			if ring != null and is_instance_valid(ring):
+				ring.queue_free()
+		_passive_aoe_rings.erase(target_id)
+		return
+	
+	# Get unit team for color
+	var unit_u: Dictionary = _snapshot_unit_by_id(snapshot, target_id, "passive_aoe")
+	if unit_u.is_empty():
+		return
+	var team_s: String = str(unit_u.get("team", ""))
+	
+	# Calculate screen-space radius
+	var vp: Vector2 = get_viewport_rect().size
+	var s: float = SimConstantsScript.viewer_battle_square_side(vp)
+	var rpx: float = radius * (s / SimConstantsScript.WORLD_SIZE)
+	rpx = maxf(rpx, SimConstantsScript.VIEWER_AOE_MIN_RING_RADIUS_PX)
+	
+	# Get color
+	var col: Color = _aoe_ring_color_for("passive_aoe", team_s)
+	
+	# Create ring around unit (in local space, so it follows unit movement)
+	var n: Node2D = AoeRingNodeScript.new()
+	n.name = "PassiveAoeRing"
+	n.position = Vector2.ZERO  # Local space - will follow unit automatically
+	var fill_c := Color(col.r, col.g, col.b, col.a)  # 50% opacity fill (col.a is already 0.5)
+	n.setup(rpx, rpx, fill_c, col, 2.5)
+	
+	# Parent to unit node so it follows movement
+	unit_node.add_child(n)
+	
+	# Track this ring for the unit (support multiple rings per unit)
+	if not _passive_aoe_rings.has(target_id):
+		_passive_aoe_rings[target_id] = []
+	var rings: Array = _passive_aoe_rings[target_id]
+	rings.append(n)
 
 ## World-space [wx,wy], radius in world units; center matches sim AoE center.
 func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_id: int, snapshot: Dictionary) -> void:
@@ -2316,3 +2378,16 @@ func _clear_units() -> void:
 		if is_instance_valid(floating_text):
 			floating_text.queue_free()
 	_floating_texts.clear()
+
+	for unit_id in _hot_status_rings:
+		var ring: Node2D = _hot_status_rings[unit_id]
+		if ring != null and is_instance_valid(ring):
+			ring.queue_free()
+	_hot_status_rings.clear()
+
+	for unit_id in _passive_aoe_rings:
+		var rings: Array = _passive_aoe_rings[unit_id]
+		for ring in rings:
+			if ring != null and is_instance_valid(ring):
+				ring.queue_free()
+	_passive_aoe_rings.clear()

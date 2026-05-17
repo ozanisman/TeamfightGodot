@@ -317,7 +317,8 @@ private:
 		StringName archetype_id;
 		StringName role_id;
 		Dictionary stats;
-		std::array<std::vector<EffectRecord>, 8> passive_effects;
+		std::array<std::vector<EffectRecord>, 9> passive_effects;
+		double on_ally_defense_radius = 0.0;  // Radius for on_ally_defense triggers
 		EffectRecord ability_effect;
 		EffectRecord ultimate_effect;
 		double spawn_pos_x = 0.0;
@@ -822,6 +823,7 @@ private:
 		EFFECT_OPCODE_CONSUME_STACKS_SHIELD = 51,
 		EFFECT_OPCODE_SET_STACKS = 52,
 		EFFECT_OPCODE_CHANNEL = 53,
+		EFFECT_OPCODE_REDIRECT_DAMAGE = 54,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -1195,6 +1197,7 @@ private:
 	std::vector<UnitState*> _select_targets(UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter);
 	double _movement_speed_multiplier(const UnitState &unit) const;
 	void _touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage);
+	double _trigger_ally_defense_effects(UnitState &target, UnitState &source, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context);
 	double _distance_between(const UnitState &unit1, const UnitState &unit2) const;
 	double _attack_range(const UnitState &unit) const;
 	double _effective_attack_range(const UnitState &unit) const;

@@ -693,11 +693,8 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_stat_modifier()) {
 		return EFFECT_OPCODE_STAT_MODIFIER;
 	}
-	// DEBUG: Log unrecognized effect kinds, especially redirect_damage
+	// DEBUG: Log unrecognized effect kinds
 	UtilityFunctions::push_error(vformat("[DEBUG] _opcode_for_kind: unrecognized effect kind '%s', returning EFFECT_OPCODE_UNKNOWN", String(kind)));
-	if (String(kind) == "redirect_damage") {
-		UtilityFunctions::push_error("[DEBUG] _opcode_for_kind: redirect_damage detected - THIS IS NOT IMPLEMENTED, returning EFFECT_OPCODE_UNKNOWN");
-	}
 	return EFFECT_OPCODE_UNKNOWN;
 }
 
@@ -813,17 +810,6 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
 	EffectRecord compiled;
 	String kind_str = String(effect.get("kind", ""));
-	
-	// DEBUG: Log when compiling effects, especially redirect_damage
-	if (kind_str == "redirect_damage") {
-		UtilityFunctions::push_error("[DEBUG] _compile_effect: compiling redirect_damage effect");
-		Dictionary params = Dictionary(effect.get("params", Dictionary()));
-		UtilityFunctions::push_error(vformat("[DEBUG] _compile_effect: redirect_damage params: redirect_ratio=%f reduction_ratio=%f redirect_cap=%f reason=%s", 
-			double(params.get("redirect_ratio", 0.0)), 
-			double(params.get("reduction_ratio", 0.0)), 
-			double(params.get("redirect_cap", 0.0)), 
-			String(params.get("reason", ""))));
-	}
 	
 	StringName kind;
 	if (kind_str == "multi_target") {
@@ -2133,22 +2119,13 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 		effect_kinds.append(StringName("on_ability"));
 		effect_kinds.append(StringName("on_ultimate"));
 		effect_kinds.append(StringName("post_heal"));
-		// DEBUG: Log when on_ally_defense effects are being compiled
 		if (entry.has("on_ally_defense")) {
-			Array on_ally_defense_effects = Array(entry.get("on_ally_defense", Array()));
-			UtilityFunctions::push_error(vformat("[DEBUG] effect_kinds loop: passive_id '%s' has on_ally_defense with %d effects - COMPILING", String(passive_id), on_ally_defense_effects.size()));
-			for (int64_t i = 0; i < on_ally_defense_effects.size(); ++i) {
-				Dictionary effect = Dictionary(on_ally_defense_effects[i]);
-				String effect_kind = String(effect.get("kind", ""));
-				UtilityFunctions::push_error(vformat("[DEBUG] effect_kinds loop: on_ally_defense effect %d has kind '%s'", i, effect_kind));
-			}
 			// Extract and store radius from passive definition
 			double radius = double(entry.get("radius", 0.0));
 			// Take the maximum radius if multiple passives have on_ally_defense
 			if (radius > cold.on_ally_defense_radius) {
 				cold.on_ally_defense_radius = radius;
 			}
-			UtilityFunctions::push_error(vformat("[DEBUG] effect_kinds loop: passive_id '%s' has radius=%f, on_ally_defense_radius now=%f", String(passive_id), radius, cold.on_ally_defense_radius));
 		}
 		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
 			Variant kind_value = effect_kinds[kind_index];
@@ -4034,12 +4011,9 @@ double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &
 }
 
 double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind) {
-	// DEBUG: Log when _defense_multiplier is called
-	UtilityFunctions::push_error(vformat("[DEBUG] _defense_multiplier: called for target_id=%d source_id=%d damage=%f action_kind=%s", target.instance_id, source.instance_id, damage, String(action_kind)));
 	double multiplier = 1.0;
 	EffectContext context = _build_context(source, &target, nullptr, damage, action_kind);
 	const std::vector<EffectRecord> &effects = _uc(target).passive_effects[EFFECT_BUCKET_ON_DEFENSE];
-	UtilityFunctions::push_error(vformat("[DEBUG] _defense_multiplier: target has %d on_defense effects", effects.size()));
 	for (const EffectRecord &effect : effects) {
 		if (effect.opcode == EFFECT_OPCODE_AUTO_DODGE) {
 			continue;
@@ -4055,8 +4029,6 @@ double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState
 		}
 		multiplier *= _evaluate_multiplier_effect(effect, context, multiplier);
 	}
-	// DEBUG: Log final multiplier
-	UtilityFunctions::push_error(vformat("[DEBUG] _defense_multiplier: final multiplier=%f", multiplier));
 	return multiplier;
 }
 
@@ -4108,8 +4080,6 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	if (damage <= 0.0) {
 		return 0.0;
 	}
-	// DEBUG: Log when _apply_damage is called
-	UtilityFunctions::push_error(vformat("[DEBUG] _apply_damage: source_id=%d target_id=%d damage=%f damage_type=%s action_kind=%s", source.instance_id, target.instance_id, damage, String(damage_type), String(action_kind)));
 	
 	const bool action_is_auto = action_kind == sn_auto();
 	const bool action_is_ability = action_kind == sn_ability();
@@ -4282,8 +4252,8 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		return 0.0;
 	}
 	
-	// DEBUG: Log when _trigger_ally_defense_effects is called
-	UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: target_id=%d source_id=%d damage=%f", target.instance_id, source.instance_id, damage));
+	// TEMP DEBUG: Log when _trigger_ally_defense_effects is called
+	UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Called: target_id=%d source_id=%d damage=%f", target.instance_id, source.instance_id, damage));
 	
 	double total_reduction = 0.0;
 	StringName target_team = target.team;
@@ -4301,22 +4271,32 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 			continue;
 		}
 		
+		// TEMP DEBUG: Log ally found with on_ally_defense effects
+		UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Found ally_id=%d with %d on_ally_defense effects", ally.instance_id, ally_defense_effects.size()));
+		
 		// Check radius constraint (use stored radius from passive definition)
 		double ally_radius = _uc(ally).on_ally_defense_radius;
 		if (ally_radius <= 0.0) {
+			// TEMP DEBUG: Log radius check failure
+			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d has invalid radius=%f, skipping", ally.instance_id, ally_radius));
 			continue;  // No radius defined, skip
 		}
 		double dx = ally.pos_x - target.pos_x;
 		double dy = ally.pos_y - target.pos_y;
 		double dist_sq = dx * dx + dy * dy;
 		double radius_sq = ally_radius * ally_radius;
+		// Save dx, dy for distance calculation in context
+		double adx = dx;
+		double ady = dy;
 		
 		if (dist_sq > radius_sq) {
+			// TEMP DEBUG: Log radius check failure
+			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d outside radius (dist=%f, radius=%f), skipping", ally.instance_id, Math::sqrt(dist_sq), ally_radius));
 			continue;
 		}
 		
-		// DEBUG: Log when ally defense effects are triggered
-		UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: ally_id=%d within radius, has %d on_ally_defense effects", ally.instance_id, ally_defense_effects.size()));
+		// TEMP DEBUG: Log ally within radius
+		UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d within radius (dist=%f, radius=%f), executing effects", ally.instance_id, Math::sqrt(dist_sq), ally_radius));
 		
 		// Build context for ally defense effects
 		EffectContext ally_context = context;
@@ -4325,11 +4305,13 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		ally_context.target_ally = nullptr;  // ally is the source, not a target ally
 		ally_context.damage = damage;
 		ally_context.action_kind = action_kind;
+		// Calculate distance from ally to target for effects that might use it
+		ally_context.distance = Math::sqrt(adx * adx + ady * ady);
 		
 		// Execute ally defense effects
 		for (const EffectRecord &effect : ally_defense_effects) {
-			// DEBUG: Log when executing ally defense effect
-			UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: executing effect with opcode=%d for ally_id=%d", effect.opcode, ally.instance_id));
+			// TEMP DEBUG: Log effect opcode
+			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Executing effect with opcode=%d for ally_id=%d", effect.opcode, ally.instance_id));
 			
 			// Handle redirect_damage effect
 			if (effect.opcode == EFFECT_OPCODE_REDIRECT_DAMAGE) {
@@ -4337,17 +4319,27 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 				double reduction_ratio = effect.scalar1;
 				double redirect_cap = effect.scalar2;
 				
+				// TEMP DEBUG: Log redirect_damage parameters
+				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: ally_id=%d redirect_ratio=%f reduction_ratio=%f redirect_cap=%f original_damage=%f", ally.instance_id, redirect_ratio, reduction_ratio, redirect_cap, damage));
+				
 				// Calculate damage reduction for the original target
 				double reduction_amount = damage * reduction_ratio;
 				total_reduction += reduction_amount;
-				UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: reduction_ratio=%f, reduction_amount=%f for ally_id=%d", reduction_ratio, reduction_amount, ally.instance_id));
 				
-				// Calculate redirected damage (capped at redirect_cap of original damage)
+				// TEMP DEBUG: Log reduction
+				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: reduction_amount=%f total_reduction=%f", reduction_amount, total_reduction));
+				
+				// Calculate redirected damage (capped at flat redirect_cap, 0 means no cap)
 				double redirected_damage = damage * redirect_ratio;
-				double max_redirect = damage * redirect_cap;
-				if (redirected_damage > max_redirect) {
-					redirected_damage = max_redirect;
+				if (redirect_cap > 0.0) {
+					double max_redirect = redirect_cap;  // flat value cap
+					if (redirected_damage > max_redirect) {
+						redirected_damage = max_redirect;
+					}
 				}
+				
+				// TEMP DEBUG: Log redirect damage
+				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: redirected_damage=%f (capped at flat %f)", redirected_damage, redirect_cap));
 				
 				// Apply redirected damage to the ally defender
 				if (redirected_damage > 1e-9) {
@@ -4357,16 +4349,16 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 					redirect_context.damage = redirected_damage;
 					redirect_context.action_kind = action_kind;
 					redirect_context.suppress_reflect_chain = true;  // Prevent infinite reflection loops
+					// Calculate distance from source to ally for effects that might use it
+					double rdx = source.pos_x - ally.pos_x;
+					double rdy = source.pos_y - ally.pos_y;
+					redirect_context.distance = Math::sqrt(rdx * rdx + rdy * rdy);
 					_apply_damage(source, ally, redirected_damage, damage_type, sn_passive(), redirect_context);
-					UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: redirected %f damage to ally_id=%d", redirected_damage, ally.instance_id));
+					// TEMP DEBUG: Log damage applied
+					UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: Applied %f damage to ally_id=%d", redirected_damage, ally.instance_id));
 				}
 			} else {
 				Dictionary result = _execute_effect(effect, ally_context);
-				
-				// Check if this is an unknown effect
-				if (effect.opcode == EFFECT_OPCODE_UNKNOWN) {
-					UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: effect has EFFECT_OPCODE_UNKNOWN for ally_id=%d", ally.instance_id));
-				}
 			}
 		}
 	}
@@ -4376,7 +4368,9 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		total_reduction = damage;
 	}
 	
-	UtilityFunctions::push_error(vformat("[DEBUG] _trigger_ally_defense_effects: returning total_reduction=%f", total_reduction));
+	// TEMP DEBUG: Log final reduction
+	UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Final total_reduction=%f (original damage=%f)", total_reduction, damage));
+	
 	return total_reduction;
 }
 

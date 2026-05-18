@@ -427,7 +427,7 @@ const CHAMPION_DATA := {
 		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
 		"ability_desc": "Grants a 20% max HP shield to himself AND the closest ally. If alone, he gains a 40% max HP shield instead.",
 		"ultimate_desc": "Slams the ground for 300% damage and a 3.5s stun.",
-		"passive_desc": "Blocks 25% of damage taken by allies within 3 unit radius.",
+		"passive_desc": "Redirects 15% of damage taken by allies in a 3.0 tile radius.",
 		"passive_name": "Bastion",
 		"ability_name": "Protection",
 		"ultimate_name": "Ground Slam",
@@ -2098,7 +2098,7 @@ const PASSIVE_DATA := {
 		&"on_ally_defense": [{
 			"kind": &"redirect_damage",
 			"params": {
-				"redirect_ratio": 0.25,
+				"redirect_ratio": 0.15,
 				"reduction_ratio": 0.0,
 				"redirect_cap": 0.0,
 				"reason": "Bastion"

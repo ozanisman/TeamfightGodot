@@ -1238,7 +1238,7 @@
 					"params": {
 						"reason": "Bastion",
 						"redirect_cap": 0.0,
-						"redirect_ratio": 0.25,
+						"redirect_ratio": 0.15,
 						"reduction_ratio": 0.0
 					},
 					"requires_target_in_range": true

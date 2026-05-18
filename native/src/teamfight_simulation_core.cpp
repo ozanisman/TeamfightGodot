@@ -4252,6 +4252,7 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		return 0.0;
 	}
 	
+	double total_redirected = 0.0;  // Track total damage redirected away from original target
 	StringName target_team = target.team;
 	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(target_team);
 	
@@ -4311,6 +4312,9 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 					}
 				}
 				
+				// Track total redirected damage to reduce original target's damage
+				total_redirected += redirected_damage;
+				
 				// Apply reduction to redirected damage (reduces damage the guardian takes)
 				double mitigated_damage = redirected_damage * (1.0 - reduction_ratio);
 				
@@ -4338,7 +4342,12 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		}
 	}
 	
-	return 0.0;  // No reduction to original target (reduction_ratio now applies to guardian)
+	// Clamp total redirected to not exceed original damage
+	if (total_redirected > damage) {
+		total_redirected = damage;
+	}
+	
+	return total_redirected;  // Return redirected damage to reduce original target's damage
 }
 
 void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, double duration) {

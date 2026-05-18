@@ -1273,8 +1273,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int0 = params.get("all_damage_types", false) ? 1 : 0;
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_redirect_damage()) {
-		compiled.scalar0 = double(params.get("redirect_ratio", 0.0));
-		compiled.scalar1 = double(params.get("reduction_ratio", 0.0));
+		compiled.scalar0 = Math::clamp(double(params.get("redirect_ratio", 0.0)), 0.0, 1.0);
+		compiled.scalar1 = Math::clamp(double(params.get("reduction_ratio", 0.0)), 0.0, 1.0);
 		compiled.scalar2 = double(params.get("redirect_cap", 0.0));
 		compiled.reason = String(params.get("reason", ""));
 	} else if (kind == sn_knockback_shield()) {
@@ -4252,10 +4252,6 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		return 0.0;
 	}
 	
-	// TEMP DEBUG: Log when _trigger_ally_defense_effects is called
-	UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Called: target_id=%d source_id=%d damage=%f", target.instance_id, source.instance_id, damage));
-	
-	double total_reduction = 0.0;
 	StringName target_team = target.team;
 	const std::vector<int64_t> &ally_indices = _alive_indices_for_team(target_team);
 	
@@ -4271,14 +4267,9 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 			continue;
 		}
 		
-		// TEMP DEBUG: Log ally found with on_ally_defense effects
-		UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Found ally_id=%d with %d on_ally_defense effects", ally.instance_id, ally_defense_effects.size()));
-		
 		// Check radius constraint (use stored radius from passive definition)
 		double ally_radius = _uc(ally).on_ally_defense_radius;
 		if (ally_radius <= 0.0) {
-			// TEMP DEBUG: Log radius check failure
-			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d has invalid radius=%f, skipping", ally.instance_id, ally_radius));
 			continue;  // No radius defined, skip
 		}
 		double dx = ally.pos_x - target.pos_x;
@@ -4290,13 +4281,8 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		double ady = dy;
 		
 		if (dist_sq > radius_sq) {
-			// TEMP DEBUG: Log radius check failure
-			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d outside radius (dist=%f, radius=%f), skipping", ally.instance_id, Math::sqrt(dist_sq), ally_radius));
 			continue;
 		}
-		
-		// TEMP DEBUG: Log ally within radius
-		UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] ally_id=%d within radius (dist=%f, radius=%f), executing effects", ally.instance_id, Math::sqrt(dist_sq), ally_radius));
 		
 		// Build context for ally defense effects
 		EffectContext ally_context = context;
@@ -4310,24 +4296,11 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		
 		// Execute ally defense effects
 		for (const EffectRecord &effect : ally_defense_effects) {
-			// TEMP DEBUG: Log effect opcode
-			UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Executing effect with opcode=%d for ally_id=%d", effect.opcode, ally.instance_id));
-			
 			// Handle redirect_damage effect
 			if (effect.opcode == EFFECT_OPCODE_REDIRECT_DAMAGE) {
 				double redirect_ratio = effect.scalar0;
 				double reduction_ratio = effect.scalar1;
 				double redirect_cap = effect.scalar2;
-				
-				// TEMP DEBUG: Log redirect_damage parameters
-				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: ally_id=%d redirect_ratio=%f reduction_ratio=%f redirect_cap=%f original_damage=%f", ally.instance_id, redirect_ratio, reduction_ratio, redirect_cap, damage));
-				
-				// Calculate damage reduction for the original target
-				double reduction_amount = damage * reduction_ratio;
-				total_reduction += reduction_amount;
-				
-				// TEMP DEBUG: Log reduction
-				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: reduction_amount=%f total_reduction=%f", reduction_amount, total_reduction));
 				
 				// Calculate redirected damage (capped at flat redirect_cap, 0 means no cap)
 				double redirected_damage = damage * redirect_ratio;
@@ -4338,24 +4311,26 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 					}
 				}
 				
-				// TEMP DEBUG: Log redirect damage
-				UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: redirected_damage=%f (capped at flat %f)", redirected_damage, redirect_cap));
+				// Apply reduction to redirected damage (reduces damage the guardian takes)
+				double mitigated_damage = redirected_damage * (1.0 - reduction_ratio);
 				
-				// Apply redirected damage to the ally defender
-				if (redirected_damage > 1e-9) {
+				// Apply mitigated damage to the ally defender
+				if (mitigated_damage > 1e-9) {
+					// Track mitigated damage in stats
+					double mitigated_amount = redirected_damage - mitigated_damage;
+					_uc(ally).damage_mitigated += mitigated_amount;
+					
 					EffectContext redirect_context = context;
 					redirect_context.source = &source;
 					redirect_context.target = &ally;
-					redirect_context.damage = redirected_damage;
+					redirect_context.damage = mitigated_damage;
 					redirect_context.action_kind = action_kind;
 					redirect_context.suppress_reflect_chain = true;  // Prevent infinite reflection loops
 					// Calculate distance from source to ally for effects that might use it
 					double rdx = source.pos_x - ally.pos_x;
 					double rdy = source.pos_y - ally.pos_y;
 					redirect_context.distance = Math::sqrt(rdx * rdx + rdy * rdy);
-					_apply_damage(source, ally, redirected_damage, damage_type, sn_passive(), redirect_context);
-					// TEMP DEBUG: Log damage applied
-					UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] REDIRECT_DAMAGE: Applied %f damage to ally_id=%d", redirected_damage, ally.instance_id));
+					_apply_damage(source, ally, mitigated_damage, damage_type, sn_passive(), redirect_context);
 				}
 			} else {
 				Dictionary result = _execute_effect(effect, ally_context);
@@ -4363,15 +4338,7 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		}
 	}
 	
-	// Clamp total reduction to not exceed original damage
-	if (total_reduction > damage) {
-		total_reduction = damage;
-	}
-	
-	// TEMP DEBUG: Log final reduction
-	UtilityFunctions::push_error(vformat("[ALLY_DEFENSE] Final total_reduction=%f (original damage=%f)", total_reduction, damage));
-	
-	return total_reduction;
+	return 0.0;  // No reduction to original target (reduction_ratio now applies to guardian)
 }
 
 void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, double duration) {

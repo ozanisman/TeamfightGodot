@@ -319,6 +319,12 @@ private:
 		Dictionary stats;
 		std::array<std::vector<EffectRecord>, 9> passive_effects;
 		double on_ally_defense_radius = 0.0;  // Radius for on_ally_defense triggers
+		// Passive AOE radius information for visualization
+		struct PassiveAoeInfo {
+			StringName passive_id;
+			double radius;
+		};
+		std::vector<PassiveAoeInfo> passive_aoe_info;
 		EffectRecord ability_effect;
 		EffectRecord ultimate_effect;
 		double spawn_pos_x = 0.0;
@@ -1033,6 +1039,7 @@ private:
 	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);
 	void _viewer_record_aoe_shape_fx(const UnitState &p_source, const UnitState *p_target, const AoShapeParams &params, const StringName &kind);
 	void _viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type);
+	void _viewer_record_passive_aoe_fx(const UnitState &p_unit, double p_radius, const StringName &p_passive_id);
 	String _viewer_state_string(const UnitState &p_u) const;
 
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;

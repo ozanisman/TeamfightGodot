@@ -240,6 +240,11 @@ private:
 		/// Prevents reflected damage from chaining into further reflects.
 		bool suppress_reflect_chain = false;
 
+		// Takedown-specific context
+		int64_t takedown_target_id = 0;  // Unit that was killed
+		double takedown_damage_dealt = 0.0;  // Damage contributed by participant
+		bool is_takedown_kill = false;  // True for killer, false for assists
+
 		// Channel-specific context
 		double channel_remaining_duration = 0.0;
 		int64_t channel_tick_count = 0;
@@ -317,7 +322,7 @@ private:
 		StringName archetype_id;
 		StringName role_id;
 		Dictionary stats;
-		std::array<std::vector<EffectRecord>, 9> passive_effects;
+		std::array<std::vector<EffectRecord>, 10> passive_effects;
 		double on_ally_defense_radius = 0.0;  // Radius for on_ally_defense triggers
 		// Passive AOE radius information for visualization
 		struct PassiveAoeInfo {
@@ -1183,6 +1188,7 @@ private:
 	bool _apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
 	void _run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const StringName &action_kind, const EffectContext &base_context);
+	void _run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const StringName &action_kind, const EffectContext &base_context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
 	void _apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration);
 	void _apply_root(UnitState &source, UnitState &target, double duration);

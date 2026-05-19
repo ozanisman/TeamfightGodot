@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <set>
 #include <utility>
 
 static std::atomic<int64_t> s_benchmark_progress_done{0};
@@ -357,6 +358,10 @@ inline const StringName &sn_post_heal() {
 	static const StringName s("post_heal");
 	return s;
 }
+inline const StringName &sn_on_takedown() {
+	static const StringName s("on_takedown");
+	return s;
+}
 inline const StringName &sn_cast_start() {
 	static const StringName s("cast_start");
 	return s;
@@ -446,6 +451,7 @@ constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 5;
 constexpr size_t EFFECT_BUCKET_ON_ABILITY = 6;
 constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 7;
 constexpr size_t EFFECT_BUCKET_POST_HEAL = 8;
+constexpr size_t EFFECT_BUCKET_ON_TAKEDOWN = 9;
 } // namespace
 
 namespace {
@@ -2105,6 +2111,9 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 		if (kind == sn_post_heal()) {
 			return 8;
 		}
+		if (kind == sn_on_takedown()) {
+			return 9;
+		}
 		// DEBUG: Log unrecognized trigger kinds
 		UtilityFunctions::push_error(vformat("[DEBUG] passive_bucket_index: unrecognized trigger kind '%s', falling through to bucket 5 (post_take_damage)", String(kind)));
 		return 5;
@@ -2127,6 +2136,7 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 		effect_kinds.append(StringName("on_ability"));
 		effect_kinds.append(StringName("on_ultimate"));
 		effect_kinds.append(StringName("post_heal"));
+		effect_kinds.append(StringName("on_takedown"));
 		if (entry.has("on_ally_defense")) {
 			// Extract and store radius from passive definition
 			double radius = double(entry.get("radius", 0.0));
@@ -5354,6 +5364,25 @@ void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitStat
 	}
 }
 
+void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const StringName &action_kind, const EffectContext &base_context) {
+	const std::vector<EffectRecord> &takedown_effects = _uc(participant).passive_effects[EFFECT_BUCKET_ON_TAKEDOWN];
+	if (takedown_effects.empty()) {
+		return;
+	}
+	EffectContext effect_context = base_context;
+	effect_context.takedown_target_id = victim.instance_id;
+	effect_context.takedown_damage_dealt = damage_dealt;
+	effect_context.is_takedown_kill = is_kill;
+	effect_context.damage = damage_dealt;
+	effect_context.action_kind = action_kind;
+	effect_context.source = &participant;
+	effect_context.target = &victim;
+	
+	for (const EffectRecord &effect : takedown_effects) {
+		_execute_effect(effect, effect_context);
+	}
+}
+
 void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind) {
 	// Calculate damage_per_tick from ratios at application time
 	double damage_per_tick = get_effective_attack_damage(source) * attack_damage_ratio;
@@ -6952,7 +6981,15 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 		} else if (killer_unit->team == StringName("enemy")) {
 			_enemy_kills += 1;
 		}
+		// Run on_takedown effects for killer (runs before assists - killer gets first credit)
+		EffectContext takedown_context = _build_context(*killer_unit, &target, nullptr, killer_damage, StringName("takedown"));
+		_run_on_takedown_effects(*killer_unit, target, killer_damage, true, StringName("takedown"), takedown_context);
 	}
+
+	// Collect assist IDs and award assists (both damage sources and benefactors)
+	// Deduplicate to prevent double-dipping if a unit is both a damage source and benefactor
+	std::set<int64_t> assist_ids;
+	std::unordered_map<int64_t, double> assist_damage_map;  // Track damage for each assist (0.0 for benefactors)
 
 	for (const auto &entry : damage_sources) {
 		int64_t source_id = entry.first;
@@ -6964,6 +7001,8 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 			UnitState *assist_unit = _unit_by_id(source_id);
 			if (assist_unit != nullptr) {
 				_uc(*assist_unit).assists += 1;
+				assist_ids.insert(source_id);
+				assist_damage_map[source_id] = entry.second.damage;
 			}
 		}
 	}
@@ -6979,6 +7018,21 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 		UnitState *assist_unit = _unit_by_id(benefactor_id);
 		if (assist_unit != nullptr) {
 			_uc(*assist_unit).assists += 1;
+			assist_ids.insert(benefactor_id);
+			// Benefactors don't track damage, use 0.0 if not already in damage map
+			if (assist_damage_map.find(benefactor_id) == assist_damage_map.end()) {
+				assist_damage_map[benefactor_id] = 0.0;
+			}
+		}
+	}
+
+	// Run on_takedown effects once per unique assist
+	for (int64_t assist_id : assist_ids) {
+		UnitState *assist_unit = _unit_by_id(assist_id);
+		if (assist_unit != nullptr) {
+			double damage = assist_damage_map[assist_id];
+			EffectContext takedown_context = _build_context(*assist_unit, &target, nullptr, damage, StringName("takedown"));
+			_run_on_takedown_effects(*assist_unit, target, damage, false, StringName("takedown"), takedown_context);
 		}
 	}
 

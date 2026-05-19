@@ -2004,6 +2004,14 @@ void TeamfightSimulationCore::_append_team_units(const Array &spawn_specs, const
 		_add_alive_index(team, unit_index);
 		_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 		team_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
+		
+		// Emit passive AOE events for visualization at initial spawn
+		UnitState &unit = _units[static_cast<size_t>(unit_index)];
+		UnitStateCold &cold = _unit_cold[static_cast<size_t>(unit_index)];
+		for (const UnitStateCold::PassiveAoeInfo &aoe_info : cold.passive_aoe_info) {
+			_viewer_record_passive_aoe_fx(unit, aoe_info.radius, aoe_info.passive_id);
+		}
+		
 		++next_instance_id;
 	}
 }
@@ -2125,6 +2133,16 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 			// Take the maximum radius if multiple passives have on_ally_defense
 			if (radius > cold.on_ally_defense_radius) {
 				cold.on_ally_defense_radius = radius;
+			}
+		}
+		// Store passive AOE radius information for visualization (all passives with radius)
+		if (entry.has("radius")) {
+			double radius = double(entry.get("radius", 0.0));
+			if (radius > 0.0) {
+				UnitStateCold::PassiveAoeInfo aoe_info;
+				aoe_info.passive_id = passive_id;
+				aoe_info.radius = radius;
+				cold.passive_aoe_info.push_back(aoe_info);
 			}
 		}
 		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
@@ -6919,6 +6937,12 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	}
 
 	_emit_trace(StringName("death"), killer_id, target.instance_id, 0.0);
+	
+	// Emit passive AOE cleanup events (radius=0) to clear visualization
+	UnitStateCold &target_cold = _uc(target);
+	for (const UnitStateCold::PassiveAoeInfo &aoe_info : target_cold.passive_aoe_info) {
+		_viewer_record_passive_aoe_fx(target, 0.0, aoe_info.passive_id);
+	}
 
 	UnitState *killer_unit = _unit_by_id(killer_id);
 	if (killer_unit != nullptr) {
@@ -7027,6 +7051,11 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.casting_remaining = 0.0;
 	c.casting_kind = StringName();
 	c.casting_effect = EffectRecord();
+	
+	// Emit passive AOE events for visualization
+	for (const UnitStateCold::PassiveAoeInfo &aoe_info : c.passive_aoe_info) {
+		_viewer_record_passive_aoe_fx(unit, aoe_info.radius, aoe_info.passive_id);
+	}
 	unit.casting_target_id = 0;
 	unit.casting_ally_target_id = 0;
 	unit.has_casting_effect = false;
@@ -9880,6 +9909,21 @@ void TeamfightSimulationCore::_viewer_record_hot_status_fx(const UnitState &p_ta
 	ev.target_id = p_target.instance_id;
 	ev.val = p_duration;
 	ev.radius = 0.0;
+	_viewer_fx_push(ev);
+}
+
+void TeamfightSimulationCore::_viewer_record_passive_aoe_fx(const UnitState &p_unit, double p_radius, const StringName &p_passive_id) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("passive_aoe");
+	ev.target_id = p_unit.instance_id;
+	ev.src_id = p_unit.instance_id;
+	ev.pos_x = p_unit.pos_x;
+	ev.pos_y = p_unit.pos_y;
+	ev.val = 0.0;
+	ev.radius = p_radius;
+	Dictionary extra;
+	extra["passive_id"] = String(p_passive_id);
+	ev.extra = extra;
 	_viewer_fx_push(ev);
 }
 

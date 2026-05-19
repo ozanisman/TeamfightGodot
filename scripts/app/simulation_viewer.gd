@@ -1507,7 +1507,7 @@ func _update_passive_aoe_ring(target_id: int, radius: float, kind: String, snaps
 	var n: Node2D = AoeRingNodeScript.new()
 	n.name = "PassiveAoeRing"
 	n.position = Vector2.ZERO  # Local space - will follow unit automatically
-	var fill_c := Color(col.r, col.g, col.b, col.a)  # 50% opacity fill (col.a is already 0.5)
+	var fill_c := Color(col.r, col.g, col.b, 0.0)  # Transparent fill
 	n.setup(rpx, rpx, fill_c, col, 2.5)
 	
 	# Parent to unit node so it follows movement

@@ -634,6 +634,10 @@ private:
 		/// Alive marksman+mage per team (bodyguard bonus loop only).
 		std::vector<int64_t> player_carry_indices;
 		std::vector<int64_t> enemy_carry_indices;
+		/// Distance cache matrix: distance_cache[i * N + j] = distance between unit i and unit j.
+		/// Avoids redundant sqrt calculations during target scoring.
+		std::vector<double> distance_cache;
+		size_t distance_cache_size = 0;
 	};
 
 	struct TargetingFrameEntry {
@@ -1151,7 +1155,7 @@ private:
 	double _score_enemy_target_from_prefix_parts(const UnitState &attacker, const TargetingFrameEntry &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double base_score, double flanking_score);
 	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
+	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const TeamfightSimulationCore::UnitStrategy &strategy, double unit_ally_distance = -1.0, int64_t unit_index = -1, int64_t ally_index = -1) const;
 	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy, double current_target_distance = -1.0) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);

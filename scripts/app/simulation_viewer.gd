@@ -758,10 +758,10 @@ func _init_champion_catalog_tooltip() -> void:
 	_champ_catalog_tt.call("setup", _ui_layer)
 
 
-func _register_champ_tooltip(ctl: Control, hero_id: StringName) -> void:
+func _register_champ_tooltip(ctl: Control, hero_id: StringName, unit_data: Dictionary = {}) -> void:
 	if _champ_catalog_tt == null or not is_instance_valid(ctl):
 		return
-	_champ_catalog_tt.call("register_source", ctl, hero_id)
+	_champ_catalog_tt.call("register_source", ctl, hero_id, unit_data)
 
 
 func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
@@ -770,7 +770,7 @@ func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
 		catch = (card as Node).find_child("RosterChampionTooltipCatcher", true, false)
 	if catch is Control:
 		var hid: StringName = StringName(str(ud.get("archetype_id", "")))
-		_register_champ_tooltip(catch as Control, hid)
+		_register_champ_tooltip(catch as Control, hid, ud)
 
 
 func _remove_champion_buttons_from_header() -> void:
@@ -863,6 +863,32 @@ func _step_simulation(delta: float) -> void:
 	
 	if ticks_advanced > 0:
 		_update_visualization_from_snapshot(ticks_advanced == 1)
+		_update_active_tooltip_from_snapshot()
+
+
+func _update_active_tooltip_from_snapshot() -> void:
+	if _champ_catalog_tt == null or not is_instance_valid(_champ_catalog_tt):
+		return
+	var snapshot: Dictionary = _backend.get_tick_snapshot()
+	if snapshot.is_empty():
+		return
+	var units: Array = snapshot.get("units")
+	if units.is_empty():
+		return
+	
+	# Get the active hero from the tooltip
+	var active_hero: StringName = _champ_catalog_tt.call("get_active_hero")
+	if active_hero.is_empty():
+		return
+	
+	# Find the unit data for the active hero
+	for unit_data in units:
+		if unit_data is not Dictionary:
+			continue
+		var unit_dict: Dictionary = unit_data as Dictionary
+		if String(unit_dict.get("archetype_id", "")) == String(active_hero):
+			_champ_catalog_tt.call("update_with_unit_data", unit_dict)
+			break
 
 
 func _update_visualization_from_snapshot(apply_tick_fx: bool = true) -> void:

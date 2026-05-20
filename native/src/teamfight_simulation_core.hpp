@@ -881,6 +881,8 @@ private:
 	static constexpr double DRAFT_X_BASE = 0.9;
 	// Positions are stored as IEEE 754 double for deterministic arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
+	static constexpr double ALLY_CRITICAL_HP_THRESHOLD = 0.3;
+	static constexpr double REACTIVE_PEEL_BONUS = 15.0;
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
 	static constexpr double SCORE_THREAT_WEIGHT_SCALE = 5.0;

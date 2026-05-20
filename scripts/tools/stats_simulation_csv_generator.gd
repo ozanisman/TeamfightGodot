@@ -70,6 +70,12 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 	var chunk_count: int = maxi(0, int(profile_state.get("chunk_count", 0)))
 	var match_count: int = maxi(0, int(profile_state.get("match_count", 0)))
 	var total_match_path_ns: int = int(profile_state.get("assembly_ns", 0)) + int(profile_state.get("native_run_ns", 0)) + int(profile_state.get("matchup_ns", 0)) + int(profile_state.get("clear_ns", 0))
+	var native_profile_total_ns: int = (
+		int(profile_state.get("native_simulate_ns", 0))
+		+ int(profile_state.get("native_stats_aggregation_ns", 0))
+		+ int(profile_state.get("native_matchup_aggregation_ns", 0))
+		+ int(profile_state.get("native_result_build_ns", 0))
+	)
 	var setup_overhead_ns: int = int(profile_state.get("probe_ns", 0)) + int(profile_state.get("progress_reset_ns", 0)) + int(profile_state.get("worker_startup_ns", 0))
 	var worker_wait_wall_ns: int = int(profile_state.get("worker_join_ns", 0))
 	var bookkeeping_total_ns: int = int(profile_state.get("aggregation_ns", 0)) + int(profile_state.get("csv_write_ns", 0)) + int(profile_state.get("matchup_write_ns", 0))
@@ -93,6 +99,7 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 	var wall_phase_rankings: Array = _rank_ns_fields(wall_breakdown, ["setup_overhead_ns", "worker_wait_wall_ns", "main_thread_bookkeeping_ns"])
 	var bookkeeping_rankings: Array = _rank_ns_fields(profile_state, ["aggregation_ns", "csv_write_ns", "matchup_write_ns"])
 	var chunk_rankings: Array = _rank_ns_fields(profile_state, ["assembly_ns", "native_run_ns", "matchup_ns", "clear_ns"])
+	var native_rankings: Array = _rank_ns_fields(profile_state, ["native_simulate_ns", "native_stats_aggregation_ns", "native_matchup_aggregation_ns", "native_result_build_ns"])
 	return {
 		"wall_ns": wall_ns,
 		"match_count": match_count,
@@ -103,6 +110,7 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 		"wall_phase_rankings": wall_phase_rankings,
 		"bookkeeping_phase_rankings": bookkeeping_rankings,
 		"chunk_phase_rankings": chunk_rankings,
+		"native_phase_rankings": native_rankings,
 		"top_level_rankings": wall_phase_rankings,
 		"dominant_wall_phase": wall_phase_rankings[0]["phase"] if not wall_phase_rankings.is_empty() else "",
 		"dominant_top_level_phase": wall_phase_rankings[0]["phase"] if not wall_phase_rankings.is_empty() else "",
@@ -127,6 +135,7 @@ static func _build_profile_summary(profile_state: Dictionary) -> Dictionary:
 			"worker_chunk_sum_ns and match_path_sum_ns are summed across chunks and can exceed wall_ns when workers run in parallel.",
 		],
 		"profile_breakdown_ns": profile_breakdown,
+		"native_profile_total_ns": native_profile_total_ns,
 	}
 
 
@@ -202,6 +211,10 @@ func run(
 			"chunk_total_ns": 0,
 			"assembly_ns": 0,
 			"native_run_ns": 0,
+			"native_simulate_ns": 0,
+			"native_stats_aggregation_ns": 0,
+			"native_matchup_aggregation_ns": 0,
+			"native_result_build_ns": 0,
 			"matchup_ns": 0,
 			"clear_ns": 0,
 		}
@@ -372,6 +385,10 @@ func _run_matches_for_team_size(
 						ps_chunk["chunk_total_ns"] = int(ps_chunk.get("chunk_total_ns", 0)) + int(chunk_profile.get("wall_ns", 0))
 						ps_chunk["assembly_ns"] = int(ps_chunk.get("assembly_ns", 0)) + int(chunk_profile.get("assembly_ns", 0))
 						ps_chunk["native_run_ns"] = int(ps_chunk.get("native_run_ns", 0)) + int(chunk_profile.get("native_run_ns", 0))
+						ps_chunk["native_simulate_ns"] = int(ps_chunk.get("native_simulate_ns", 0)) + int(chunk_profile.get("native_simulate_ns", 0))
+						ps_chunk["native_stats_aggregation_ns"] = int(ps_chunk.get("native_stats_aggregation_ns", 0)) + int(chunk_profile.get("native_stats_aggregation_ns", 0))
+						ps_chunk["native_matchup_aggregation_ns"] = int(ps_chunk.get("native_matchup_aggregation_ns", 0)) + int(chunk_profile.get("native_matchup_aggregation_ns", 0))
+						ps_chunk["native_result_build_ns"] = int(ps_chunk.get("native_result_build_ns", 0)) + int(chunk_profile.get("native_result_build_ns", 0))
 						ps_chunk["summary_to_dict_ns"] = int(ps_chunk.get("summary_to_dict_ns", 0)) + int(chunk_profile.get("summary_to_dict_ns", 0))
 						ps_chunk["matchup_ns"] = int(ps_chunk.get("matchup_ns", 0)) + int(chunk_profile.get("matchup_ns", 0))
 						ps_chunk["clear_ns"] = int(ps_chunk.get("clear_ns", 0)) + int(chunk_profile.get("clear_ns", 0))

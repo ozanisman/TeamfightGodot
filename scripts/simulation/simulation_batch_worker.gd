@@ -281,6 +281,7 @@ func run_chunk(data: Dictionary) -> Array:
 		backend.clear()
 		var generated_clear_ns: int = _now_ns() - t_generated_clear_ns
 		if profile_stats:
+			var native_profile: Dictionary = Dictionary(generated_partial.get("native_profile", {}))
 			generated_partial["profile_stats"] = {
 				"path": "generated_native_stats_partial",
 				"start_index": start_index,
@@ -298,6 +299,10 @@ func run_chunk(data: Dictionary) -> Array:
 				"stats_setup_ns": stats_setup_ns,
 				"assembly_ns": 0,
 				"native_run_ns": generated_stats_ns,
+				"native_simulate_ns": int(native_profile.get("simulate_ns", 0)),
+				"native_stats_aggregation_ns": int(native_profile.get("stats_aggregation_ns", 0)),
+				"native_matchup_aggregation_ns": int(native_profile.get("matchup_aggregation_ns", 0)),
+				"native_result_build_ns": int(native_profile.get("result_build_ns", 0)),
 				"matchup_ns": 0,
 				"clear_ns": generated_clear_ns,
 				"dominant_phase": "native_run_ns",

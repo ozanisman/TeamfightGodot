@@ -3254,9 +3254,16 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 		if (in_range) {
 			score -= strategy.in_range_bonus;
 		}
-		score += hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
-		if (strategy.execute_bonus_weight > 0.0 && in_range && hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
-			score -= strategy.execute_bonus_weight;
+		if (strategy.execute_bonus_weight > 0.0 && in_range) {
+			// Execute bonus for low HP targets
+			if (attacker.is_assassin_role) {
+				// Assassins: scale execute bonus by missing HP percentage
+				double missing_hp_factor = 1.0 - hp_ratio;
+				score -= strategy.execute_bonus_weight * missing_hp_factor;
+			} else if (hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
+				// Other roles: fixed bonus only below threshold
+				score -= strategy.execute_bonus_weight;
+			}
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
 		if (enemy.is_tank_role) {
@@ -3545,9 +3552,16 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		if (in_range) {
 			score -= strategy.in_range_bonus;
 		}
-		score += hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
-		if (strategy.execute_bonus_weight > 0.0 && in_range && hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
-			score -= strategy.execute_bonus_weight;
+		if (strategy.execute_bonus_weight > 0.0 && in_range) {
+			// Execute bonus for low HP targets
+			if (attacker.is_assassin_role) {
+				// Assassins: scale execute bonus by missing HP percentage
+				double missing_hp_factor = 1.0 - hp_ratio;
+				score -= strategy.execute_bonus_weight * missing_hp_factor;
+			} else if (hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
+				// Other roles: fixed bonus only below threshold
+				score -= strategy.execute_bonus_weight;
+			}
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
 		if (enemy.is_tank_role) {

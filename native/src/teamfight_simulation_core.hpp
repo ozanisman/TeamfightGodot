@@ -884,7 +884,7 @@ private:
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
 	static constexpr double SCORE_THREAT_WEIGHT_SCALE = 5.0;
-	static constexpr double SCORE_DISTANCE_WEIGHT_SCALE = 3.0;
+	static constexpr double SCORE_DISTANCE_WEIGHT_SCALE = 10.0;
 	static constexpr double SCORE_KITING_WEIGHT_SCALE = 1.5;
 	static constexpr double DISTANCE_EXPONENT = 1.5;
 	static constexpr double SPACING_EXPONENT = 1.5;
@@ -936,7 +936,7 @@ private:
 	static constexpr double TANK_PENALTY_MAGE = 2.3;
 	static constexpr double TANK_PENALTY_SUPPORT = 1.5;
 	static constexpr double ASSASSIN_TANK_CONTEXT_PENALTY = 8.0;
-	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 50.0;
+	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 15.0;
 	static constexpr double PREY_INCOMING_TARGET_SCALE = 0.75;
 	static constexpr double PREY_PERCEIVED_THREAT_SCALE = 0.35;
 	static constexpr double PREY_FRONTLINE_SCALE = 0.35;

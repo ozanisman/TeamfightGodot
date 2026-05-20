@@ -7273,6 +7273,7 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 		for (UnitState &unit : _units) {
 			_update_unit(unit, true);
 		}
+		_sim_profile_ns_update_units += sim_profile_elapsed_ns(t0);
 	} else {
 		for (UnitState &unit : _units) {
 			_update_unit(unit, false);
@@ -7366,56 +7367,100 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	{
 		SimProfileAccScope _uu_cc(profile_sim, _sim_profile_uu_cooldowns_cc);
 
-		unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
-		unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
-		unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
-		unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+		if (unit.attack_cooldown > 0.0) {
+			unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
+		}
+		if (unit.ability_cooldown > 0.0) {
+			unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
+		}
+		if (unit.retarget_timer > 0.0) {
+			unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
+		}
+		if (unit.target_switch_lock_timer > 0.0) {
+			unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+		}
 		if (unit.stun_remaining > 0.0) {
 			unit.hard_cc_seconds += Math::min(unit.stun_remaining, _tick_rate);
+			unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
 		}
-		unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
-		unit.slow_remaining = Math::max(0.0, unit.slow_remaining - _tick_rate);
-		if (unit.slow_remaining <= 0.0) {
-			unit.slow_remaining = 0.0;
-			unit.slow_move_mult = 1.0;
+		if (unit.slow_remaining > 0.0) {
+			unit.slow_remaining = Math::max(0.0, unit.slow_remaining - _tick_rate);
+			if (unit.slow_remaining <= 0.0) {
+				unit.slow_remaining = 0.0;
+				unit.slow_move_mult = 1.0;
+			}
 		}
-		unit.root_remaining = Math::max(0.0, unit.root_remaining - _tick_rate);
-		unit.silence_ability_remaining = Math::max(0.0, unit.silence_ability_remaining - _tick_rate);
-		unit.silence_ultimate_remaining = Math::max(0.0, unit.silence_ultimate_remaining - _tick_rate);
-		unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
-		unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
-		unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
-		unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
-		unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
-			if (unit.shield > 0.0) {
+		if (unit.root_remaining > 0.0) {
+			unit.root_remaining = Math::max(0.0, unit.root_remaining - _tick_rate);
+		}
+		if (unit.silence_ability_remaining > 0.0 || unit.silence_ultimate_remaining > 0.0) {
+			unit.silence_ability_remaining = Math::max(0.0, unit.silence_ability_remaining - _tick_rate);
+			unit.silence_ultimate_remaining = Math::max(0.0, unit.silence_ultimate_remaining - _tick_rate);
+			unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
+			unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
+			unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
+		}
+		if (unit.disarm_remaining > 0.0) {
+			unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
+		}
+		if (unit.stealth_remaining > 0.0) {
+			unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
+			if (unit.stealth_remaining <= 0.0) {
+				unit.stealth_remaining = 0.0;
+				unit.stealth_break_on_attack = false;
+				unit.stealth_break_on_ability = false;
+				unit.stealth_break_on_damage_taken = false;
+			}
+		}
+		if (unit.shield > 0.0) {
 			unit.shield *= (1.0 - SHIELD_DECAY_RATE * _tick_rate);
 			if (unit.shield < 0.01) {
 				unit.shield = 0.0;
 			}
 		}
-		if (unit.stealth_remaining <= 0.0) {
-			unit.stealth_remaining = 0.0;
-					unit.stealth_break_on_attack = false;
-			unit.stealth_break_on_ability = false;
-			unit.stealth_break_on_damage_taken = false;
+		if (unit.reflect_buff_remaining > 0.0) {
+			unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
+			if (unit.reflect_buff_remaining <= 0.0) {
+				unit.reflect_buff_remaining = 0.0;
+				unit.reflect_buff_pct_all = 0.0;
+				unit.reflect_buff_pct_physical = 0.0;
+			}
 		}
-		unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
-		if (unit.reflect_buff_remaining <= 0.0) {
-			unit.reflect_buff_remaining = 0.0;
-			unit.reflect_buff_pct_all = 0.0;
-			unit.reflect_buff_pct_physical = 0.0;
+		if (unit.taunt_remaining > 0.0) {
+			unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
+			if (unit.taunt_remaining <= 0.0) {
+				unit.taunt_remaining = 0.0;
+				unit.taunt_target_id = 0;
+			}
 		}
-		unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
-		unit.forced_target_remaining = Math::max(0.0, unit.forced_target_remaining - _tick_rate);
-		unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - _tick_rate);
-		if (unit.taunt_remaining <= 0.0) {
-			unit.taunt_remaining = 0.0;
-			unit.taunt_target_id = 0;
+		if (unit.forced_target_remaining > 0.0) {
+			unit.forced_target_remaining = Math::max(0.0, unit.forced_target_remaining - _tick_rate);
+		}
+		if (unit.last_kite_timer > 0.0) {
+			unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - _tick_rate);
 		}
 		
-		// Stat modifier duration management
-		_update_stat_modifier_durations(unit, _tick_rate);
-		_clear_expired_stat_modifiers(unit);
+		bool has_temporary_stat_modifiers = !unit.stat_modifiers.is_empty()
+				|| unit.stat_temp_max_hp > 0.0
+				|| unit.stat_temp_attack_damage > 0.0
+				|| unit.stat_temp_attack_speed > 0.0
+				|| unit.stat_temp_move_speed > 0.0
+				|| unit.stat_temp_armor > 0.0
+				|| unit.stat_temp_magic_resist > 0.0
+				|| unit.stat_temp_tenacity > 0.0
+				|| unit.stat_temp_life_steal > 0.0
+				|| unit.stat_temp_max_mana > 0.0
+				|| unit.stat_temp_mana_per_attack > 0.0
+				|| unit.stat_temp_ability_cd > 0.0
+				|| unit.stat_temp_projectile_speed > 0.0
+				|| unit.stat_temp_projectile_radius > 0.0
+				|| unit.stat_temp_respawn_time > 0.0
+				|| unit.stat_temp_attack_range > 0.0
+				|| unit.stat_temp_cast_range > 0.0;
+		if (has_temporary_stat_modifiers) {
+			_update_stat_modifier_durations(unit, _tick_rate);
+			_clear_expired_stat_modifiers(unit);
+		}
 		
 		if (!unit.stat_stacks.is_empty()) {
 			_update_stacks(unit, _tick_rate, _time);

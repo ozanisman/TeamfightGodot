@@ -1,106 +1,74 @@
 # TeamfightGodot
 
-TeamfightGodot is the Godot 4 rewrite of the Teamfight autobattler simulator. The current project shape is:
+High-performance autobattler simulator with Godot 4 and C++. Native GDExtension core for production simulation, GDScript for validation and tooling.
 
-- native `TeamfightSimulationCore` in C++ for the production match engine
-- GDScript for startup, validation, replay/parity tooling, and developer views
-- frozen goldens in `fixtures/goldens/` as the source of truth for combat parity
+## Structure
 
-## Layout
+- `native/` - C++ GDExtension core (CMake)
+- `scripts/` - GDScript simulation, tools, and app logic
+- `scenes/` - Game and viewer scenes
+- `fixtures/goldens/` - Parity fixtures and champion data
+- `docs/` - Testing and benchmark documentation
 
-- `native/` - GDExtension core and build files
-- `scripts/` - GDScript startup, tools, and batch workers
-- `scenes/` - main game plus developer-view scenes
-- `fixtures/goldens/` - replay parity fixtures
-- `docs/` - workflow, testing, and benchmark notes
-- `logs/` - benchmark and run artifacts
+## Setup
 
-## Entry points
+**Requirements**: Godot 4.6 at `C:\Godot\godot.exe`, CMake 3.24+, C++17 compiler, PowerShell
 
-- Main scene: `scenes/game_root.tscn`
-- Visual simulation tool: `scenes/simulation_viewer.tscn`
-- Stats dashboard tool: `scenes/stats_dashboard.tscn`
-
-Run everything from the repo root through [`run_godot.ps1`](run_godot.ps1). It expects `C:\Godot\godot.exe` unless you change the script.
-
-## Quick start
-
-1. Build the native extension in `native/build`:
-   ```powershell
-   cmake --build native/build --config Release
-   ```
-2. Verify scripts and native load:
-   ```powershell
-   .\run_godot.ps1 -- --check-only
-   .\run_godot.ps1 -- --check-native-load
-   ```
-3. Run fixture parity:
-   ```powershell
-   .\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
-   ```
-
-## Common commands
-
-Compile/load check:
 ```powershell
+# Build native extension
+cd native
+cmake -B build -S .
+cmake --build build --config Release
+
+# Verify
+cd ..
 .\run_godot.ps1 -- --check-only
-```
-
-Native load smoke:
-```powershell
 .\run_godot.ps1 -- --check-native-load
-```
-
-Determinism subset:
-```powershell
-.\run_godot.ps1 -- --check-determinism
-```
-
-Fixture parity:
-```powershell
 .\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
 ```
 
-Visual simulation:
+## Common Commands
+
 ```powershell
-.\run_godot.ps1 --simulation-viewer
+.\run_godot.ps1 -- --check-only                    # GDScript compile check
+.\run_godot.ps1 -- --check-native-load            # Extension load check
+.\run_godot.ps1 -- --check-determinism             # Determinism regression
+.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json  # Parity tests
+.\run_godot.ps1 --simulation-viewer               # Visual viewer
+.\run_godot.ps1 --simulation-viewer --stats-dashboard  # Stats dashboard
+.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1  # 5v5 benchmark
 ```
 
-Stats dashboard:
+## Key Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--batch-count=N` | Match count for batch runs |
+| `--team-size=N` | Roster size per side |
+| `--workers=N` | Thread cap for benchmarks |
+| `--bench-skip-summaries` | Skip summaries for throughput |
+| `--base-seed=N` | Starting seed |
+| `--sim-profile` | Enable profiling |
+
+## Development
+
+**Champion data**: Edit `scripts/simulation/champion_catalog.gd`. JSON auto-regenerates on build.
+
+**Validation sequence**: `--check-only` → `--check-native-load` → `--check-match-telemetry` → `--fixture-file` → `--check-benchmark`
+
+**Sharded benchmarking** (multi-process):
 ```powershell
-.\run_godot.ps1 --simulation-viewer --stats-dashboard
+.\run_godot.ps1 -- --check-benchmark-sharded --batch-count=2000 --team-size=5 --bench-skip-summaries --shards=8 --workers-per-shard=1
 ```
 
-Dashboard smoke load:
-```powershell
-.\run_godot.ps1 -- --check-stats-dashboard
-```
+## Documentation
 
-Batch stats export:
-```powershell
-.\run_godot.ps1 --generate-stats -- --out-dir=res://stats_output --team-sizes=1,2,3,4,5 --matches-per-size=100 --base-seed=0 --export-workers=0
-```
-
-Primary 5v5 throughput gate:
-```powershell
-.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
-```
-
-## Useful flags
-
-- `--batch-count=N` - number of matches for batch runs
-- `--team-size=N` - roster size per side
-- `--workers=N` / `--max-workers=N` - worker cap for benchmark runs
-- `--bench-skip-summaries` - skip replay summary construction when benchmarking
-- `--base-seed=N` - starting seed for batch runs
-- `--player=...` / `--enemy=...` - archetype lists for single batch runs
-- `--tick-rate=N` - override input tick rate
-- `--export-workers=N` - cap stats export threads; `0` uses the detected auto cap
+- [`docs/simulation_and_testing.md`](docs/simulation_and_testing.md) - Testing and benchmarking guide
+- [`docs/benchmark_rundown.md`](docs/benchmark_rundown.md) - Benchmark methodology
+- [`AGENTS.md`](AGENTS.md) - Contributing guidelines
 
 ## Notes
 
-- `--check-only` is the first check to run after editing GDScript.
-- `--bench-skip-summaries` only enables the native batch path when `--workers=1`.
-- The root-certificate warning on Windows can appear during startup and is not necessarily a failure.
-- Production runtime requires the native simulation core; GDScript is for validation and tooling.
-- More detailed workflow notes live in [`docs/simulation_and_testing.md`](docs/simulation_and_testing.md).
+- All Godot runs use `run_godot.ps1` for logging and timeouts
+- `--check-only` is first check after GDScript edits
+- Production requires native core; GDScript is for validation only

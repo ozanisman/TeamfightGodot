@@ -3265,6 +3265,16 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 				score -= strategy.execute_bonus_weight;
 			}
 		}
+		// Reactive peeling: tanks/supports prioritize enemies targeting low HP allies
+		if ((attacker.is_tank_role || attacker.is_support_role) && enemy.target_id != 0) {
+			UnitState *targeted_ally = _unit_by_id(enemy.target_id);
+			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
+				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->combat.max_hp);
+				if (ally_hp_ratio <= ALLY_CRITICAL_HP_THRESHOLD) {
+					score -= REACTIVE_PEEL_BONUS;
+				}
+			}
+		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
 		if (enemy.is_tank_role) {
 			score += strategy.tank_penalty;
@@ -3561,6 +3571,16 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			} else if (hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
 				// Other roles: fixed bonus only below threshold
 				score -= strategy.execute_bonus_weight;
+			}
+		}
+		// Reactive peeling: tanks/supports prioritize enemies targeting low HP allies
+		if ((attacker.is_tank_role || attacker.is_support_role) && enemy.target_id != 0) {
+			UnitState *targeted_ally = _unit_by_id(enemy.target_id);
+			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
+				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->combat.max_hp);
+				if (ally_hp_ratio <= ALLY_CRITICAL_HP_THRESHOLD) {
+					score -= REACTIVE_PEEL_BONUS;
+				}
 			}
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);

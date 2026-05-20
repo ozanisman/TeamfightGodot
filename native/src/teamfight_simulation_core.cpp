@@ -4253,7 +4253,6 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 		post_context.target = nullptr;
 		post_context.damage = total_damage;
 		post_context.action_kind = sn_passive();
-		// Break stealth on damage taken if configured
 		if (target.stealth_remaining > 0.0 && target.stealth_break_on_damage_taken) {
 			target.stealth_remaining = 0.0;
 			target.stealth_break_on_attack = false;
@@ -6636,16 +6635,23 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			current_target_dist_for_switch = dist;
 		}
 		double adjusted = raw + double(rank) * strategy.bucket_margin;
-		// Python parity: strict lexicographic ordering on key:
-		// (adjusted_score, raw_score, bucket_rank, distance, instance_id)
+		// Simplified tiebreaking: (adjusted_score, distance, instance_id)
+		// Ties are extremely rare due to continuous float scoring (distance, HP ratio, weighted factors)
 		bool is_better = best_live == nullptr;
 		if (!is_better) {
 			const int64_t best_instance_id = _targeting_frame[static_cast<size_t>(best_index)].instance_id;
+			if (_sim_profile_targeting_active) {
+				if (adjusted == best_adjusted) {
+					_sim_profile_tgt_ties_adjusted += 1;
+					if (dist == best_dist) {
+						_sim_profile_tgt_ties_distance += 1;
+						_sim_profile_tgt_ties_instance += 1;
+					}
+				}
+			}
 			is_better = adjusted < best_adjusted
-					|| (adjusted == best_adjusted && raw < best_raw)
-					|| (adjusted == best_adjusted && raw == best_raw && rank < best_bucket_rank)
-					|| (adjusted == best_adjusted && raw == best_raw && rank == best_bucket_rank && dist < best_dist)
-					|| (adjusted == best_adjusted && raw == best_raw && rank == best_bucket_rank && dist == best_dist && candidate.instance_id < best_instance_id);
+					|| (adjusted == best_adjusted && dist < best_dist)
+					|| (adjusted == best_adjusted && dist == best_dist && candidate.instance_id < best_instance_id);
 		}
 		if (is_better) {
 			best_live = &_units[static_cast<size_t>(enemy_index)];
@@ -7264,6 +7270,11 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_tgt_candidates_prefix_pruned = 0;
 	_sim_profile_tgt_ally_scans = 0;
 	_sim_profile_tgt_frame_syncs = 0;
+	_sim_profile_tgt_ties_adjusted = 0;
+	_sim_profile_tgt_ties_raw = 0;
+	_sim_profile_tgt_ties_bucket = 0;
+	_sim_profile_tgt_ties_distance = 0;
+	_sim_profile_tgt_ties_instance = 0;
 }
 
 void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
@@ -7295,6 +7306,11 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 		profile["tgt_candidates_prefix_pruned"] = _sim_profile_tgt_candidates_prefix_pruned;
 		profile["tgt_ally_scans"] = _sim_profile_tgt_ally_scans;
 		profile["tgt_frame_syncs"] = _sim_profile_tgt_frame_syncs;
+		profile["tgt_ties_adjusted"] = _sim_profile_tgt_ties_adjusted;
+		profile["tgt_ties_raw"] = _sim_profile_tgt_ties_raw;
+		profile["tgt_ties_bucket"] = _sim_profile_tgt_ties_bucket;
+		profile["tgt_ties_distance"] = _sim_profile_tgt_ties_distance;
+		profile["tgt_ties_instance"] = _sim_profile_tgt_ties_instance;
 	}
 	
 	String json = JSON::stringify(profile);

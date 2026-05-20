@@ -2719,6 +2719,37 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	_tick_ctx.player_backliner_alive_count = int(_tick_ctx.player_backliner_indices.size());
 	_tick_ctx.enemy_backliner_alive_count = int(_tick_ctx.enemy_backliner_indices.size());
 
+	// Compute distance cache for all unit pairs to avoid redundant sqrt calculations
+	const size_t total_units = _units.size();
+	if (_tick_ctx.distance_cache_size != total_units) {
+		_tick_ctx.distance_cache_size = total_units;
+		_tick_ctx.distance_cache.resize(total_units * total_units);
+	}
+	for (size_t i = 0; i < total_units; ++i) {
+		const UnitState &unit_i = _units[i];
+		if (!unit_i.alive) {
+			// Set distance to infinity for dead units
+			for (size_t j = 0; j < total_units; ++j) {
+				_tick_ctx.distance_cache[i * total_units + j] = std::numeric_limits<double>::infinity();
+			}
+			continue;
+		}
+		for (size_t j = 0; j < total_units; ++j) {
+			if (i == j) {
+				_tick_ctx.distance_cache[i * total_units + j] = 0.0;
+				continue;
+			}
+			const UnitState &unit_j = _units[j];
+			if (!unit_j.alive) {
+				_tick_ctx.distance_cache[i * total_units + j] = std::numeric_limits<double>::infinity();
+				continue;
+			}
+			double dx = unit_j.pos_x - unit_i.pos_x;
+			double dy = unit_j.pos_y - unit_i.pos_y;
+			_tick_ctx.distance_cache[i * total_units + j] = Math::sqrt(dx * dx + dy * dy);
+		}
+	}
+
 	for (int64_t idx : _alive_player_indices) {
 		const UnitState &u = _units[idx];
 		if (!u.alive || u.target_id == 0) {
@@ -3153,8 +3184,21 @@ bool TeamfightSimulationCore::_use_spatial_broad_phase() const {
 			|| int64_t(_alive_enemy_indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD;
 }
 
-double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const TeamfightSimulationCore::UnitStrategy &strategy, double unit_ally_distance) const {
-	double dist = unit_ally_distance >= 0.0 ? unit_ally_distance : Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
+double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance, int64_t unit_index, int64_t ally_index) const {
+	double dist = unit_ally_distance;
+	if (dist < 0.0) {
+		// Use distance cache if indices are valid
+		if (unit_index >= 0 && ally_index >= 0) {
+			size_t cache_idx = static_cast<size_t>(unit_index) * _tick_ctx.distance_cache_size + static_cast<size_t>(ally_index);
+			if (cache_idx < _tick_ctx.distance_cache.size()) {
+				dist = _tick_ctx.distance_cache[cache_idx];
+			} else {
+				dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
+			}
+		} else {
+			dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
+		}
+	}
 	double hp_ratio = ally.hp / Math::max(0.0001, ally.max_hp);
 	double score = dist * strategy.ally_distance_weight;
 	score += hp_ratio * strategy.ally_hp_weight * SCORE_HP_WEIGHT_SCALE;
@@ -3467,7 +3511,23 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double effective_range = score_ctx.effective_range;
 	{
 		SimProfileAccScope _se_base(profile_score, _sim_profile_se_base);
-		dist = attacker_enemy_distance >= 0.0 ? attacker_enemy_distance : Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+		// Use distance cache if attacker_enemy_distance not provided
+		if (attacker_enemy_distance >= 0.0) {
+			dist = attacker_enemy_distance;
+		} else {
+			int64_t attacker_index = _unit_index_by_id(attacker.instance_id);
+			int64_t enemy_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
+			if (attacker_index >= 0 && enemy_idx >= 0) {
+				size_t cache_idx = static_cast<size_t>(attacker_index) * _tick_ctx.distance_cache_size + static_cast<size_t>(enemy_idx);
+				if (cache_idx < _tick_ctx.distance_cache.size()) {
+					dist = _tick_ctx.distance_cache[cache_idx];
+				} else {
+					dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+				}
+			} else {
+				dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+			}
+		}
 		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
 		// No buffer for testing
 		bool in_range = false;
@@ -6696,8 +6756,9 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 	double best_hp_ratio = std::numeric_limits<double>::infinity();
 	for (int64_t ally_index : pool) {
 		const TargetingFrameEntry &candidate = _targeting_frame[static_cast<size_t>(ally_index)];
-		double dist = Math::sqrt((candidate.pos_x - unit.pos_x) * (candidate.pos_x - unit.pos_x) + (candidate.pos_y - unit.pos_y) * (candidate.pos_y - unit.pos_y));
-		double score = _score_ally_target(unit, candidate, strat, dist);
+		int64_t unit_index = _unit_index_by_id(unit.instance_id);
+		double dist = -1.0;  // Let _score_ally_target use cache
+		double score = _score_ally_target(unit, candidate, strat, dist, unit_index, ally_index);
 		double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
 		if (_scratch_critical_allies.empty()) {
 			// Python: min by (score, distance, instance_id)

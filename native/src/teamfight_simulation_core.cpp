@@ -8129,6 +8129,18 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// trigger_on_hit logic
 			if (effect.scalar3 > 0.5) {
 				_run_post_attack_effects(source, *damage_target, dealt, context);
+				
+				// Apply lifesteal for abilities with trigger_on_hit (excluding self-damage)
+				if (source.instance_id != damage_target->instance_id) {
+					double life_steal = get_effective_life_steal(source);
+					if (life_steal > 0.0) {
+						double old_hp = source.hp;
+						double heal_amount = dealt * life_steal;
+						_heal_unit(source, source, heal_amount, context.action_kind);
+						double heal_gained = source.hp - old_hp;
+						_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
+					}
+				}
 			}
 			damage_result["success"] = true;
 			damage_result["damage_dealt"] = dealt;
@@ -10059,6 +10071,13 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["attack_period"] = u.attack_period;
 		d["attack_range"] = get_effective_attack_range(u);
 		d["attack_speed"] = get_effective_attack_speed(u);
+		d["ability_cd_max"] = Math::max(0.0, (u.combat.ability_cd + u.stat_additive_ability_cd) * u.stat_multiplicative_ability_cd);
+		d["attack_damage"] = get_effective_attack_damage(u);
+		d["move_speed"] = get_effective_move_speed(u);
+		d["armor"] = get_effective_armor(u);
+		d["magic_resist"] = get_effective_magic_resist(u);
+		d["tenacity"] = get_effective_tenacity(u);
+		d["life_steal"] = get_effective_life_steal(u);
 		d["casting_remaining"] = u.casting_remaining;
 		d["casting_kind"] = String(uc.casting_kind);
 		d["is_channeling"] = _uc(u).is_channeling;

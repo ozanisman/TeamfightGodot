@@ -1093,6 +1093,11 @@ private:
 	int64_t _sim_profile_tgt_candidates_prefix_pruned = 0;
 	int64_t _sim_profile_tgt_ally_scans = 0;
 	int64_t _sim_profile_tgt_frame_syncs = 0;
+	int64_t _sim_profile_tgt_ties_adjusted = 0;
+	int64_t _sim_profile_tgt_ties_raw = 0;
+	int64_t _sim_profile_tgt_ties_bucket = 0;
+	int64_t _sim_profile_tgt_ties_distance = 0;
+	int64_t _sim_profile_tgt_ties_instance = 0;
 
 	static bool _sim_profile_env_enabled();
 	void _sim_profile_reset();

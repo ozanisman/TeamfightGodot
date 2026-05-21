@@ -3270,9 +3270,9 @@ double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &atta
 			UnitState *targeted_ally = _unit_by_id(enemy.target_id);
 			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
 				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->combat.max_hp);
-				if (ally_hp_ratio <= ALLY_CRITICAL_HP_THRESHOLD) {
-					score -= REACTIVE_PEEL_BONUS;
-				}
+				// Scale peel bonus by missing HP percentage (like assassin execute)
+				double ally_missing_hp_factor = 1.0 - ally_hp_ratio;
+				score -= REACTIVE_PEEL_BONUS * ally_missing_hp_factor;
 			}
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
@@ -3578,9 +3578,9 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 			UnitState *targeted_ally = _unit_by_id(enemy.target_id);
 			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
 				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->combat.max_hp);
-				if (ally_hp_ratio <= ALLY_CRITICAL_HP_THRESHOLD) {
-					score -= REACTIVE_PEEL_BONUS;
-				}
+				// Scale peel bonus by missing HP percentage (like assassin execute)
+				double ally_missing_hp_factor = 1.0 - ally_hp_ratio;
+				score -= REACTIVE_PEEL_BONUS * ally_missing_hp_factor;
 			}
 		}
 		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);

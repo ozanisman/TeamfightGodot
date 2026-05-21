@@ -881,8 +881,7 @@ private:
 	static constexpr double DRAFT_X_BASE = 0.9;
 	// Positions are stored as IEEE 754 double for deterministic arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
-	static constexpr double ALLY_CRITICAL_HP_THRESHOLD = 0.3;
-	static constexpr double REACTIVE_PEEL_BONUS = 15.0;
+	static constexpr double REACTIVE_PEEL_BONUS = 25.0;
 	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
 	static constexpr double SCORE_THREAT_WEIGHT_SCALE = 5.0;
@@ -921,7 +920,7 @@ private:
 	static constexpr double HP_WEIGHT_MAGE = 2.5;
 	static constexpr double HP_WEIGHT_SUPPORT = 5.0;
 	static constexpr double DISTANCE_WEIGHT_TANK = 1.5;
-	static constexpr double DISTANCE_WEIGHT_ASSASSIN = 0.15;
+	static constexpr double DISTANCE_WEIGHT_ASSASSIN = 1.0;
 	static constexpr double DISTANCE_WEIGHT_MAGE = 1.2;
 	static constexpr double DISTANCE_WEIGHT_SUPPORT = 1.5;
 	static constexpr double DISTANCE_WEIGHT_FIGHTER_CLOSE = 3.0;
@@ -938,7 +937,7 @@ private:
 	static constexpr double TANK_PENALTY_MAGE = 2.3;
 	static constexpr double TANK_PENALTY_SUPPORT = 1.5;
 	static constexpr double ASSASSIN_TANK_CONTEXT_PENALTY = 8.0;
-	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 15.0;
+	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 20.0;
 	static constexpr double PREY_INCOMING_TARGET_SCALE = 0.75;
 	static constexpr double PREY_PERCEIVED_THREAT_SCALE = 0.35;
 	static constexpr double PREY_FRONTLINE_SCALE = 0.35;

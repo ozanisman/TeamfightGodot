@@ -1,19 +1,10 @@
 class_name RosterChampionCard
 extends PanelContainer
 ## One square tile in the side roster: name, K/D/A, HP and mana progress bars.
-## ROLE_COLORS matches simulation_viewer.gd (draft / arena).
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 
-const ROLE_COLORS: Dictionary = {
-	"tank": Color(0.8, 0.2, 0.2),
-	"fighter": Color(0.824, 0.412, 0.118),
-	"assassin": Color(0.6, 0.196, 0.8),
-	"marksman": Color(0.133, 0.545, 0.133),
-	"mage": Color(0.3, 0.6, 0.8),
-	"support": Color(0.855, 0.647, 0.125),
-}
 const _NAME_NEUTRAL := Color(0.82, 0.84, 0.88, 1.0)
 
 const COLOR_HP_BG := Color(0.18, 0.18, 0.2, 1.0)
@@ -163,7 +154,7 @@ static func _role_color_for_archetype(archetype_key: String) -> Color:
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary = d.get("stats", {})
 	var rk: String = str(st.get("role", "")).to_lower()
-	return ROLE_COLORS.get(rk, _NAME_NEUTRAL) as Color
+	return SimConstants.ROLE_COLORS.get(rk, _NAME_NEUTRAL) as Color
 
 
 func _make_bar(c_bg: Color, c_fill: Color) -> ProgressBar:

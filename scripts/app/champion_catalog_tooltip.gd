@@ -3,6 +3,7 @@ extends Node
 ## Content is [ChampionCatalog] data (not sim output stats).
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
 # Match stats_dashboard.gd (keep in sync for visual parity).
 const UI_TOOLTIP_MOUSE_OFF := Vector2(16, 20)
@@ -12,15 +13,6 @@ const UI_TOOLTIP_CONTENT_MARGIN := 10
 const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
 const COLOR_TEXT := Color(0.9, 0.9, 0.9, 1.0)
 const COLOR_SUBTLE := Color(0.71, 0.71, 0.75, 1.0)
-
-const ROLE_COLORS: Dictionary = {
-	"tank": Color8(204, 51, 51),
-	"fighter": Color8(210, 105, 30),
-	"assassin": Color8(153, 50, 204),
-	"marksman": Color8(34, 139, 34),
-	"mage": Color8(76, 153, 204),
-	"support": Color8(218, 165, 32),
-}
 
 var _ui_parent: Control
 var _tt_style: StyleBoxFlat
@@ -146,7 +138,7 @@ func _border_color_for_hero(hero_id: StringName) -> Color:
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary = d.get("stats", {})
 	var rk: String = str(st.get("role", "")).to_lower()
-	return ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+	return SimConstants.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
 
 
 static func _escape_bbcode_plain(s: String) -> String:
@@ -248,4 +240,4 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, hero_id: Strin
 
 func _border_for_dict(st: Dictionary) -> Color:
 	var rk: String = str(st.get("role", "")).to_lower()
-	return ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+	return SimConstants.ROLE_COLORS.get(rk, COLOR_TEXT) as Color

@@ -1975,7 +1975,6 @@ func _on_start_match_clicked() -> void:
 		_player_picks,
 		_enemy_picks,
 		SimConstantsScript.DEFAULT_TICK_RATE,
-		true,  # debug_stack_operations
 		true      # debug_combat_trace
 	)
 	

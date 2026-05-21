@@ -4001,7 +4001,6 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_tick_rate = double(match_input.get("tick_rate", DEFAULT_TICK_RATE));
 	_record_events = bool(match_input.get("record_events", false));
 	_debug_combat_trace = bool(match_input.get("debug_combat_trace", false));
-	_debug_stack_operations = bool(match_input.get("debug_stack_operations", false));
 	_trace_buffer.clear();
 	if (_debug_combat_trace) {
 		_trace_buffer.reserve(TRACE_BUFFER_CAP);
@@ -5272,7 +5271,6 @@ void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, Un
 	stack_entry["is_match_duration"] = is_match_duration;
 	target.stat_stacks[stack_key] = stack_entry;
 	_set_stat_modifier_duration(target, stat_name, next_duration, is_match_duration);
-	_debug_log_stack_operation("APPLY", String(stat_name), current_stacks, max_stacks, next_duration, reason);
 }
 
 // Stack management functions
@@ -5300,7 +5298,6 @@ int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName st
 		// Remove the stack entry
 		unit.stat_stacks.erase(stack_key);
 		
-		_debug_log_stack_operation("CONSUME", String(stat_name), current_stacks, int(stack_entry.get("max_stacks", 1)), 0.0, reason);
 	}
 	
 	return current_stacks;
@@ -5374,7 +5371,6 @@ void TeamfightSimulationCore::_set_stat_stacks(UnitState &unit, StringName stat_
 	stack_entry["is_match_duration"] = is_match_duration;
 	unit.stat_stacks[stack_key] = stack_entry;
 	_set_stat_modifier_duration(unit, stat_name, current_duration, is_match_duration);
-	_debug_log_stack_operation("SET", String(stat_name), final_stacks, max_stacks, current_duration, reason);
 }
 
 
@@ -5407,7 +5403,6 @@ void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, doub
 		int current_stacks = int(stack_dict.get("current_stacks", 0));
 		if (current_stacks > 0) {
 			_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
-			_debug_log_stack_operation("EXPIRE", String(stat_name), current_stacks, int(stack_dict.get("max_stacks", 1)), duration, String(key));
 		}
 		keys_to_remove.append(key);
 	}
@@ -9778,7 +9773,6 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		_tick_rate = DEFAULT_TICK_RATE;
 		_record_events = false;
 		_debug_combat_trace = false;
-		_debug_stack_operations = false;
 		_trace_buffer.clear();
 		_rng.seed_int64(_seed);
 
@@ -10704,10 +10698,6 @@ TeamfightSimulationCore::StackError TeamfightSimulationCore::_apply_stat_modifie
 	double total_effect = entry->current_stacks * entry->base_value;
 	bool is_multiplicative = entry->is_multiplicative;
 	
-	// Debug stack application
-	_debug_log_stack_operation("APPLY_OPT", String(params.stat_name), 
-		entry->current_stacks, entry->max_stacks, duration, params.reason);
-	
 	if (params.stat_name == StringName("max_hp")) {
 		_apply_stat_max_hp(target, total_effect, is_multiplicative);
 	} else if (params.stat_name == StringName("attack_damage")) {
@@ -10777,7 +10767,7 @@ thread_local std::unordered_map<uint64_t, int> TeamfightSimulationCore::_stack_k
 
 // Stack debugging implementations
 void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) const {
-	if (!_debug_stack_operations && !_debug_combat_trace) {
+	if (!_debug_combat_trace) {
 		return;
 	}
 	
@@ -10804,19 +10794,3 @@ void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) co
 	UtilityFunctions::push_warning(debug_output);
 }
 
-void TeamfightSimulationCore::_debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const {
-	if (!_debug_stack_operations && !_debug_combat_trace) {
-		return;
-	}
-	
-	String debug_msg = vformat("STACK_OP: %s | stat=%s | stacks=%d/%d | duration=%.2f | reason=%s",
-		operation,
-		stat_name,
-		stacks,
-		max_stacks,
-		duration,
-		reason
-	);
-	
-	UtilityFunctions::print(debug_msg);
-}

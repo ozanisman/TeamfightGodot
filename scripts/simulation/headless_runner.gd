@@ -29,7 +29,7 @@ static func _extract_argument(prefix: String, fallback: String = "") -> String:
 static func _build_default_input():
 	var player_units: Array[StringName] = [&"swordsman"]
 	var enemy_units: Array[StringName] = [&"guardian"]
-	return MatchReplayInputScript.build_match_input(0, player_units, enemy_units, SimConstantsScript.SIMULATION_TICK_RATE, false, false)
+	return MatchReplayInputScript.build_match_input(0, player_units, enemy_units, SimConstantsScript.SIMULATION_TICK_RATE, false)
 
 static func _parse_int(prefix: String, fallback: int) -> int:
 	var value := _extract_argument(prefix, "")

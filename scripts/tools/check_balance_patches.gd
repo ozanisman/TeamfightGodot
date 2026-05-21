@@ -50,7 +50,6 @@ func _duel_artillery_guardian(seed: int) -> Dictionary:
 		players,
 		enemies,
 		SimConstantsScript.DEFAULT_TICK_RATE,
-		false,  # debug_stack_operations
 		false      # debug_combat_trace
 	).to_dict()
 	return match_input_obj

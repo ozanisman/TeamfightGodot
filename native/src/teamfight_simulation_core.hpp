@@ -1022,7 +1022,6 @@ private:
 	std::vector<TraceEvent> _trace_buffer;
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
-	bool _debug_stack_operations = false;
 
 	/// Compact HUD/floating labels for the Godot simulation viewer (cleared each tick, filled during sim).
 	struct ViewerFxEvent {
@@ -1293,7 +1292,6 @@ private:
 	
 	// Stack debugging functions
 	void _debug_print_stack_state(const UnitState &unit) const;
-	void _debug_log_stack_operation(const String &operation, const String &stat_name, int stacks, int max_stacks, double duration, const String &reason) const;
 	String _join_team_names(const Array &team) const;
 	void _apply_aoe_taunt(UnitState &source, double radius, double duration);
 	void _apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);

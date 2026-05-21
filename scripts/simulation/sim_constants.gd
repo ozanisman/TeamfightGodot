@@ -33,6 +33,20 @@ const STAT_MOD_TYPES: Dictionary = {
 }
 
 # ========================================
+# ROLE COLORS
+# ========================================
+## Source of truth for role colors used across all UI components
+## Color8 format (0-255 RGB values)
+const ROLE_COLORS: Dictionary = {
+	"tank": Color8(204, 51, 51),
+	"fighter": Color8(210, 105, 30),
+	"assassin": Color8(153, 50, 204),
+	"marksman": Color8(34, 139, 34),
+	"mage": Color8(76, 153, 204),
+	"support": Color8(218, 165, 32),
+}
+
+# ========================================
 # PROJECTILE DEFAULTS
 # ========================================
 const DEFAULT_PROJECTILE_SPEED: float = 5.0

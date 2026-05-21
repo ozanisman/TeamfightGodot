@@ -52,15 +52,6 @@ const CI_SUPPORTED: Dictionary = {
 	&"damage_mitigated": true,
 }
 
-const ROLE_COLORS: Dictionary = {
-	"tank": Color8(204, 51, 51),
-	"fighter": Color8(210, 105, 30),
-	"assassin": Color8(153, 50, 204),
-	"marksman": Color8(34, 139, 34),
-	"mage": Color8(76, 153, 204),
-	"support": Color8(218, 165, 32),
-}
-
 const ROLE_SORT_ORDER: Dictionary = {
 	"tank": 0,
 	"fighter": 1,
@@ -271,6 +262,15 @@ func _build_unit_roles() -> void:
 		_unit_roles[String(archetype)] = String(spec.stats.role)
 
 
+func _unit_id_to_name(unit_id: String) -> String:
+	var spec: Variant = ChampionCatalogScript.get_champion(StringName(unit_id))
+	if spec == null:
+		return unit_id
+	var spec_dict: Dictionary = spec.to_dict()
+	var stats: Dictionary = spec_dict.get("stats", {}) as Dictionary
+	return String(stats.get("name", unit_id))
+
+
 func _try_load_stats() -> bool:
 	var primary: String = "res://stats_output"
 	if _loader.load_from_dir(primary) == OK:
@@ -459,7 +459,7 @@ func _build_ui() -> void:
 	_role_grid.columns = 2
 	_role_grid.add_theme_constant_override("h_separation", 8)
 	_role_grid.add_theme_constant_override("v_separation", 8)
-	for role_key in ROLE_COLORS.keys():
+	for role_key in SimConstants.ROLE_COLORS.keys():
 		var tb := Button.new()
 		tb.toggle_mode = true
 		tb.custom_minimum_size.y = UI_MIN_CONTROL_H
@@ -719,9 +719,9 @@ func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
 		return COLOR_SUBTLE
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key_s, ""))
-		return ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+		return SimConstants.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
 	if _view_mode == &"roles":
-		return ROLE_COLORS.get(str(key_s).to_lower(), COLOR_SUBTLE) as Color
+		return SimConstants.ROLE_COLORS.get(str(key_s).to_lower(), COLOR_SUBTLE) as Color
 	return COLOR_SUBTLE
 
 
@@ -1355,7 +1355,7 @@ func _refresh_chart() -> void:
 		name_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		if not is_synergy and _view_mode == &"champions":
 			var role: String = str(_unit_roles.get(key_s, ""))
-			var rc: Color = ROLE_COLORS.get(role, COLOR_TEXT) as Color
+			var rc: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
 			name_lb.add_theme_color_override("font_color", rc)
 			var marker := ColorRect.new()
 			marker.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1367,7 +1367,7 @@ func _refresh_chart() -> void:
 			name_w.add_child(name_h)
 		elif not is_synergy and _view_mode == &"roles":
 			var role_key: String = str(key_s).to_lower()
-			var rc_r: Color = ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
+			var rc_r: Color = SimConstants.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
 			name_lb.add_theme_color_override("font_color", rc_r)
 			var marker_r := ColorRect.new()
 			marker_r.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1564,9 +1564,9 @@ func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: 
 	var c: Color = COLOR_TEXT
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key, ""))
-		c = ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+		c = SimConstants.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
 	elif _view_mode == &"roles":
-		c = ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
+		c = SimConstants.ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
 	return "[color=%s]%s[/color]" % [c.to_html(false), safe_name]
 
 
@@ -1887,8 +1887,14 @@ func _build_matchup_ui() -> void:
 	_champion_list = champion_list  # Store reference for refresh
 	
 	# Populate champion list
-	for champion in _matchup_loader.champions:
-		champion_list.add_item(champion)
+	for champion_unit_id in _matchup_loader.champions:
+		var champion_name := _unit_id_to_name(champion_unit_id)
+		var index = champion_list.add_item(champion_name)
+		var role: String = str(_unit_roles.get(champion_unit_id, ""))
+		var color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+		champion_list.set_item_custom_fg_color(index, color)
+		# Store unit_id as metadata for selection
+		champion_list.set_item_metadata(index, champion_unit_id)
 	
 	# View mode
 	left_panel.add_child(_section_label("VIEW MODE"))
@@ -1967,24 +1973,7 @@ func _create_aggregate_extremes_panel() -> VBoxContainer:
 	both_hb.add_theme_constant_override("separation", 16)
 	aggregate_container.add_child(both_hb)
 	
-	# Counters section (left side)
-	var counters_vb := VBoxContainer.new()
-	counters_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	counters_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	counters_vb.size_flags_stretch_ratio = 1.0
-	counters_vb.add_theme_constant_override("separation", 12)
-	both_hb.add_child(counters_vb)
-	
-	var counters_title := Label.new()
-	counters_title.text = "BEST COUNTERS"
-	counters_title.add_theme_color_override("font_color", COLOR_TEXT)
-	counters_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
-	counters_vb.add_child(counters_title)
-	
-	var counters_table := _create_aggregate_table(extremes.best_counters, "vs")
-	counters_vb.add_child(counters_table)
-	
-	# Synergies section (right side)
+	# Synergies section (left side)
 	var synergies_vb := VBoxContainer.new()
 	synergies_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	synergies_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2000,6 +1989,23 @@ func _create_aggregate_extremes_panel() -> VBoxContainer:
 	
 	var synergies_table := _create_aggregate_table(extremes.best_synergies, "with")
 	synergies_vb.add_child(synergies_table)
+	
+	# Counters section (right side)
+	var counters_vb := VBoxContainer.new()
+	counters_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	counters_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	counters_vb.size_flags_stretch_ratio = 1.0
+	counters_vb.add_theme_constant_override("separation", 12)
+	both_hb.add_child(counters_vb)
+	
+	var counters_title := Label.new()
+	counters_title.text = "BEST COUNTERS"
+	counters_title.add_theme_color_override("font_color", COLOR_TEXT)
+	counters_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	counters_vb.add_child(counters_title)
+	
+	var counters_table := _create_aggregate_table(extremes.best_counters, "vs")
+	counters_vb.add_child(counters_table)
 	
 	return aggregate_container
 
@@ -2062,19 +2068,25 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		
-		var champion_name: String = item.champion
-		var opponent_name: String = item.opponent if matchup_type == "vs" else item.ally
+		var champion_unit_id: String = item.champion
+		var opponent_unit_id: String = item.opponent if matchup_type == "vs" else item.ally
+		var champion_name := _unit_id_to_name(champion_unit_id)
+		var opponent_name := _unit_id_to_name(opponent_unit_id)
 		
 		var champion_label_data := Label.new()
 		champion_label_data.text = champion_name
 		champion_label_data.custom_minimum_size.x = 160
-		champion_label_data.add_theme_color_override("font_color", COLOR_TEXT)
+		var champion_role: String = str(_unit_roles.get(champion_unit_id, ""))
+		var champion_color: Color = SimConstants.ROLE_COLORS.get(champion_role, COLOR_TEXT) as Color
+		champion_label_data.add_theme_color_override("font_color", champion_color)
 		row.add_child(champion_label_data)
 		
 		var opponent_label_data := Label.new()
 		opponent_label_data.text = opponent_name
 		opponent_label_data.custom_minimum_size.x = 150
-		opponent_label_data.add_theme_color_override("font_color", COLOR_TEXT)
+		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+		var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		opponent_label_data.add_theme_color_override("font_color", opponent_color)
 		row.add_child(opponent_label_data)
 		
 		var data_wins_label := Label.new()
@@ -2141,7 +2153,13 @@ func _on_champion_selected(index: int) -> void:
 	if _champion_list == null or index < 0 or index >= _champion_list.get_item_count():
 		return
 	
-	_current_champion = _champion_list.get_item_text(index)
+	# Set selection color to match the selected item's role color
+	var champion_unit_id: String = _champion_list.get_item_metadata(index) as String
+	var role: String = str(_unit_roles.get(champion_unit_id, ""))
+	var role_color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	_champion_list.add_theme_color_override("font_selected_color", role_color)
+	
+	_current_champion = champion_unit_id
 	_update_matchup_display()
 
 
@@ -2176,11 +2194,23 @@ func _update_matchup_display() -> void:
 	var matchups = _matchup_loader.get_champion_matchups(_current_champion)
 	
 	# Create header
-	var header := Label.new()
-	header.text = "Matchup Analysis: " + _current_champion.to_upper()
-	header.add_theme_color_override("font_color", COLOR_TEXT)
-	header.add_theme_font_size_override("font_size", UI_FONT_SECTION)
-	right_panel.add_child(header)
+	var header_hb := HBoxContainer.new()
+	var prefix_label := Label.new()
+	prefix_label.text = "Matchup Analysis: "
+	prefix_label.add_theme_color_override("font_color", COLOR_TEXT)
+	prefix_label.add_theme_font_size_override("font_size", UI_FONT_SECTION)
+	header_hb.add_child(prefix_label)
+	
+	var champion_name := _unit_id_to_name(_current_champion)
+	var name_label := Label.new()
+	name_label.text = champion_name.to_upper()
+	var role: String = str(_unit_roles.get(_current_champion, ""))
+	var role_color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	name_label.add_theme_color_override("font_color", role_color)
+	name_label.add_theme_font_size_override("font_size", UI_FONT_SECTION)
+	header_hb.add_child(name_label)
+	
+	right_panel.add_child(header_hb)
 	
 	# Create content based on view mode
 	match _current_view_mode:
@@ -2304,47 +2334,153 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 	var worst = []
 	
 	if matchup_type == "vs":
-		best = _matchup_loader.get_best_counters(champion, 3)
-		worst = _matchup_loader.get_weak_against(champion, 3)
+		best = _matchup_loader.get_best_counters(champion, 5)
+		worst = _matchup_loader.get_weak_against(champion, 5)
 	else:  # with
-		best = _matchup_loader.get_best_synergies(champion, 3)
-		worst = _matchup_loader.get_poor_synergies(champion, 3)
+		best = _matchup_loader.get_best_synergies(champion, 5)
+		worst = _matchup_loader.get_worst_synergies(champion, 5)
 	
-	# Best section
-	var best_label := Label.new()
-	best_label.text = "Best " + ("Counters" if matchup_type == "vs" else "Synergies") + ":"
-	best_label.add_theme_color_override("font_color", COLOR_GREEN)
-	content.add_child(best_label)
-	
-	if not best.is_empty():
-		for item in best:
-			var item_label := Label.new()
-			item_label.text = "  • %s (%.2f%%)" % [item.name, item.winrate * 100]
-			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-			content.add_child(item_label)
-	else:
-		var none_label := Label.new()
-		none_label.text = "  None"
-		none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-		content.add_child(none_label)
-	
-	# Worst section
-	var worst_label := Label.new()
-	worst_label.text = "Worst " + ("Counters" if matchup_type == "vs" else "Synergies") + ":"
-	worst_label.add_theme_color_override("font_color", COLOR_RED)
-	content.add_child(worst_label)
-	
-	if not worst.is_empty():
-		for item in worst:
-			var item_label := Label.new()
-			item_label.text = "  • %s (%.2f%%)" % [item.name, item.winrate * 100]
-			item_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-			content.add_child(item_label)
-	else:
-		var none_label := Label.new()
-		none_label.text = "  None"
-		none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-		content.add_child(none_label)
+	# Add sections in order: worst first for counters, best first for synergies
+	if matchup_type == "vs":
+		# Worst section (Strong Against)
+		var worst_label := Label.new()
+		worst_label.text = "Strong Against:"
+		worst_label.add_theme_color_override("font_color", COLOR_GREEN)
+		content.add_child(worst_label)
+		
+		if not worst.is_empty():
+			for item in worst:
+				var item_hb := HBoxContainer.new()
+				var bullet_label := Label.new()
+				bullet_label.text = "  • "
+				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				item_hb.add_child(bullet_label)
+				
+				var opponent_unit_id: String = item.name
+				var opponent_name := _unit_id_to_name(opponent_unit_id)
+				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var name_label := Label.new()
+				name_label.text = opponent_name
+				name_label.add_theme_color_override("font_color", opponent_color)
+				item_hb.add_child(name_label)
+				
+				var winrate_label := Label.new()
+				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
+				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				item_hb.add_child(winrate_label)
+				
+				content.add_child(item_hb)
+		else:
+			var none_label := Label.new()
+			none_label.text = "  None"
+			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(none_label)
+		
+		# Best section (Weak Against)
+		var best_label := Label.new()
+		best_label.text = "Weak Against:"
+		best_label.add_theme_color_override("font_color", COLOR_RED)
+		content.add_child(best_label)
+		
+		if not best.is_empty():
+			for item in best:
+				var item_hb := HBoxContainer.new()
+				var bullet_label := Label.new()
+				bullet_label.text = "  • "
+				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				item_hb.add_child(bullet_label)
+				
+				var opponent_unit_id: String = item.name
+				var opponent_name := _unit_id_to_name(opponent_unit_id)
+				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var name_label := Label.new()
+				name_label.text = opponent_name
+				name_label.add_theme_color_override("font_color", opponent_color)
+				item_hb.add_child(name_label)
+				
+				var winrate_label := Label.new()
+				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
+				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				item_hb.add_child(winrate_label)
+				
+				content.add_child(item_hb)
+		else:
+			var none_label := Label.new()
+			none_label.text = "  None"
+			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(none_label)
+	else:  # with - synergies: best first, worst second
+		# Best section (Best Synergies)
+		var best_label := Label.new()
+		best_label.text = "Best Synergies:"
+		best_label.add_theme_color_override("font_color", COLOR_GREEN)
+		content.add_child(best_label)
+		
+		if not best.is_empty():
+			for item in best:
+				var item_hb := HBoxContainer.new()
+				var bullet_label := Label.new()
+				bullet_label.text = "  • "
+				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				item_hb.add_child(bullet_label)
+				
+				var opponent_unit_id: String = item.name
+				var opponent_name := _unit_id_to_name(opponent_unit_id)
+				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var name_label := Label.new()
+				name_label.text = opponent_name
+				name_label.add_theme_color_override("font_color", opponent_color)
+				item_hb.add_child(name_label)
+				
+				var winrate_label := Label.new()
+				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
+				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				item_hb.add_child(winrate_label)
+				
+				content.add_child(item_hb)
+		else:
+			var none_label := Label.new()
+			none_label.text = "  None"
+			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(none_label)
+		
+		# Worst section (Worst Synergies)
+		var worst_label := Label.new()
+		worst_label.text = "Worst Synergies:"
+		worst_label.add_theme_color_override("font_color", COLOR_RED)
+		content.add_child(worst_label)
+		
+		if not worst.is_empty():
+			for item in worst:
+				var item_hb := HBoxContainer.new()
+				var bullet_label := Label.new()
+				bullet_label.text = "  • "
+				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				item_hb.add_child(bullet_label)
+				
+				var opponent_unit_id: String = item.name
+				var opponent_name := _unit_id_to_name(opponent_unit_id)
+				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var name_label := Label.new()
+				name_label.text = opponent_name
+				name_label.add_theme_color_override("font_color", opponent_color)
+				item_hb.add_child(name_label)
+				
+				var winrate_label := Label.new()
+				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
+				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				item_hb.add_child(winrate_label)
+				
+				content.add_child(item_hb)
+		else:
+			var none_label := Label.new()
+			none_label.text = "  None"
+			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			content.add_child(none_label)
 	
 	return card
 
@@ -2404,10 +2540,14 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		
+		var opponent_unit_id: String = item.name
+		var opponent_name := _unit_id_to_name(opponent_unit_id)
 		var name_label := Label.new()
-		name_label.text = item.name
+		name_label.text = opponent_name
 		name_label.custom_minimum_size.x = 150
-		name_label.add_theme_color_override("font_color", COLOR_TEXT)
+		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
+		var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		name_label.add_theme_color_override("font_color", opponent_color)
 		row.add_child(name_label)
 		
 		var data_wins_label := Label.new()

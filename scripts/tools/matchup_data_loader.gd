@@ -52,16 +52,16 @@ func _load_csv_file(file_path: String, target_dict: Dictionary, matchup_type: St
 		if parts.size() != 5:
 			continue
 		
-		var champion := parts[0]
-		var opponent := parts[1]
+		var champion_unit_id := parts[0]
+		var opponent_unit_id := parts[1]
 		var wins := int(parts[2])
 		var losses := int(parts[3])
 		var winrate := float(parts[4])
 		
-		if not target_dict.has(champion):
-			target_dict[champion] = {}
+		if not target_dict.has(champion_unit_id):
+			target_dict[champion_unit_id] = {}
 		
-		target_dict[champion][opponent] = {
+		target_dict[champion_unit_id][opponent_unit_id] = {
 			"wins": wins,
 			"losses": losses,
 			"winrate": winrate
@@ -173,7 +173,7 @@ func get_best_synergies(champion_name: String, limit: int = 5) -> Array:
 	
 	return synergies
 
-func get_poor_synergies(champion_name: String, limit: int = 5) -> Array:
+func get_worst_synergies(champion_name: String, limit: int = 5) -> Array:
 	var matchups := get_champion_matchups(champion_name)
 	var poor := []
 	
@@ -223,17 +223,26 @@ func get_aggregate_extremes() -> Dictionary:
 				"winrate": data.winrate
 			})
 	
-	# Aggregate all synergy matchups
+	# Aggregate all synergy matchups (deduplicate A,B and B,A pairs)
+	var synergy_pairs := {}
 	for champion in with_data.keys():
 		for ally in with_data[champion].keys():
 			var data = with_data[champion][ally]
-			all_with.append({
-				"champion": champion,
-				"ally": ally,
-				"wins": data.wins,
-				"losses": data.losses,
-				"winrate": data.winrate
-			})
+			# Normalize pair order alphabetically to deduplicate
+			var pair_key := [champion, ally]
+			pair_key.sort()
+			var normalized_key = pair_key[0] + "|" + pair_key[1]
+			
+			# Only keep the first occurrence (data should be identical)
+			if not synergy_pairs.has(normalized_key):
+				all_with.append({
+					"champion": pair_key[0],  # Alphabetically first
+					"ally": pair_key[1],     # Alphabetically second
+					"wins": data.wins,
+					"losses": data.losses,
+					"winrate": data.winrate
+				})
+				synergy_pairs[normalized_key] = true
 	
 	# Sort counters by winrate (highest = best counter, lowest = worst counter)
 	all_vs.sort_custom(func(a, b): return a.winrate > b.winrate)
@@ -241,9 +250,9 @@ func get_aggregate_extremes() -> Dictionary:
 	# Sort synergies by winrate (highest = best synergy, lowest = worst synergy)
 	all_with.sort_custom(func(a, b): return a.winrate > b.winrate)
 	
-	# Get top 50 best for each
-	var best_counters = all_vs.slice(0, 50)
-	var best_synergies = all_with.slice(0, 50)
+	# Get top 100 best for each
+	var best_counters = all_vs.slice(0, 100)
+	var best_synergies = all_with.slice(0, 100)
 	
 	return {
 		"best_counters": best_counters,

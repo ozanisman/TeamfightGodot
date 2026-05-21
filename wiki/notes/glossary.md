@@ -1,0 +1,1 @@
+Snapshot = capture of mutable state at a point in time

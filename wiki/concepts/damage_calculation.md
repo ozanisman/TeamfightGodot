@@ -2,7 +2,7 @@
 
 Armor and magic resist reduce incoming damage by percentage.
 
-Damage types: physical (reduced by armor), magic (reduced by magic resist), true (ignores all defense). Defense multiplier formula: `1.0 - defense_stat` for armor/magic resist. Negative defense values increase damage taken (defense multiplier > 1.0).
+Damage types: physical (reduced by armor), magic (reduced by magic resist), true (ignores all defense). Defense multiplier formula: `clamp(1.0 - defense_stat, -1.0, 1.0)` for armor/magic resist. Negative defense values increase damage taken (defense multiplier > 1.0), clamped to maximum 2x damage.
 
 Final damage calculation: `base_damage * attack_modifiers * ability_modifiers * ultimate_modifiers * defense_multiplier * dodge_multiplier`. Auto-dodge (agility passive) can negate auto attacks entirely.
 

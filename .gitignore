@@ -26,3 +26,4 @@ native/build/
 *.uid
 .aider*
 *.csv
+wiki/.obsidian/

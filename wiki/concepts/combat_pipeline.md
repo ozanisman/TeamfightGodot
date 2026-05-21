@@ -1,6 +1,21 @@
 # Combat Pipeline
 
-Execution order:
-1. *NEEDS TO BE FILLED IN*
+Tick-based simulation loop with fixed time step (default 0.1s).
 
-This defines the canonical combat flow.
+Each tick runs `_step_tick()` which:
+1. Updates projectiles (move, collision, resolve)
+2. Prepares tick context (team centers, backliner lists, spatial grids)
+3. Updates each alive unit:
+   - Handle death/respawn
+   - Update cooldowns and CC timers
+   - Regenerate HP/mana
+   - Process on_tick passive effects
+   - Handle casting windup/resolve
+   - Select target (enemy or ally for support)
+   - Cast ability/ultimate if ready and in range
+   - Auto-attack if ready and in range
+   - Move toward target
+4. Refresh target pressure (incoming target counts, cluster density)
+5. Check match end conditions (time limit or team wipe)
+
+Match ends at 60s duration or when one team has no alive units. Sudden death extends up to 10000 ticks if needed.

@@ -1,6 +1,6 @@
 # Role Configs
 
-Role-specific stat modifiers and passive hooks.
+Role-specific stat modifiers and passive hooks. **NOT CURRENTLY IN USE**
 
 RoleConfig defines: stat_modifiers (stat → value), passive_on_tick (effect per tick), passive_post_take_damage (effect after taking damage). Roles: tank, fighter, assassin, marksman, mage, support.
 

@@ -8,7 +8,7 @@ The wiki contains evolving understanding of the project:
 - concepts → stable definitions of systems
 - projects → high-level system organization
 
-## Usage (for humans and AI)
+## Usage
 
 Use the wiki to understand existing ideas before working on the codebase.
 

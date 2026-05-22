@@ -116,7 +116,7 @@ private:
 		double accumulator = 0.0;       // Per-effect timing accumulator
 		
 		// DoT/HoT support
-		StringName stacking_mode;       // "refresh", "extend", "stack_damage", "separate"
+		StringName stacking_mode;       // "refresh", "extend", "stack_value", "separate"
 		StringName effect_type;         // e.g., "burn", "poison", "regen"
 		
 		// AOE shape parameters (replaces scalar0-scalar5 for AOE effects)
@@ -371,19 +371,28 @@ private:
 		// Periodic effects (DoT/HoT)
 		struct PeriodicEffect {
 			StringName effect_type;  // e.g., "burn", "poison", "regen"
-			double damage_per_tick = 0.0;
-			double heal_per_tick = 0.0;
+			double damage_total = 0.0;  // Total damage over full duration
+			double heal_total = 0.0;  // Total heal over full duration
 			double remaining_duration = 0.0;
 			double tick_interval = 0.0;
 			double tick_accumulator = 0.0;
+			double original_tick_count = 0.0;  // Total ticks over original duration (duration / tick_interval)
 			int64_t source_instance_id = 0;
 			StringName damage_type;  // "physical", "magical", "true"
-			StringName stacking_mode;  // "refresh", "extend", "stack_damage", "separate"
+			StringName stacking_mode;  // "refresh", "extend", "stack_value", "separate"
 			String reason;
 			bool allow_overheal = false;
 			int stack_count = 0;
 			int max_stacks = 1;
 			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
+			
+			// Total ratio parameters for dynamic calculation mode
+			double total_attack_damage_ratio = 0.0;
+			double total_max_hp_ratio = 0.0;
+			double total_current_hp_ratio = 0.0;
+			double total_missing_hp_ratio = 0.0;
+			double total_flat_amount = 0.0;
+			StringName calculation_mode = StringName("fixed");  // "fixed" or "dynamic"
 		};
 		std::vector<PeriodicEffect> periodic_effects;
 
@@ -1297,12 +1306,12 @@ private:
 	void _apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
 	double _apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind);
 	double _apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind);
-	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind);
-	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind);
-	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
-	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
-	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
-	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind);
+	void _apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic = false);
+	void _apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic = false);
+	void _apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
+	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
+	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
+	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
 
 	// Channel effect functions
 	void _process_channel_tick(UnitState &unit, double delta);

@@ -4233,10 +4233,10 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	double final_damage = pre_res;
 	if (damage_is_physical) {
 		double armor = get_effective_armor(target);
-		final_damage *= Math::clamp(1.0 - armor, -1.0, 1.0);
+		final_damage *= (1.0 - armor);
 	} else if (damage_is_magic) {
 		double mr = get_effective_magic_resist(target);
-		final_damage *= Math::clamp(1.0 - mr, -1.0, 1.0);
+		final_damage *= (1.0 - mr);
 	}
 	double incoming = Math::max(0.0, final_damage);
 	

@@ -920,7 +920,7 @@ private:
 	static constexpr double HP_WEIGHT_MAGE = 2.5;
 	static constexpr double HP_WEIGHT_SUPPORT = 5.0;
 	static constexpr double DISTANCE_WEIGHT_TANK = 1.5;
-	static constexpr double DISTANCE_WEIGHT_ASSASSIN = 1.0;
+	static constexpr double DISTANCE_WEIGHT_ASSASSIN = 0.5;
 	static constexpr double DISTANCE_WEIGHT_MAGE = 1.2;
 	static constexpr double DISTANCE_WEIGHT_SUPPORT = 1.5;
 	static constexpr double DISTANCE_WEIGHT_FIGHTER_CLOSE = 3.0;
@@ -936,11 +936,11 @@ private:
 	static constexpr double TANK_PENALTY_MARKSMAN = 2.6;
 	static constexpr double TANK_PENALTY_MAGE = 2.3;
 	static constexpr double TANK_PENALTY_SUPPORT = 1.5;
-	static constexpr double ASSASSIN_TANK_CONTEXT_PENALTY = 8.0;
+	static constexpr double ASSASSIN_TANK_CONTEXT_PENALTY = 15.0;
 	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 20.0;
 	static constexpr double PREY_INCOMING_TARGET_SCALE = 0.75;
 	static constexpr double PREY_PERCEIVED_THREAT_SCALE = 0.35;
-	static constexpr double PREY_FRONTLINE_SCALE = 0.35;
+	static constexpr double PREY_FRONTLINE_SCALE = 0.0;
 	static constexpr double AOE_DENSITY_RADIUS = 2.0;
 	static constexpr double OBSCURANCE_WEIGHT_DEFAULT = 4.5;
 	static constexpr double OBSCURANCE_LINE_RADIUS = 0.35;

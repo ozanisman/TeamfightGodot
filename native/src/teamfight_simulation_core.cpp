@@ -5472,6 +5472,11 @@ void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, U
 }
 
 void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic) {
+	// Don't apply effects to dead units
+	if (!target.alive) {
+		return;
+	}
+	
 	// Validate tick_interval to prevent division by zero
 	if (tick_interval <= 0.0) {
 		UtilityFunctions::push_error(vformat("DoT effect '%s' has invalid tick_interval: %f. Must be > 0.", String(effect_type), tick_interval));
@@ -5584,6 +5589,11 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 }
 
 void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic) {
+	// Don't apply effects to dead units
+	if (!target.alive) {
+		return;
+	}
+	
 	// Validate tick_interval to prevent division by zero
 	if (tick_interval <= 0.0) {
 		UtilityFunctions::push_error(vformat("HoT effect '%s' has invalid tick_interval: %f. Must be > 0.", String(effect_type), tick_interval));

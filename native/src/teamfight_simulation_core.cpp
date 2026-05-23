@@ -5497,80 +5497,53 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	}
 	
 	auto &periodic_effects = _uc(target).periodic_effects;
-	for (auto &existing : periodic_effects) {
-		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
-			// Apply stacking logic
-			if (stacking_mode == StringName("refresh")) {
-				existing.damage_total = damage_total;
-				existing.total_attack_damage_ratio = attack_damage_ratio;
-				existing.total_max_hp_ratio = max_hp_ratio;
-				existing.total_flat_amount = flat_amount;
-				existing.remaining_duration = duration;
-				existing.original_tick_count = tick_count;
-				existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
-				return;
-			} else if (stacking_mode == StringName("extend")) {
-				// Proportional scaling: scale total amounts to maintain per-tick effectiveness
-				// Note: This also scales the ratio parameters, which is necessary for dynamic mode
-				// to work correctly with extended effects
-				double new_duration = existing.remaining_duration + duration;
-				double scaling_factor = new_duration / existing.remaining_duration;
-				existing.damage_total *= scaling_factor;
-				existing.total_attack_damage_ratio *= scaling_factor;
-				existing.total_max_hp_ratio *= scaling_factor;
-				existing.total_flat_amount *= scaling_factor;
-				existing.remaining_duration = new_duration;
-				// Validate existing tick_interval (shouldn't be 0, but defensive check)
-				if (existing.tick_interval <= 0.0) {
-					existing.tick_interval = tick_interval;
-				}
-				existing.original_tick_count = new_duration / existing.tick_interval;
-				return;
-			} else if (stacking_mode == StringName("stack_value")) {
-				if (existing.stack_count < max_stacks) {
-					// Calculate remaining damage from existing effect
-					double remaining_damage = 0.0;
-					double damage_scaling_factor = 0.0;
-					if (existing.original_tick_count > 0.0 && existing.damage_total > 0.0) {
-						double per_tick_damage = existing.damage_total / existing.original_tick_count;
-						double remaining_ticks = existing.remaining_duration / existing.tick_interval;
-						remaining_damage = per_tick_damage * remaining_ticks;
-						damage_scaling_factor = remaining_damage / existing.damage_total;
-					}
-					
-					// Add new damage to remaining damage
-					existing.damage_total = remaining_damage + damage_total;
-					
-					// Scale existing ratios to match remaining damage, then add new ratios
-					// This ensures dynamic mode calculates correctly
-					existing.total_attack_damage_ratio = existing.total_attack_damage_ratio * damage_scaling_factor + attack_damage_ratio;
-					existing.total_max_hp_ratio = existing.total_max_hp_ratio * damage_scaling_factor + max_hp_ratio;
-					existing.total_flat_amount = existing.total_flat_amount * damage_scaling_factor + flat_amount;
-					
-					existing.stack_count++;
+	
+	// Skip matching logic for separate mode - always create independent instances
+	if (stacking_mode != StringName("separate")) {
+		for (auto &existing : periodic_effects) {
+			if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
+				// Apply stacking logic
+				if (stacking_mode == StringName("refresh")) {
+					existing.damage_total = damage_total;
+					existing.total_attack_damage_ratio = attack_damage_ratio;
+					existing.total_max_hp_ratio = max_hp_ratio;
+					existing.total_flat_amount = flat_amount;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
-				} else {
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
-				}
-				return;
-			} else if (stacking_mode == StringName("stack_duration")) {
-				if (existing.stack_count < max_stacks) {
-					existing.remaining_duration += duration;
-					existing.stack_count++;
+					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
+					return;
+				} else if (stacking_mode == StringName("extend")) {
+					// Proportional scaling: scale total amounts to maintain per-tick effectiveness
+					// Note: This also scales the ratio parameters, which is necessary for dynamic mode
+					// to work correctly with extended effects
+					double new_duration = existing.remaining_duration + duration;
+					double scaling_factor = new_duration / existing.remaining_duration;
+					existing.damage_total *= scaling_factor;
+					existing.total_attack_damage_ratio *= scaling_factor;
+					existing.total_max_hp_ratio *= scaling_factor;
+					existing.total_flat_amount *= scaling_factor;
+					existing.remaining_duration = new_duration;
 					// Validate existing tick_interval (shouldn't be 0, but defensive check)
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
-				} else {
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
+					existing.original_tick_count = new_duration / existing.tick_interval;
+					return;
 				}
-				return;
 			}
-			// "separate" mode: allow multiple independent effects
+		}
+	}
+	
+	// For separate mode: enforce max_stacks by counting effects of same type
+	if (stacking_mode == StringName("separate") && max_stacks > 0) {
+		int count = 0;
+		for (auto &existing : periodic_effects) {
+			if (existing.effect_type == effect_type) {
+				count++;
+			}
+		}
+		if (count >= max_stacks) {
+			return; // Max stacks reached, don't add new instance
 		}
 	}
 	
@@ -5628,86 +5601,56 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	// Visual effect: green progress border
 	_viewer_record_hot_status_fx(target, duration, effect_type);
 	
-	// Search for existing effect with same type and source
+	// Skip matching logic for separate mode - always create independent instances
 	auto &periodic_effects = _uc(target).periodic_effects;
-	for (auto &existing : periodic_effects) {
-		if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
-			// Apply stacking logic
-			if (stacking_mode == StringName("refresh")) {
-				existing.heal_total = heal_total;
-				existing.total_max_hp_ratio = max_hp_ratio;
-				existing.total_current_hp_ratio = current_hp_ratio;
-				existing.total_missing_hp_ratio = missing_hp_ratio;
-				existing.total_flat_amount = flat_amount;
-				existing.allow_overheal = allow_overheal;
-				existing.remaining_duration = duration;
-				existing.original_tick_count = tick_count;
-				existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
-				return;
-			} else if (stacking_mode == StringName("extend")) {
-				// Proportional scaling: scale total amounts to maintain per-tick effectiveness
-				// Note: This also scales the ratio parameters, which is necessary for dynamic mode
-				// to work correctly with extended effects
-				double new_duration = existing.remaining_duration + duration;
-				double scaling_factor = new_duration / existing.remaining_duration;
-				existing.heal_total *= scaling_factor;
-				existing.total_max_hp_ratio *= scaling_factor;
-				existing.total_current_hp_ratio *= scaling_factor;
-				existing.total_missing_hp_ratio *= scaling_factor;
-				existing.total_flat_amount *= scaling_factor;
-				existing.remaining_duration = new_duration;
-				// Validate existing tick_interval (shouldn't be 0, but defensive check)
-				if (existing.tick_interval <= 0.0) {
-					existing.tick_interval = tick_interval;
-				}
-				existing.original_tick_count = new_duration / existing.tick_interval;
-				return;
-			} else if (stacking_mode == StringName("stack_value")) {
-				if (existing.stack_count < max_stacks) {
-					// Calculate remaining heal from existing effect
-					double remaining_heal = 0.0;
-					double heal_scaling_factor = 0.0;
-					if (existing.original_tick_count > 0.0 && existing.heal_total > 0.0) {
-						double per_tick_heal = existing.heal_total / existing.original_tick_count;
-						double remaining_ticks = existing.remaining_duration / existing.tick_interval;
-						remaining_heal = per_tick_heal * remaining_ticks;
-						heal_scaling_factor = remaining_heal / existing.heal_total;
-					}
-					
-					// Add new heal to remaining heal
-					existing.heal_total = remaining_heal + heal_total;
-					
-					// Scale existing ratios to match remaining heal, then add new ratios
-					// This ensures dynamic mode calculates correctly
-					existing.total_max_hp_ratio = existing.total_max_hp_ratio * heal_scaling_factor + max_hp_ratio;
-					existing.total_current_hp_ratio = existing.total_current_hp_ratio * heal_scaling_factor + current_hp_ratio;
-					existing.total_missing_hp_ratio = existing.total_missing_hp_ratio * heal_scaling_factor + missing_hp_ratio;
-					existing.total_flat_amount = existing.total_flat_amount * heal_scaling_factor + flat_amount;
-					
-					existing.stack_count++;
+	if (stacking_mode != StringName("separate")) {
+		for (auto &existing : periodic_effects) {
+			if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
+				// Apply stacking logic
+				if (stacking_mode == StringName("refresh")) {
+					existing.heal_total = heal_total;
+					existing.total_max_hp_ratio = max_hp_ratio;
+					existing.total_current_hp_ratio = current_hp_ratio;
+					existing.total_missing_hp_ratio = missing_hp_ratio;
+					existing.total_flat_amount = flat_amount;
+					existing.allow_overheal = allow_overheal;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
-				} else {
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
-				}
-				return;
-			} else if (stacking_mode == StringName("stack_duration")) {
-				if (existing.stack_count < max_stacks) {
-					existing.remaining_duration += duration;
-					existing.stack_count++;
+					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
+					return;
+				} else if (stacking_mode == StringName("extend")) {
+					// Proportional scaling: scale total amounts to maintain per-tick effectiveness
+					// Note: This also scales the ratio parameters, which is necessary for dynamic mode
+					// to work correctly with extended effects
+					double new_duration = existing.remaining_duration + duration;
+					double scaling_factor = new_duration / existing.remaining_duration;
+					existing.heal_total *= scaling_factor;
+					existing.total_max_hp_ratio *= scaling_factor;
+					existing.total_current_hp_ratio *= scaling_factor;
+					existing.total_missing_hp_ratio *= scaling_factor;
+					existing.total_flat_amount *= scaling_factor;
+					existing.remaining_duration = new_duration;
 					// Validate existing tick_interval (shouldn't be 0, but defensive check)
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
-				} else {
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
+					existing.original_tick_count = new_duration / existing.tick_interval;
+					return;
 				}
-				return;
 			}
-			// "separate" mode: do not modify existing, fall through to add new instance
+		}
+	}
+	
+	// For separate mode: enforce max_stacks by counting effects of same type
+	if (stacking_mode == StringName("separate") && max_stacks > 0) {
+		int count = 0;
+		for (auto &existing : periodic_effects) {
+			if (existing.effect_type == effect_type) {
+				count++;
+			}
+		}
+		if (count >= max_stacks) {
+			return; // Max stacks reached, don't add new instance
 		}
 	}
 	
@@ -5748,8 +5691,8 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 		// Update accumulator
 		effect.tick_accumulator += delta;
 		
-		// Check if tick should occur
-		if (effect.tick_accumulator >= effect.tick_interval) {
+		// Check if tick should occur (process all pending ticks)
+		while (effect.tick_accumulator >= effect.tick_interval) {
 			effect.tick_accumulator -= effect.tick_interval;
 			
 			// Use original_tick_count for consistent per-tick values throughout effect lifetime

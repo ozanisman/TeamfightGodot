@@ -23,6 +23,7 @@ static var _frozen_worker_specs_active: bool = false
 static var _frozen_catalog: Dictionary = {}
 static var _frozen_role_config: Dictionary = {}
 static var _frozen_passive: Dictionary = {}
+static var _frozen_minion: Dictionary = {}
 static var _frozen_champion_ids: Array[StringName] = []
 
 static func _get_thread_id() -> int:
@@ -37,7 +38,8 @@ static func _get_thread_cache() -> Dictionary:
 			"catalog": {},
 			"passive": {},
 			"role_config": {},
-			"champion_ids": []
+			"champion_ids": [],
+			"minion": {}
 		}
 	var cache = _thread_local_caches[thread_id]
 	_cache_mutex.unlock()
@@ -82,6 +84,7 @@ static func clear_all_caches() -> void:
 	_frozen_catalog.clear()
 	_frozen_role_config.clear()
 	_frozen_passive.clear()
+	_frozen_minion.clear()
 	_frozen_champion_ids.clear()
 	_cache_mutex.unlock()
 	
@@ -95,11 +98,12 @@ static func clear_export_caches() -> void:
 	clear_all_caches()
 
 
-## Builds catalog/role/passive on the caller thread once, deep-copies once; workers reuse snapshots from [method build_catalog] / [method build_role_configs] / [method build_passive_registry].[br]Must not mutate shared champion specs after freezing. [method clear_all_caches] clears snapshots.
+## Builds catalog/role/passive/minion on the caller thread once, deep-copies once; workers reuse snapshots from [method build_catalog] / [method build_role_configs] / [method build_passive_registry] / [method build_minion_catalog].[br]Must not mutate shared champion specs after freezing. [method clear_all_caches] clears snapshots.
 static func freeze_built_specs_for_worker_reuse() -> void:
 	var cat := build_catalog()
 	var roles := build_role_configs()
 	var passives := build_passive_registry()
+	var minions := build_minion_catalog()
 	var ids: Array[StringName] = []
 	for unit_id in cat.keys():
 		ids.append(StringName(String(unit_id)))
@@ -107,6 +111,7 @@ static func freeze_built_specs_for_worker_reuse() -> void:
 	_frozen_catalog = cat.duplicate(true)
 	_frozen_role_config = roles.duplicate(true)
 	_frozen_passive = passives.duplicate(true)
+	_frozen_minion = minions.duplicate(true)
 	_frozen_champion_ids = ids.duplicate()
 	_frozen_worker_specs_active = true
 	_cache_mutex.unlock()
@@ -118,12 +123,14 @@ static func _maybe_install_frozen_specs(thread_cache: Dictionary) -> void:
 	var copy_cat: Dictionary = _frozen_catalog
 	var copy_roles: Dictionary = _frozen_role_config
 	var copy_passive: Dictionary = _frozen_passive
+	var copy_minion: Dictionary = _frozen_minion
 	var copy_ids: Array[StringName] = _frozen_champion_ids
 	if copy_cat.is_empty():
 		return
 	thread_cache["catalog"] = copy_cat
 	thread_cache["role_config"] = copy_roles
 	thread_cache["passive"] = copy_passive
+	thread_cache["minion"] = copy_minion
 	thread_cache["champion_ids"] = copy_ids.duplicate()
 
 
@@ -254,7 +261,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A skilled duelist who grows more dangerous as he fights, excelling in prolonged combats.",
-		"ability_desc": "Deals 120% damage and applies a bleed that deals 240% AD as a bleed over 3s.",
+		"ability_desc": "Deals 120% damage and applies a bleed that deals 250% AD as a bleed over 3s.",
 		"ultimate_desc": "Deals 200% physical damage. Consumes all passive stacks to increase damage by 30% per stack. If it kills the target, gain full passive stacks.",
 		"passive_desc": "Gains 4 attack damage for 3s after each auto-attack. (Max 7 stacks)",
 		"passive_name": "Duelist",
@@ -274,9 +281,10 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"damage_over_time",
 						"params": {
-							"damage_ratio": 0.80,
+							"damage_ratio": 2.5,
 							"duration": 3.0,
-							"stacking_mode": "refresh",
+							"tick_interval": 0.5,
+							"stacking_mode": "separate",
 							"effect_type": "generic",
 							"reason": "Bleeding Cut"
 						}
@@ -387,9 +395,10 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"damage_over_time",
 								"params": {
-									"damage_ratio": 0.03,
+									"damage_ratio": 0.12,
 									"duration": 2.0,
 									"tick_interval": 0.5,
+									"stacking_mode": "separate",
 									"damage_type": "physical",
 									"reason": "Rain of Arrows"
 								}
@@ -2051,20 +2060,20 @@ const CHAMPION_DATA := {
 			"passive_id": &"restorative_mist",
 			"respawn_time": 0.0,
 		},
-		"description": "A restorative support who summons enchanted mists that gradually heal allies and sustain them through prolonged fights.",
+		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
 		"ability_desc": "Heals a target for 5% of their missing health over 5s.",
 		"ultimate_desc": "Heals all allies in a 4.0 tile radius for 15% of their maximum health over 5s. Excess healing is converted into temporary maximum health.",
 		"passive_desc": "Every 5s, heals all allies in a 2.0 tile radius for 5% of their missing health over 5s.",
 		"passive_name": "Restorative Mist",
-		"ability_name": "Mist Heal",
+		"ability_name": "Healing Bloom",
 		"ultimate_name": "Enveloping Mist",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
-				"missing_hp_ratio": 0.01,
+				"missing_hp_ratio": 0.15,
 				"duration": 5.0,
 				"tick_interval": 0.5,
-				"stacking_mode": "refresh",
+				"stacking_mode": "separate",
 				"reason": "Healing Bloom"
 			}
 		},
@@ -2074,12 +2083,12 @@ const CHAMPION_DATA := {
 				"shape": "circle",
 				"anchor": "self",
 				"radius": 4.0,
-				"max_hp_ratio": 0.03,
+				"max_hp_ratio": 0.15,
 				"duration": 5.0,
 				"tick_interval": 0.5,
 				"target_self": true,
 				"allow_overheal": true,
-				"stacking_mode": "refresh",
+				"stacking_mode": "separate",
 				"reason": "Celestial Rain"
 			}
 		},
@@ -2426,10 +2435,10 @@ const PASSIVE_DATA := {
 			"params": {
 				"shape": "circle",
 				"anchor": "self",
-				"radius": 2.0,
+				"radius": 2.5,
 				"on_tick_interval": 5.0,
-				"stacking_mode": "refresh",
-				"missing_hp_ratio": 0.01,
+				"stacking_mode": "separate",
+				"missing_hp_ratio": 0.05,
 				"duration": 5.0,
 				"tick_interval": 0.5,
 				"target_self": true,
@@ -2547,6 +2556,75 @@ const ROLE_CONFIG_DATA := {
 	},
 }
 
+const MINION_DATA := {
+	&"skeleton": {
+		"stats": {
+			"unit_id": &"skeleton",
+			"name": &"Skeleton",
+			"role": &"minion",
+			"max_hp": 80.0,
+			"attack_damage": 8.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.0,
+			"move_speed": 0.6,
+			"armor": 0.05,
+			"magic_resist": 0.05,
+			"tenacity": 0.0,
+			"life_steal": 0.0,
+			"max_mana": 0.0,
+			"mana_per_attack": 0.0,
+			"ability_cd": 0.0,
+			"projectile_speed": 0.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "A fragile undead warrior that fights with basic attacks.",
+		"ability_desc": "",
+		"ultimate_desc": "",
+		"passive_desc": "",
+		"passive_name": "",
+		"ability_name": "",
+		"ultimate_name": "",
+		"ability": {},
+		"ultimate": {},
+		"passive_ids": [],
+	},
+	&"wolf": {
+		"stats": {
+			"unit_id": &"wolf",
+			"name": &"Wolf",
+			"role": &"minion",
+			"max_hp": 100.0,
+			"attack_damage": 12.0,
+			"attack_range": 0.3,
+			"attack_speed": 1.3,
+			"move_speed": 0.9,
+			"armor": 0.08,
+			"magic_resist": 0.08,
+			"tenacity": 0.0,
+			"life_steal": 0.0,
+			"max_mana": 0.0,
+			"mana_per_attack": 0.0,
+			"ability_cd": 0.0,
+			"projectile_speed": 0.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "A swift beast companion that harasses enemies.",
+		"ability_desc": "",
+		"ultimate_desc": "",
+		"passive_desc": "",
+		"passive_name": "",
+		"ability_name": "",
+		"ultimate_name": "",
+		"ability": {},
+		"ultimate": {},
+		"passive_ids": [],
+	},
+}
+
 static func build_role_configs() -> Dictionary:
 	# Use thread-local cache for multi-threading safety
 	var thread_cache := _get_thread_cache()
@@ -2642,6 +2720,24 @@ static func get_champion_ids() -> Array[StringName]:
 
 static func get_champion(unit_id: StringName):
 	return build_catalog().get(unit_id, null)
+
+static func build_minion_catalog() -> Dictionary:
+	# Use thread-local cache for multi-threading safety
+	var thread_cache := _get_thread_cache()
+	if not thread_cache.get("minion", {}).is_empty():
+		return thread_cache["minion"]
+
+	_maybe_install_frozen_specs(thread_cache)
+	if not thread_cache.get("minion", {}).is_empty():
+		return thread_cache["minion"]
+
+	for minion_id in MINION_DATA:
+		thread_cache["minion"][minion_id] = _build_champion(MINION_DATA[minion_id])
+
+	return thread_cache["minion"]
+
+static func get_minion(minion_id: StringName):
+	return build_minion_catalog().get(minion_id, null)
 
 static func _load_role_kits() -> void:
 	if _role_kits_loaded:

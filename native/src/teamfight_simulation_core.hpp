@@ -848,6 +848,7 @@ private:
 		EFFECT_OPCODE_SET_STACKS = 52,
 		EFFECT_OPCODE_CHANNEL = 53,
 		EFFECT_OPCODE_REDIRECT_DAMAGE = 54,
+		EFFECT_OPCODE_SUMMON_ALLY = 55,
 	};
 
 	static constexpr double MATCH_DURATION = 60.0;
@@ -985,6 +986,7 @@ private:
 	static constexpr int SPATIAL_SEPARATION_TEAM_THRESHOLD = 6;
 
 	static constexpr const char *CHAMPION_SCHEMA_PATH = "res://fixtures/goldens/champion_schema.json";
+	static constexpr const char *MINION_SCHEMA_PATH = "res://fixtures/goldens/minion_schema.json";
 	static constexpr const char *BALANCE_PATCHES_PATH = "res://fixtures/goldens/balance_patches.json";
 	static constexpr const char *CHAMPION_KITS_PATH = "res://fixtures/goldens/champion_kits.json";
 
@@ -1010,11 +1012,13 @@ private:
 	Array _enemy_comp;
 	int64_t _player_kills = 0;
 	int64_t _enemy_kills = 0;
+	int64_t _max_instance_id = 0;
 	
 	// Spawn slot tracking per team (indices into spawn_points array)
 	std::vector<bool> _player_spawn_slots_used;
 	std::vector<bool> _enemy_spawn_slots_used;
 	Dictionary _champion_catalog;
+	Dictionary _minion_catalog;
 	Dictionary _role_configs;
 	std::vector<BalancePatch> _balance_patches;
 	Dictionary _ability_kits; // "kit_id" -> kit Dictionary (ability, ultimate, passive_ids) - loaded from champion_kits.json
@@ -1234,6 +1238,7 @@ private:
 	double _effective_attack_range(const UnitState &unit) const;
 	int64_t _assign_spawn_slot(const StringName &team);
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
+	Vector2 _find_random_spawn_position_near(double center_x, double center_y, double radius);
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);

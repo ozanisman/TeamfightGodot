@@ -274,6 +274,10 @@ inline const StringName &sn_redirect_damage() {
 	static const StringName s("redirect_damage");
 	return s;
 }
+inline const StringName &sn_summon_ally() {
+	static const StringName s("summon_ally");
+	return s;
+}
 inline const StringName &sn_knockback_shield() {
 	static const StringName s("knockback_shield");
 	return s;
@@ -690,6 +694,9 @@ int64_t TeamfightSimulationCore::_opcode_for_kind(const StringName &kind) {
 	if (kind == sn_redirect_damage()) {
 		return EFFECT_OPCODE_REDIRECT_DAMAGE;
 	}
+	if (kind == sn_summon_ally()) {
+		return EFFECT_OPCODE_SUMMON_ALLY;
+	}
 	if (kind == sn_knockback_shield()) {
 		return EFFECT_OPCODE_KNOCKBACK_SHIELD;
 	}
@@ -800,6 +807,8 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 			return sn_reflect_damage();
 		case EFFECT_OPCODE_REDIRECT_DAMAGE:
 			return sn_redirect_damage();
+		case EFFECT_OPCODE_SUMMON_ALLY:
+			return sn_summon_ally();
 		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
 			return sn_knockback_shield();
 		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER:
@@ -1283,6 +1292,23 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar1 = Math::clamp(double(params.get("reduction_ratio", 0.0)), 0.0, 1.0);
 		compiled.scalar2 = double(params.get("redirect_cap", 0.0));
 		compiled.reason = String(params.get("reason", ""));
+	} else if (kind == sn_summon_ally()) {
+		compiled.scalar0 = double(params.get("spawn_radius", 2.0));
+		// Parse minions array: each entry has minion_id and count
+		Array minions_array = params.get("minions", Array());
+		for (int64_t i = 0; i < minions_array.size(); ++i) {
+			Dictionary minion_entry = minions_array[i];
+			StringName minion_id = StringName(String(minion_entry.get("minion_id", "")));
+			int64_t count = int64_t(minion_entry.get("count", 1));
+			// Store minion_id in string0 and count in int0 for each entry
+			// We'll use children array to store multiple minion specs
+			EffectRecord minion_spec;
+			minion_spec.opcode = EFFECT_OPCODE_SUMMON_ALLY;
+			minion_spec.string0 = String(minion_id);
+			minion_spec.int0 = count;
+			compiled.children.push_back(minion_spec);
+		}
+		compiled.reason = String(params.get("reason", "Summon Ally"));
 	} else if (kind == sn_knockback_shield()) {
 		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
 		compiled.reason = String(params.get("reason", "Knockback shield"));
@@ -1536,7 +1562,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	for (UnitState &unit : _units) {
 		_clear_all_stat_modifiers(unit);
 	}
-	
+
 	_units.clear();
 	_unit_cold.clear();
 	_projectiles.clear();
@@ -1544,8 +1570,8 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_scratch_projectiles.clear();
 	_active_projectiles.clear();
 	_scratch_critical_allies.clear();
-	
-		
+
+
 	_summary_unit_stats.clear();
 	_summary_cache.clear();
 	_time = 0.0;
@@ -1559,6 +1585,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_enemy_comp.clear();
 	_player_kills = 0;
 	_enemy_kills = 0;
+	_max_instance_id = 0;
 	
 	// Reset spawn slot tracking
 	_player_spawn_slots_used.clear();
@@ -1714,7 +1741,22 @@ void TeamfightSimulationCore::_ensure_catalog_loaded() {
 		ability_kits = Dictionary(kits_root.get("kits", Dictionary()));
 	}
 
+	// minions (loaded from separate minion schema file)
+	Dictionary minion_catalog;
+	Dictionary minion_schema = load_json_required(String(MINION_SCHEMA_PATH));
+	if (!minion_schema.is_empty()) {
+		Array minion_keys = minion_schema.keys();
+		for (int64_t i = 0; i < minion_keys.size(); ++i) {
+			StringName minion_id = StringName(String(minion_keys[i]));
+			Dictionary minion_entry = Dictionary(minion_schema.get(minion_id, Dictionary()));
+			minion_catalog[minion_id] = minion_entry;
+		}
+	} else {
+		UtilityFunctions::push_error("Failed to load minion schema from " + String(MINION_SCHEMA_PATH));
+	}
+
 	_champion_catalog = champion_catalog;
+	_minion_catalog = minion_catalog;
 	_role_configs = role_configs;
 	_passive_registry = passive_registry;
 	_ability_kits = ability_kits;
@@ -1825,9 +1867,9 @@ void TeamfightSimulationCore::_rebuild_effective_champion_cache() {
 	for (int64_t ki = 0; ki < archetype_keys.size(); ++ki) {
 		Variant key_var = archetype_keys[ki];
 		String key_str = String(key_var);
-		
-		// Skip non-champion entries like "passives" and "role_configs"
-		if (key_str == "passives" || key_str == "role_configs") {
+
+		// Skip non-champion entries like "passives", "role_configs", and "minions"
+		if (key_str == "passives" || key_str == "role_configs" || key_str == "minions") {
 			continue;
 		}
 		
@@ -1990,10 +2032,15 @@ Dictionary TeamfightSimulationCore::_coerce_match_input(const Variant &match_inp
 }
 
 Dictionary TeamfightSimulationCore::_champion_for(const StringName &archetype_id) const {
-	if (!_champion_catalog.has(archetype_id)) {
-		return Dictionary();
+	// Check champion catalog first
+	if (_champion_catalog.has(archetype_id)) {
+		return Dictionary(_champion_catalog[archetype_id]);
 	}
-	return Dictionary(_champion_catalog[archetype_id]);
+	// Fall back to minion catalog for minions
+	if (_minion_catalog.has(archetype_id)) {
+		return Dictionary(_minion_catalog[archetype_id]);
+	}
+	return Dictionary();
 }
 
 void TeamfightSimulationCore::_append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp) {
@@ -2010,14 +2057,19 @@ void TeamfightSimulationCore::_append_team_units(const Array &spawn_specs, const
 		_add_alive_index(team, unit_index);
 		_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 		team_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-		
+
+		// Update max instance ID for efficient minion spawning
+		if (next_instance_id > _max_instance_id) {
+			_max_instance_id = next_instance_id;
+		}
+
 		// Emit passive AOE events for visualization at initial spawn
 		UnitState &unit = _units[static_cast<size_t>(unit_index)];
 		UnitStateCold &cold = _unit_cold[static_cast<size_t>(unit_index)];
 		for (const UnitStateCold::PassiveAoeInfo &aoe_info : cold.passive_aoe_info) {
 			_viewer_record_passive_aoe_fx(unit, aoe_info.radius, aoe_info.passive_id);
 		}
-		
+
 		++next_instance_id;
 	}
 }
@@ -7120,14 +7172,41 @@ Vector2 TeamfightSimulationCore::_find_valid_dash_position(double start_x, doubl
 
 Vector2 TeamfightSimulationCore::_get_random_spawn_position(const StringName &team, bool is_respawn) {
 	double x_base = (team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
-	
+
 	// Use same spawn points for both initial spawn and respawn
 	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
-	
+
 	int max_index = int(spawn_points.size() - 1);
 	int index = (_rng.genrand_uint32() % (max_index + 1));
-	
+
 	return Vector2(x_base, spawn_points[index]);
+}
+
+Vector2 TeamfightSimulationCore::_find_random_spawn_position_near(double center_x, double center_y, double radius) {
+	// Try random positions within radius, with collision checking
+	constexpr int max_attempts = 50;
+	constexpr double pi = 3.14159265358979323846;
+
+	for (int attempt = 0; attempt < max_attempts; ++attempt) {
+		// Generate random angle and distance
+		double angle = _rng.random_random() * pi * 2.0;
+		double distance = _rng.random_random() * radius;
+
+		double test_x = center_x + Math::cos(angle) * distance;
+		double test_y = center_y + Math::sin(angle) * distance;
+
+		// Clamp to world boundaries
+		test_x = Math::clamp(test_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+		test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+
+		// Check collision with existing units
+		if (!_position_collides_with_unit(test_x, test_y, 0)) {
+			return Vector2(test_x, test_y);
+		}
+	}
+
+	// Failed to find valid position, return invalid position
+	return Vector2(-1.0, -1.0);
 }
 
 int64_t TeamfightSimulationCore::_assign_spawn_slot(const StringName &team) {
@@ -7245,6 +7324,16 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 	target.respawn_timer = get_effective_respawn_time(target);
 	_uc(target).deaths += 1;
 	_sync_targeting_frame_index(target_index, target);
+
+	// Check if target is a minion (role_id="minion") - skip scoring for minions
+	bool is_minion = (_uc(target).role_id == StringName("minion"));
+
+	if (is_minion) {
+		// Minions don't respawn - set respawn timer to 0
+		target.respawn_timer = 0.0;
+		// Skip scoring logic for minions
+		return;
+	}
 	
 	// Clear periodic effects on death
 	_clear_periodic_effects(target);
@@ -9043,12 +9132,79 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary redirect_result;
 			redirect_result["success"] = true;
 			redirect_result["redirected_damage"] = 0.0;
-			
+
 			// redirect_damage is a passive modifier that should be applied during damage calculation
 			// This effect doesn't directly apply damage, but stores parameters for the damage system
 			// The actual redirect logic is handled in _apply_damage or a similar function
 			// For now, this is a no-op that stores the parameters in the effect record
 			return redirect_result;
+		}
+		case EFFECT_OPCODE_SUMMON_ALLY: {
+			Dictionary summon_result;
+			summon_result["success"] = true;
+			summon_result["minions_spawned"] = 0;
+
+			double spawn_radius = effect.scalar0;
+			int64_t total_spawned = 0;
+
+			// Use tracked max instance ID for efficient ID generation
+			int64_t next_instance_id = _max_instance_id + 1;
+
+			// Iterate through children (each child is a minion spec with minion_id and count)
+			for (const EffectRecord &minion_spec : effect.children) {
+				StringName minion_id = StringName(minion_spec.string0);
+				int64_t count = minion_spec.int0;
+
+				// Get minion data from minion_catalog
+				Dictionary minion_data = _minion_catalog.get(String(minion_id), Dictionary());
+				if (minion_data.is_empty()) {
+					UtilityFunctions::push_error(vformat("Unknown minion archetype: %s", String(minion_id)));
+					continue;
+				}
+
+				// Spawn count minions of this type
+				for (int64_t i = 0; i < count; ++i) {
+					// Find random valid position within spawn_radius
+					Vector2 spawn_pos = _find_random_spawn_position_near(source.pos_x, source.pos_y, spawn_radius);
+					if (spawn_pos.x < 0.0) {
+						// Failed to find valid position
+						UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f. Active units: %d",
+							String(minion_id), i + 1, count, source.pos_x, source.pos_y, spawn_radius, _units.size()));
+						continue;
+					}
+
+					// Create spawn spec
+					Dictionary spawn_spec;
+					spawn_spec["archetype_id"] = minion_id;
+					spawn_spec["x"] = spawn_pos.x;
+					spawn_spec["y"] = spawn_pos.y;
+
+					// Build unit state
+					std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, source.team, next_instance_id);
+					if (built.first.instance_id == 0) {
+						continue;
+					}
+
+					// Add to units array
+					int64_t unit_index = int64_t(_units.size());
+					_units.push_back(std::move(built.first));
+					_unit_cold.push_back(std::move(built.second));
+					_unit_index_map[next_instance_id] = unit_index;
+					_add_alive_index(source.team, unit_index);
+					_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
+
+					// Update max instance ID
+					if (next_instance_id > _max_instance_id) {
+						_max_instance_id = next_instance_id;
+					}
+
+					next_instance_id++;
+					total_spawned++;
+				}
+			}
+
+			summon_result["minions_spawned"] = total_spawned;
+			return summon_result;
 		}
 		case EFFECT_OPCODE_SELF_DASH: {
 			Dictionary dash_result;
@@ -9960,6 +10116,12 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		_add_alive_index(team, unit_index);
 		_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 		comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
+
+		// Update max instance ID for efficient minion spawning
+		if (next_instance_id > _max_instance_id) {
+			_max_instance_id = next_instance_id;
+		}
+
 		next_instance_id += 1;
 	};
 	auto pick_index = [](const Ref<RandomNumberGenerator> &rng, int64_t upper_inclusive) -> int64_t {

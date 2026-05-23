@@ -67,10 +67,11 @@
 							{
 								"kind": "damage_over_time",
 								"params": {
-									"damage_ratio": 0.03,
+									"damage_ratio": 0.12,
 									"damage_type": "physical",
 									"duration": 2.0,
 									"reason": "Rain of Arrows",
+									"stacking_mode": "separate",
 									"tick_interval": 0.5
 								}
 							}
@@ -833,16 +834,16 @@
 			"kind": "heal_over_time",
 			"params": {
 				"duration": 5.0,
-				"missing_hp_ratio": 0.01,
+				"missing_hp_ratio": 0.15,
 				"reason": "Healing Bloom",
-				"stacking_mode": "refresh",
+				"stacking_mode": "separate",
 				"tick_interval": 0.5
 			},
 			"requires_target_in_range": true
 		},
 		"ability_desc": "Heals a target for 5% of their missing health over 5s.",
-		"ability_name": "Mist Heal",
-		"description": "A restorative support who summons enchanted mists that gradually heal allies and sustain them through prolonged fights.",
+		"ability_name": "Healing Bloom",
+		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
 		"name": "Mistcaller",
 		"passive_desc": "Every 5s, heals all allies in a 2.0 tile radius for 5% of their missing health over 5s.",
 		"passive_ids": [
@@ -877,11 +878,11 @@
 				"allow_overheal": true,
 				"anchor": "self",
 				"duration": 5.0,
-				"max_hp_ratio": 0.03,
+				"max_hp_ratio": 0.15,
 				"radius": 4.0,
 				"reason": "Celestial Rain",
 				"shape": "circle",
-				"stacking_mode": "refresh",
+				"stacking_mode": "separate",
 				"target_self": true,
 				"tick_interval": 0.5
 			},
@@ -1532,12 +1533,12 @@
 					"params": {
 						"anchor": "self",
 						"duration": 5.0,
-						"missing_hp_ratio": 0.01,
+						"missing_hp_ratio": 0.05,
 						"on_tick_interval": 5.0,
-						"radius": 2.0,
+						"radius": 2.5,
 						"reason": "Restorative Mist",
 						"shape": "circle",
-						"stacking_mode": "refresh",
+						"stacking_mode": "separate",
 						"target_self": true,
 						"tick_interval": 0.5
 					},
@@ -2069,11 +2070,12 @@
 					{
 						"kind": "damage_over_time",
 						"params": {
-							"damage_ratio": 0.8,
+							"damage_ratio": 2.5,
 							"duration": 3.0,
 							"effect_type": "generic",
 							"reason": "Bleeding Cut",
-							"stacking_mode": "refresh"
+							"stacking_mode": "separate",
+							"tick_interval": 0.5
 						},
 						"requires_target_in_range": true
 					}
@@ -2082,7 +2084,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Deals 120% damage and applies a bleed that deals 240% AD as a bleed over 3s.",
+		"ability_desc": "Deals 120% damage and applies a bleed that deals 250% AD as a bleed over 3s.",
 		"ability_name": "Bleeding Cut",
 		"description": "A skilled duelist who grows more dangerous as he fights, excelling in prolonged combats.",
 		"name": "Swordsman",

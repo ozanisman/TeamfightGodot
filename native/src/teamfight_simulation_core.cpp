@@ -5516,7 +5516,6 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 					existing.total_flat_amount = flat_amount;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
-					existing.tick_accumulator = 0.0;  // Reset timing for clean refresh
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {
@@ -5565,9 +5564,19 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 		}
 	}
 	
+	// Apply instant tick with adjusted per-tick value (total distributed over tick_count + 1 ticks)
+	double per_tick = damage_total / (tick_count + 1.0);
+	if (per_tick > 0.0) {
+		EffectContext context = _build_context(source, &target, nullptr, per_tick, action_kind);
+		_apply_damage(source, target, per_tick, damage_type, action_kind, context);
+	}
+	
+	// Store adjusted total for periodic ticks (per_tick * tick_count)
+	double adjusted_damage_total = per_tick * tick_count;
+	
 	UnitStateCold::PeriodicEffect new_effect;
 	new_effect.effect_type = effect_type;
-	new_effect.damage_total = damage_total;
+	new_effect.damage_total = adjusted_damage_total;
 	new_effect.heal_total = 0.0;
 	new_effect.remaining_duration = duration;
 	new_effect.tick_interval = tick_interval;
@@ -5640,7 +5649,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 					existing.allow_overheal = allow_overheal;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
-					existing.tick_accumulator = 0.0;  // Reset timing for clean refresh
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {
@@ -5690,11 +5698,24 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 		}
 	}
 	
+	// Apply instant tick with adjusted per-tick value (total distributed over tick_count + 1 ticks)
+	double per_tick = heal_total / (tick_count + 1.0);
+	if (per_tick > 0.0) {
+		EffectContext context = _build_context(source, &target, nullptr, 0.0, action_kind);
+		double old_hp = target.hp;
+		_heal_unit(source, target, per_tick, action_kind, allow_overheal);
+		double heal_gained = target.hp - old_hp;
+		_run_post_heal_effects(source, target, per_tick, heal_gained, action_kind, context);
+	}
+	
+	// Store adjusted total for periodic ticks (per_tick * tick_count)
+	double adjusted_heal_total = per_tick * tick_count;
+	
 	// No matching effect found or "separate" mode - add new
 	UnitStateCold::PeriodicEffect new_effect;
 	new_effect.effect_type = effect_type;
 	new_effect.damage_total = 0.0;
-	new_effect.heal_total = heal_total;
+	new_effect.heal_total = adjusted_heal_total;
 	new_effect.remaining_duration = duration;
 	new_effect.tick_interval = tick_interval;
 	new_effect.original_tick_count = tick_count;

@@ -5721,6 +5721,11 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 			// Fallback to calculation if original_tick_count is invalid (e.g., from deserialization)
 			double tick_count = effect.original_tick_count;
 			if (tick_count <= 0.0) {
+				if (effect.tick_interval <= 0.0) {
+					// Invalid tick_interval, skip effect to prevent division by zero
+					index++;
+					continue;
+				}
 				tick_count = effect.remaining_duration / effect.tick_interval;
 				if (tick_count <= 0.0) {
 					// Invalid effect, skip it

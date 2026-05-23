@@ -5552,11 +5552,11 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 		}
 	}
 	
-	// For separate mode: enforce max_stacks by counting effects of same type
+	// For separate mode: enforce max_stacks by counting effects of same type, source, and reason
 	if (stacking_mode == StringName("separate") && max_stacks > 0) {
 		int count = 0;
 		for (auto &existing : periodic_effects) {
-			if (existing.effect_type == effect_type) {
+			if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
 				count++;
 			}
 		}
@@ -5677,11 +5677,11 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 		}
 	}
 	
-	// For separate mode: enforce max_stacks by counting effects of same type
+	// For separate mode: enforce max_stacks by counting effects of same type, source, and reason
 	if (stacking_mode == StringName("separate") && max_stacks > 0) {
 		int count = 0;
 		for (auto &existing : periodic_effects) {
-			if (existing.effect_type == effect_type) {
+			if (existing.effect_type == effect_type && existing.source_instance_id == source.instance_id && existing.reason == reason) {
 				count++;
 			}
 		}

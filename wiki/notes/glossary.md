@@ -19,3 +19,5 @@ Hook = trigger point for passive effects: on_tick, on_take_damage, on_deal_damag
 Windup = casting delay before ability execution (default 0.5s)
 
 CC = crowd control status: stun, slow, root, silence, disarm, stealth
+
+Debug/Logging Schema = Use UtilityFunctions::push_error(vformat("message", args)) for debug output in native code. Never use printf.

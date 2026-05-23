@@ -5499,6 +5499,7 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	double tick_count_rounded = Math::round(tick_count);
 	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
 		UtilityFunctions::push_error(vformat("DoT effect '%s' has non-divisible duration (%f) and tick_interval (%f). tick_count is %f (should be integer).", String(effect_type), duration, tick_interval, tick_count));
+		return;  // Reject effect if not divisible
 	}
 	
 	auto &periodic_effects = _uc(target).periodic_effects;
@@ -5618,6 +5619,7 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	double tick_count_rounded = Math::round(tick_count);
 	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
 		UtilityFunctions::push_error(vformat("HoT effect '%s' has non-divisible duration (%f) and tick_interval (%f). tick_count is %f (should be integer).", String(effect_type), duration, tick_interval, tick_count));
+		return;  // Reject effect if not divisible
 	}
 	
 	// Visual effect: green progress border

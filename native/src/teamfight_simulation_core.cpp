@@ -5515,6 +5515,7 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 					existing.total_flat_amount = flat_amount;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
+					existing.tick_accumulator = 0.0;  // Reset timing for clean refresh
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {
@@ -5637,6 +5638,7 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 					existing.allow_overheal = allow_overheal;
 					existing.remaining_duration = duration;
 					existing.original_tick_count = tick_count;
+					existing.tick_accumulator = 0.0;  // Reset timing for clean refresh
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {

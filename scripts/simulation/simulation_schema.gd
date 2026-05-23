@@ -5,6 +5,7 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const EffectSpecScript := preload("res://scripts/simulation/effect_spec.gd")
 const GoldenChampionSchemaPath := "res://fixtures/goldens/champion_schema.json"
+const GoldenMinionSchemaPath := "res://fixtures/goldens/minion_schema.json"
 
 static func _normalize_numbers(value: Variant) -> Variant:
 	return _normalize_numbers_for_key(value, "")
@@ -60,35 +61,36 @@ static func export_champion_schema() -> Dictionary:
 
 static func generate_champion_schema_from_gdscript() -> Dictionary:
 	var script_path = "res://scripts/simulation/champion_catalog.gd"
-	
+
 	# Force reload from disk, bypassing cache to get fresh data
 	var script = ResourceLoader.load(script_path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	if script == null:
 		push_error("Failed to load fresh champion catalog script")
 		return {}
-	
+
 	# Call static methods on the fresh script with explicit types
 	var catalog: Dictionary = script.build_catalog()
 	var passives: Dictionary = script.build_passive_registry()
 	var role_configs: Dictionary = script.build_role_configs()
-	
+	var minions: Dictionary = script.build_minion_catalog()
+
 	# Start with champions at top level (for C++ compatibility)
 	var result: Dictionary = {}
 	for champion_id in catalog.keys():
 		var champ = catalog[champion_id]
 		var champ_dict: Dictionary = champ.to_dict()
 		result[String(champion_id)] = champ_dict
-	
+
 	# Add passives and role_configs as additional top-level keys
 	result["passives"] = _normalize_passives(passives)
-	
+
 	# Convert role_configs to dictionaries
 	var role_configs_dict: Dictionary = {}
 	for role_id in role_configs.keys():
 		var config = role_configs[role_id]
 		role_configs_dict[String(role_id)] = config.to_dict()
 	result["role_configs"] = _normalize_numbers(role_configs_dict)
-	
+
 	return result
 
 static func write_champion_schema_to_file(output_path: String = GoldenChampionSchemaPath) -> bool:
@@ -106,6 +108,45 @@ static func write_champion_schema_to_file(output_path: String = GoldenChampionSc
 	file.store_string(json_string)
 	file.close()
 	print("Champion schema exported successfully to: %s" % output_path)
+	
+	# Also export minion schema
+	write_minion_schema_to_file()
+	return true
+
+static func generate_minion_schema_from_gdscript() -> Dictionary:
+	var script_path = "res://scripts/simulation/champion_catalog.gd"
+
+	# Force reload from disk, bypassing cache to get fresh data
+	var script = ResourceLoader.load(script_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if script == null:
+		push_error("Failed to load fresh champion catalog script for minion export")
+		return {}
+
+	var minions: Dictionary = script.build_minion_catalog()
+
+	var result: Dictionary = {}
+	for minion_id in minions.keys():
+		var minion = minions[minion_id]
+		var minion_dict: Dictionary = minion.to_dict()
+		result[String(minion_id)] = minion_dict
+
+	return _normalize_numbers(result)
+
+static func write_minion_schema_to_file(output_path: String = GoldenMinionSchemaPath) -> bool:
+	var schema := generate_minion_schema_from_gdscript()
+	var json_string := JSON.stringify(schema, "\t")
+	if json_string.is_empty():
+		push_error("Failed to stringify minion schema.")
+		return false
+	
+	var file := FileAccess.open(output_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to open minion schema file for writing.")
+		return false
+	
+	file.store_string(json_string)
+	file.close()
+	print("Minion schema exported successfully to: %s" % output_path)
 	return true
 
 static func export_role_config_schema() -> Dictionary:

@@ -5513,21 +5513,32 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {
-					// Proportional scaling: scale total amounts to maintain per-tick effectiveness
-					// Note: This also scales the ratio parameters, which is necessary for dynamic mode
-					// to work correctly with extended effects
-					double new_duration = existing.remaining_duration + duration;
-					double scaling_factor = new_duration / existing.remaining_duration;
-					existing.damage_total *= scaling_factor;
-					existing.total_attack_damage_ratio *= scaling_factor;
-					existing.total_max_hp_ratio *= scaling_factor;
-					existing.total_flat_amount *= scaling_factor;
-					existing.remaining_duration = new_duration;
+					// Additive logic: calculate remaining damage, add new damage, distribute over new duration
+					// This avoids numerical instability when remaining_duration is very small
+					double remaining_damage = 0.0;
+					double damage_scaling_factor = 0.0;
+					if (existing.original_tick_count > 0.0 && existing.damage_total > 0.0) {
+						double per_tick_damage = existing.damage_total / existing.original_tick_count;
+						double remaining_ticks = existing.remaining_duration / existing.tick_interval;
+						remaining_damage = per_tick_damage * remaining_ticks;
+						damage_scaling_factor = remaining_damage / existing.damage_total;
+					}
+					
+					// Add new damage to remaining damage
+					existing.damage_total = remaining_damage + damage_total;
+					
+					// Scale existing ratios to match remaining damage, then add new ratios
+					// This ensures dynamic mode calculates correctly
+					existing.total_attack_damage_ratio = existing.total_attack_damage_ratio * damage_scaling_factor + attack_damage_ratio;
+					existing.total_max_hp_ratio = existing.total_max_hp_ratio * damage_scaling_factor + max_hp_ratio;
+					existing.total_flat_amount = existing.total_flat_amount * damage_scaling_factor + flat_amount;
+					
+					existing.remaining_duration = existing.remaining_duration + duration;
 					// Validate existing tick_interval (shouldn't be 0, but defensive check)
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = new_duration / existing.tick_interval;
+					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
 					return;
 				}
 			}
@@ -5619,22 +5630,33 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				} else if (stacking_mode == StringName("extend")) {
-					// Proportional scaling: scale total amounts to maintain per-tick effectiveness
-					// Note: This also scales the ratio parameters, which is necessary for dynamic mode
-					// to work correctly with extended effects
-					double new_duration = existing.remaining_duration + duration;
-					double scaling_factor = new_duration / existing.remaining_duration;
-					existing.heal_total *= scaling_factor;
-					existing.total_max_hp_ratio *= scaling_factor;
-					existing.total_current_hp_ratio *= scaling_factor;
-					existing.total_missing_hp_ratio *= scaling_factor;
-					existing.total_flat_amount *= scaling_factor;
-					existing.remaining_duration = new_duration;
+					// Additive logic: calculate remaining heal, add new heal, distribute over new duration
+					// This avoids numerical instability when remaining_duration is very small
+					double remaining_heal = 0.0;
+					double heal_scaling_factor = 0.0;
+					if (existing.original_tick_count > 0.0 && existing.heal_total > 0.0) {
+						double per_tick_heal = existing.heal_total / existing.original_tick_count;
+						double remaining_ticks = existing.remaining_duration / existing.tick_interval;
+						remaining_heal = per_tick_heal * remaining_ticks;
+						heal_scaling_factor = remaining_heal / existing.heal_total;
+					}
+					
+					// Add new heal to remaining heal
+					existing.heal_total = remaining_heal + heal_total;
+					
+					// Scale existing ratios to match remaining heal, then add new ratios
+					// This ensures dynamic mode calculates correctly
+					existing.total_max_hp_ratio = existing.total_max_hp_ratio * heal_scaling_factor + max_hp_ratio;
+					existing.total_current_hp_ratio = existing.total_current_hp_ratio * heal_scaling_factor + current_hp_ratio;
+					existing.total_missing_hp_ratio = existing.total_missing_hp_ratio * heal_scaling_factor + missing_hp_ratio;
+					existing.total_flat_amount = existing.total_flat_amount * heal_scaling_factor + flat_amount;
+					
+					existing.remaining_duration = existing.remaining_duration + duration;
 					// Validate existing tick_interval (shouldn't be 0, but defensive check)
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = new_duration / existing.tick_interval;
+					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
 					return;
 				}
 			}
@@ -5711,7 +5733,7 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 			double damage_per_tick = 0.0;
 			if (effect.damage_total > 0.0) {
 				if (effect.calculation_mode == StringName("dynamic")) {
-					// Recalculate from ratios on each tick
+					// Recalculate from ratios on each tick using current source stats
 					UnitState *source = _unit_by_id(effect.source_instance_id);
 					if (source != nullptr) {
 						double damage_total = get_effective_attack_damage(*source) * effect.total_attack_damage_ratio;
@@ -5719,7 +5741,8 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 						damage_total += effect.total_flat_amount;
 						damage_per_tick = damage_total / tick_count;
 					} else {
-						// Source is dead/null, fall back to stored total values
+						// Source is dead/null, fall back to stored total values calculated at application time
+						// This allows effects to continue ticking even after the source dies
 						damage_per_tick = effect.damage_total / tick_count;
 					}
 				} else {
@@ -5732,7 +5755,7 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 			double heal_per_tick = 0.0;
 			if (effect.heal_total > 0.0) {
 				if (effect.calculation_mode == StringName("dynamic")) {
-					// Recalculate from ratios on each tick
+					// Recalculate from ratios on each tick using current target HP state
 					UnitState *source = _unit_by_id(effect.source_instance_id);
 					if (source != nullptr) {
 						double heal_total = get_effective_max_hp(unit) * effect.total_max_hp_ratio;
@@ -5741,7 +5764,8 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 						heal_total += effect.total_flat_amount;
 						heal_per_tick = heal_total / tick_count;
 					} else {
-						// Source is dead/null, fall back to stored total values
+						// Source is dead/null, fall back to stored total values calculated at application time
+						// This allows effects to continue ticking even after the source dies
 						heal_per_tick = effect.heal_total / tick_count;
 					}
 				} else {

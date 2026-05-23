@@ -5823,6 +5823,8 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 					if (!unit.alive) {
 						return;
 					}
+				} else {
+					UtilityFunctions::push_error(vformat("[DEBUG] Skipping DoT application: source is null (source_instance_id=%d, damage_per_tick=%.2f)", effect.source_instance_id, damage_per_tick));
 				}
 			}
 			

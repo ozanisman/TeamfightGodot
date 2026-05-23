@@ -8,7 +8,7 @@ DoT/HoT effects tick at intervals (default 1.0s tick_interval) for duration. **I
 
 **Calculation modes**:
 - "fixed" (default): Calculate per-tick values at effect application time using current stats, then use those values for all ticks
-- "dynamic": Recalculate ratio-based amounts on each tick using current unit stats (e.g., current missing HP each tick). If the source unit dies, dynamic mode effects fall back to stored total values to continue functioning.
+- "dynamic": Recalculate ratio-based amounts on each tick using current unit stats (e.g., current missing HP each tick). While the source is alive, DoT effects use the source's current attack damage and HoT effects use the target's current HP state. If the source unit dies, dynamic mode effects fall back to stored total values calculated at application time, allowing effects to continue ticking even after the source dies.
 
 Stacking modes (string): refresh (reset duration and total amounts), extend (add duration with proportional scaling), separate (independent instances). StackBehavior enum (for stat modifiers): Refresh, Accumulate, Reset.
 

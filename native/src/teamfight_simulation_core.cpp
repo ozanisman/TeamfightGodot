@@ -5779,7 +5779,7 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 						double damage_total = get_effective_attack_damage(*source) * effect.total_attack_damage_ratio;
 						damage_total += get_effective_max_hp(unit) * effect.total_max_hp_ratio;
 						damage_total += effect.total_flat_amount;
-						damage_per_tick = damage_total / tick_count;
+						damage_per_tick = damage_total / (tick_count + 1.0);
 					} else {
 						// Source is dead/null, fall back to stored total values calculated at application time
 						// This allows effects to continue ticking even after the source dies
@@ -5802,7 +5802,7 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 						heal_total += unit.hp * effect.total_current_hp_ratio;
 						heal_total += (get_effective_max_hp(unit) - unit.hp) * effect.total_missing_hp_ratio;
 						heal_total += effect.total_flat_amount;
-						heal_per_tick = heal_total / tick_count;
+						heal_per_tick = heal_total / (tick_count + 1.0);
 					} else {
 						// Source is dead/null, fall back to stored total values calculated at application time
 						// This allows effects to continue ticking even after the source dies

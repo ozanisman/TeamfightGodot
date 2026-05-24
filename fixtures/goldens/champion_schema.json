@@ -998,11 +998,13 @@
 		},
 		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
 		"ability_name": "Raise Dead",
-		"description": "A dark sorcerer who commands the undead.",
+		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
 		"name": "Necromancer",
-		"passive_desc": "",
-		"passive_ids": [],
-		"passive_name": "",
+		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
+		"passive_ids": [
+			"soul_harvest"
+		],
+		"passive_name": "Soul Harvest",
 		"role": "mage",
 		"stats": {
 			"ability_cd": 8.0,
@@ -1025,9 +1027,36 @@
 			"tenacity": 0.0,
 			"unit_id": "necromancer"
 		},
-		"ultimate": null,
-		"ultimate_desc": "",
-		"ultimate_name": "",
+		"ultimate": {
+			"kind": "summon_ally",
+			"params": {
+				"effects": [
+					{
+						"kind": "aoe_heal_over_time",
+						"params": {
+							"allow_overheal": true,
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"heal_max_hp_ratio": 0.3,
+							"reason": "Army of Darkness",
+							"stacking_mode": "separate"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"minions": [
+					{
+						"count": 3,
+						"minion_id": "ghoul"
+					}
+				],
+				"reason": "Army of Darkness",
+				"spawn_radius": 3.0
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"ultimate_name": "Army of Darkness",
 		"unit_id": "necromancer"
 	},
 	"ninja": {

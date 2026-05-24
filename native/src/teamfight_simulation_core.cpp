@@ -7259,11 +7259,22 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding(doub
 	return Vector2(-1.0, -1.0);
 }
 
-Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id) {
+Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions) {
 	// Try with initial radius first
 	Vector2 result = _find_random_spawn_position_near_excluding(center_x, center_y, initial_radius, exclude_instance_id);
 	if (result.x >= 0.0) {
-		return result;
+		// Check collision with pending positions
+		bool collides_with_pending = false;
+		for (const Vector2 &pending_pos : pending_positions) {
+			double dist = Math::sqrt((result.x - pending_pos.x) * (result.x - pending_pos.x) + (result.y - pending_pos.y) * (result.y - pending_pos.y));
+			if (dist < UNIT_COLLISION_RADIUS * 2.0) {
+				collides_with_pending = true;
+				break;
+			}
+		}
+		if (!collides_with_pending) {
+			return result;
+		}
 	}
 
 	// Failed with initial radius, warn and expand to max_radius with exponential backoff
@@ -7288,7 +7299,18 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with
 			test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 
 			if (!_position_collides_with_unit(test_x, test_y, exclude_instance_id)) {
-				return Vector2(test_x, test_y);
+				// Check collision with pending positions
+				bool collides_with_pending = false;
+				for (const Vector2 &pending_pos : pending_positions) {
+					double dist = Math::sqrt((test_x - pending_pos.x) * (test_x - pending_pos.x) + (test_y - pending_pos.y) * (test_y - pending_pos.y));
+					if (dist < UNIT_COLLISION_RADIUS * 2.0) {
+						collides_with_pending = true;
+						break;
+					}
+				}
+				if (!collides_with_pending) {
+					return Vector2(test_x, test_y);
+				}
 			}
 		}
 	}
@@ -9251,6 +9273,9 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			constexpr double max_spawn_radius_expansion = 5.0;
 			double max_spawn_radius = Math::min(spawn_radius * 3.0, max_spawn_radius_expansion);
 
+			// Track pending spawn positions to prevent intra-batch overlap
+			std::vector<Vector2> pending_positions;
+
 			// Iterate through children (each child is a minion spec with minion_id and count)
 			for (const EffectRecord &minion_spec : effect.children) {
 				StringName minion_id = StringName(minion_spec.string0);
@@ -9266,13 +9291,16 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// Spawn count minions of this type
 			for (int64_t i = 0; i < count; ++i) {
 				// Find random valid position within spawn_radius, with expansion fallback on failure
-				Vector2 spawn_pos = _find_random_spawn_position_near_excluding_with_expansion(source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, source_instance_id);
+				Vector2 spawn_pos = _find_random_spawn_position_near_excluding_with_expansion(source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, source_instance_id, pending_positions);
 				if (spawn_pos.x < 0.0) {
 					// Failed to find valid position even with expansion
 					UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f (expanded to %.2f). Active units: %d",
 						String(minion_id), i + 1, count, source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, _units.size()));
 					continue;
 				}
+
+				// Add to pending positions to prevent overlap with subsequent minions in this batch
+				pending_positions.push_back(spawn_pos);
 
 				// Create spawn spec
 				Dictionary spawn_spec;
@@ -11164,6 +11192,9 @@ void TeamfightSimulationCore::_process_pending_spawns() {
 		
 		// Set summoner relationship for minions
 		_units[unit_index].summoner_instance_id = pending.summoner_instance_id;
+		
+		// Sync targeting frame so minions are immediately targetable
+		_sync_targeting_frame_unit(_units[unit_index]);
 		
 		// Add to alive indices
 		_add_alive_index(pending.team, unit_index);

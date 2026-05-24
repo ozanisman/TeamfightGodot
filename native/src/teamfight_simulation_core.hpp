@@ -1252,7 +1252,8 @@ private:
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
 	Vector2 _find_random_spawn_position_near(double center_x, double center_y, double radius);
 	Vector2 _find_random_spawn_position_near_excluding(double center_x, double center_y, double radius, int64_t exclude_instance_id);
-	Vector2 _find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id);
+	Vector2 _find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions = std::vector<Vector2>());
+	bool _position_collides_with_pending(double x, double y, const std::vector<Vector2> &pending_positions) const;
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);

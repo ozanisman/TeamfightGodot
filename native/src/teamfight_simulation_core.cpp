@@ -1302,8 +1302,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			int64_t count = int64_t(minion_entry.get("count", 1));
 			// Store minion_id in string0 and count in int0 for each entry
 			// We'll use children array to store multiple minion specs
+			// Note: opcode not set - children are data containers, not executable sub-effects
 			EffectRecord minion_spec;
-			minion_spec.opcode = EFFECT_OPCODE_SUMMON_ALLY;
 			minion_spec.string0 = String(minion_id);
 			minion_spec.int0 = count;
 			compiled.children.push_back(minion_spec);
@@ -7259,6 +7259,45 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding(doub
 	return Vector2(-1.0, -1.0);
 }
 
+Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id) {
+	// Try with initial radius first
+	Vector2 result = _find_random_spawn_position_near_excluding(center_x, center_y, initial_radius, exclude_instance_id);
+	if (result.x >= 0.0) {
+		return result;
+	}
+
+	// Failed with initial radius, warn and expand to max_radius with exponential backoff
+	UtilityFunctions::push_warning(vformat("Spawn position not found within initial radius %.2f, expanding to max radius %.2f", initial_radius, max_radius));
+
+	constexpr int expansion_steps = 5;
+	constexpr double pi = 3.14159265358979323846;
+	constexpr int attempts_per_step = 30;
+
+	for (int step = 0; step < expansion_steps; ++step) {
+		double expansion_factor = 1.0 + (double(step + 1) / double(expansion_steps)) * ((max_radius / initial_radius) - 1.0);
+		double current_radius = initial_radius * expansion_factor;
+
+		for (int attempt = 0; attempt < attempts_per_step; ++attempt) {
+			double angle = _rng.random_random() * pi * 2.0;
+			double distance = _rng.random_random() * current_radius;
+
+			double test_x = center_x + Math::cos(angle) * distance;
+			double test_y = center_y + Math::sin(angle) * distance;
+
+			test_x = Math::clamp(test_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+			test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+
+			if (!_position_collides_with_unit(test_x, test_y, exclude_instance_id)) {
+				return Vector2(test_x, test_y);
+			}
+		}
+	}
+
+	// Still failed after all expansion attempts, log critical error
+	UtilityFunctions::push_error(vformat("Spawn position failed completely: could not find valid position within max radius %.2f near (%.2f, %.2f). Active units: %d", max_radius, center_x, center_y, _units.size()));
+	return Vector2(-1.0, -1.0);
+}
+
 int64_t TeamfightSimulationCore::_assign_spawn_slot(const StringName &team) {
 	// Initialize slot tracking if needed
 	std::vector<bool> &slots = (team == StringName("player")) ? _player_spawn_slots_used : _enemy_spawn_slots_used;
@@ -9208,6 +9247,10 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// Use tracked max instance ID for efficient ID generation
 			int64_t next_instance_id = _max_instance_id + 1;
 
+			// Max radius for expansion fallback (3x initial radius, capped at 5.0)
+			constexpr double max_spawn_radius_expansion = 5.0;
+			double max_spawn_radius = Math::min(spawn_radius * 3.0, max_spawn_radius_expansion);
+
 			// Iterate through children (each child is a minion spec with minion_id and count)
 			for (const EffectRecord &minion_spec : effect.children) {
 				StringName minion_id = StringName(minion_spec.string0);
@@ -9222,12 +9265,12 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 
 			// Spawn count minions of this type
 			for (int64_t i = 0; i < count; ++i) {
-				// Find random valid position within spawn_radius, excluding source unit
-				Vector2 spawn_pos = _find_random_spawn_position_near_excluding(source_pos_x, source_pos_y, spawn_radius, source_instance_id);
+				// Find random valid position within spawn_radius, with expansion fallback on failure
+				Vector2 spawn_pos = _find_random_spawn_position_near_excluding_with_expansion(source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, source_instance_id);
 				if (spawn_pos.x < 0.0) {
-					// Failed to find valid position
-					UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f. Active units: %d",
-						String(minion_id), i + 1, count, source_pos_x, source_pos_y, spawn_radius, _units.size()));
+					// Failed to find valid position even with expansion
+					UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f (expanded to %.2f). Active units: %d",
+						String(minion_id), i + 1, count, source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, _units.size()));
 					continue;
 				}
 
@@ -9245,6 +9288,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				_pending_spawns.push_back(pending);
 
 				next_instance_id++;
+				_max_instance_id = next_instance_id;
 				total_spawned++;
 			}
 			}

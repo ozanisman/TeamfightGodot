@@ -181,8 +181,12 @@ func _consume_individual_summary_common(
 			var hero: String = String(u.get("archetype_id", u.get("archetype", "")))
 			if hero.is_empty():
 				continue
+			# Skip minions - stats are for champions only
+			var role: String = str(u.get("role", ""))
+			if role.to_lower() == "minion":
+				continue
 			_acc_hero_dict(bucket, hero, wt, u)
-			var role: String = str(_role_by_hero.get(hero, "unknown"))
+			role = str(_role_by_hero.get(hero, "unknown"))
 			_acc_role_dict(bucket, role, wt, u)
 		elif summary_is_object and item is Object:
 			var uo: Object = item as Object
@@ -191,8 +195,12 @@ func _consume_individual_summary_common(
 			var hero_obj: String = String(uo.archetype_id)
 			if hero_obj.is_empty():
 				continue
+			# Skip minions - stats are for champions only
+			var role_obj: String = str(uo.role) if uo.has_property("role") else ""
+			if role_obj.to_lower() == "minion":
+				continue
 			_acc_hero(bucket, hero_obj, wt, uo)
-			var role_obj: String = str(_role_by_hero.get(hero_obj, "unknown"))
+			role_obj = str(_role_by_hero.get(hero_obj, "unknown"))
 			_acc_role(bucket, role_obj, wt, uo)
 
 	if team_size > 1:
@@ -600,8 +608,8 @@ func _build_combat_csv() -> String:
 					_fmt_f(float(h["d_ab"]) / float(tg)),
 					_fmt_f(float(h["d_ult"]) / float(tg)),
 					_fmt_f(float(h["d_passive"]) / float(tg)),
-					_fmt_f(float(h["minion_dmg_d"]) / float(tg)),
-					_fmt_f(float(h["minion_dmg_r"]) / float(tg)),
+					_fmt_f(float(h.get("minion_dmg_d", 0.0)) / float(tg)),
+					_fmt_f(float(h.get("minion_dmg_r", 0.0)) / float(tg)),
 				]
 			)
 	return "\n".join(lines) + "\n"

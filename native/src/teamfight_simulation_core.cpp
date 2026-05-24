@@ -4157,34 +4157,45 @@ TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(U
 	return context;
 }
 
-const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCore::_collect_effects(const UnitState &unit, const StringName &kind) {
-	static const std::vector<EffectRecord> EMPTY_EFFECTS;
+int TeamfightSimulationCore::_effect_bucket_index(const StringName &kind) const {
 	if (kind == sn_on_attack()) {
-		return _uc(unit).passive_effects[0];
+		return EFFECT_BUCKET_ON_ATTACK;
 	}
 	if (kind == sn_on_defense()) {
-		return _uc(unit).passive_effects[1];
+		return EFFECT_BUCKET_ON_DEFENSE;
 	}
 	if (kind == sn_on_ally_defense()) {
-		return _uc(unit).passive_effects[2];
+		return EFFECT_BUCKET_ON_ALLY_DEFENSE;
 	}
 	if (kind == sn_on_tick()) {
-		return _uc(unit).passive_effects[3];
+		return EFFECT_BUCKET_ON_TICK;
 	}
 	if (kind == sn_post_attack()) {
-		return _uc(unit).passive_effects[4];
+		return EFFECT_BUCKET_POST_ATTACK;
 	}
 	if (kind == sn_post_take_damage()) {
-		return _uc(unit).passive_effects[5];
+		return EFFECT_BUCKET_POST_TAKE_DAMAGE;
 	}
 	if (kind == sn_on_ability()) {
-		return _uc(unit).passive_effects[6];
+		return EFFECT_BUCKET_ON_ABILITY;
 	}
 	if (kind == sn_on_ultimate()) {
-		return _uc(unit).passive_effects[7];
+		return EFFECT_BUCKET_ON_ULTIMATE;
 	}
 	if (kind == sn_post_heal()) {
-		return _uc(unit).passive_effects[8];
+		return EFFECT_BUCKET_POST_HEAL;
+	}
+	if (kind == sn_on_takedown()) {
+		return EFFECT_BUCKET_ON_TAKEDOWN;
+	}
+	return -1;
+}
+
+const std::vector<TeamfightSimulationCore::EffectRecord> &TeamfightSimulationCore::_collect_effects(const UnitState &unit, const StringName &kind) {
+	static const std::vector<EffectRecord> EMPTY_EFFECTS;
+	int bucket = _effect_bucket_index(kind);
+	if (bucket >= 0 && bucket < 10) {
+		return _uc(unit).passive_effects[static_cast<size_t>(bucket)];
 	}
 	return EMPTY_EFFECTS;
 }

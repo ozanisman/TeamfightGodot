@@ -1197,6 +1197,7 @@ private:
 	void _move_toward_target_with_range(UnitState &unit, UnitState &target, double target_range);
 	void _resolve_projectile(const ProjectileState &projectile);
 	EffectContext _build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind);
+	int _effect_bucket_index(const StringName &kind) const;
 	const std::vector<EffectRecord> &_collect_effects(const UnitState &unit, const StringName &kind);
 	double _apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage);
 	double _apply_ability_modifiers(UnitState &unit, UnitState *target, double damage);

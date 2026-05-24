@@ -2102,10 +2102,31 @@ void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const U
 	if (index < 0 || index >= int64_t(_targeting_frame.size())) {
 		return;
 	}
+	TargetingFrameEntry &frame = _targeting_frame[static_cast<size_t>(index)];
+	
+	// Skip sync if position, hp, and threat haven't changed meaningfully
+	constexpr double position_threshold = 0.01;
+	constexpr double hp_threshold = 0.01;
+	double pos_dx = Math::abs(frame.pos_x - unit.pos_x);
+	double pos_dy = Math::abs(frame.pos_y - unit.pos_y);
+	double hp_diff = Math::abs(frame.hp - unit.hp);
+	double threat_diff = Math::abs(frame.perceived_threat - unit.perceived_threat);
+	
+	bool position_changed = pos_dx > position_threshold || pos_dy > position_threshold;
+	bool hp_changed = hp_diff > hp_threshold;
+	bool threat_changed = threat_diff > 0.001;
+	bool target_changed = frame.target_id != unit.target_id;
+	bool incoming_changed = frame.incoming_target_count != unit.incoming_target_count;
+	bool stealth_changed = Math::abs(frame.stealth_remaining - unit.stealth_remaining) > 0.001;
+	bool alive_changed = frame.alive != unit.alive;
+	
+	if (!position_changed && !hp_changed && !threat_changed && !target_changed && !incoming_changed && !stealth_changed && !alive_changed) {
+		return;
+	}
+	
 	if (_sim_profile_targeting_active) {
 		_sim_profile_tgt_frame_syncs += 1;
 	}
-	TargetingFrameEntry &frame = _targeting_frame[static_cast<size_t>(index)];
 	frame.pos_x = unit.pos_x;
 	frame.pos_y = unit.pos_y;
 	frame.hp = unit.hp;
@@ -2823,28 +2844,32 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		_tick_ctx.distance_cache_size = total_units;
 		_tick_ctx.distance_cache.resize(total_units * total_units);
 	}
+	
+	// Initialize all entries to infinity
+	const double inf = std::numeric_limits<double>::infinity();
+	for (size_t i = 0; i < total_units; ++i) {
+		for (size_t j = 0; j < total_units; ++j) {
+			_tick_ctx.distance_cache[i * total_units + j] = inf;
+		}
+	}
+	
+	// Only compute distances for alive units, leveraging symmetry
 	for (size_t i = 0; i < total_units; ++i) {
 		const UnitState &unit_i = _units[i];
 		if (!unit_i.alive) {
-			// Set distance to infinity for dead units
-			for (size_t j = 0; j < total_units; ++j) {
-				_tick_ctx.distance_cache[i * total_units + j] = std::numeric_limits<double>::infinity();
-			}
 			continue;
 		}
-		for (size_t j = 0; j < total_units; ++j) {
-			if (i == j) {
-				_tick_ctx.distance_cache[i * total_units + j] = 0.0;
-				continue;
-			}
+		_tick_ctx.distance_cache[i * total_units + i] = 0.0;
+		for (size_t j = i + 1; j < total_units; ++j) {
 			const UnitState &unit_j = _units[j];
 			if (!unit_j.alive) {
-				_tick_ctx.distance_cache[i * total_units + j] = std::numeric_limits<double>::infinity();
 				continue;
 			}
 			double dx = unit_j.pos_x - unit_i.pos_x;
 			double dy = unit_j.pos_y - unit_i.pos_y;
-			_tick_ctx.distance_cache[i * total_units + j] = Math::sqrt(dx * dx + dy * dy);
+			double dist = Math::sqrt(dx * dx + dy * dy);
+			_tick_ctx.distance_cache[i * total_units + j] = dist;
+			_tick_ctx.distance_cache[j * total_units + i] = dist;
 		}
 	}
 
@@ -7149,6 +7174,7 @@ double TeamfightSimulationCore::_distance_between(const UnitState &left, const U
 
 bool TeamfightSimulationCore::_position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const {
 	double collision_radius = UNIT_COLLISION_RADIUS;
+	double collision_radius_sq = collision_radius * collision_radius * 4.0; // (2 * r)^2
 	for (const UnitState &unit : _units) {
 		if (unit.instance_id == exclude_instance_id) {
 			continue;
@@ -7158,8 +7184,10 @@ bool TeamfightSimulationCore::_position_collides_with_unit(double x, double y, i
 		}
 		double unit_x = unit.pos_x;
 		double unit_y = unit.pos_y;
-		double dist = Math::sqrt((x - unit_x) * (x - unit_x) + (y - unit_y) * (y - unit_y));
-		if (dist < collision_radius * 2.0) {
+		double dx = x - unit_x;
+		double dy = y - unit_y;
+		double dist_sq = dx * dx + dy * dy;
+		if (dist_sq < collision_radius_sq) {
 			return true;
 		}
 	}
@@ -7260,14 +7288,18 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding(doub
 }
 
 Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions) {
+	double collision_radius_sq = UNIT_COLLISION_RADIUS * UNIT_COLLISION_RADIUS * 4.0; // (2 * r)^2
+	
 	// Try with initial radius first
 	Vector2 result = _find_random_spawn_position_near_excluding(center_x, center_y, initial_radius, exclude_instance_id);
 	if (result.x >= 0.0) {
 		// Check collision with pending positions
 		bool collides_with_pending = false;
 		for (const Vector2 &pending_pos : pending_positions) {
-			double dist = Math::sqrt((result.x - pending_pos.x) * (result.x - pending_pos.x) + (result.y - pending_pos.y) * (result.y - pending_pos.y));
-			if (dist < UNIT_COLLISION_RADIUS * 2.0) {
+			double dx = result.x - pending_pos.x;
+			double dy = result.y - pending_pos.y;
+			double dist_sq = dx * dx + dy * dy;
+			if (dist_sq < collision_radius_sq) {
 				collides_with_pending = true;
 				break;
 			}
@@ -7278,7 +7310,7 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with
 	}
 
 	// Failed with initial radius, warn and expand to max_radius with exponential backoff
-	UtilityFunctions::push_warning(vformat("Spawn position not found within initial radius %.2f, expanding to max radius %.2f", initial_radius, max_radius));
+	//UtilityFunctions::push_warning(vformat("Spawn position not found within initial radius %.2f, expanding to max radius %.2f", initial_radius, max_radius));
 
 	constexpr int expansion_steps = 5;
 	constexpr double pi = 3.14159265358979323846;
@@ -7302,8 +7334,10 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with
 				// Check collision with pending positions
 				bool collides_with_pending = false;
 				for (const Vector2 &pending_pos : pending_positions) {
-					double dist = Math::sqrt((test_x - pending_pos.x) * (test_x - pending_pos.x) + (test_y - pending_pos.y) * (test_y - pending_pos.y));
-					if (dist < UNIT_COLLISION_RADIUS * 2.0) {
+					double dx = test_x - pending_pos.x;
+					double dy = test_y - pending_pos.y;
+					double dist_sq = dx * dx + dy * dy;
+					if (dist_sq < collision_radius_sq) {
 						collides_with_pending = true;
 						break;
 					}
@@ -7889,43 +7923,70 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		SimProfileAccScope _uu_cc(profile_sim, _sim_profile_uu_cooldowns_cc);
 
 		if (unit.attack_cooldown > 0.0) {
-			unit.attack_cooldown = Math::max(0.0, unit.attack_cooldown - _tick_rate);
+			unit.attack_cooldown -= _tick_rate;
+			if (unit.attack_cooldown < 0.0) {
+				unit.attack_cooldown = 0.0;
+			}
 		}
 		if (unit.ability_cooldown > 0.0) {
-			unit.ability_cooldown = Math::max(0.0, unit.ability_cooldown - _tick_rate);
+			unit.ability_cooldown -= _tick_rate;
+			if (unit.ability_cooldown < 0.0) {
+				unit.ability_cooldown = 0.0;
+			}
 		}
 		if (unit.retarget_timer > 0.0) {
-			unit.retarget_timer = Math::max(0.0, unit.retarget_timer - _tick_rate);
+			unit.retarget_timer -= _tick_rate;
+			if (unit.retarget_timer < 0.0) {
+				unit.retarget_timer = 0.0;
+			}
 		}
 		if (unit.target_switch_lock_timer > 0.0) {
-			unit.target_switch_lock_timer = Math::max(0.0, unit.target_switch_lock_timer - _tick_rate);
+			unit.target_switch_lock_timer -= _tick_rate;
+			if (unit.target_switch_lock_timer < 0.0) {
+				unit.target_switch_lock_timer = 0.0;
+			}
 		}
 		if (unit.stun_remaining > 0.0) {
 			unit.hard_cc_seconds += Math::min(unit.stun_remaining, _tick_rate);
-			unit.stun_remaining = Math::max(0.0, unit.stun_remaining - _tick_rate);
+			unit.stun_remaining -= _tick_rate;
+			if (unit.stun_remaining < 0.0) {
+				unit.stun_remaining = 0.0;
+			}
 		}
 		if (unit.slow_remaining > 0.0) {
-			unit.slow_remaining = Math::max(0.0, unit.slow_remaining - _tick_rate);
+			unit.slow_remaining -= _tick_rate;
 			if (unit.slow_remaining <= 0.0) {
 				unit.slow_remaining = 0.0;
 				unit.slow_move_mult = 1.0;
 			}
 		}
 		if (unit.root_remaining > 0.0) {
-			unit.root_remaining = Math::max(0.0, unit.root_remaining - _tick_rate);
+			unit.root_remaining -= _tick_rate;
+			if (unit.root_remaining < 0.0) {
+				unit.root_remaining = 0.0;
+			}
 		}
 		if (unit.silence_ability_remaining > 0.0 || unit.silence_ultimate_remaining > 0.0) {
-			unit.silence_ability_remaining = Math::max(0.0, unit.silence_ability_remaining - _tick_rate);
-			unit.silence_ultimate_remaining = Math::max(0.0, unit.silence_ultimate_remaining - _tick_rate);
+			unit.silence_ability_remaining -= _tick_rate;
+			if (unit.silence_ability_remaining < 0.0) {
+				unit.silence_ability_remaining = 0.0;
+			}
+			unit.silence_ultimate_remaining -= _tick_rate;
+			if (unit.silence_ultimate_remaining < 0.0) {
+				unit.silence_ultimate_remaining = 0.0;
+			}
 			unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
 			unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
 			unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
 		}
 		if (unit.disarm_remaining > 0.0) {
-			unit.disarm_remaining = Math::max(0.0, unit.disarm_remaining - _tick_rate);
+			unit.disarm_remaining -= _tick_rate;
+			if (unit.disarm_remaining < 0.0) {
+				unit.disarm_remaining = 0.0;
+			}
 		}
 		if (unit.stealth_remaining > 0.0) {
-			unit.stealth_remaining = Math::max(0.0, unit.stealth_remaining - _tick_rate);
+			unit.stealth_remaining -= _tick_rate;
 			if (unit.stealth_remaining <= 0.0) {
 				unit.stealth_remaining = 0.0;
 				unit.stealth_break_on_attack = false;
@@ -8083,8 +8144,12 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_ta(profile_sim, _sim_profile_uu_threat_and_assist);
+		double old_threat = unit.perceived_threat;
 		unit.perceived_threat = Math::max(0.0, unit.perceived_threat - strategy.threat_decay_rate * _tick_rate);
+		// Only sync targeting frame if threat changed meaningfully (threshold: 0.001)
+		if (Math::abs(unit.perceived_threat - old_threat) >= 0.001) {
 			_sync_targeting_frame_unit(unit);
+		}
 
 		_prune_assist_window(unit);
 	}

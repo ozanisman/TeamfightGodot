@@ -1573,7 +1573,7 @@ public:
 	void run_match_simulation_only(const Variant &match_input);
 	void run_matches_simulation_only(const Array &match_inputs);
 	void run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size);
-	Dictionary run_generated_matches_stats_partial(int64_t base_seed, int64_t batch_count, int64_t team_size, bool include_match_log);
+	Dictionary run_generated_matches_stats_partial(int64_t base_seed, int64_t batch_count, int64_t team_size, bool include_match_log, double tick_rate = DEFAULT_TICK_RATE);
 
 	/// Incremental match API (used by gameplay loops and viewer stepping). Does not replace run_match for batch parity runs.
 	void begin_match(const Variant &match_input);

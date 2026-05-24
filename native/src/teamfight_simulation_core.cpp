@@ -1508,7 +1508,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_match_simulation_only", "match_input"), &TeamfightSimulationCore::run_match_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_matches_simulation_only", "match_inputs"), &TeamfightSimulationCore::run_matches_simulation_only);
 	ClassDB::bind_method(D_METHOD("run_generated_matches_simulation_only", "base_seed", "batch_count", "team_size"), &TeamfightSimulationCore::run_generated_matches_simulation_only);
-	ClassDB::bind_method(D_METHOD("run_generated_matches_stats_partial", "base_seed", "batch_count", "team_size", "include_match_log"), &TeamfightSimulationCore::run_generated_matches_stats_partial);
+	ClassDB::bind_method(D_METHOD("run_generated_matches_stats_partial", "base_seed", "batch_count", "team_size", "include_match_log", "tick_rate"), &TeamfightSimulationCore::run_generated_matches_stats_partial);
 	ClassDB::bind_method(D_METHOD("begin_match", "match_input"), &TeamfightSimulationCore::begin_match);
 	ClassDB::bind_method(D_METHOD("advance_one_tick"), &TeamfightSimulationCore::advance_one_tick);
 	ClassDB::bind_method(D_METHOD("match_ticks_exhausted"), &TeamfightSimulationCore::match_ticks_exhausted);
@@ -7982,14 +7982,14 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			if (unit.silence_ability_remaining < 0.0) {
 				unit.silence_ability_remaining = 0.0;
 			}
-			unit.silence_ultimate_remaining -= _tick_rate;
-			if (unit.silence_ultimate_remaining < 0.0) {
-				unit.silence_ultimate_remaining = 0.0;
-			}
-			unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
-			unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
-			unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
 		}
+		unit.silence_ultimate_remaining -= _tick_rate;
+		if (unit.silence_ultimate_remaining < 0.0) {
+			unit.silence_ultimate_remaining = 0.0;
+		}
+		unit.silence_remaining = Math::max(unit.silence_ability_remaining, unit.silence_ultimate_remaining);
+		unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
+		unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
 		if (unit.disarm_remaining > 0.0) {
 			unit.disarm_remaining -= _tick_rate;
 			if (unit.disarm_remaining < 0.0) {
@@ -8032,7 +8032,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		if (unit.last_kite_timer > 0.0) {
 			unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - _tick_rate);
 		}
-		
+
 		bool has_temporary_stat_modifiers = !unit.stat_modifiers.is_empty()
 				|| unit.stat_temp_max_hp > 0.0
 				|| unit.stat_temp_attack_damage > 0.0
@@ -8105,6 +8105,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				double attack_range = get_effective_attack_range(unit);
 				double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
 				double r2 = radius * radius;
+				double threshold_r2 = 4.0 * r2;
 				double ux = unit.pos_x;
 				double uy = unit.pos_y;
 				double sep_x = 0.0;
@@ -8120,7 +8121,11 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 					double dx = ux - ax;
 					double dy = uy - ay;
 					double d2 = dx * dx + dy * dy;
-					if (d2 <= EPSILON || d2 >= r2) {
+					// Early-out: skip units beyond 2x separation radius
+					if (d2 <= EPSILON || d2 >= threshold_r2) {
+						return;
+					}
+					if (d2 >= r2) {
 						return;
 					}
 					double d = Math::sqrt(d2);
@@ -8169,26 +8174,33 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		SimProfileAccScope _uu_regen(profile_sim, _sim_profile_uu_regen_on_tick);
 		UnitStateCold &cold = _uc(unit);
 		const std::vector<EffectRecord> &effects = cold.passive_effects[EFFECT_BUCKET_ON_TICK];
-		if (cold.on_tick_effect_accumulators.size() < effects.size()) {
-			cold.on_tick_effect_accumulators.resize(effects.size(), 0.0);
-		}
-		for (size_t effect_index = 0; effect_index < effects.size(); ++effect_index) {
-			const EffectRecord &effect = effects[effect_index];
-			double &accumulator = cold.on_tick_effect_accumulators[effect_index];
-			accumulator += _tick_rate;
-			if (accumulator >= effect.on_tick_interval) {
-				accumulator -= effect.on_tick_interval;
-				EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
-				_execute_effect(effect, context);
+
+		// Early-out: skip if no on_tick effects and not channeling
+		bool has_regen_work = !effects.empty() || _uc(unit).is_channeling;
+		if (!has_regen_work) {
+			// No regen work to do this tick
+		} else {
+			if (cold.on_tick_effect_accumulators.size() < effects.size()) {
+				cold.on_tick_effect_accumulators.resize(effects.size(), 0.0);
 			}
-		}
+			for (size_t effect_index = 0; effect_index < effects.size(); ++effect_index) {
+				const EffectRecord &effect = effects[effect_index];
+				double &accumulator = cold.on_tick_effect_accumulators[effect_index];
+				accumulator += _tick_rate;
+				if (accumulator >= effect.on_tick_interval) {
+					accumulator -= effect.on_tick_interval;
+					EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
+					_execute_effect(effect, context);
+				}
+			}
 
-		// Tick periodic effects (DoT/HoT)
-		_tick_periodic_effects(unit, _tick_rate);
+			// Tick periodic effects (DoT/HoT)
+			_tick_periodic_effects(unit, _tick_rate);
 
-		// Process channel effects
-		if (_uc(unit).is_channeling) {
-			_process_channel_tick(unit, _tick_rate);
+			// Process channel effects
+			if (_uc(unit).is_channeling) {
+				_process_channel_tick(unit, _tick_rate);
+			}
 		}
 
 		if (unit.stun_remaining > 0.0) {
@@ -10197,7 +10209,7 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 	}
 }
 
-Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t base_seed, int64_t batch_count, int64_t team_size, bool include_match_log) {
+Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t base_seed, int64_t batch_count, int64_t team_size, bool include_match_log, double tick_rate) {
 	_ensure_catalog_loaded();
 	Dictionary result;
 	if (batch_count <= 0) {
@@ -10400,7 +10412,7 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		const int64_t seed = base_seed + match_index;
 		_reset_runtime_state();
 		_seed = seed;
-		_tick_rate = DEFAULT_TICK_RATE;
+		_tick_rate = tick_rate;
 		_record_events = false;
 		_debug_combat_trace = false;
 		_trace_buffer.clear();

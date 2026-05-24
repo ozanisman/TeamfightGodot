@@ -74,8 +74,9 @@ The `summon_ally` effect creates minion units during combat.
 - `EFFECT_OPCODE_SUMMON_ALLY = 55`: Effect opcode for summoning minions
 - `MINION_SCHEMA_PATH`: Path to `minion_schema.json` fixture file
 - `_minion_catalog`: Dictionary member storing minion data loaded from separate schema
-- `_find_random_spawn_position_near()`: Finds valid spawn positions with collision checking
+- `_find_random_spawn_position_near_excluding_with_expansion()`: Finds valid spawn positions with collision checking and radius expansion fallback
 - `_handle_death()`: Skips scoring for minions (detected by role check)
+- **Note**: Minion spec children in `EffectRecord` are data containers (storing minion_id in string0, count in int0), not executable sub-effects. The opcode field is intentionally not set for these children to avoid confusion with recursive effect execution.
 
 ### Schema Export
 

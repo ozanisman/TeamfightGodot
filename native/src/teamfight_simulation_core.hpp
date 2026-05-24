@@ -313,6 +313,13 @@ private:
 		}
 	};
 
+	/// Pending spawn entry for mid-tick unit creation
+	struct PendingSpawn {
+		Dictionary spawn_spec;
+		StringName team;
+		int64_t summoner_instance_id;
+	};
+
 	/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
 	struct UnitStateCold {
 		struct DamageSourceEntry {
@@ -361,6 +368,10 @@ private:
 		int64_t deaths = 0;
 		int64_t assists = 0;
 		std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
+		
+		// Minion stats aggregated to this summoner
+		double minion_damage_dealt = 0.0;
+		double minion_damage_received = 0.0;
 		std::unordered_map<int64_t, double> recent_benefactors;
 		double last_hit_time = 0.0;
 		int64_t respawn_slot_index = -1; // -1 = no assigned slot
@@ -418,6 +429,7 @@ private:
 		int64_t instance_id = 0;
 		StringName team;
 		int64_t role_slot = -1;
+		int64_t summoner_instance_id = 0;  // Tracks which unit summoned this minion (0 if not a minion)
 		/// Numeric combat fields copied from `stats` at spawn; use in hot paths instead of Dictionary::get.
 		struct CombatStats {
 			double max_hp = 0.0;
@@ -1239,6 +1251,7 @@ private:
 	int64_t _assign_spawn_slot(const StringName &team);
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
 	Vector2 _find_random_spawn_position_near(double center_x, double center_y, double radius);
+	Vector2 _find_random_spawn_position_near_excluding(double center_x, double center_y, double radius, int64_t exclude_instance_id);
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
@@ -1269,6 +1282,9 @@ private:
 	std::priority_queue<ExpirationEntry> _expiration_queue;
 	static constexpr int _pool_capacity = 0;
 	
+	// Pending spawns queue for mid-tick unit creation
+	std::vector<PendingSpawn> _pending_spawns;
+	
 	// Stat function pointer tables for optimized application
 	static void _apply_stat_max_hp(UnitState &unit, double value, bool is_multiplicative);
 	static void _apply_stat_attack_damage(UnitState &unit, double value, bool is_multiplicative);
@@ -1294,6 +1310,7 @@ private:
 	StackEntry* _allocate_stack_entry();
 	void _free_stack_entry(StackEntry* entry);
 	void _process_expiration_queue(double current_time);
+	void _process_pending_spawns();
 	void _validate_stack_consistency(UnitState &unit);
 
 	// Stack management functions

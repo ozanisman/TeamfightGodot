@@ -2094,6 +2094,70 @@ const CHAMPION_DATA := {
 		},
 		"passive_ids": [&"restorative_mist"],
 	},
+	&"necromancer": {
+		"stats": {
+			"unit_id": &"necromancer",
+			"name": &"Necromancer",
+			"role": &"mage",
+			"max_hp": 180.0,
+			"attack_damage": 8.0,
+			"attack_range": 2.5,
+			"attack_speed": 0.8,
+			"move_speed": 0.65,
+			"armor": 0.10,
+			"magic_resist": 0.25,
+			"tenacity": 0.0,
+			"life_steal": 0.0,
+			"max_mana": 120.0,
+			"mana_per_attack": 5.0,
+			"ability_cd": 8.0,
+			"projectile_speed": 0.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
+		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
+		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
+		"passive_name": "Soul Harvest",
+		"ability_name": "Raise Dead",
+		"ultimate_name": "Army of Darkness",
+		"ability": {
+			"kind": &"summon_ally",
+			"params": {
+				"spawn_radius": 2.0,
+				"minions": [
+					{"minion_id": "skeleton", "count": 2}
+				],
+				"reason": "Raise Dead"
+			}
+		},
+		"ultimate": {
+			"kind": &"summon_ally",
+			"params": {
+				"spawn_radius": 3.0,
+				"minions": [
+					{"minion_id": "ghoul", "count": 3}
+				],
+				"effects": [
+					{
+						"kind": &"aoe_heal_over_time",
+						"params": {
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"heal_max_hp_ratio": 0.3,
+							"stacking_mode": "separate",
+							"reason": "Army of Darkness",
+							"allow_overheal": true
+						}
+					}
+				],
+				"reason": "Army of Darkness"
+			}
+		},
+		"passive_ids": [&"soul_harvest"],
+	},
 }
 
 const PASSIVE_DATA := {
@@ -2515,6 +2579,42 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
+	&"soul_harvest": {
+		&"on_takedown": [{
+			"kind": &"multi_effect",
+			"params": {
+				"effects": [
+					{
+						"kind": &"stat_modifier",
+						"params": {
+							"stat_name": "attack_damage",
+							"additive": 5.0,
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"max_stacks": 5,
+							"stack_behavior": "refresh",
+							"reason": "Soul Harvest",
+							"target_self": true
+						}
+					},
+					{
+						"kind": &"stat_modifier",
+						"params": {
+							"stat_name": "ability_cd",
+							"multiplicative": 0.95,
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"max_stacks": 5,
+							"stack_behavior": "refresh",
+							"reason": "Soul Harvest",
+							"target_self": true
+						}
+					}
+				],
+				"reason": "Soul Harvest"
+			}
+		}],
+	},
 }
 
 const ROLE_CONFIG_DATA := {
@@ -2550,6 +2650,11 @@ const ROLE_CONFIG_DATA := {
 		"passive_post_take_damage": null,
 	},
 	&"support": {
+		"stat_mods": {},
+		"passive_on_tick": null,
+		"passive_post_take_damage": null,
+	},
+	&"minion": {
 		"stat_mods": {},
 		"passive_on_tick": null,
 		"passive_post_take_damage": null,
@@ -2613,6 +2718,39 @@ const MINION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A swift beast companion that harasses enemies.",
+		"ability_desc": "",
+		"ultimate_desc": "",
+		"passive_desc": "",
+		"passive_name": "",
+		"ability_name": "",
+		"ultimate_name": "",
+		"ability": {},
+		"ultimate": {},
+		"passive_ids": [],
+	},
+	&"ghoul": {
+		"stats": {
+			"unit_id": &"ghoul",
+			"name": &"Ghoul",
+			"role": &"minion",
+			"max_hp": 150.0,
+			"attack_damage": 10.0,
+			"attack_range": 0.3,
+			"attack_speed": 0.9,
+			"move_speed": 0.5,
+			"armor": 0.15,
+			"magic_resist": 0.15,
+			"tenacity": 0.0,
+			"life_steal": 0.15,
+			"max_mana": 0.0,
+			"mana_per_attack": 0.0,
+			"ability_cd": 0.0,
+			"projectile_speed": 0.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "A rotting undead creature that sustains itself through combat.",
 		"ability_desc": "",
 		"ultimate_desc": "",
 		"passive_desc": "",

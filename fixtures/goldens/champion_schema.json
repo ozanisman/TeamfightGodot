@@ -981,6 +981,55 @@
 		"ultimate_name": "Drunken Stance",
 		"unit_id": "monk"
 	},
+	"necromancer": {
+		"ability": {
+			"kind": "summon_ally",
+			"params": {
+				"minions": [
+					{
+						"count": 2,
+						"minion_id": "skeleton"
+					}
+				],
+				"reason": "Raise Dead",
+				"spawn_radius": 2.0
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
+		"ability_name": "Raise Dead",
+		"description": "A dark sorcerer who commands the undead.",
+		"name": "Necromancer",
+		"passive_desc": "",
+		"passive_ids": [],
+		"passive_name": "",
+		"role": "mage",
+		"stats": {
+			"ability_cd": 8.0,
+			"armor": 0.1,
+			"attack_damage": 8.0,
+			"attack_range": 2.5,
+			"attack_speed": 0.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 5.0,
+			"max_hp": 180.0,
+			"max_mana": 120.0,
+			"move_speed": 0.65,
+			"name": "Necromancer",
+			"passive_id": "",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 5.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"unit_id": "necromancer"
+		},
+		"ultimate": null,
+		"ultimate_desc": "",
+		"ultimate_name": "",
+		"unit_id": "necromancer"
+	},
 	"ninja": {
 		"ability": {
 			"kind": "multi_effect",
@@ -1607,6 +1656,47 @@
 				}
 			]
 		},
+		"soul_harvest": {
+			"on_takedown": [
+				{
+					"kind": "multi_effect",
+					"params": {
+						"effects": [
+							{
+								"kind": "stat_modifier",
+								"params": {
+									"additive": 5.0,
+									"duration": 5.0,
+									"duration_type": "respawn",
+									"max_stacks": 5,
+									"reason": "Soul Harvest",
+									"stack_behavior": "refresh",
+									"stat_name": "attack_damage",
+									"target_self": true
+								},
+								"requires_target_in_range": true
+							},
+							{
+								"kind": "stat_modifier",
+								"params": {
+									"duration": 5.0,
+									"duration_type": "respawn",
+									"max_stacks": 5,
+									"multiplicative": 0.95,
+									"reason": "Soul Harvest",
+									"stack_behavior": "refresh",
+									"stat_name": "ability_cd",
+									"target_self": true
+								},
+								"requires_target_in_range": true
+							}
+						],
+						"reason": "Soul Harvest"
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"speed_burst": {
 			"on_attack": [
 				{
@@ -1812,6 +1902,13 @@
 			}
 		},
 		"marksman": {
+			"passive_on_tick": null,
+			"passive_post_take_damage": null,
+			"stat_mods": {
+
+			}
+		},
+		"minion": {
 			"passive_on_tick": null,
 			"passive_post_take_damage": null,
 			"stat_mods": {

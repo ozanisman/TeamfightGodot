@@ -1639,6 +1639,13 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 				float(u_data.get("damage_received", 0.0)) / cf,
 			]
 		)
+		var minion_dmg_dealt: float = float(u_data.get("minion_damage_dealt", 0.0))
+		var minion_dmg_received: float = float(u_data.get("minion_damage_received", 0.0))
+		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0:
+			lines.append(
+				"Minion Damage: %.0f (Received: %.0f)"
+				% [minion_dmg_dealt / cf, minion_dmg_received / cf]
+			)
 		lines.append("Average mitigated: %.0f" % (float(u_data.get("damage_mitigated", 0.0)) / cf))
 		lines.append(
 			"Average healing: %.0f"

@@ -9717,10 +9717,16 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 	}
 	
 	for (const UnitState &unit : _units) {
+		// Skip minions in unit_stats output - their damage is aggregated to summoners
+		if (unit.summoner_instance_id != 0) {
+			continue;
+		}
+		
 		const UnitStateCold &c = _uc(unit);
 		Dictionary unit_summary;
 		unit_summary["instance_id"] = unit.instance_id;
 		unit_summary["archetype"] = String(c.archetype_id);
+		unit_summary["role"] = String(c.role_id);
 		unit_summary["team"] = String(unit.team);
 		unit_summary["won"] = _winner_team != StringName() && unit.team == _winner_team;
 		unit_summary["damage_dealt"] = c.damage_dealt;
@@ -9791,11 +9797,29 @@ Dictionary TeamfightSimulationCore::_build_stats_summary() {
 	summary["sudden_death_ticks"] = int64_t(_sudden_death_ticks);
 	summary["player_comp"] = _player_comp;
 	summary["enemy_comp"] = _enemy_comp;
+	
+	// Aggregate minion stats to summoners
+	std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
+	std::unordered_map<int64_t, double> summoner_minion_damage_received;
+	for (const UnitState &unit : _units) {
+		if (unit.summoner_instance_id != 0) {
+			const UnitStateCold &c = _uc(unit);
+			summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
+			summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
+		}
+	}
+	
 	Array unit_stats;
 	for (const UnitState &unit : _units) {
+		// Skip minions in unit_stats output - their damage is aggregated to summoners
+		if (unit.summoner_instance_id != 0) {
+			continue;
+		}
+		
 		const UnitStateCold &c = _uc(unit);
 		Dictionary unit_summary;
 		unit_summary["archetype_id"] = String(c.archetype_id);
+		unit_summary["role"] = String(c.role_id);
 		unit_summary["won"] = _winner_team != StringName() && unit.team == _winner_team;
 		unit_summary["damage_dealt"] = c.damage_dealt;
 		unit_summary["damage_dealt_auto"] = c.damage_dealt_auto;
@@ -9821,6 +9845,18 @@ Dictionary TeamfightSimulationCore::_build_stats_summary() {
 		unit_summary["kills"] = c.kills;
 		unit_summary["deaths"] = c.deaths;
 		unit_summary["assists"] = c.assists;
+		
+		// Add aggregated minion stats if this unit summoned any minions
+		auto it_dealt = summoner_minion_damage_dealt.find(unit.instance_id);
+		auto it_received = summoner_minion_damage_received.find(unit.instance_id);
+		if (it_dealt != summoner_minion_damage_dealt.end() || it_received != summoner_minion_damage_received.end()) {
+			unit_summary["minion_damage_dealt"] = it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0;
+			unit_summary["minion_damage_received"] = it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0;
+		} else {
+			unit_summary["minion_damage_dealt"] = 0.0;
+			unit_summary["minion_damage_received"] = 0.0;
+		}
+		
 		if (!omit_unit_telemetry) {
 			Dictionary telemetry;
 			telemetry["schema"] = String("teamfight.telemetry.v1");
@@ -10282,6 +10318,10 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		Dictionary roles = Dictionary(bucket["roles"]);
 		for (const UnitState &unit : _units) {
 			const UnitStateCold &c = _uc(unit);
+			// Skip minions (spawned during combat, not drafted champions)
+			if (c.role_id == StringName("minion")) {
+				continue;
+			}
 			const String hero = String(c.archetype_id);
 			Dictionary hero_entry = Dictionary(heroes.get(hero, Dictionary()));
 			if (hero_entry.is_empty()) {
@@ -10705,6 +10745,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["damage_dealt"] = uc.damage_dealt;
 		d["healing_done"] = uc.healing_done;
 		d["damage_mitigated"] = uc.damage_mitigated;
+		d["role"] = String(uc.role_id);
 		units.append(d);
 	}
 	root["units"] = units;

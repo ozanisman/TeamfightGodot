@@ -1105,6 +1105,10 @@ func _refresh_side_rosters_from_snapshot(units: Array) -> void:
 	for u in units:
 		if u is Dictionary:
 			var ud2: Dictionary = u
+			# Skip minions - side bars are for champions only
+			var role: String = str(ud2.get("role", ""))
+			if role.to_lower() == "minion":
+				continue
 			if String(ud2.get("team", "")) == "player":
 				p1.append(ud2)
 			elif String(ud2.get("team", "")) == "enemy":

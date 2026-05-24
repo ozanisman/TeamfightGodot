@@ -1613,6 +1613,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_obscurance_aux_player_grid_tick = -1;
 	_obscurance_aux_player_grid_sig = 0;
 	_expiration_queue = std::priority_queue<ExpirationEntry>();
+	_pending_spawns.clear();
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -2124,10 +2125,21 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	UnitState unit;
 	UnitStateCold cold;
 	StringName archetype_id = StringName(String(spawn_spec.get("archetype_id", "")));
-	Dictionary champion = _effective_champion_for(archetype_id);
-	if (champion.is_empty()) {
-		UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(archetype_id)));
-		return { unit, cold };
+	
+	// Check if this is a minion (in minion_catalog) or a champion (in champion catalog)
+	Dictionary minion_data = Dictionary(_minion_catalog.get(String(archetype_id), Dictionary()));
+	Dictionary champion;
+	
+	if (!minion_data.is_empty()) {
+		// This is a minion, use minion data directly
+		champion = minion_data;
+	} else {
+		// This is a champion, use effective champion cache
+		champion = _effective_champion_for(archetype_id);
+		if (champion.is_empty()) {
+			UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(archetype_id)));
+			return { unit, cold };
+		}
 	}
 
 	// Stats, kits, and balance overlays are resolved in _rebuild_effective_champion_cache().
@@ -2135,138 +2147,163 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	StringName role_name = StringName(stats.get("role", StringName()));
 	Dictionary role_config = Dictionary(_role_configs.get(role_name, Dictionary()));
 
-	auto passive_bucket_index = [](const StringName &kind) -> int {
-		if (kind == sn_on_attack()) {
-			return 0;
-		}
-		if (kind == sn_on_defense()) {
-			return 1;
-		}
-		if (kind == sn_on_ally_defense()) {
-			return 2;
-		}
-		if (kind == sn_on_tick()) {
-			return 3;
-		}
-		if (kind == sn_post_attack()) {
-			return 4;
-		}
-		if (kind == sn_post_take_damage()) {
+	// Minions skip passive/ability/ultimate compilation
+	bool is_minion = (role_name == StringName("minion"));
+	
+	if (!is_minion) {
+		auto passive_bucket_index = [](const StringName &kind) -> int {
+			if (kind == sn_on_attack()) {
+				return 0;
+			}
+			if (kind == sn_on_defense()) {
+				return 1;
+			}
+			if (kind == sn_on_ally_defense()) {
+				return 2;
+			}
+			if (kind == sn_on_tick()) {
+				return 3;
+			}
+			if (kind == sn_post_attack()) {
+				return 4;
+			}
+			if (kind == sn_post_take_damage()) {
+				return 5;
+			}
+			if (kind == sn_on_ability()) {
+				return 6;
+			}
+			if (kind == sn_on_ultimate()) {
+				return 7;
+			}
+			if (kind == sn_post_heal()) {
+				return 8;
+			}
+			if (kind == sn_on_takedown()) {
+				return 9;
+			}
+			// DEBUG: Log unrecognized trigger kinds
+			UtilityFunctions::push_error(vformat("[DEBUG] passive_bucket_index: unrecognized trigger kind '%s', falling through to bucket 5 (post_take_damage)", String(kind)));
 			return 5;
-		}
-		if (kind == sn_on_ability()) {
-			return 6;
-		}
-		if (kind == sn_on_ultimate()) {
-			return 7;
-		}
-		if (kind == sn_post_heal()) {
-			return 8;
-		}
-		if (kind == sn_on_takedown()) {
-			return 9;
-		}
-		// DEBUG: Log unrecognized trigger kinds
-		UtilityFunctions::push_error(vformat("[DEBUG] passive_bucket_index: unrecognized trigger kind '%s', falling through to bucket 5 (post_take_damage)", String(kind)));
-		return 5;
-	};
+		};
 
-	Array passive_ids = Array(champion.get("passive_ids", Array()));
-	for (int64_t index = 0; index < passive_ids.size(); ++index) {
-		StringName passive_id = StringName(String(passive_ids[index]));
-		Dictionary entry = Dictionary(_passive_registry.get(passive_id, Dictionary()));
-		if (entry.is_empty()) {
-			continue;
-		}
-		Array effect_kinds;
-		effect_kinds.append(StringName("on_attack"));
-		effect_kinds.append(StringName("on_defense"));
-		effect_kinds.append(StringName("on_ally_defense"));
-		effect_kinds.append(StringName("on_tick"));
-		effect_kinds.append(StringName("post_attack"));
-		effect_kinds.append(StringName("post_take_damage"));
-		effect_kinds.append(StringName("on_ability"));
-		effect_kinds.append(StringName("on_ultimate"));
-		effect_kinds.append(StringName("post_heal"));
-		effect_kinds.append(StringName("on_takedown"));
-		if (entry.has("on_ally_defense")) {
-			// Extract and store radius from passive definition
-			double radius = double(entry.get("radius", 0.0));
-			// Take the maximum radius if multiple passives have on_ally_defense
-			if (radius > cold.on_ally_defense_radius) {
-				cold.on_ally_defense_radius = radius;
+		Array passive_ids = Array(champion.get("passive_ids", Array()));
+		for (int64_t index = 0; index < passive_ids.size(); ++index) {
+			StringName passive_id = StringName(String(passive_ids[index]));
+			Dictionary entry = Dictionary(_passive_registry.get(passive_id, Dictionary()));
+			if (entry.is_empty()) {
+				continue;
+			}
+			Array effect_kinds;
+			effect_kinds.append(StringName("on_attack"));
+			effect_kinds.append(StringName("on_defense"));
+			effect_kinds.append(StringName("on_ally_defense"));
+			effect_kinds.append(StringName("on_tick"));
+			effect_kinds.append(StringName("post_attack"));
+			effect_kinds.append(StringName("post_take_damage"));
+			effect_kinds.append(StringName("on_ability"));
+			effect_kinds.append(StringName("on_ultimate"));
+			effect_kinds.append(StringName("post_heal"));
+			effect_kinds.append(StringName("on_takedown"));
+			if (entry.has("on_ally_defense")) {
+				// Extract and store radius from passive definition
+				double radius = double(entry.get("radius", 0.0));
+				// Take the maximum radius if multiple passives have on_ally_defense
+				if (radius > cold.on_ally_defense_radius) {
+					cold.on_ally_defense_radius = radius;
+				}
+			}
+			// Store passive AOE radius information for visualization (all passives with radius)
+			if (entry.has("radius")) {
+				double radius = double(entry.get("radius", 0.0));
+				if (radius > 0.0) {
+					UnitStateCold::PassiveAoeInfo aoe_info;
+					aoe_info.passive_id = passive_id;
+					aoe_info.radius = radius;
+					cold.passive_aoe_info.push_back(aoe_info);
+				}
+			}
+			for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
+				Variant kind_value = effect_kinds[kind_index];
+				Array effects = Array(entry.get(kind_value, Array()));
+				std::vector<EffectRecord> compiled_effects = _compile_effect_array(effects);
+				std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
+				bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
 			}
 		}
-		// Store passive AOE radius information for visualization (all passives with radius)
-		if (entry.has("radius")) {
-			double radius = double(entry.get("radius", 0.0));
-			if (radius > 0.0) {
-				UnitStateCold::PassiveAoeInfo aoe_info;
-				aoe_info.passive_id = passive_id;
-				aoe_info.radius = radius;
-				cold.passive_aoe_info.push_back(aoe_info);
-			}
+		Variant role_tick = role_config.get("passive_on_tick", Variant());
+		if (role_tick.get_type() != Variant::NIL) {
+			cold.passive_effects[3].push_back(_compile_effect(Dictionary(role_tick)));
 		}
-		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
-			Variant kind_value = effect_kinds[kind_index];
-			Array effects = Array(entry.get(kind_value, Array()));
-			std::vector<EffectRecord> compiled_effects = _compile_effect_array(effects);
-			std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
-			bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
+		Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
+		if (role_take_damage.get_type() != Variant::NIL) {
+			cold.passive_effects[5].push_back(_compile_effect(Dictionary(role_take_damage)));
 		}
+		cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 	}
-	Variant role_tick = role_config.get("passive_on_tick", Variant());
-	if (role_tick.get_type() != Variant::NIL) {
-		cold.passive_effects[3].push_back(_compile_effect(Dictionary(role_tick)));
-	}
-	Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
-	if (role_take_damage.get_type() != Variant::NIL) {
-		cold.passive_effects[5].push_back(_compile_effect(Dictionary(role_take_damage)));
-	}
-	cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 
 	double max_hp = double(stats.get("max_hp", 0.0));
 	double max_mana = double(stats.get("max_mana", 0.0));
 	double x, y;
 
-	// Generate random spawn position with slot assignment
-	int64_t spawn_slot = _assign_spawn_slot(team);
-	Vector2 spawn_pos = _get_random_spawn_position(team, false);
+	// Minions skip spawn slot assignment and use provided coordinates
+	if (!is_minion) {
+		// Generate random spawn position with slot assignment
+		int64_t spawn_slot = _assign_spawn_slot(team);
+		Vector2 spawn_pos = _get_random_spawn_position(team, false);
 
-	// Override Y coordinate with assigned slot position
-	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
-	if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
-		double x_base = (team == sn_player()) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
-		
-		// Adjust melee champions to spawn 0.5 tiles closer to center
-		double attack_range = double(stats.get("attack_range", 0.0));
-		if (attack_range <= 1.0) {  // Melee threshold
-			if (team == sn_player()) {
-				x_base += 0.5;
-			} else {
-				x_base -= 0.5;
+		// Override Y coordinate with assigned slot position
+		static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
+		if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
+			double x_base = (team == sn_player()) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
+			
+			// Adjust melee champions to spawn 0.5 tiles closer to center
+			double attack_range = double(stats.get("attack_range", 0.0));
+			if (attack_range <= 1.0) {  // Melee threshold
+				if (team == sn_player()) {
+					x_base += 0.5;
+				} else {
+					x_base -= 0.5;
+				}
 			}
+			
+			x = x_base;
+			y = spawn_points[spawn_slot];
+			cold.respawn_slot_index = spawn_slot;
+		} else {
+			x = spawn_pos.x;
+			y = spawn_pos.y;
 		}
-		
-		x = x_base;
-		y = spawn_points[spawn_slot];
-		cold.respawn_slot_index = spawn_slot;
 	} else {
-		x = spawn_pos.x;
-		y = spawn_pos.y;
+		// Minions use x/y from spawn_spec (provided by summoner)
+		x = double(spawn_spec.get("x", 0.0));
+		y = double(spawn_spec.get("y", 0.0));
+		cold.respawn_slot_index = -1;
 	}
 
 	unit.instance_id = instance_id;
 	cold.archetype_id = archetype_id;
 	unit.team = team;
 	cold.role_id = role_name;
-	unit.role_slot = role_slot_for_name(role_name);
-	unit.is_tank_role = role_name == sn_tank();
-	unit.is_fighter_role = role_name == sn_fighter();
-	unit.is_assassin_role = role_name == sn_assassin();
-	unit.is_marksman_role = role_name == sn_marksman();
-	unit.is_mage_role = role_name == sn_mage();
-	unit.is_support_role = role_name == sn_support();
+	
+	// Only champions have role slots and role flags
+	if (!is_minion) {
+		unit.role_slot = role_slot_for_name(role_name);
+		unit.is_tank_role = role_name == sn_tank();
+		unit.is_fighter_role = role_name == sn_fighter();
+		unit.is_assassin_role = role_name == sn_assassin();
+		unit.is_marksman_role = role_name == sn_marksman();
+		unit.is_mage_role = role_name == sn_mage();
+		unit.is_support_role = role_name == sn_support();
+	} else {
+		unit.role_slot = -1;
+		unit.is_tank_role = false;
+		unit.is_fighter_role = false;
+		unit.is_assassin_role = false;
+		unit.is_marksman_role = false;
+		unit.is_mage_role = false;
+		unit.is_support_role = false;
+	}
 	cold.stats = stats;
 	unit.combat.max_hp = max_hp;
 	unit.combat.max_mana = max_mana;
@@ -2284,17 +2321,26 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.combat.armor = double(stats.get("armor", 0.0));
 	unit.combat.magic_resist = double(stats.get("magic_resist", 0.0));
 	unit.combat.tenacity = double(stats.get("tenacity", 0.0));
-	Variant ability_effect = champion.get("ability", Variant());
-	Variant ultimate_effect = champion.get("ultimate", Variant());
-	unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
-	unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
-	unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
-	unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
-	if (unit.has_ability_effect) {
-		cold.ability_effect = _compile_effect(Dictionary(ability_effect));
-	}
-	if (unit.has_ultimate_effect) {
-		cold.ultimate_effect = _compile_effect(Dictionary(ultimate_effect));
+	
+	// Minions don't have abilities or ultimates
+	if (!is_minion) {
+		Variant ability_effect = champion.get("ability", Variant());
+		Variant ultimate_effect = champion.get("ultimate", Variant());
+		unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
+		unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
+		unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
+		unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
+		if (unit.has_ability_effect) {
+			cold.ability_effect = _compile_effect(Dictionary(ability_effect));
+		}
+		if (unit.has_ultimate_effect) {
+			cold.ultimate_effect = _compile_effect(Dictionary(ultimate_effect));
+		}
+	} else {
+		unit.has_ability_effect = false;
+		unit.has_ultimate_effect = false;
+		unit.ability_requires_target_in_range = false;
+		unit.ultimate_requires_target_in_range = false;
 	}
 	cold.spawn_pos_x = x;
 	cold.spawn_pos_y = y;
@@ -7183,6 +7229,10 @@ Vector2 TeamfightSimulationCore::_get_random_spawn_position(const StringName &te
 }
 
 Vector2 TeamfightSimulationCore::_find_random_spawn_position_near(double center_x, double center_y, double radius) {
+	return _find_random_spawn_position_near_excluding(center_x, center_y, radius, 0);
+}
+
+Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding(double center_x, double center_y, double radius, int64_t exclude_instance_id) {
 	// Try random positions within radius, with collision checking
 	constexpr int max_attempts = 50;
 	constexpr double pi = 3.14159265358979323846;
@@ -7199,8 +7249,8 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near(double center_
 		test_x = Math::clamp(test_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 		test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 
-		// Check collision with existing units
-		if (!_position_collides_with_unit(test_x, test_y, 0)) {
+		// Check collision with existing units, excluding specified unit
+		if (!_position_collides_with_unit(test_x, test_y, exclude_instance_id)) {
 			return Vector2(test_x, test_y);
 		}
 	}
@@ -7676,6 +7726,8 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	} else {
 		_prepare_tick_context();
 	}
+	// Process pending spawns after tick context is prepared
+	_process_pending_spawns();
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();
 		for (UnitState &unit : _units) {
@@ -9147,6 +9199,12 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double spawn_radius = effect.scalar0;
 			int64_t total_spawned = 0;
 
+			// Copy source data before modifying _units (push_back can reallocate and invalidate references)
+			int64_t source_instance_id = source.instance_id;
+			double source_pos_x = source.pos_x;
+			double source_pos_y = source.pos_y;
+			StringName source_team = source.team;
+
 			// Use tracked max instance ID for efficient ID generation
 			int64_t next_instance_id = _max_instance_id + 1;
 
@@ -9158,49 +9216,37 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 				// Get minion data from minion_catalog
 				Dictionary minion_data = _minion_catalog.get(String(minion_id), Dictionary());
 				if (minion_data.is_empty()) {
-					UtilityFunctions::push_error(vformat("Unknown minion archetype: %s", String(minion_id)));
+					UtilityFunctions::push_error(vformat("Summon failed: unknown minion archetype: %s", String(minion_id)));
 					continue;
 				}
 
-				// Spawn count minions of this type
-				for (int64_t i = 0; i < count; ++i) {
-					// Find random valid position within spawn_radius
-					Vector2 spawn_pos = _find_random_spawn_position_near(source.pos_x, source.pos_y, spawn_radius);
-					if (spawn_pos.x < 0.0) {
-						// Failed to find valid position
-						UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f. Active units: %d",
-							String(minion_id), i + 1, count, source.pos_x, source.pos_y, spawn_radius, _units.size()));
-						continue;
-					}
-
-					// Create spawn spec
-					Dictionary spawn_spec;
-					spawn_spec["archetype_id"] = minion_id;
-					spawn_spec["x"] = spawn_pos.x;
-					spawn_spec["y"] = spawn_pos.y;
-
-					// Build unit state
-					std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, source.team, next_instance_id);
-					if (built.first.instance_id == 0) {
-						continue;
-					}
-
-					// Add to units array
-					int64_t unit_index = int64_t(_units.size());
-					_units.push_back(std::move(built.first));
-					_unit_cold.push_back(std::move(built.second));
-					_unit_index_map[next_instance_id] = unit_index;
-					_add_alive_index(source.team, unit_index);
-					_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
-
-					// Update max instance ID
-					if (next_instance_id > _max_instance_id) {
-						_max_instance_id = next_instance_id;
-					}
-
-					next_instance_id++;
-					total_spawned++;
+			// Spawn count minions of this type
+			for (int64_t i = 0; i < count; ++i) {
+				// Find random valid position within spawn_radius, excluding source unit
+				Vector2 spawn_pos = _find_random_spawn_position_near_excluding(source_pos_x, source_pos_y, spawn_radius, source_instance_id);
+				if (spawn_pos.x < 0.0) {
+					// Failed to find valid position
+					UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f. Active units: %d",
+						String(minion_id), i + 1, count, source_pos_x, source_pos_y, spawn_radius, _units.size()));
+					continue;
 				}
+
+				// Create spawn spec
+				Dictionary spawn_spec;
+				spawn_spec["archetype_id"] = minion_id;
+				spawn_spec["x"] = spawn_pos.x;
+				spawn_spec["y"] = spawn_pos.y;
+
+				// Queue the spawn for later processing (at end of tick)
+				PendingSpawn pending;
+				pending.spawn_spec = spawn_spec;
+				pending.team = source_team;
+				pending.summoner_instance_id = source_instance_id;
+				_pending_spawns.push_back(pending);
+
+				next_instance_id++;
+				total_spawned++;
+			}
 			}
 
 			summon_result["minions_spawned"] = total_spawned;
@@ -9657,6 +9703,19 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 	_summary_cache["player_comp"] = _player_comp;
 	_summary_cache["enemy_comp"] = _enemy_comp;
 	_summary_unit_stats.clear();
+	
+	// First pass: aggregate minion stats to their summoners
+	std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
+	std::unordered_map<int64_t, double> summoner_minion_damage_received;
+	for (const UnitState &unit : _units) {
+		if (unit.summoner_instance_id != 0) {
+			// This is a minion, aggregate its stats to the summoner
+			const UnitStateCold &c = _uc(unit);
+			summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
+			summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
+		}
+	}
+	
 	for (const UnitState &unit : _units) {
 		const UnitStateCold &c = _uc(unit);
 		Dictionary unit_summary;
@@ -9688,6 +9747,18 @@ Dictionary TeamfightSimulationCore::_build_summary() {
 		unit_summary["kills"] = c.kills;
 		unit_summary["deaths"] = c.deaths;
 		unit_summary["assists"] = c.assists;
+		
+		// Add aggregated minion stats if this unit summoned any minions
+		auto it_dealt = summoner_minion_damage_dealt.find(unit.instance_id);
+		auto it_received = summoner_minion_damage_received.find(unit.instance_id);
+		if (it_dealt != summoner_minion_damage_dealt.end() || it_received != summoner_minion_damage_received.end()) {
+			unit_summary["minion_damage_dealt"] = it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0;
+			unit_summary["minion_damage_received"] = it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0;
+		} else {
+			unit_summary["minion_damage_dealt"] = 0.0;
+			unit_summary["minion_damage_received"] = 0.0;
+		}
+		
 		Dictionary telemetry;
 		telemetry["schema"] = String("teamfight.telemetry.v1");
 		telemetry["hard_cc_seconds"] = unit.hard_cc_seconds;
@@ -10982,6 +11053,45 @@ void TeamfightSimulationCore::_process_expiration_queue(double current_time) {
 			}
 		}
 	}
+}
+
+void TeamfightSimulationCore::_process_pending_spawns() {
+	if (_pending_spawns.empty()) {
+		return;
+	}
+	
+	// Use tracked max instance ID for efficient ID generation
+	int64_t next_instance_id = _max_instance_id + 1;
+	
+	for (const PendingSpawn &pending : _pending_spawns) {
+		// Build unit state
+		std::pair<UnitState, UnitStateCold> built = _build_unit_state(pending.spawn_spec, pending.team, next_instance_id);
+		if (built.first.instance_id == 0) {
+			UtilityFunctions::push_error(vformat("Pending spawn failed: _build_unit_state returned instance_id=0"));
+			continue;
+		}
+		
+		// Add to units array
+		int64_t unit_index = int64_t(_units.size());
+		_units.push_back(std::move(built.first));
+		_unit_cold.push_back(std::move(built.second));
+		_unit_index_map[next_instance_id] = unit_index;
+		
+		// Set summoner relationship for minions
+		_units[unit_index].summoner_instance_id = pending.summoner_instance_id;
+		
+		// Add to alive indices
+		_add_alive_index(pending.team, unit_index);
+		
+		// Update max instance ID
+		if (next_instance_id > _max_instance_id) {
+			_max_instance_id = next_instance_id;
+		}
+		
+		next_instance_id++;
+	}
+	
+	_pending_spawns.clear();
 }
 
 TeamfightSimulationCore::StackError TeamfightSimulationCore::_apply_stat_modifier_optimized(UnitState &source, UnitState &target, const StackParams &params, double duration, bool is_match_duration, double current_time) {

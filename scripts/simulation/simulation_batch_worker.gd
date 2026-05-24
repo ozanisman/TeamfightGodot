@@ -219,7 +219,8 @@ func run_chunk(data: Dictionary) -> Array:
 			base_seed + start_index,
 			chunk_len,
 			team_size,
-			false
+			false,
+			SimConstantsScript.DEFAULT_TICK_RATE
 		)
 		var generated_stats_ns: int = _now_ns() - t_generated_stats_ns
 		if generated_partial_var is not Dictionary:
@@ -269,7 +270,8 @@ func run_chunk(data: Dictionary) -> Array:
 			base_seed + start_index,
 			chunk_len,
 			team_size,
-			write_match_log
+			write_match_log,
+			SimConstantsScript.DEFAULT_TICK_RATE
 		)
 		var generated_stats_ns: int = _now_ns() - t_generated_stats_ns
 		if generated_partial_var is not Dictionary:

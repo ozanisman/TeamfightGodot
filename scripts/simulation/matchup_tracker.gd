@@ -4,6 +4,8 @@ extends RefCounted
 # Tracks individual champion vs champion and champion with champion winrates
 # Data structure: champion_id -> { vs_opponent_id: {wins, losses, winrate}, with_ally_id: {wins, losses, winrate} }
 
+const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+
 var matchup_data: Dictionary = {}
 var champion_ids: Array[StringName] = []
 
@@ -12,7 +14,7 @@ func _init():
 
 func _initialize_champion_ids() -> void:
 	# Get all champion IDs dynamically using static methods
-	champion_ids = ChampionCatalog.get_champion_ids()
+	champion_ids = ChampionCatalogScript.get_champion_ids()
 	
 	# Initialize data structure for all champions
 	for champion_id in champion_ids:

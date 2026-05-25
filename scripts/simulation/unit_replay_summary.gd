@@ -33,7 +33,7 @@ var assists: int = 0
 var telemetry: Dictionary = {}
 
 static func from_dict(unit_data: Dictionary) -> UnitReplaySummary:
-	var unit_summary := UnitReplaySummary.new()
+	var unit_summary := new()
 	unit_summary.instance_id = int(unit_data.get("instance_id", 0))
 	var archetype_value = unit_data.get("archetype", unit_data.get("archetype_id", ""))
 	unit_summary.archetype_id = StringName(String(archetype_value))

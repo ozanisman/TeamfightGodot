@@ -138,7 +138,7 @@ func _border_color_for_hero(hero_id: StringName) -> Color:
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary = d.get("stats", {})
 	var rk: String = str(st.get("role", "")).to_lower()
-	return SimConstants.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+	return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
 
 
 static func _escape_bbcode_plain(s: String) -> String:
@@ -240,4 +240,4 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, hero_id: Strin
 
 func _border_for_dict(st: Dictionary) -> Color:
 	var rk: String = str(st.get("role", "")).to_lower()
-	return SimConstants.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+	return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_TEXT) as Color

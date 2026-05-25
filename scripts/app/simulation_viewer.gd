@@ -719,7 +719,7 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		button.text = String(stats_dict.get("name", String(champion_id)))
 		button.size = new_size
 		button.position = new_position
-		var role_color: Color = SimConstants.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
 		button.tooltip_text = ""
 		_register_champ_tooltip(button, champion_id)
@@ -1705,7 +1705,7 @@ func _populate_champion_grid() -> void:
 		button.text = String(stats_dict.get("name", String(champion_id)))
 		button.custom_minimum_size = Vector2(square_size, square_size)
 		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
-		var role_color: Color = SimConstants.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
 		button.tooltip_text = ""
 		_register_champ_tooltip(button, champion_id)
@@ -1737,7 +1737,7 @@ func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 
 
 func _update_role_filter_button_style(button: Button, role: StringName, is_active: bool) -> void:
-	var role_color: Color = SimConstants.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 	
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
@@ -2105,7 +2105,7 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 	var champion_dict: Dictionary = champion.to_dict()
 	var stats_dict: Dictionary = champion_dict.get("stats", {})
 	var role: StringName = StringName(stats_dict.get("role", ""))
-	var role_color: Color = SimConstants.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
 	
 	# Reset modulate to white to avoid affecting StyleBoxFlat

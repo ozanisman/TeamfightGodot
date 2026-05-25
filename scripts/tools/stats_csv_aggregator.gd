@@ -5,12 +5,11 @@ extends RefCounted
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const MatchupAggregatorScript := preload("res://scripts/tools/matchup_aggregator.gd")
-const MatchupAggregator := preload("res://scripts/tools/matchup_aggregator.gd")
 
 var _by_size: Dictionary = {}
 var _role_by_hero: Dictionary = {}
 var _match_logs: Array = []
-var _matchup_aggregator: MatchupAggregator
+var _matchup_aggregator: MatchupAggregatorScript
 var _write_match_log: bool = true
 
 
@@ -19,7 +18,7 @@ func reset() -> void:
 	_role_by_hero.clear()
 	_match_logs.clear()
 	if _matchup_aggregator == null:
-		_matchup_aggregator = MatchupAggregator.new()
+		_matchup_aggregator = MatchupAggregatorScript.new()
 	else:
 		_matchup_aggregator.reset()
 
@@ -38,7 +37,7 @@ func preload_roles(role_by_hero: Dictionary) -> void:
 func consume_summary(team_size: int, summary_value: Variant) -> void:
 	if summary_value is Dictionary and summary_value.has("match_results"):
 		if _matchup_aggregator == null:
-			_matchup_aggregator = MatchupAggregator.new()
+			_matchup_aggregator = MatchupAggregatorScript.new()
 		_matchup_aggregator.consume_chunk_result(summary_value)
 		
 		var match_results: Array = Array(summary_value.get("match_results", []))
@@ -47,7 +46,7 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 	elif summary_value is Dictionary and summary_value.has("stats_partial"):
 		var partial_entry: Dictionary = Dictionary(summary_value)
 		if _matchup_aggregator == null:
-			_matchup_aggregator = MatchupAggregator.new()
+			_matchup_aggregator = MatchupAggregatorScript.new()
 		_matchup_aggregator.consume_chunk_result(partial_entry)
 		consume_partial(Dictionary(partial_entry.get("stats_partial", {})))
 	else:

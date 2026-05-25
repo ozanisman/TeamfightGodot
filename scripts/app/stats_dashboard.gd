@@ -2,6 +2,7 @@ extends Control
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const SimulationSchemaScript := preload("res://scripts/simulation/simulation_schema.gd")
 const StatsDashboardLoaderScript := preload("res://scripts/tools/stats_dashboard_loader.gd")
 const StatsBalanceBarScript := preload("res://scripts/app/stats_balance_bar.gd")
 const StatsBarControlScript := preload("res://scripts/app/stats_bar_control.gd")
@@ -215,6 +216,7 @@ func _stretch_control_to_parent_full_rect(c: Control) -> void:
 
 
 func _ready() -> void:
+	NativeSimulationBackendScript.ensure_gdextension_loaded()
 	_apply_dashboard_fps_cap()
 	_apply_dashboard_window_settings()
 	_team_button_group = ButtonGroup.new()
@@ -459,7 +461,7 @@ func _build_ui() -> void:
 	_role_grid.columns = 2
 	_role_grid.add_theme_constant_override("h_separation", 8)
 	_role_grid.add_theme_constant_override("v_separation", 8)
-	for role_key in SimConstants.ROLE_COLORS.keys():
+	for role_key in SimConstantsScript.ROLE_COLORS.keys():
 		var tb := Button.new()
 		tb.toggle_mode = true
 		tb.custom_minimum_size.y = UI_MIN_CONTROL_H
@@ -719,9 +721,9 @@ func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
 		return COLOR_SUBTLE
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key_s, ""))
-		return SimConstants.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+		return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
 	if _view_mode == &"roles":
-		return SimConstants.ROLE_COLORS.get(str(key_s).to_lower(), COLOR_SUBTLE) as Color
+		return SimConstantsScript.ROLE_COLORS.get(str(key_s).to_lower(), COLOR_SUBTLE) as Color
 	return COLOR_SUBTLE
 
 
@@ -902,15 +904,15 @@ func _run_regen_export_thread(params: Dictionary) -> void:
 	# This function runs in a background thread, so no UI updates here
 	
 	# Clear champion catalog caches before export to ensure fresh data
-	ChampionCatalog.clear_export_caches()
+	ChampionCatalogScript.clear_export_caches()
 	
 	# Export champion schema to ensure latest data is included
-	var schema_success := SimulationSchema.write_champion_schema_to_file()
+	var schema_success := SimulationSchemaScript.write_champion_schema_to_file()
 	if not schema_success:
 		push_error("Failed to export champion schema")
 	
 	# Now run the actual simulations
-	var runner := StatsSimulationCsvGenerator.new()
+	var runner := StatsSimulationCsvGeneratorScript.new()
 	var err: Error = runner.run_packed(params)
 	if err != OK:
 		push_error("Simulation generation failed: %s" % error_string(err))
@@ -1355,7 +1357,7 @@ func _refresh_chart() -> void:
 		name_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		if not is_synergy and _view_mode == &"champions":
 			var role: String = str(_unit_roles.get(key_s, ""))
-			var rc: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+			var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
 			name_lb.add_theme_color_override("font_color", rc)
 			var marker := ColorRect.new()
 			marker.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1367,7 +1369,7 @@ func _refresh_chart() -> void:
 			name_w.add_child(name_h)
 		elif not is_synergy and _view_mode == &"roles":
 			var role_key: String = str(key_s).to_lower()
-			var rc_r: Color = SimConstants.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
+			var rc_r: Color = SimConstantsScript.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
 			name_lb.add_theme_color_override("font_color", rc_r)
 			var marker_r := ColorRect.new()
 			marker_r.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1564,9 +1566,9 @@ func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: 
 	var c: Color = COLOR_TEXT
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key, ""))
-		c = SimConstants.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+		c = SimConstantsScript.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
 	elif _view_mode == &"roles":
-		c = SimConstants.ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
+		c = SimConstantsScript.ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
 	return "[color=%s]%s[/color]" % [c.to_html(false), safe_name]
 
 
@@ -1898,7 +1900,7 @@ func _build_matchup_ui() -> void:
 		var champion_name := _unit_id_to_name(champion_unit_id)
 		var index = champion_list.add_item(champion_name)
 		var role: String = str(_unit_roles.get(champion_unit_id, ""))
-		var color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+		var color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
 		champion_list.set_item_custom_fg_color(index, color)
 		# Store unit_id as metadata for selection
 		champion_list.set_item_metadata(index, champion_unit_id)
@@ -2084,7 +2086,7 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 		champion_label_data.text = champion_name
 		champion_label_data.custom_minimum_size.x = 160
 		var champion_role: String = str(_unit_roles.get(champion_unit_id, ""))
-		var champion_color: Color = SimConstants.ROLE_COLORS.get(champion_role, COLOR_TEXT) as Color
+		var champion_color: Color = SimConstantsScript.ROLE_COLORS.get(champion_role, COLOR_TEXT) as Color
 		champion_label_data.add_theme_color_override("font_color", champion_color)
 		row.add_child(champion_label_data)
 		
@@ -2092,7 +2094,7 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 		opponent_label_data.text = opponent_name
 		opponent_label_data.custom_minimum_size.x = 150
 		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-		var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
 		opponent_label_data.add_theme_color_override("font_color", opponent_color)
 		row.add_child(opponent_label_data)
 		
@@ -2163,7 +2165,7 @@ func _on_champion_selected(index: int) -> void:
 	# Set selection color to match the selected item's role color
 	var champion_unit_id: String = _champion_list.get_item_metadata(index) as String
 	var role: String = str(_unit_roles.get(champion_unit_id, ""))
-	var role_color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
 	_champion_list.add_theme_color_override("font_selected_color", role_color)
 	
 	_current_champion = champion_unit_id
@@ -2212,7 +2214,7 @@ func _update_matchup_display() -> void:
 	var name_label := Label.new()
 	name_label.text = champion_name.to_upper()
 	var role: String = str(_unit_roles.get(_current_champion, ""))
-	var role_color: Color = SimConstants.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
 	name_label.add_theme_color_override("font_color", role_color)
 	name_label.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	header_hb.add_child(name_label)
@@ -2366,7 +2368,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2401,7 +2403,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2436,7 +2438,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2471,7 +2473,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2553,7 +2555,7 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 		name_label.text = opponent_name
 		name_label.custom_minimum_size.x = 150
 		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-		var opponent_color: Color = SimConstants.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
 		name_label.add_theme_color_override("font_color", opponent_color)
 		row.add_child(name_label)
 		

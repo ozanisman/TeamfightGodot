@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <queue>
@@ -1039,6 +1040,8 @@ private:
 	std::unordered_map<int64_t, int64_t> _unit_index_map;
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
+	std::unordered_set<int64_t> _alive_player_indices_set;
+	std::unordered_set<int64_t> _alive_enemy_indices_set;
 	std::vector<TargetingFrameEntry> _targeting_frame;
 	bool _catalog_loaded = false;
 	std::array<UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};

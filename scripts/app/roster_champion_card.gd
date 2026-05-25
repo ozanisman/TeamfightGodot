@@ -154,7 +154,7 @@ static func _role_color_for_archetype(archetype_key: String) -> Color:
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary = d.get("stats", {})
 	var rk: String = str(st.get("role", "")).to_lower()
-	return SimConstants.ROLE_COLORS.get(rk, _NAME_NEUTRAL) as Color
+	return SimConstantsScript.ROLE_COLORS.get(rk, _NAME_NEUTRAL) as Color
 
 
 func _make_bar(c_bg: Color, c_fill: Color) -> ProgressBar:

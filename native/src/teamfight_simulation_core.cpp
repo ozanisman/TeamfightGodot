@@ -7751,6 +7751,40 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_se_obscurance = 0;
 	_sim_profile_se_flanking = 0;
 	_sim_profile_se_calls = 0;
+	_sim_profile_uc_attack_cooldown = 0;
+	_sim_profile_uc_distance_calc = 0;
+	_sim_profile_uc_hit_validation = 0;
+	_sim_profile_uc_damage_apply = 0;
+	_sim_profile_uc_auto_attack = 0;
+	_sim_profile_uc_ability = 0;
+	_sim_profile_ucc_attack_cd = 0;
+	_sim_profile_ucc_ability_cd = 0;
+	_sim_profile_ucc_retarget = 0;
+	_sim_profile_ucc_target_switch = 0;
+	_sim_profile_ucc_stun = 0;
+	_sim_profile_ucc_slow = 0;
+	_sim_profile_ucc_root = 0;
+	_sim_profile_ucc_silence = 0;
+	_sim_profile_ucc_disarm = 0;
+	_sim_profile_ucc_stealth = 0;
+	_sim_profile_ucc_shield = 0;
+	_sim_profile_ucc_reflect = 0;
+	_sim_profile_ucc_taunt = 0;
+	_sim_profile_ucc_forced_target = 0;
+	_sim_profile_ctx_team_centers = 0;
+	_sim_profile_ctx_role_classification = 0;
+	_sim_profile_ctx_targeting_sync = 0;
+	_sim_profile_ctx_distance_cache = 0;
+	_sim_profile_ctx_spatial_grid = 0;
+	_sim_profile_ctx_density = 0;
+	_sim_profile_um_kiting = 0;
+	_sim_profile_um_toward = 0;
+	_sim_profile_um_boundary = 0;
+	_sim_profile_um_nudge = 0;
+	_sim_profile_ur_hp_mana = 0;
+	_sim_profile_ur_effects = 0;
+	_sim_profile_ur_periodic = 0;
+	_sim_profile_ur_channel = 0;
 	_sim_profile_tgt_retarget_keeps = 0;
 	_sim_profile_tgt_enemy_scans = 0;
 	_sim_profile_tgt_candidates_scored = 0;
@@ -7786,6 +7820,40 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	profile["se_obscurance"] = _sim_profile_se_obscurance;
 	profile["se_flanking"] = _sim_profile_se_flanking;
 	profile["se_calls"] = _sim_profile_se_calls;
+	profile["uc_attack_cooldown"] = _sim_profile_uc_attack_cooldown;
+	profile["uc_distance_calc"] = _sim_profile_uc_distance_calc;
+	profile["uc_hit_validation"] = _sim_profile_uc_hit_validation;
+	profile["uc_damage_apply"] = _sim_profile_uc_damage_apply;
+	profile["uc_auto_attack"] = _sim_profile_uc_auto_attack;
+	profile["uc_ability"] = _sim_profile_uc_ability;
+	profile["ucc_attack_cd"] = _sim_profile_ucc_attack_cd;
+	profile["ucc_ability_cd"] = _sim_profile_ucc_ability_cd;
+	profile["ucc_retarget"] = _sim_profile_ucc_retarget;
+	profile["ucc_target_switch"] = _sim_profile_ucc_target_switch;
+	profile["ucc_stun"] = _sim_profile_ucc_stun;
+	profile["ucc_slow"] = _sim_profile_ucc_slow;
+	profile["ucc_root"] = _sim_profile_ucc_root;
+	profile["ucc_silence"] = _sim_profile_ucc_silence;
+	profile["ucc_disarm"] = _sim_profile_ucc_disarm;
+	profile["ucc_stealth"] = _sim_profile_ucc_stealth;
+	profile["ucc_shield"] = _sim_profile_ucc_shield;
+	profile["ucc_reflect"] = _sim_profile_ucc_reflect;
+	profile["ucc_taunt"] = _sim_profile_ucc_taunt;
+	profile["ucc_forced_target"] = _sim_profile_ucc_forced_target;
+	profile["ctx_team_centers"] = _sim_profile_ctx_team_centers;
+	profile["ctx_role_classification"] = _sim_profile_ctx_role_classification;
+	profile["ctx_targeting_sync"] = _sim_profile_ctx_targeting_sync;
+	profile["ctx_distance_cache"] = _sim_profile_ctx_distance_cache;
+	profile["ctx_spatial_grid"] = _sim_profile_ctx_spatial_grid;
+	profile["ctx_density"] = _sim_profile_ctx_density;
+	profile["um_kiting"] = _sim_profile_um_kiting;
+	profile["um_toward"] = _sim_profile_um_toward;
+	profile["um_boundary"] = _sim_profile_um_boundary;
+	profile["um_nudge"] = _sim_profile_um_nudge;
+	profile["ur_hp_mana"] = _sim_profile_ur_hp_mana;
+	profile["ur_effects"] = _sim_profile_ur_effects;
+	profile["ur_periodic"] = _sim_profile_ur_periodic;
+	profile["ur_channel"] = _sim_profile_ur_channel;
 	if (_sim_profile_targeting_active) {
 		profile["tgt_retarget_keeps"] = _sim_profile_tgt_retarget_keeps;
 		profile["tgt_enemy_scans"] = _sim_profile_tgt_enemy_scans;
@@ -7934,30 +8002,35 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		SimProfileAccScope _uu_cc(profile_sim, _sim_profile_uu_cooldowns_cc);
 
 		if (unit.attack_cooldown > 0.0) {
+			SimProfileAccScope _ucc_acd(profile_sim, _sim_profile_ucc_attack_cd);
 			unit.attack_cooldown -= _tick_rate;
 			if (unit.attack_cooldown < 0.0) {
 				unit.attack_cooldown = 0.0;
 			}
 		}
 		if (unit.ability_cooldown > 0.0) {
+			SimProfileAccScope _ucc_abcd(profile_sim, _sim_profile_ucc_ability_cd);
 			unit.ability_cooldown -= _tick_rate;
 			if (unit.ability_cooldown < 0.0) {
 				unit.ability_cooldown = 0.0;
 			}
 		}
 		if (unit.retarget_timer > 0.0) {
+			SimProfileAccScope _ucc_ret(profile_sim, _sim_profile_ucc_retarget);
 			unit.retarget_timer -= _tick_rate;
 			if (unit.retarget_timer < 0.0) {
 				unit.retarget_timer = 0.0;
 			}
 		}
 		if (unit.target_switch_lock_timer > 0.0) {
+			SimProfileAccScope _ucc_tsw(profile_sim, _sim_profile_ucc_target_switch);
 			unit.target_switch_lock_timer -= _tick_rate;
 			if (unit.target_switch_lock_timer < 0.0) {
 				unit.target_switch_lock_timer = 0.0;
 			}
 		}
 		if (unit.stun_remaining > 0.0) {
+			SimProfileAccScope _ucc_stun(profile_sim, _sim_profile_ucc_stun);
 			unit.hard_cc_seconds += Math::min(unit.stun_remaining, _tick_rate);
 			unit.stun_remaining -= _tick_rate;
 			if (unit.stun_remaining < 0.0) {
@@ -7965,6 +8038,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			}
 		}
 		if (unit.slow_remaining > 0.0) {
+			SimProfileAccScope _ucc_slow(profile_sim, _sim_profile_ucc_slow);
 			unit.slow_remaining -= _tick_rate;
 			if (unit.slow_remaining <= 0.0) {
 				unit.slow_remaining = 0.0;
@@ -7972,12 +8046,14 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			}
 		}
 		if (unit.root_remaining > 0.0) {
+			SimProfileAccScope _ucc_root(profile_sim, _sim_profile_ucc_root);
 			unit.root_remaining -= _tick_rate;
 			if (unit.root_remaining < 0.0) {
 				unit.root_remaining = 0.0;
 			}
 		}
 		if (unit.silence_ability_remaining > 0.0 || unit.silence_ultimate_remaining > 0.0) {
+			SimProfileAccScope _ucc_sil(profile_sim, _sim_profile_ucc_silence);
 			unit.silence_ability_remaining -= _tick_rate;
 			if (unit.silence_ability_remaining < 0.0) {
 				unit.silence_ability_remaining = 0.0;
@@ -7991,12 +8067,14 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		unit.silence_blocks_abilities = unit.silence_ability_remaining > 0.0;
 		unit.silence_blocks_ultimates = unit.silence_ultimate_remaining > 0.0;
 		if (unit.disarm_remaining > 0.0) {
+			SimProfileAccScope _ucc_dis(profile_sim, _sim_profile_ucc_disarm);
 			unit.disarm_remaining -= _tick_rate;
 			if (unit.disarm_remaining < 0.0) {
 				unit.disarm_remaining = 0.0;
 			}
 		}
 		if (unit.stealth_remaining > 0.0) {
+			SimProfileAccScope _ucc_ste(profile_sim, _sim_profile_ucc_stealth);
 			unit.stealth_remaining -= _tick_rate;
 			if (unit.stealth_remaining <= 0.0) {
 				unit.stealth_remaining = 0.0;
@@ -8006,12 +8084,14 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			}
 		}
 		if (unit.shield > 0.0) {
+			SimProfileAccScope _ucc_shi(profile_sim, _sim_profile_ucc_shield);
 			unit.shield *= (1.0 - SHIELD_DECAY_RATE * _tick_rate);
 			if (unit.shield < 0.01) {
 				unit.shield = 0.0;
 			}
 		}
 		if (unit.reflect_buff_remaining > 0.0) {
+			SimProfileAccScope _ucc_ref(profile_sim, _sim_profile_ucc_reflect);
 			unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
 			if (unit.reflect_buff_remaining <= 0.0) {
 				unit.reflect_buff_remaining = 0.0;
@@ -8020,6 +8100,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			}
 		}
 		if (unit.taunt_remaining > 0.0) {
+			SimProfileAccScope _ucc_tau(profile_sim, _sim_profile_ucc_taunt);
 			unit.taunt_remaining = Math::max(0.0, unit.taunt_remaining - _tick_rate);
 			if (unit.taunt_remaining <= 0.0) {
 				unit.taunt_remaining = 0.0;
@@ -8027,6 +8108,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			}
 		}
 		if (unit.forced_target_remaining > 0.0) {
+			SimProfileAccScope _ucc_ft(profile_sim, _sim_profile_ucc_forced_target);
 			unit.forced_target_remaining = Math::max(0.0, unit.forced_target_remaining - _tick_rate);
 		}
 		if (unit.last_kite_timer > 0.0) {
@@ -8180,25 +8262,32 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		if (!has_regen_work) {
 			// No regen work to do this tick
 		} else {
-			if (cold.on_tick_effect_accumulators.size() < effects.size()) {
-				cold.on_tick_effect_accumulators.resize(effects.size(), 0.0);
-			}
-			for (size_t effect_index = 0; effect_index < effects.size(); ++effect_index) {
-				const EffectRecord &effect = effects[effect_index];
-				double &accumulator = cold.on_tick_effect_accumulators[effect_index];
-				accumulator += _tick_rate;
-				if (accumulator >= effect.on_tick_interval) {
-					accumulator -= effect.on_tick_interval;
-					EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
-					_execute_effect(effect, context);
+			{
+				SimProfileAccScope _ur_eff(profile_sim, _sim_profile_ur_effects);
+				if (cold.on_tick_effect_accumulators.size() < effects.size()) {
+					cold.on_tick_effect_accumulators.resize(effects.size(), 0.0);
+				}
+				for (size_t effect_index = 0; effect_index < effects.size(); ++effect_index) {
+					const EffectRecord &effect = effects[effect_index];
+					double &accumulator = cold.on_tick_effect_accumulators[effect_index];
+					accumulator += _tick_rate;
+					if (accumulator >= effect.on_tick_interval) {
+						accumulator -= effect.on_tick_interval;
+						EffectContext context = _build_context(unit, nullptr, nullptr, 0.0, sn_passive());
+						_execute_effect(effect, context);
+					}
 				}
 			}
 
 			// Tick periodic effects (DoT/HoT)
-			_tick_periodic_effects(unit, _tick_rate);
+			{
+				SimProfileAccScope _ur_per(profile_sim, _sim_profile_ur_periodic);
+				_tick_periodic_effects(unit, _tick_rate);
+			}
 
 			// Process channel effects
 			if (_uc(unit).is_channeling) {
+				SimProfileAccScope _ur_chn(profile_sim, _sim_profile_ur_channel);
 				_process_channel_tick(unit, _tick_rate);
 			}
 		}
@@ -8239,35 +8328,41 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 	{
 		SimProfileAccScope _uu_combat(profile_sim, _sim_profile_uu_combat);
-		double effective_range = _effective_attack_range(unit);
-		double dx = target->pos_x - unit.pos_x;
-		double dy = target->pos_y - unit.pos_y;
-		double dist_sq = dx * dx + dy * dy;
-		double range_sq = effective_range * effective_range;
-		bool in_contact = (dist_sq <= range_sq); // No buffer for testing
-		double distance = Math::sqrt(dist_sq);
+		{
+			SimProfileAccScope _uc_dc(profile_sim, _sim_profile_uc_distance_calc);
+			double effective_range = _effective_attack_range(unit);
+			double dx = target->pos_x - unit.pos_x;
+			double dy = target->pos_y - unit.pos_y;
+			double dist_sq = dx * dx + dy * dy;
+			double range_sq = effective_range * effective_range;
+			bool in_contact = (dist_sq <= range_sq); // No buffer for testing
+			double distance = Math::sqrt(dist_sq);
 
-		// Action priority: check range requirements per action type
-		bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
-		bool can_cast_ability = in_contact || !unit.ability_requires_target_in_range;
+			// Action priority: check range requirements per action type
+			bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
+			bool can_cast_ability = in_contact || !unit.ability_requires_target_in_range;
 
-		if (can_cast_ultimate) {
-			if (_try_cast_ultimate(unit, *target, distance)) {
-				return;
+			if (can_cast_ultimate) {
+				SimProfileAccScope _uc_ab(profile_sim, _sim_profile_uc_ability);
+				if (_try_cast_ultimate(unit, *target, distance)) {
+					return;
+				}
 			}
-		}
-		if (can_cast_ability) {
-			if (_try_cast_ability(unit, *target, distance)) {
-				return;
+			if (can_cast_ability) {
+				SimProfileAccScope _uc_ab2(profile_sim, _sim_profile_uc_ability);
+				if (_try_cast_ability(unit, *target, distance)) {
+					return;
+				}
 			}
-		}
-		if (in_contact) {
-			if (unit.attack_cooldown <= 0.0) {
-				// Block auto-attack while channeling
-				if (!_uc(unit).is_channeling) {
-					if (unit.combat.attack_speed > 0.0) {
-						_perform_auto_attack(unit, *target, distance);
-						return;
+			if (in_contact) {
+				if (unit.attack_cooldown <= 0.0) {
+					// Block auto-attack while channeling
+					if (!_uc(unit).is_channeling) {
+						if (unit.combat.attack_speed > 0.0) {
+							SimProfileAccScope _uc_aa(profile_sim, _sim_profile_uc_auto_attack);
+							_perform_auto_attack(unit, *target, distance);
+							return;
+						}
 					}
 				}
 			}
@@ -8282,12 +8377,14 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 		} else {
 			// Movement: kite first if applicable, else move toward.
 			if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
+				SimProfileAccScope _um_kit(profile_sim, _sim_profile_um_kiting);
 				if (_kite_from_enemies(unit)) {
 					should_return = true;
 				}
 			}
 			// For melee champions: move while attacking until reaching actual attack range
 			if (!should_return) {
+				SimProfileAccScope _um_tow(profile_sim, _sim_profile_um_toward);
 				double distance = _distance_between(unit, *target);
 				double effective_range = _effective_attack_range(unit);
 				double actual_attack_range = _attack_range(unit);

@@ -1594,6 +1594,8 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_unit_index_map.clear();
 	_alive_player_indices.clear();
 	_alive_enemy_indices.clear();
+	_alive_player_indices_set.clear();
+	_alive_enemy_indices_set.clear();
 	_targeting_frame.clear();
 	_role_strategy_cache_by_slot.fill(UnitStrategy());
 	_default_strategy = UnitStrategy();
@@ -3974,19 +3976,32 @@ const std::vector<int64_t> &TeamfightSimulationCore::_alive_indices_for_team(con
 
 void TeamfightSimulationCore::_add_alive_index(const StringName &team, int64_t index) {
 	std::vector<int64_t> &alive_indices = _alive_indices_for_team(team);
-	for (int64_t existing : alive_indices) {
-		if (existing == index) {
-			return;
-		}
+	std::unordered_set<int64_t> &alive_indices_set = team == sn_player() ? _alive_player_indices_set : _alive_enemy_indices_set;
+	
+	// O(1) duplicate check using set
+	if (alive_indices_set.count(index)) {
+		return;
 	}
+	
 	alive_indices.push_back(index);
+	alive_indices_set.insert(index);
 }
 
 void TeamfightSimulationCore::_remove_alive_index(const StringName &team, int64_t index) {
 	std::vector<int64_t> &alive_indices = _alive_indices_for_team(team);
+	std::unordered_set<int64_t> &alive_indices_set = team == sn_player() ? _alive_player_indices_set : _alive_enemy_indices_set;
+	
+	// Remove from set (O(1))
+	alive_indices_set.erase(index);
+	
+	// Swap-and-pop from vector (O(1))
 	for (size_t i = 0; i < alive_indices.size(); ++i) {
 		if (alive_indices[i] == index) {
-			alive_indices.erase(alive_indices.begin() + long(i));
+			// Swap with last element and pop
+			if (i != alive_indices.size() - 1) {
+				alive_indices[i] = alive_indices.back();
+			}
+			alive_indices.pop_back();
 			break;
 		}
 	}

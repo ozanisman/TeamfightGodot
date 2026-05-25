@@ -1141,6 +1141,8 @@ private:
 	uint64_t _sim_profile_ctx_density = 0;
 	/// Sub-timers for uu_movement
 	uint64_t _sim_profile_um_kiting = 0;
+	uint64_t _sim_profile_um_kiting_spatial = 0;
+	uint64_t _sim_profile_um_kiting_brute = 0;
 	uint64_t _sim_profile_um_toward = 0;
 	uint64_t _sim_profile_um_boundary = 0;
 	uint64_t _sim_profile_um_nudge = 0;
@@ -1217,7 +1219,7 @@ private:
 	void _update_unit(UnitState &unit, bool profile_sim);
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
-	bool _kite_from_enemies(UnitState &unit);
+	bool _kite_from_enemies(UnitState &unit, bool profile_sim = false);
 	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
 	/// When `attacker_enemy_distance_sq` is >= 0, used as squared distance for in-range check (avoids sqrt when possible).
 	double _score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, double attacker_enemy_distance_sq = -1.0, bool profile_score = false, int64_t enemy_index = -1, double *base_score_out = nullptr, double *flanking_score_out = nullptr, const EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune = nullptr);

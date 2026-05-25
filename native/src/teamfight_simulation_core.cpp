@@ -7778,6 +7778,8 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_ctx_spatial_grid = 0;
 	_sim_profile_ctx_density = 0;
 	_sim_profile_um_kiting = 0;
+	_sim_profile_um_kiting_spatial = 0;
+	_sim_profile_um_kiting_brute = 0;
 	_sim_profile_um_toward = 0;
 	_sim_profile_um_boundary = 0;
 	_sim_profile_um_nudge = 0;
@@ -7847,6 +7849,8 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	profile["ctx_spatial_grid"] = _sim_profile_ctx_spatial_grid;
 	profile["ctx_density"] = _sim_profile_ctx_density;
 	profile["um_kiting"] = _sim_profile_um_kiting;
+	profile["um_kiting_spatial"] = _sim_profile_um_kiting_spatial;
+	profile["um_kiting_brute"] = _sim_profile_um_kiting_brute;
 	profile["um_toward"] = _sim_profile_um_toward;
 	profile["um_boundary"] = _sim_profile_um_boundary;
 	profile["um_nudge"] = _sim_profile_um_nudge;
@@ -8378,7 +8382,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			// Movement: kite first if applicable, else move toward.
 			if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
 				SimProfileAccScope _um_kit(profile_sim, _sim_profile_um_kiting);
-				if (_kite_from_enemies(unit)) {
+				if (_kite_from_enemies(unit, profile_sim)) {
 					should_return = true;
 				}
 			}
@@ -8627,7 +8631,7 @@ void TeamfightSimulationCore::_move_toward_target_with_range(UnitState &unit, Un
 	unit.pos_y = Math::clamp(unit.pos_y + ny * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 }
 
-bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
+bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit, bool profile_sim) {
 	const StringName &enemy_team = unit.team == sn_player() ? sn_enemy() : sn_player();
 	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
 	if (enemy_indices.empty()) {
@@ -8645,6 +8649,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	double rep_y = 0.0;
 	int count = 0;
 	if (_use_spatial_broad_phase()) {
+		SimProfileAccScope _um_ksp(profile_sim, _sim_profile_um_kiting_spatial);
 		_spatial_fill_buckets_for_indices(enemy_indices);
 		_spatial_stamp_kite_threat(ux, uy, danger_radius);
 		for (int64_t idx : enemy_indices) {
@@ -8670,6 +8675,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 			count += 1;
 		}
 	} else {
+		SimProfileAccScope _um_kbr(profile_sim, _sim_profile_um_kiting_brute);
 		for (int64_t idx : enemy_indices) {
 			const UnitState &enemy = _units[idx];
 			if (!enemy.alive) {
@@ -8699,13 +8705,19 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	}
 	double vel_x = rep_x / mag;
 	double vel_y = rep_y / mag;
-	bool blocked_x = (ux <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_x < 0.0) || (ux >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_x > 0.0);
-	bool blocked_y = (uy <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_y < 0.0) || (uy >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_y > 0.0);
-	if (blocked_x) {
-		vel_x = 0.0;
-	}
-	if (blocked_y) {
-		vel_y = 0.0;
+	const double boundary_safe_min = WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN + 1.0;
+	const double boundary_safe_max = WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN - 1.0;
+	if (ux >= boundary_safe_min && ux <= boundary_safe_max && uy >= boundary_safe_min && uy <= boundary_safe_max) {
+		// Unit is far from boundaries, skip boundary checks
+	} else {
+		bool blocked_x = (ux <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_x < 0.0) || (ux >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_x > 0.0);
+		bool blocked_y = (uy <= WORLD_BOUNDARY_MIN + BOUNDARY_DETECTION_MARGIN && vel_y < 0.0) || (uy >= WORLD_BOUNDARY_MAX - BOUNDARY_DETECTION_MARGIN && vel_y > 0.0);
+		if (blocked_x) {
+			vel_x = 0.0;
+		}
+		if (blocked_y) {
+			vel_y = 0.0;
+		}
 	}
 	if (Math::is_zero_approx(vel_x) && Math::is_zero_approx(vel_y)) {
 		vel_x = ux < (WORLD_SIZE * 0.5) ? RECOVERY_VELOCITY : -RECOVERY_VELOCITY;
@@ -8722,9 +8734,15 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit) {
 	unit.last_kite_timer = KITE_DURATION;
 	double move_speed = get_effective_move_speed(unit) * _movement_speed_multiplier(unit);
 	double step = move_speed * KITE_SPEED_MODIFIER * _tick_rate;
-	unit.pos_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-	unit.pos_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-	_sync_targeting_frame_unit(unit);
+	double new_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	double new_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	double dx = new_x - ux;
+	double dy = new_y - uy;
+	if (dx * dx + dy * dy > EPSILON) {
+		unit.pos_x = new_x;
+		unit.pos_y = new_y;
+		_sync_targeting_frame_unit(unit);
+	}
 	return true;
 }
 

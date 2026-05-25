@@ -1110,6 +1110,45 @@ private:
 	uint64_t _sim_profile_se_obscurance = 0;
 	uint64_t _sim_profile_se_flanking = 0;
 	int64_t _sim_profile_se_calls = 0;
+	/// Sub-timers for uu_combat
+	uint64_t _sim_profile_uc_attack_cooldown = 0;
+	uint64_t _sim_profile_uc_distance_calc = 0;
+	uint64_t _sim_profile_uc_hit_validation = 0;
+	uint64_t _sim_profile_uc_damage_apply = 0;
+	uint64_t _sim_profile_uc_auto_attack = 0;
+	uint64_t _sim_profile_uc_ability = 0;
+	/// Sub-timers for uu_cooldowns_cc
+	uint64_t _sim_profile_ucc_attack_cd = 0;
+	uint64_t _sim_profile_ucc_ability_cd = 0;
+	uint64_t _sim_profile_ucc_retarget = 0;
+	uint64_t _sim_profile_ucc_target_switch = 0;
+	uint64_t _sim_profile_ucc_stun = 0;
+	uint64_t _sim_profile_ucc_slow = 0;
+	uint64_t _sim_profile_ucc_root = 0;
+	uint64_t _sim_profile_ucc_silence = 0;
+	uint64_t _sim_profile_ucc_disarm = 0;
+	uint64_t _sim_profile_ucc_stealth = 0;
+	uint64_t _sim_profile_ucc_shield = 0;
+	uint64_t _sim_profile_ucc_reflect = 0;
+	uint64_t _sim_profile_ucc_taunt = 0;
+	uint64_t _sim_profile_ucc_forced_target = 0;
+	/// Sub-timers for ns_prepare_tick_ctx
+	uint64_t _sim_profile_ctx_team_centers = 0;
+	uint64_t _sim_profile_ctx_role_classification = 0;
+	uint64_t _sim_profile_ctx_targeting_sync = 0;
+	uint64_t _sim_profile_ctx_distance_cache = 0;
+	uint64_t _sim_profile_ctx_spatial_grid = 0;
+	uint64_t _sim_profile_ctx_density = 0;
+	/// Sub-timers for uu_movement
+	uint64_t _sim_profile_um_kiting = 0;
+	uint64_t _sim_profile_um_toward = 0;
+	uint64_t _sim_profile_um_boundary = 0;
+	uint64_t _sim_profile_um_nudge = 0;
+	/// Sub-timers for uu_regen_on_tick
+	uint64_t _sim_profile_ur_hp_mana = 0;
+	uint64_t _sim_profile_ur_effects = 0;
+	uint64_t _sim_profile_ur_periodic = 0;
+	uint64_t _sim_profile_ur_channel = 0;
 	bool _sim_profile_active = false;
 	bool _sim_profile_targeting_active = false;
 	int64_t _sim_profile_tgt_retarget_keeps = 0;

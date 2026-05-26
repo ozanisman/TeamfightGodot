@@ -60,6 +60,20 @@ The `summon_ally` effect creates minion units during combat.
 - **Scoring**: Minion deaths do not count toward team score
 - **Role Detection**: Minions are identified by having `role="minion"` (no champion role flags set)
 
+## System Limitations
+
+### Memory Accumulation
+
+The simulation uses index-based arrays (`_units`, `_unit_cold`, `_targeting_frame`) that grow monotonically. Units are never removed from these arrays on death to maintain index stability throughout the simulation. This design choice has implications:
+
+- **Dead units accumulate**: Both champions and minions remain in the arrays after death, marked as `alive = false`
+- **Index stability**: All systems reference units by index (via `_unit_index_map`), so removal would require expensive index remapping
+- **Memory overhead**: For typical match sizes (10 champions per team, ~50 minions total), the memory overhead is negligible
+- **Champions**: Already follow this pattern - they toggle `alive` on death/respawn without array removal
+- **Minions**: Since they don't respawn, dead minion entries persist until match end
+
+This is a deliberate trade-off: simpler, more performant code at the cost of minor memory growth. If memory ever becomes a concern, a slot-reuse system (free list) would be preferable to removal-with-shifting.
+
 ## Implementation Details
 
 ### GDScript

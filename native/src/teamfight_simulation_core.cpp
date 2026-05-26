@@ -66,26 +66,6 @@ inline const StringName &sn_assassin() {
 	static const StringName s("assassin");
 	return s;
 }
-inline const StringName &sn_commit() {
-	static const StringName s("commit");
-	return s;
-}
-inline const StringName &sn_peel() {
-	static const StringName s("peel");
-	return s;
-}
-inline const StringName &sn_burst() {
-	static const StringName s("burst");
-	return s;
-}
-inline const StringName &sn_kite() {
-	static const StringName s("kite");
-	return s;
-}
-inline const StringName &sn_objective() {
-	static const StringName s("objective");
-	return s;
-}
 inline const StringName &sn_auto() {
 	static const StringName s("auto");
 	return s;
@@ -459,26 +439,6 @@ constexpr size_t EFFECT_BUCKET_ON_TAKEDOWN = 9;
 } // namespace
 
 namespace {
-using TargetBucketTag = TeamfightSimulationCore::TargetBucketTag;
-
-TargetBucketTag tag_for_bucket_order_string(const StringName &nm) {
-	if (nm == sn_commit()) {
-		return TargetBucketTag::Commit;
-	}
-	if (nm == sn_peel()) {
-		return TargetBucketTag::Peel;
-	}
-	if (nm == sn_burst()) {
-		return TargetBucketTag::Burst;
-	}
-	if (nm == sn_kite()) {
-		return TargetBucketTag::Kite;
-	}
-	if (nm == sn_objective()) {
-		return TargetBucketTag::Objective;
-	}
-	return TargetBucketTag::TagCount;
-}
 } // namespace
 
 namespace {
@@ -1490,9 +1450,6 @@ TeamfightSimulationCore::TeamfightSimulationCore() {
 	for (auto &bucket : _spatial_buckets) {
 		bucket.reserve(4);
 	}
-	for (auto &bucket : _spatial_buckets_aux) {
-		bucket.reserve(4);
-	}
 }
 
 TeamfightSimulationCore::~TeamfightSimulationCore() {
@@ -1606,14 +1563,10 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_tick_ctx.enemy_backliner_alive_count = 0;
 	_tick_ctx.has_player_center = false;
 	_tick_ctx.has_enemy_center = false;
-	_tick_ctx.needs_cluster_density = false;
 	_trace_buffer.clear();
 	_debug_combat_trace = false;
+	_debug_targeting_scoring = false;
 	_viewer_fx_events.clear();
-	_obscurance_aux_enemy_grid_tick = -1;
-	_obscurance_aux_enemy_grid_sig = 0;
-	_obscurance_aux_player_grid_tick = -1;
-	_obscurance_aux_player_grid_sig = 0;
 	_expiration_queue = std::priority_queue<ExpirationEntry>();
 	_pending_spawns.clear();
 }
@@ -2106,26 +2059,6 @@ void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const U
 	}
 	TargetingFrameEntry &frame = _targeting_frame[static_cast<size_t>(index)];
 	
-	// Skip sync if position, hp, and threat haven't changed meaningfully
-	constexpr double position_threshold = 0.01;
-	constexpr double hp_threshold = 0.01;
-	double pos_dx = Math::abs(frame.pos_x - unit.pos_x);
-	double pos_dy = Math::abs(frame.pos_y - unit.pos_y);
-	double hp_diff = Math::abs(frame.hp - unit.hp);
-	double threat_diff = Math::abs(frame.perceived_threat - unit.perceived_threat);
-	
-	bool position_changed = pos_dx > position_threshold || pos_dy > position_threshold;
-	bool hp_changed = hp_diff > hp_threshold;
-	bool threat_changed = threat_diff > 0.001;
-	bool target_changed = frame.target_id != unit.target_id;
-	bool incoming_changed = frame.incoming_target_count != unit.incoming_target_count;
-	bool stealth_changed = Math::abs(frame.stealth_remaining - unit.stealth_remaining) > 0.001;
-	bool alive_changed = frame.alive != unit.alive;
-	
-	if (!position_changed && !hp_changed && !threat_changed && !target_changed && !incoming_changed && !stealth_changed && !alive_changed) {
-		return;
-	}
-	
 	if (_sim_profile_targeting_active) {
 		_sim_profile_tgt_frame_syncs += 1;
 	}
@@ -2309,24 +2242,23 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	unit.team = team;
 	cold.role_id = role_name;
 	
-	// Only champions have role slots and role flags
-	if (!is_minion) {
-		unit.role_slot = role_slot_for_name(role_name);
-		unit.is_tank_role = role_name == sn_tank();
-		unit.is_fighter_role = role_name == sn_fighter();
-		unit.is_assassin_role = role_name == sn_assassin();
-		unit.is_marksman_role = role_name == sn_marksman();
-		unit.is_mage_role = role_name == sn_mage();
-		unit.is_support_role = role_name == sn_support();
-	} else {
-		unit.role_slot = -1;
-		unit.is_tank_role = false;
-		unit.is_fighter_role = false;
-		unit.is_assassin_role = false;
-		unit.is_marksman_role = false;
-		unit.is_mage_role = false;
-		unit.is_support_role = false;
+	// Assign pseudo-role based on attack range for minions
+	StringName effective_role_name = role_name;
+	if (is_minion) {
+		// Melee minions (attack_range <= 0.5) get fighter pseudo-role
+		// Ranged minions (attack_range > 0.5) get marksman pseudo-role
+		double attack_range = double(stats.get("attack_range", 0.0));
+		effective_role_name = (attack_range <= 0.5) ? sn_fighter() : sn_marksman();
 	}
+
+	// Assign role slot and flags using effective role
+	unit.role_slot = role_slot_for_name(effective_role_name);
+	unit.is_tank_role = effective_role_name == sn_tank();
+	unit.is_fighter_role = effective_role_name == sn_fighter();
+	unit.is_assassin_role = effective_role_name == sn_assassin();
+	unit.is_marksman_role = effective_role_name == sn_marksman();
+	unit.is_mage_role = effective_role_name == sn_mage();
+	unit.is_support_role = effective_role_name == sn_support();
 	cold.stats = stats;
 	unit.combat.max_hp = max_hp;
 	unit.combat.max_mana = max_mana;
@@ -2525,207 +2457,73 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 			_role_strategy_cache_by_slot[static_cast<size_t>(slot)] = std::move(s);
 		}
 	};
-	auto fill_buckets = [](UnitStrategy &s, std::initializer_list<const char *> names) {
-		int i = 0;
-		for (const char *n : names) {
-			if (i >= 8) {
-				break;
-			}
-			s.bucket_order[static_cast<size_t>(i++)] = StringName(n);
-		}
-		s.bucket_order_len = i;
-		s.bucket_rank_by_tag.fill(i);
-		for (int rank = 0; rank < i; ++rank) {
-			TargetBucketTag tt = tag_for_bucket_order_string(s.bucket_order[static_cast<size_t>(rank)]);
-			if (tt != TargetBucketTag::TagCount) {
-				s.bucket_rank_by_tag[static_cast<size_t>(tt)] = std::min(s.bucket_rank_by_tag[static_cast<size_t>(tt)], rank);
+	auto apply_role_priorities = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const TeamfightSimulationCore::StrategyRolePriorities &prio_config) {
+		for (const auto &prio : prio_config.enemy_priorities) {
+			if (prio.role != StringName()) {
+				int64_t slot = role_slot_for_name(prio.role);
+				if (slot >= 0) {
+					slots[static_cast<size_t>(slot)] = prio.priority;
+				}
 			}
 		}
 	};
-	auto set_role_prio = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const StringName &role, double value) {
-		int64_t slot = role_slot_for_name(role);
-		if (slot >= 0) {
-			slots[static_cast<size_t>(slot)] = value;
+	auto apply_ally_role_priorities = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const TeamfightSimulationCore::StrategyRolePriorities &prio_config) {
+		for (const auto &prio : prio_config.ally_priorities) {
+			if (prio.role != StringName()) {
+				int64_t slot = role_slot_for_name(prio.role);
+				if (slot >= 0) {
+					slots[static_cast<size_t>(slot)] = prio.priority;
+				}
+			}
 		}
+	};
+	auto apply_strategy_config = [&](UnitStrategy &s, const TeamfightSimulationCore::StrategyConfig &config) {
+		s.display_name = config.display_name;
+		s.distance_weight = config.distance_weight;
+		s.hp_weight = config.hp_weight;
+		s.ally_distance_weight = config.ally_distance_weight;
+		s.ally_hp_weight = config.ally_hp_weight;
+		s.ally_threat_weight = config.ally_threat_weight;
+		s.in_range_bonus = config.in_range_bonus;
+		s.threat_response_weight = config.threat_response_weight;
+		s.execute_bonus_weight = config.execute_bonus_weight;
+		s.spacing_weight = config.spacing_weight;
+		s.threat_decay_rate = config.threat_decay_rate;
+		s.switch_margin = config.switch_margin;
+		s.prefers_kiting = config.prefers_kiting;
+		s.uses_ally_targeting = config.uses_ally_targeting;
+		apply_role_priorities(s.role_priorities, config.role_priorities);
+		apply_ally_role_priorities(s.ally_role_priorities, config.role_priorities);
 	};
 
 	{
 		UnitStrategy s;
-		s.display_name = String("Protector");
-		s.distance_weight = DISTANCE_WEIGHT_TANK;
-		s.hp_weight = 0.0;
-		s.ally_distance_weight = 1.0;
-		s.ally_hp_weight = 0.0;
-		s.ally_threat_weight = SCORE_THREAT_WEIGHT_SCALE * SCORE_THREAT_WEIGHT_SCALE;
-		set_role_prio(s.ally_role_priorities, StringName("marksman"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.ally_role_priorities, StringName("mage"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.ally_role_priorities, StringName("support"), -3.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.stickiness_bonus = STICKINESS_DEFAULT;
-		s.in_range_bonus = IN_RANGE_BONUS_TANK;
-		s.tank_penalty = TANK_PENALTY_TANK;
-		s.threat_response_weight = THREAT_RESPONSE_TANK;
-		s.execute_bonus_weight = 0.0;
-		s.prefers_kiting = false;
-		s.prey_instinct_weight = 0.0;
-		s.cluster_weight = CLUSTER_WEIGHT_TANK;
-		s.spacing_weight = 0.0;
-		s.bodyguard_weight = BODYGUARD_WEIGHT_TANK;
-		s.obscurance_weight = 0.0;
-		s.carry_peel_weight = 0.0;
-		s.flanking_weight = 0.0;
-		s.threat_decay_rate = THREAT_DECAY_TANK;
-		s.uses_ally_targeting = true;
-		set_role_prio(s.role_priorities, StringName("assassin"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("fighter"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = 0.0;
-		fill_buckets(s, { "commit", "peel", "burst", "objective", "kite" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_tank_config());
 		put(StringName("tank"), std::move(s));
 	}
 	{
 		UnitStrategy s;
-		s.display_name = String("Diver");
-		s.distance_weight = DISTANCE_WEIGHT_ASSASSIN;
-		s.hp_weight = HP_WEIGHT_ASSASSIN;
-		s.stickiness_bonus = STICKINESS_DEFAULT;
-		s.in_range_bonus = IN_RANGE_BONUS_ASSASSIN;
-		s.tank_penalty = TANK_PENALTY_ASSASSIN;
-		s.threat_response_weight = THREAT_RESPONSE_ASSASSIN;
-		s.execute_bonus_weight = EXECUTE_BONUS_WEIGHT_DEFAULT;
-		s.prey_instinct_weight = 2.0;
-		s.prefers_kiting = false;
-		s.cluster_weight = 0.0;
-		s.spacing_weight = 0.0;
-		s.bodyguard_weight = 0.0;
-		s.obscurance_weight = 0.0;
-		s.carry_peel_weight = 0.0;
-		s.flanking_weight = FLANKING_WEIGHT_ASSASSIN;
-		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
-		s.uses_ally_targeting = false;
-		set_role_prio(s.role_priorities, StringName("marksman"), -15.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("mage"), -15.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("support"), -10.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("fighter"), 10.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = 0.0;
-		fill_buckets(s, { "commit", "burst", "objective", "peel", "kite" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_assassin_config());
 		put(StringName("assassin"), std::move(s));
 	}
 	{
 		UnitStrategy s;
-		s.display_name = String("Kiter");
-		s.distance_weight = 1.0;
-		s.hp_weight = 0.5;
-		s.stickiness_bonus = STICKINESS_MARKSMAN;
-		s.in_range_bonus = IN_RANGE_BONUS_MARKSMAN;
-		s.tank_penalty = TANK_PENALTY_MARKSMAN;
-		s.threat_response_weight = THREAT_RESPONSE_MARKSMAN;
-		s.execute_bonus_weight = EXECUTE_BONUS_WEIGHT_DEFAULT;
-		s.prey_instinct_weight = 0.0;
-		s.prefers_kiting = true;
-		s.cluster_weight = 0.0;
-		s.spacing_weight = SPACING_WEIGHT_MARKSMAN;
-		s.bodyguard_weight = 0.0;
-		s.obscurance_weight = OBSCURANCE_WEIGHT_DEFAULT;
-		s.carry_peel_weight = 60.0;
-		s.flanking_weight = 0.0;
-		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
-		s.uses_ally_targeting = false;
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_MARKSMAN;
-		fill_buckets(s, { "commit", "peel", "burst", "objective", "kite" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_marksman_config());
 		put(StringName("marksman"), std::move(s));
 	}
 	{
 		UnitStrategy s;
-		s.display_name = String("Brawler");
-		s.distance_weight = DISTANCE_WEIGHT_FIGHTER_CLOSE;
-		s.hp_weight = 0.5;
-		s.stickiness_bonus = STICKINESS_DEFAULT;
-		s.in_range_bonus = IN_RANGE_BONUS_FIGHTER;
-		s.tank_penalty = TANK_PENALTY_FIGHTER;
-		s.threat_response_weight = THREAT_RESPONSE_FIGHTER;
-		s.execute_bonus_weight = EXECUTE_BONUS_WEIGHT_DEFAULT;
-		s.prey_instinct_weight = 0.0;
-		s.prefers_kiting = false;
-		s.cluster_weight = 0.0;
-		s.spacing_weight = 0.0;
-		s.bodyguard_weight = 0.0;
-		s.obscurance_weight = 0.0;
-		s.carry_peel_weight = 0.0;
-		s.flanking_weight = 0.0;
-		s.threat_decay_rate = THREAT_DECAY_FIGHTER;
-		s.uses_ally_targeting = false;
-		set_role_prio(s.role_priorities, StringName("marksman"), -1.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("mage"), -1.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = 0.0;
-		fill_buckets(s, { "commit", "objective", "peel", "burst", "kite" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_fighter_config());
 		put(StringName("fighter"), std::move(s));
 	}
 	{
 		UnitStrategy s;
-		s.display_name = String("Spellcaster");
-		s.distance_weight = DISTANCE_WEIGHT_MAGE;
-		s.hp_weight = HP_WEIGHT_MAGE;
-		s.stickiness_bonus = STICKINESS_DEFAULT;
-		s.in_range_bonus = IN_RANGE_BONUS_MAGE;
-		s.tank_penalty = TANK_PENALTY_MAGE;
-		s.threat_response_weight = THREAT_RESPONSE_MAGE;
-		s.execute_bonus_weight = EXECUTE_BONUS_WEIGHT_DEFAULT;
-		s.prey_instinct_weight = 0.0;
-		s.prefers_kiting = true;
-		s.cluster_weight = CLUSTER_WEIGHT_MAGE;
-		s.spacing_weight = SPACING_WEIGHT_MAGE;
-		s.bodyguard_weight = 0.0;
-		s.obscurance_weight = OBSCURANCE_WEIGHT_DEFAULT;
-		s.carry_peel_weight = 60.0;
-		s.flanking_weight = 0.0;
-		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
-		set_role_prio(s.role_priorities, StringName("marksman"), -4.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("support"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_MAGE;
-		fill_buckets(s, { "commit", "peel", "objective", "burst", "kite" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_mage_config());
 		put(StringName("mage"), std::move(s));
 	}
 	{
 		UnitStrategy s;
-		s.display_name = String("Enchanter");
-		s.distance_weight = DISTANCE_WEIGHT_SUPPORT;
-		s.hp_weight = 0.0;
-		s.ally_distance_weight = 1.0;
-		s.ally_hp_weight = HP_WEIGHT_SUPPORT;
-		s.ally_threat_weight = SCORE_THREAT_WEIGHT_SCALE * SCORE_THREAT_WEIGHT_SCALE;
-		set_role_prio(s.ally_role_priorities, StringName("marksman"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.ally_role_priorities, StringName("mage"), -5.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.ally_role_priorities, StringName("fighter"), -2.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.stickiness_bonus = STICKINESS_SUPPORT;
-		s.in_range_bonus = IN_RANGE_BONUS_SUPPORT;
-		s.tank_penalty = TANK_PENALTY_SUPPORT;
-		s.threat_response_weight = THREAT_RESPONSE_SUPPORT;
-		s.execute_bonus_weight = 0.0;
-		s.prey_instinct_weight = 0.0;
-		s.prefers_kiting = true;
-		s.cluster_weight = 0.0;
-		s.spacing_weight = SPACING_WEIGHT_SUPPORT;
-		s.bodyguard_weight = BODYGUARD_WEIGHT_SUPPORT;
-		s.obscurance_weight = OBSCURANCE_WEIGHT_DEFAULT;
-		s.carry_peel_weight = 0.0;
-		s.flanking_weight = 0.0;
-		s.threat_decay_rate = THREAT_DECAY_FRAGILE;
-		s.uses_ally_targeting = true;
-		set_role_prio(s.role_priorities, StringName("assassin"), -8.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		set_role_prio(s.role_priorities, StringName("fighter"), -4.0 * ROLE_PRIORITY_GLOBAL_SCALE);
-		s.switch_margin = TARGET_SWITCH_MARGIN;
-		s.bucket_margin = TARGET_BUCKET_MARGIN;
-		s.projectile_time_weight = PROJECTILE_TIME_WEIGHT_SUPPORT;
-		fill_buckets(s, { "commit", "peel", "objective", "kite", "burst" });
+		apply_strategy_config(s, TeamfightSimulationCore::get_support_config());
 		put(StringName("support"), std::move(s));
 	}
 
@@ -2736,17 +2534,11 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 	_default_strategy.ally_distance_weight = 1.0;
 	_default_strategy.ally_hp_weight = 0.0;
 	_default_strategy.ally_threat_weight = 0.0;
-	_default_strategy.stickiness_bonus = STICKINESS_DEFAULT;
-	_default_strategy.in_range_bonus = IN_RANGE_BONUS_DEFAULT;
-	_default_strategy.tank_penalty = 2.0;
+	_default_strategy.in_range_bonus = 0.6;
 	_default_strategy.threat_response_weight = 0.0;
 	_default_strategy.execute_bonus_weight = 0.0;
-	_default_strategy.prey_instinct_weight = 0.0;
-	_default_strategy.bodyguard_weight = 0.0;
-	_default_strategy.threat_decay_rate = THREAT_DECAY_DEFAULT;
-	_default_strategy.switch_margin = TARGET_SWITCH_MARGIN;
-	_default_strategy.projectile_time_weight = 0.0;
-	_default_strategy.bucket_order_len = 0;
+	_default_strategy.threat_decay_rate = 2.0;
+	_default_strategy.switch_margin = 0.75;
 }
 
 const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) const {
@@ -2758,8 +2550,6 @@ const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_
 }
 
 void TeamfightSimulationCore::_prepare_tick_context() {
-	// Avoid O(n) zero-fill every tick: size changes only on roster change; cluster density overwrites
-	// all live slots when any cluster_weight > 0; otherwise density is never read.
 	const size_t n = _units.size();
 	if (_tick_ctx.density_by_unit_index.size() != n) {
 		_tick_ctx.density_by_unit_index.assign(n, 0);
@@ -2768,9 +2558,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	_tick_ctx.enemy_backliner_indices.clear();
 	_tick_ctx.player_frontline_indices.clear();
 	_tick_ctx.enemy_frontline_indices.clear();
-	_tick_ctx.player_carry_indices.clear();
-	_tick_ctx.enemy_carry_indices.clear();
-	_tick_ctx.needs_cluster_density = false;
 
 	double pcx = 0.0;
 	double pcy = 0.0;
@@ -2781,9 +2568,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 			continue;
 		}
 		_sync_targeting_frame_index(idx, u);
-		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
-			_tick_ctx.needs_cluster_density = true;
-		}
 		pcx += u.pos_x;
 		pcy += u.pos_y;
 		pc += 1;
@@ -2795,9 +2579,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		}
 		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.player_frontline_indices.push_back(idx);
-		}
-		if (u.is_marksman_role || u.is_mage_role) {
-			_tick_ctx.player_carry_indices.push_back(idx);
 		}
 	}
 	_tick_ctx.has_player_center = pc > 0;
@@ -2814,9 +2595,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 			continue;
 		}
 		_sync_targeting_frame_index(idx, u);
-		if (!_tick_ctx.needs_cluster_density && _strategy_for_unit(u).cluster_weight > 0.0) {
-			_tick_ctx.needs_cluster_density = true;
-		}
 		ecx += u.pos_x;
 		ecy += u.pos_y;
 		ec += 1;
@@ -2829,9 +2607,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 		if (u.is_tank_role || u.is_fighter_role) {
 			_tick_ctx.enemy_frontline_indices.push_back(idx);
 		}
-		if (u.is_marksman_role || u.is_mage_role) {
-			_tick_ctx.enemy_carry_indices.push_back(idx);
-		}
 	}
 	_tick_ctx.has_enemy_center = ec > 0;
 	if (ec > 0) {
@@ -2839,41 +2614,6 @@ void TeamfightSimulationCore::_prepare_tick_context() {
 	}
 	_tick_ctx.player_backliner_alive_count = int(_tick_ctx.player_backliner_indices.size());
 	_tick_ctx.enemy_backliner_alive_count = int(_tick_ctx.enemy_backliner_indices.size());
-
-	// Compute distance cache for all unit pairs to avoid redundant sqrt calculations
-	const size_t total_units = _units.size();
-	if (_tick_ctx.distance_cache_size != total_units) {
-		_tick_ctx.distance_cache_size = total_units;
-		_tick_ctx.distance_cache.resize(total_units * total_units);
-	}
-	
-	// Initialize all entries to infinity
-	const double inf = std::numeric_limits<double>::infinity();
-	for (size_t i = 0; i < total_units; ++i) {
-		for (size_t j = 0; j < total_units; ++j) {
-			_tick_ctx.distance_cache[i * total_units + j] = inf;
-		}
-	}
-	
-	// Only compute distances for alive units, leveraging symmetry
-	for (size_t i = 0; i < total_units; ++i) {
-		const UnitState &unit_i = _units[i];
-		if (!unit_i.alive) {
-			continue;
-		}
-		_tick_ctx.distance_cache[i * total_units + i] = 0.0;
-		for (size_t j = i + 1; j < total_units; ++j) {
-			const UnitState &unit_j = _units[j];
-			if (!unit_j.alive) {
-				continue;
-			}
-			double dx = unit_j.pos_x - unit_i.pos_x;
-			double dy = unit_j.pos_y - unit_i.pos_y;
-			double dist = Math::sqrt(dx * dx + dy * dy);
-			_tick_ctx.distance_cache[i * total_units + j] = dist;
-			_tick_ctx.distance_cache[j * total_units + i] = dist;
-		}
-	}
 
 	for (int64_t idx : _alive_player_indices) {
 		const UnitState &u = _units[idx];
@@ -2937,55 +2677,6 @@ void TeamfightSimulationCore::_spatial_clear_buckets() const {
 	for (auto &bucket : _spatial_buckets) {
 		bucket.clear();
 	}
-}
-
-void TeamfightSimulationCore::_spatial_clear_buckets_aux() const {
-	for (auto &bucket : _spatial_buckets_aux) {
-		bucket.clear();
-	}
-}
-
-void TeamfightSimulationCore::_spatial_fill_buckets_for_indices_aux(const std::vector<int64_t> &indices) const {
-	_spatial_clear_buckets_aux();
-	for (int64_t idx : indices) {
-		const UnitState &u = _units[idx];
-		if (!u.alive) {
-			continue;
-		}
-		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
-		_spatial_buckets_aux[static_cast<size_t>(fi)].push_back(idx);
-	}
-}
-
-namespace {
-// FNV-1a 64-bit: basis and prime (standard constants for string hashing).
-constexpr uint64_t kObscuranceAuxSigFnvOffsetBasis = UINT64_C(0xcbf29ce484222325);
-constexpr uint64_t kObscuranceAuxSigFnvPrime = UINT64_C(0x100000001b3);
-
-inline uint64_t obscurance_aux_sig_mix(uint64_t h, uint64_t word) {
-	h ^= word;
-	h *= kObscuranceAuxSigFnvPrime;
-	return h;
-}
-} // namespace
-
-uint64_t TeamfightSimulationCore::_obscurance_aux_frontline_signature(const std::vector<int64_t> &indices) const {
-	uint64_t h = kObscuranceAuxSigFnvOffsetBasis;
-	for (int64_t idx : indices) {
-		const UnitState &u = _units[idx];
-		if (!u.alive) {
-			continue;
-		}
-		h = obscurance_aux_sig_mix(h, static_cast<uint64_t>(u.instance_id));
-		uint64_t bits_x = 0;
-		uint64_t bits_y = 0;
-		static_assert(sizeof(double) == sizeof(uint64_t), "double bit pattern for signature");
-		std::memcpy(&bits_x, &u.pos_x, sizeof(double));
-		std::memcpy(&bits_y, &u.pos_y, sizeof(double));
-		h = obscurance_aux_sig_mix(h, bits_x);
-		h = obscurance_aux_sig_mix(h, bits_y);
-	}
-	return h;
 }
 
 double TeamfightSimulationCore::_spatial_cell_size() const {
@@ -3148,62 +2839,6 @@ void TeamfightSimulationCore::_spatial_fill_buckets_for_indices(const std::vecto
 	}
 }
 
-int TeamfightSimulationCore::_spatial_count_obscurance_blockers_cached(double ux, double uy, double tx, double ty, int64_t target_instance_id) const {
-	double pad = OBSCURANCE_LINE_RADIUS;
-	double minx = Math::min(ux, tx) - pad;
-	double maxx = Math::max(ux, tx) + pad;
-	double miny = Math::min(uy, ty) - pad;
-	double maxy = Math::max(uy, ty) + pad;
-	double cs = _spatial_cell_size();
-	int ix0 = int(Math::floor((minx - WORLD_BOUNDARY_MIN) / cs));
-	int ix1 = int(Math::floor((maxx - WORLD_BOUNDARY_MIN) / cs));
-	int iy0 = int(Math::floor((miny - WORLD_BOUNDARY_MIN) / cs));
-	int iy1 = int(Math::floor((maxy - WORLD_BOUNDARY_MIN) / cs));
-	ix0 = CLAMP(ix0, 0, SPATIAL_GRID_DIM - 1);
-	ix1 = CLAMP(ix1, 0, SPATIAL_GRID_DIM - 1);
-	iy0 = CLAMP(iy0, 0, SPATIAL_GRID_DIM - 1);
-	iy1 = CLAMP(iy1, 0, SPATIAL_GRID_DIM - 1);
-	double segx = tx - ux;
-	double segy = ty - uy;
-	double seg_len_sq = segx * segx + segy * segy;
-	int blockers = 0;
-	for (int iy = iy0; iy <= iy1; ++iy) {
-		for (int ix = ix0; ix <= ix1; ++ix) {
-			int fi = iy * SPATIAL_GRID_DIM + ix;
-			for (int64_t idx : _spatial_buckets_aux[static_cast<size_t>(fi)]) {
-				const UnitState &other = _units[idx];
-				if (other.instance_id == target_instance_id) {
-					continue;
-				}
-				double ox = other.pos_x;
-				double oy = other.pos_y;
-				double odx = ox - ux;
-				double ody = oy - uy;
-				double other_dist_sq = odx * odx + ody * ody;
-				if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
-					continue;
-				}
-				double dist_sq = 0.0;
-				if (seg_len_sq <= EPSILON) {
-					dist_sq = other_dist_sq;
-				} else {
-					double t = (odx * segx + ody * segy) / seg_len_sq;
-					t = Math::clamp(t, 0.0, 1.0);
-					double px = ux + segx * t;
-					double py = uy + segy * t;
-					double ddx = ox - px;
-					double ddy = oy - py;
-					dist_sq = ddx * ddx + ddy * ddy;
-				}
-				if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
-					blockers += 1;
-				}
-			}
-		}
-	}
-	return blockers;
-}
-
 int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const {
 	const UnitState &self = _units[self_index];
 	double r2 = radius * radius;
@@ -3239,90 +2874,15 @@ int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index
 	return count;
 }
 
-int TeamfightSimulationCore::_spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &frontline_indices, int64_t target_instance_id) const {
-	_spatial_clear_buckets_aux();
-	for (int64_t idx : frontline_indices) {
-		const UnitState &u = _units[idx];
-		if (!u.alive) {
-			continue;
-		}
-		int fi = _spatial_flat_index(u.pos_x, u.pos_y);
-		_spatial_buckets_aux[static_cast<size_t>(fi)].push_back(idx);
-	}
-	double pad = OBSCURANCE_LINE_RADIUS;
-	double minx = Math::min(ux, tx) - pad;
-	double maxx = Math::max(ux, tx) + pad;
-	double miny = Math::min(uy, ty) - pad;
-	double maxy = Math::max(uy, ty) + pad;
-	double cs = _spatial_cell_size();
-	int ix0 = int(Math::floor((minx - WORLD_BOUNDARY_MIN) / cs));
-	int ix1 = int(Math::floor((maxx - WORLD_BOUNDARY_MIN) / cs));
-	int iy0 = int(Math::floor((miny - WORLD_BOUNDARY_MIN) / cs));
-	int iy1 = int(Math::floor((maxy - WORLD_BOUNDARY_MIN) / cs));
-	ix0 = CLAMP(ix0, 0, SPATIAL_GRID_DIM - 1);
-	ix1 = CLAMP(ix1, 0, SPATIAL_GRID_DIM - 1);
-	iy0 = CLAMP(iy0, 0, SPATIAL_GRID_DIM - 1);
-	iy1 = CLAMP(iy1, 0, SPATIAL_GRID_DIM - 1);
-	double segx = tx - ux;
-	double segy = ty - uy;
-	double seg_len_sq = segx * segx + segy * segy;
-	int blockers = 0;
-	for (int iy = iy0; iy <= iy1; ++iy) {
-		for (int ix = ix0; ix <= ix1; ++ix) {
-			int fi = iy * SPATIAL_GRID_DIM + ix;
-			for (int64_t idx : _spatial_buckets_aux[static_cast<size_t>(fi)]) {
-				const UnitState &other = _units[idx];
-				if (other.instance_id == target_instance_id) {
-					continue;
-				}
-				double ox = other.pos_x;
-				double oy = other.pos_y;
-				double odx = ox - ux;
-				double ody = oy - uy;
-				double other_dist_sq = odx * odx + ody * ody;
-				if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
-					continue;
-				}
-				double dist_sq = 0.0;
-				if (seg_len_sq <= EPSILON) {
-					dist_sq = other_dist_sq;
-				} else {
-					double t = (odx * segx + ody * segy) / seg_len_sq;
-					t = Math::clamp(t, 0.0, 1.0);
-					double px = ux + segx * t;
-					double py = uy + segy * t;
-					double ddx = ox - px;
-					double ddy = oy - py;
-					dist_sq = ddx * ddx + ddy * ddy;
-				}
-				if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
-					blockers += 1;
-				}
-			}
-		}
-	}
-	return blockers;
-}
-
 bool TeamfightSimulationCore::_use_spatial_broad_phase() const {
 	return int64_t(_alive_player_indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD
 			|| int64_t(_alive_enemy_indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD;
 }
 
-double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance, int64_t unit_index, int64_t ally_index) const {
+double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance) const {
 	double dist = unit_ally_distance;
 	if (dist < 0.0) {
-		// Use distance cache if indices are valid
-		if (unit_index >= 0 && ally_index >= 0) {
-			size_t cache_idx = static_cast<size_t>(unit_index) * _tick_ctx.distance_cache_size + static_cast<size_t>(ally_index);
-			if (cache_idx < _tick_ctx.distance_cache.size()) {
-				dist = _tick_ctx.distance_cache[cache_idx];
-			} else {
-				dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
-			}
-		} else {
-			dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
-		}
+		dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
 	}
 	double hp_ratio = ally.hp / Math::max(0.0001, ally.max_hp);
 	double score = dist * strategy.ally_distance_weight;
@@ -3332,318 +2892,11 @@ double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const 
 	return score;
 }
 
-double TeamfightSimulationCore::_score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, double attacker_enemy_distance_sq, bool profile_score, int64_t enemy_index, double *base_score_out, double *flanking_score_out, const TeamfightSimulationCore::EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune) {
+double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, ScoreBreakdown *breakdown) {
 	if (profile_score) {
 		_sim_profile_se_calls += 1;
 	}
 	const bool attacker_is_player = attacker.team == sn_player();
-	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
-	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
-	(void)(carry_indices);
-	(void)(frontline_indices);
-
-	const int64_t enemy_role_slot = enemy.role_slot;
-
-	double score = 0.0;
-	double dist = 0.0;
-	double attack_range = score_ctx.attack_range;
-	double effective_range = score_ctx.effective_range;
-	{
-		SimProfileAccScope _se_base(profile_score, _sim_profile_se_base);
-		bool in_range = false;
-		if (attacker_enemy_distance_sq >= 0.0) {
-			double range_sq = attack_range > RANGED_THRESHOLD ? attack_range * attack_range : effective_range * effective_range;
-			in_range = attacker_enemy_distance_sq <= range_sq;
-			dist = Math::sqrt(attacker_enemy_distance_sq);
-		} else if (attacker_enemy_distance >= 0.0) {
-			dist = attacker_enemy_distance;
-			if (attack_range > RANGED_THRESHOLD) {
-				in_range = dist <= attack_range;
-			} else {
-				in_range = (dist <= effective_range);
-			}
-		} else {
-			double dx = enemy.pos_x - attacker.pos_x;
-			double dy = enemy.pos_y - attacker.pos_y;
-			double dist_sq = dx * dx + dy * dy;
-			double range_sq = attack_range > RANGED_THRESHOLD ? attack_range * attack_range : effective_range * effective_range;
-			in_range = dist_sq <= range_sq;
-			dist = Math::sqrt(dist_sq);
-		}
-		double hp_ratio = enemy.hp / Math::max(0.0001, enemy.max_hp);
-		double range_gap = Math::max(0.0, dist - Math::max(effective_range, EPSILON));
-		double norm_gap = range_gap / Math::max(effective_range, EPSILON);
-		// Phase 5: stabilize distance term across platforms (20-bit mantissa quantization).
-		norm_gap = std::round(norm_gap * 1048576.0) / 1048576.0;
-		score += Math::pow(norm_gap, DISTANCE_EXPONENT) * strategy.distance_weight * SCORE_DISTANCE_WEIGHT_SCALE;
-		if (in_range) {
-			score -= strategy.in_range_bonus;
-		}
-		if (strategy.execute_bonus_weight > 0.0 && in_range) {
-			// Execute bonus for low HP targets
-			if (attacker.is_assassin_role) {
-				// Assassins: scale execute bonus by missing HP percentage
-				double missing_hp_factor = 1.0 - hp_ratio;
-				score -= strategy.execute_bonus_weight * missing_hp_factor;
-			} else if (hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
-				// Other roles: fixed bonus only below threshold
-				score -= strategy.execute_bonus_weight;
-			}
-		}
-		// Reactive peeling: tanks/supports prioritize enemies targeting low HP allies
-		if ((attacker.is_tank_role || attacker.is_support_role) && enemy.target_id != 0) {
-			UnitState *targeted_ally = _unit_by_id(enemy.target_id);
-			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
-				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->combat.max_hp);
-				// Scale peel bonus by missing HP percentage (like assassin execute)
-				double ally_missing_hp_factor = 1.0 - ally_hp_ratio;
-				score -= REACTIVE_PEEL_BONUS * ally_missing_hp_factor;
-			}
-		}
-		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
-		if (enemy.is_tank_role) {
-			score += strategy.tank_penalty;
-			// Assassins apply an extra tank penalty if there are backliners alive.
-			if (attacker.is_assassin_role) {
-				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
-				const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
-				int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
-				const UnitState &enemy_unit = _units[static_cast<size_t>(enemy_self_idx)];
-				bool self_in_bl = enemy_unit.is_backliner;
-				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
-				if (n_alive - subtract > 0) {
-					score += ASSASSIN_TANK_CONTEXT_PENALTY;
-				}
-			}
-		}
-		if (enemy.target_id == attacker.instance_id) {
-			double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
-			score -= strategy.threat_response_weight * falloff;
-		}
-		double enemy_incoming = double(enemy.incoming_target_count);
-		double prey_focus = enemy_incoming * PREY_INCOMING_TARGET_SCALE + enemy.perceived_threat * PREY_PERCEIVED_THREAT_SCALE;
-		if (enemy.is_tank_role || enemy.is_fighter_role) {
-			prey_focus *= PREY_FRONTLINE_SCALE;
-		}
-		score -= prey_focus * strategy.prey_instinct_weight;
-		if (attacker.target_id == enemy.instance_id) {
-			score -= Math::max(1.0, strategy.distance_weight) * strategy.stickiness_bonus;
-		}
-		if (attacker.is_support_role) {
-			int64_t ally_target_id = attacker.current_ally_target_id;
-			if (ally_target_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive) {
-				double ally_incoming = double(ally_for_peel->incoming_target_count);
-				double ally_threat = ally_for_peel->perceived_threat;
-				if ((ally_incoming >= SUPPORT_PEEL_THREAT_THRESHOLD || ally_threat >= SUPPORT_PEEL_THREAT_THRESHOLD) && enemy.target_id == ally_target_id) {
-					score -= SUPPORT_PEEL_BOOST;
-				}
-			}
-		}
-	}
-	if (base_score_out != nullptr) {
-		*base_score_out = score;
-	}
-	if (adjusted_early_prune != nullptr && adjusted_early_prune->early_skip_dest != nullptr) {
-		bool *early_skip_dest = adjusted_early_prune->early_skip_dest;
-		*early_skip_dest = false;
-		double prefix_lb = score;
-		if (strategy.flanking_weight > 0.0) {
-			prefix_lb -= strategy.flanking_weight * TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX;
-		}
-		double conservative_adjusted_lower_bound = prefix_lb + double(adjusted_early_prune->bucket_rank) * strategy.bucket_margin - adjusted_early_prune->bodyguard_bonus_bound;
-		if (conservative_adjusted_lower_bound > adjusted_early_prune->best_adjusted) {
-			*early_skip_dest = true;
-			return 0.0;
-		}
-	}
-
-	{
-		SimProfileAccScope _se_fl(profile_score, _sim_profile_se_flanking);
-		const double score_before_flanking = score;
-		// Flanking (assassin): reward isolation from enemy team center.
-		double flanking_weight = strategy.flanking_weight;
-		if (flanking_weight > 0.0) {
-			double cx = 0.0;
-			double cy = 0.0;
-			bool ok_center = false;
-			if (enemy.is_player_team) {
-				ok_center = ctx.has_player_center;
-				cx = ctx.player_team_center.x;
-				cy = ctx.player_team_center.y;
-			} else {
-				ok_center = ctx.has_enemy_center;
-				cx = ctx.enemy_team_center.x;
-				cy = ctx.enemy_team_center.y;
-			}
-			if (ok_center) {
-				double ex = enemy.pos_x;
-				double ey = enemy.pos_y;
-				double to_tx = ex - cx;
-				double to_ty = ey - cy;
-				double ax = attacker.pos_x;
-				double ay = attacker.pos_y;
-				double to_ax = ax - ex;
-				double to_ay = ay - ey;
-				double len_t_sq = to_tx * to_tx + to_ty * to_ty;
-				double len_a_sq = to_ax * to_ax + to_ay * to_ay;
-				if (len_t_sq > EPSILON * EPSILON && len_a_sq > EPSILON * EPSILON) {
-					double len_prod = Math::sqrt(len_t_sq * len_a_sq);
-					double align = (to_tx * to_ax + to_ty * to_ay) / len_prod;
-					align = Math::max(0.0, align);
-					double len_t = Math::sqrt(len_t_sq);
-					double isolation = Math::min(1.0, len_t * FLANKING_TEAM_CENTER_SCALE);
-					score -= align * isolation * flanking_weight;
-				}
-			}
-		}
-		if (flanking_score_out != nullptr) {
-			*flanking_score_out = score - score_before_flanking;
-		}
-	}
-
-	return score;
-}
-
-double TeamfightSimulationCore::_score_enemy_target_from_prefix_parts(const UnitState &attacker, const TargetingFrameEntry &enemy, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double base_score, double flanking_score) {
-	const bool attacker_is_player = attacker.team == sn_player();
-	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
-	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
-	double score = base_score;
-	double dist = attacker_enemy_distance;
-	if (dist < 0.0) {
-		double dx = enemy.pos_x - attacker.pos_x;
-		double dy = enemy.pos_y - attacker.pos_y;
-		dist = Math::sqrt(dx * dx + dy * dy);
-	}
-	double attack_range = score_ctx.attack_range;
-
-	{
-		SimProfileAccScope _se_bg(profile_score, _sim_profile_se_bodyguard);
-		double bodyguard_weight = strategy.bodyguard_weight;
-		if (bodyguard_weight > 0.0) {
-			const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
-			for (int64_t ally_index : carry_indices) {
-				const TargetingFrameEntry &ally = _targeting_frame[static_cast<size_t>(ally_index)];
-				if (!ally.alive) {
-					continue;
-				}
-				double adx = ally.pos_x - enemy.pos_x;
-				double ady = ally.pos_y - enemy.pos_y;
-				double ally_dist_sq = adx * adx + ady * ady;
-				if (ally_dist_sq < bodyguard_r2) {
-					double ally_dist = Math::sqrt(ally_dist_sq);
-					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
-					score -= guard_bonus;
-				}
-			}
-		}
-	}
-
-	{
-		SimProfileAccScope _se_base2(profile_score, _sim_profile_se_base);
-		double cluster_weight = strategy.cluster_weight;
-		if (cluster_weight > 0.0) {
-			int64_t enemy_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
-			int64_t dens = 0;
-			if (enemy_idx >= 0 && enemy_idx < int64_t(ctx.density_by_unit_index.size())) {
-				dens = ctx.density_by_unit_index[static_cast<size_t>(enemy_idx)];
-			}
-			score -= double(dens) * cluster_weight;
-		}
-
-		double spacing_weight = strategy.spacing_weight;
-		if (spacing_weight > 0.0) {
-			score += Math::pow(double(enemy.incoming_target_count), SPACING_EXPONENT) * spacing_weight;
-		}
-
-		double carry_peel_weight = strategy.carry_peel_weight;
-		if (carry_peel_weight > 0.0) {
-			if ((attacker.is_marksman_role || attacker.is_mage_role) && enemy.target_id == attacker.instance_id) {
-				double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
-				score -= carry_peel_weight * falloff;
-			}
-		}
-
-		double projectile_time_weight = strategy.projectile_time_weight;
-		if (projectile_time_weight > 0.0 && attack_range > RANGED_THRESHOLD) {
-			double proj_speed = get_effective_projectile_speed(attacker);
-			if (proj_speed > EPSILON) {
-				double t_hit = dist / proj_speed;
-				score += t_hit * projectile_time_weight;
-			}
-		}
-
-		if (strategy.prefers_kiting && score_ctx.has_kite_bounds) {
-			double min_w = score_ctx.kite_min_w;
-			double max_w = score_ctx.kite_max_w;
-			if (dist >= min_w && dist <= max_w && max_w > min_w) {
-				double kite_ratio = (dist - min_w) / (max_w - min_w);
-				score -= kite_ratio * SCORE_KITING_WEIGHT_SCALE;
-			}
-		}
-	}
-
-	{
-		SimProfileAccScope _se_obs(profile_score, _sim_profile_se_obscurance);
-		double obscurance_weight = strategy.obscurance_weight;
-		if (obscurance_weight > 0.0) {
-			int blockers = 0;
-			if (score_ctx.use_spatial && score_ctx.has_obscurance_cache) {
-				blockers = _spatial_count_obscurance_blockers_cached(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, enemy.instance_id);
-			} else {
-				double ux = attacker.pos_x;
-				double uy = attacker.pos_y;
-				double tx = enemy.pos_x;
-				double ty = enemy.pos_y;
-				double segx = tx - ux;
-				double segy = ty - uy;
-				double seg_len_sq = segx * segx + segy * segy;
-				for (int64_t idx : frontline_indices) {
-					const UnitState &other = _units[idx];
-					if (!other.alive) {
-						continue;
-					}
-					if (other.instance_id == enemy.instance_id) {
-						continue;
-					}
-					double ox = other.pos_x;
-					double oy = other.pos_y;
-					double odx = ox - ux;
-					double ody = oy - uy;
-					double other_dist_sq = odx * odx + ody * ody;
-					if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
-						continue;
-					}
-					double dist_sq = 0.0;
-					if (seg_len_sq <= EPSILON) {
-						dist_sq = other_dist_sq;
-					} else {
-						double t = (odx * segx + ody * segy) / seg_len_sq;
-						t = Math::clamp(t, 0.0, 1.0);
-						double px = ux + segx * t;
-						double py = uy + segy * t;
-						double ddx = ox - px;
-						double ddy = oy - py;
-						dist_sq = ddx * ddx + ddy * ddy;
-					}
-					if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
-						blockers += 1;
-					}
-				}
-			}
-			score += double(blockers) * obscurance_weight;
-		}
-	}
-
-	return score + flanking_score;
-}
-
-double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const TeamfightSimulationCore::UnitStrategy &strategy, const TeamfightSimulationCore::TickContext &ctx, const TeamfightSimulationCore::TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index) {
-	if (profile_score) {
-		_sim_profile_se_calls += 1;
-	}
-	const bool attacker_is_player = attacker.team == sn_player();
-	const std::vector<int64_t> &carry_indices = attacker_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = enemy.is_player_team ? ctx.player_frontline_indices : ctx.enemy_frontline_indices;
 	const int64_t enemy_role_slot = enemy.role_slot;
 
@@ -3653,22 +2906,11 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 	double effective_range = score_ctx.effective_range;
 	{
 		SimProfileAccScope _se_base(profile_score, _sim_profile_se_base);
-		// Use distance cache if attacker_enemy_distance not provided
+		// Use provided distance or compute directly
 		if (attacker_enemy_distance >= 0.0) {
 			dist = attacker_enemy_distance;
 		} else {
-			int64_t attacker_index = _unit_index_by_id(attacker.instance_id);
-			int64_t enemy_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
-			if (attacker_index >= 0 && enemy_idx >= 0) {
-				size_t cache_idx = static_cast<size_t>(attacker_index) * _tick_ctx.distance_cache_size + static_cast<size_t>(enemy_idx);
-				if (cache_idx < _tick_ctx.distance_cache.size()) {
-					dist = _tick_ctx.distance_cache[cache_idx];
-				} else {
-					dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
-				}
-			} else {
-				dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
-			}
+			dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
 		}
 		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
 		// No buffer for testing
@@ -3683,19 +2925,22 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		double norm_gap = range_gap / Math::max(effective_range, EPSILON);
 		// Phase 5: stabilize distance term across platforms (20-bit mantissa quantization).
 		norm_gap = std::round(norm_gap * 1048576.0) / 1048576.0;
-		score += Math::pow(norm_gap, DISTANCE_EXPONENT) * strategy.distance_weight * SCORE_DISTANCE_WEIGHT_SCALE;
-		if (in_range) {
-			score -= strategy.in_range_bonus;
-		}
+		double distance_score = Math::pow(norm_gap, DISTANCE_EXPONENT) * strategy.distance_weight * SCORE_DISTANCE_WEIGHT_SCALE;
+		score += distance_score;
+		double in_range_bonus = in_range ? strategy.in_range_bonus : 0.0;
+		score -= in_range_bonus;
+		double execute_bonus = 0.0;
 		if (strategy.execute_bonus_weight > 0.0 && in_range) {
 			// Execute bonus for low HP targets
 			if (attacker.is_assassin_role) {
 				// Assassins: scale execute bonus by missing HP percentage
 				double missing_hp_factor = 1.0 - hp_ratio;
-				score -= strategy.execute_bonus_weight * missing_hp_factor;
+				execute_bonus = strategy.execute_bonus_weight * missing_hp_factor;
+				score -= execute_bonus;
 			} else if (hp_ratio <= TARGET_EXECUTE_HP_RATIO) {
 				// Other roles: fixed bonus only below threshold
-				score -= strategy.execute_bonus_weight;
+				execute_bonus = strategy.execute_bonus_weight;
+				score -= execute_bonus;
 			}
 		}
 		// Reactive peeling: tanks/supports prioritize enemies targeting low HP allies
@@ -3708,211 +2953,83 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 				score -= REACTIVE_PEEL_BONUS * ally_missing_hp_factor;
 			}
 		}
-		score += strategy_role_prio(strategy.role_priorities, enemy_role_slot);
-		if (enemy.is_tank_role) {
-			score += strategy.tank_penalty;
-			// Assassins apply an extra tank penalty if there are backliners alive.
-			if (attacker.is_assassin_role) {
-				int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
-				const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
-				int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
-				const UnitState &enemy_unit = _units[static_cast<size_t>(enemy_self_idx)];
-				bool self_in_bl = enemy_unit.is_backliner;
-				int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
-				if (n_alive - subtract > 0) {
-					score += ASSASSIN_TANK_CONTEXT_PENALTY;
-				}
+		double role_prio = strategy_role_prio(strategy.role_priorities, enemy_role_slot);
+		score += role_prio;
+		// Assassins apply an extra tank penalty if there are backliners alive.
+		if (enemy.is_tank_role && attacker.is_assassin_role) {
+			int64_t enemy_self_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
+			const std::vector<int64_t> &bl = enemy.is_player_team ? ctx.player_backliner_indices : ctx.enemy_backliner_indices;
+			int n_alive = enemy.is_player_team ? ctx.player_backliner_alive_count : ctx.enemy_backliner_alive_count;
+			const UnitState &enemy_unit = _units[static_cast<size_t>(enemy_self_idx)];
+			bool self_in_bl = enemy_unit.is_backliner;
+			int subtract = (self_in_bl && enemy.alive) ? 1 : 0;
+			if (n_alive - subtract > 0) {
+				score += ASSASSIN_TANK_CONTEXT_PENALTY;
 			}
 		}
+		double threat_response = 0.0;
 		if (enemy.target_id == attacker.instance_id) {
 			double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
-			score -= strategy.threat_response_weight * falloff;
+			threat_response = strategy.threat_response_weight * falloff;
+			score -= threat_response;
 		}
-		double enemy_incoming = double(enemy.incoming_target_count);
-		double prey_focus = enemy_incoming * PREY_INCOMING_TARGET_SCALE + enemy.perceived_threat * PREY_PERCEIVED_THREAT_SCALE;
-		if (enemy.is_tank_role || enemy.is_fighter_role) {
-			prey_focus *= PREY_FRONTLINE_SCALE;
-		}
-		score -= prey_focus * strategy.prey_instinct_weight;
-		if (attacker.target_id == enemy.instance_id) {
-			score -= Math::max(1.0, strategy.distance_weight) * strategy.stickiness_bonus;
-		}
+		double support_peel = 0.0;
 		if (attacker.is_support_role) {
 			int64_t ally_target_id = attacker.current_ally_target_id;
 			if (ally_target_id != 0 && ally_for_peel != nullptr && ally_for_peel->alive) {
 				double ally_incoming = double(ally_for_peel->incoming_target_count);
 				double ally_threat = ally_for_peel->perceived_threat;
 				if ((ally_incoming >= SUPPORT_PEEL_THREAT_THRESHOLD || ally_threat >= SUPPORT_PEEL_THREAT_THRESHOLD) && enemy.target_id == ally_target_id) {
-					score -= SUPPORT_PEEL_BOOST;
+					support_peel = SUPPORT_PEEL_BOOST;
+					score -= support_peel;
 				}
 			}
 		}
-	}
-
-	{
-		SimProfileAccScope _se_bg(profile_score, _sim_profile_se_bodyguard);
-		double bodyguard_weight = strategy.bodyguard_weight;
-		if (bodyguard_weight > 0.0) {
-			const double bodyguard_r2 = BODYGUARD_RADIUS * BODYGUARD_RADIUS;
-			for (int64_t ally_index : carry_indices) {
-				const TargetingFrameEntry &ally = _targeting_frame[static_cast<size_t>(ally_index)];
-				if (!ally.alive) {
-					continue;
-				}
-				double adx = ally.pos_x - enemy.pos_x;
-				double ady = ally.pos_y - enemy.pos_y;
-				double ally_dist_sq = adx * adx + ady * ady;
-				if (ally_dist_sq < bodyguard_r2) {
-					double ally_dist = Math::sqrt(ally_dist_sq);
-					double guard_bonus = (1.0 - (ally_dist / BODYGUARD_RADIUS)) * bodyguard_weight;
-					score -= guard_bonus;
-				}
-			}
+		
+		// Debug: accumulate breakdown
+		if (breakdown) {
+			breakdown->distance = dist;
+			breakdown->distance_weighted = distance_score;
+			breakdown->hp_ratio = hp_ratio;
+			breakdown->hp_weighted = hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
+			breakdown->role_priority = role_prio;
+			breakdown->threat = enemy.perceived_threat;
+			breakdown->threat_weighted = threat_response;
+			breakdown->in_range_bonus = in_range_bonus;
+			breakdown->execute_bonus = execute_bonus;
+			breakdown->support_peel = support_peel;
 		}
 	}
 
 	{
 		SimProfileAccScope _se_base2(profile_score, _sim_profile_se_base);
-		// Cluster awareness (density).
-		double cluster_weight = strategy.cluster_weight;
-		if (cluster_weight > 0.0) {
-			int64_t enemy_idx = enemy_index >= 0 ? enemy_index : _unit_index_by_id(enemy.instance_id);
-			int64_t dens = 0;
-			if (enemy_idx >= 0 && enemy_idx < int64_t(ctx.density_by_unit_index.size())) {
-				dens = ctx.density_by_unit_index[static_cast<size_t>(enemy_idx)];
-			}
-			score -= double(dens) * cluster_weight;
-		}
-
 		// Spacing awareness.
 		double spacing_weight = strategy.spacing_weight;
+		double spacing_score = 0.0;
 		if (spacing_weight > 0.0) {
-			score += Math::pow(double(enemy.incoming_target_count), SPACING_EXPONENT) * spacing_weight;
-		}
-
-		// Carry peel (for threatened carries).
-		double carry_peel_weight = strategy.carry_peel_weight;
-		if (carry_peel_weight > 0.0) {
-			if ((attacker.is_marksman_role || attacker.is_mage_role) && enemy.target_id == attacker.instance_id) {
-				double falloff = 1.0 / (1.0 + Math::max(0.0, dist - attack_range) * THREAT_RESPONSE_RANGE_FALLOFF);
-				score -= carry_peel_weight * falloff;
-			}
-		}
-
-		// Projectile tempo: penalize time-to-hit for ranged attackers.
-		double projectile_time_weight = strategy.projectile_time_weight;
-		if (projectile_time_weight > 0.0 && attack_range > RANGED_THRESHOLD) {
-			double proj_speed = get_effective_projectile_speed(attacker);
-			if (proj_speed > EPSILON) {
-				double t_hit = dist / proj_speed;
-				score += t_hit * projectile_time_weight;
-			}
+			spacing_score = Math::pow(double(enemy.incoming_target_count), SPACING_EXPONENT) * spacing_weight;
+			score += spacing_score;
 		}
 
 		// Kiting tempo bonus inside preferred window.
 		// Python parity: kite tempo scoring applies whenever prefers_kiting is true.
+		double kiting_tempo_score = 0.0;
 		if (strategy.prefers_kiting && score_ctx.has_kite_bounds) {
 			double min_w = score_ctx.kite_min_w;
 			double max_w = score_ctx.kite_max_w;
 			if (dist >= min_w && dist <= max_w && max_w > min_w) {
 				double kite_ratio = (dist - min_w) / (max_w - min_w);
-				score -= kite_ratio * SCORE_KITING_WEIGHT_SCALE;
+				kiting_tempo_score = kite_ratio * SCORE_KITING_WEIGHT_SCALE;
+				score -= kiting_tempo_score;
 			}
+		}
+		
+		if (breakdown) {
+			breakdown->spacing = spacing_score;
+			breakdown->kiting_tempo = kiting_tempo_score;
 		}
 	}
 
-	{
-		SimProfileAccScope _se_obs(profile_score, _sim_profile_se_obscurance);
-		// Obscurance: penalize targeting past frontline blockers.
-		double obscurance_weight = strategy.obscurance_weight;
-		if (obscurance_weight > 0.0) {
-			int blockers = 0;
-			if (score_ctx.use_spatial && score_ctx.has_obscurance_cache) {
-				blockers = _spatial_count_obscurance_blockers_cached(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y, enemy.instance_id);
-			} else {
-				double ux = attacker.pos_x;
-				double uy = attacker.pos_y;
-				double tx = enemy.pos_x;
-				double ty = enemy.pos_y;
-				double segx = tx - ux;
-				double segy = ty - uy;
-				double seg_len_sq = segx * segx + segy * segy;
-				for (int64_t idx : frontline_indices) {
-					const UnitState &other = _units[idx];
-					if (!other.alive) {
-						continue;
-					}
-					if (other.instance_id == enemy.instance_id) {
-						continue;
-					}
-					double ox = other.pos_x;
-					double oy = other.pos_y;
-					double odx = ox - ux;
-					double ody = oy - uy;
-					double other_dist_sq = odx * odx + ody * ody;
-					if (seg_len_sq > EPSILON && other_dist_sq >= seg_len_sq) {
-						continue;
-					}
-					double dist_sq = 0.0;
-					if (seg_len_sq <= EPSILON) {
-						dist_sq = other_dist_sq;
-					} else {
-						double t = (odx * segx + ody * segy) / seg_len_sq;
-						t = Math::clamp(t, 0.0, 1.0);
-						double px = ux + segx * t;
-						double py = uy + segy * t;
-						double ddx = ox - px;
-						double ddy = oy - py;
-						dist_sq = ddx * ddx + ddy * ddy;
-					}
-					if (dist_sq <= OBSCURANCE_LINE_RADIUS * OBSCURANCE_LINE_RADIUS) {
-						blockers += 1;
-					}
-				}
-			}
-			score += double(blockers) * obscurance_weight;
-		}
-	}
-
-	{
-		SimProfileAccScope _se_fl(profile_score, _sim_profile_se_flanking);
-		// Flanking (assassin): reward isolation from enemy team center.
-		double flanking_weight = strategy.flanking_weight;
-		if (flanking_weight > 0.0) {
-			double cx = 0.0;
-			double cy = 0.0;
-			bool ok_center = false;
-			if (enemy.is_player_team) {
-				ok_center = ctx.has_player_center;
-				cx = ctx.player_team_center.x;
-				cy = ctx.player_team_center.y;
-			} else {
-				ok_center = ctx.has_enemy_center;
-				cx = ctx.enemy_team_center.x;
-				cy = ctx.enemy_team_center.y;
-			}
-			if (ok_center) {
-				double ex = enemy.pos_x;
-				double ey = enemy.pos_y;
-				double to_tx = ex - cx;
-				double to_ty = ey - cy;
-				double ax = attacker.pos_x;
-				double ay = attacker.pos_y;
-				double to_ax = ax - ex;
-				double to_ay = ay - ey;
-				double len_t_sq = to_tx * to_tx + to_ty * to_ty;
-				double len_a_sq = to_ax * to_ax + to_ay * to_ay;
-				if (len_t_sq > EPSILON * EPSILON && len_a_sq > EPSILON * EPSILON) {
-					double len_prod = Math::sqrt(len_t_sq * len_a_sq);
-					double align = (to_tx * to_ax + to_ty * to_ay) / len_prod;
-					align = Math::max(0.0, align);
-					double len_t = Math::sqrt(len_t_sq);
-					double isolation = Math::min(1.0, len_t * FLANKING_TEAM_CENTER_SCALE);
-					score -= align * isolation * flanking_weight;
-				}
-			}
-		}
-	}
 	return score;
 }
 
@@ -4029,7 +3146,7 @@ void TeamfightSimulationCore::_adjust_target_pressure(int64_t old_target_id, int
 	}
 }
 
-void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_density) {
+void TeamfightSimulationCore::_refresh_target_pressure() {
 	for (const int64_t index : _alive_player_indices) {
 		UnitState &unit = _units[index];
 		int64_t target_id = unit.target_id;
@@ -4064,66 +3181,6 @@ void TeamfightSimulationCore::_refresh_target_pressure(bool update_cluster_densi
 		target.incoming_target_count += 1;
 		_sync_targeting_frame_index(target_index, target);
 	}
-
-	if (!update_cluster_density) {
-		return;
-	}
-
-	// Python parity: cache per-unit density used by cluster scoring (stored on TickContext).
-	const bool needs_density = _tick_ctx.needs_cluster_density;
-	if (needs_density) {
-		auto compute_density_for_team = [&](const std::vector<int64_t> &indices) {
-			if (int64_t(indices.size()) >= SPATIAL_BROAD_PHASE_TEAM_THRESHOLD) {
-				_spatial_fill_buckets_for_indices(indices);
-				for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
-					int64_t ui = indices[i];
-					UnitState &u = _units[ui];
-					if (!u.alive) {
-						if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-							_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = 0;
-						}
-						continue;
-					}
-					int count = _spatial_count_neighbors_in_grid(ui, u.pos_x, u.pos_y, AOE_DENSITY_RADIUS);
-					if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-						_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = count;
-					}
-				}
-			} else {
-				const double r2 = AOE_DENSITY_RADIUS * AOE_DENSITY_RADIUS;
-				for (int64_t i = 0; i < int64_t(indices.size()); ++i) {
-					int64_t ui = indices[i];
-					UnitState &u = _units[ui];
-					if (!u.alive) {
-						if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-							_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = 0;
-						}
-						continue;
-					}
-					int count = 0;
-					for (int64_t j = 0; j < int64_t(indices.size()); ++j) {
-						if (i == j) {
-							continue;
-						}
-						const UnitState &other = _units[indices[j]];
-						if (!other.alive) {
-							continue;
-						}
-						double dx = u.pos_x - other.pos_x;
-						double dy = u.pos_y - other.pos_y;
-						if (dx * dx + dy * dy <= r2) {
-							count += 1;
-						}
-					}
-					if (ui >= 0 && ui < int64_t(_tick_ctx.density_by_unit_index.size())) {
-						_tick_ctx.density_by_unit_index[static_cast<size_t>(ui)] = count;
-					}
-				}
-			}
-		};
-		compute_density_for_team(_alive_player_indices);
-		compute_density_for_team(_alive_enemy_indices);
-	}
 }
 
 bool TeamfightSimulationCore::is_ready() const {
@@ -4139,6 +3196,7 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_tick_rate = double(match_input.get("tick_rate", DEFAULT_TICK_RATE));
 	_record_events = bool(match_input.get("record_events", false));
 	_debug_combat_trace = bool(match_input.get("debug_combat_trace", false));
+	_debug_targeting_scoring = bool(match_input.get("debug_targeting_scoring", false));
 	_trace_buffer.clear();
 	if (_debug_combat_trace) {
 		_trace_buffer.reserve(TRACE_BUFFER_CAP);
@@ -6883,33 +5941,8 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const double unit_forced_target_remaining = unit.forced_target_remaining;
 	const int64_t unit_current_ally_target_id = unit.current_ally_target_id;
 	const double unit_attack_damage = get_effective_attack_damage(unit);
-	const std::vector<int64_t> &carry_indices = unit_is_player ? ctx.player_carry_indices : ctx.enemy_carry_indices;
 	const std::vector<int64_t> &frontline_indices = unit_is_player ? ctx.enemy_frontline_indices : ctx.player_frontline_indices;
 	const std::vector<int64_t> &enemy_indices = unit_is_player ? _alive_enemy_indices : _alive_player_indices;
-
-	// Obscurance aux: only needed when scoring enemies; reuse grid per tick when opposing frontline snapshot unchanged.
-	if (score_ctx.use_spatial && strategy.obscurance_weight > 0.0) {
-		const uint64_t sig = _obscurance_aux_frontline_signature(frontline_indices);
-		if (unit_is_player) {
-			if (_obscurance_aux_enemy_grid_tick == _tick && _obscurance_aux_enemy_grid_sig == sig) {
-				score_ctx.has_obscurance_cache = true;
-			} else {
-				_spatial_fill_buckets_for_indices_aux(frontline_indices);
-				score_ctx.has_obscurance_cache = true;
-				_obscurance_aux_enemy_grid_tick = _tick;
-				_obscurance_aux_enemy_grid_sig = sig;
-			}
-		} else {
-			if (_obscurance_aux_player_grid_tick == _tick && _obscurance_aux_player_grid_sig == sig) {
-				score_ctx.has_obscurance_cache = true;
-			} else {
-				_spatial_fill_buckets_for_indices_aux(frontline_indices);
-				score_ctx.has_obscurance_cache = true;
-				_obscurance_aux_player_grid_tick = _tick;
-				_obscurance_aux_player_grid_sig = sig;
-			}
-		}
-	}
 
 	const TargetingFrameEntry *ally_for_peel = nullptr;
 	if (unit_current_ally_target_id != 0) {
@@ -6927,34 +5960,6 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	const bool unit_can_peel_for_ally = unit_current_ally_target_id != 0 && ally_for_peel_under_threat;
 	const bool prefers_kiting = strategy.prefers_kiting && !unit_under_threat && score_ctx.has_kite_bounds;
 	const bool has_execute_bonus = strategy.execute_bonus_weight > 0.0;
-	auto classify_bucket = [&](const TargetingFrameEntry &candidate, double dist_sq, const UnitStrategy &strat) -> TeamfightSimulationCore::TargetBucketTag {
-		if (unit_has_forced_target && candidate.instance_id == unit_forced_target_id) {
-			return TeamfightSimulationCore::TargetBucketTag::Commit;
-		}
-		TeamfightSimulationCore::TargetBucketTag bucket_tag = TeamfightSimulationCore::TargetBucketTag::Objective;
-		if (strat.carry_peel_weight > 0.0 && candidate.target_id == unit_instance_id) {
-			return TeamfightSimulationCore::TargetBucketTag::Peel;
-		}
-		if (unit_can_peel_for_ally && candidate.target_id == unit_current_ally_target_id) {
-			return TeamfightSimulationCore::TargetBucketTag::Peel;
-		}
-		if (has_execute_bonus) {
-			double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
-			double atk_dmg = unit_attack_damage;
-			if (hp_ratio <= TARGET_EXECUTE_HP_RATIO || candidate.hp <= atk_dmg) {
-				return TeamfightSimulationCore::TargetBucketTag::Burst;
-			}
-		}
-		if (prefers_kiting) {
-			double kite_min_sq = score_ctx.kite_min_w * score_ctx.kite_min_w;
-			double kite_max_sq = score_ctx.kite_max_w * score_ctx.kite_max_w;
-			if (dist_sq >= kite_min_sq && dist_sq <= kite_max_sq) {
-				return TeamfightSimulationCore::TargetBucketTag::Kite;
-			}
-		}
-		return bucket_tag;
-	};
-	const std::array<int, static_cast<size_t>(TeamfightSimulationCore::TargetBucketTag::TagCount)> &bucket_rank_by_tag = strategy.bucket_rank_by_tag;
 
 	// Python: whenever we do evaluate, we reset the retarget timer immediately (even if we end up keeping).
 	unit.retarget_timer = RETARGET_INTERVAL;
@@ -6964,14 +5969,15 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	double current_target_dist_for_switch = -1.0;
 	const double unit_x = unit.pos_x;
 	const double unit_y = unit.pos_y;
-	const bool has_bodyguard_weight = strategy.bodyguard_weight > 0.0;
-	const double bodyguard_bonus_bound = has_bodyguard_weight ? strategy.bodyguard_weight * double(carry_indices.size()) : 0.0;
 	UnitState *best_live = nullptr;
 	int64_t best_index = -1;
 	double best_adjusted = std::numeric_limits<double>::infinity();
 	double best_raw = std::numeric_limits<double>::infinity();
-	int best_bucket_rank = 0;
 	double best_dist = std::numeric_limits<double>::infinity();
+	
+	// Debug: store all candidate scores for target switch logging
+	std::vector<std::pair<int64_t, double>> candidate_scores;
+	
 	if (_sim_profile_targeting_active) {
 		_sim_profile_tgt_enemy_scans += 1;
 	}
@@ -6984,55 +5990,32 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		double dx = candidate.pos_x - unit_x;
 		double dy = candidate.pos_y - unit_y;
 		double dist_sq = dx * dx + dy * dy;
-		TeamfightSimulationCore::TargetBucketTag bucket_tag = classify_bucket(candidate, dist_sq, strategy);
-		int rank = bucket_rank_by_tag[static_cast<size_t>(bucket_tag)];
-		bool has_prefix_parts = false;
-		double prefix_base_score = 0.0;
-		double prefix_flanking_score = 0.0;
-		if (best_live != nullptr && enemy_index != current_target_index) {
-			bool prefix_early_skip = false;
-			EnemyPrefixAdjustedEarlyPrune prefix_prune{};
-			prefix_prune.best_adjusted = best_adjusted;
-			prefix_prune.bucket_rank = rank;
-			prefix_prune.bodyguard_bonus_bound = bodyguard_bonus_bound;
-			prefix_prune.early_skip_dest = &prefix_early_skip;
-			double prefix_score = _score_enemy_target_prefix(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, -1.0, dist_sq, profile_sim, enemy_index, &prefix_base_score, &prefix_flanking_score, &prefix_prune);
-			if (prefix_early_skip) {
-				if (_sim_profile_targeting_active) {
-					_sim_profile_tgt_candidates_prefix_pruned += 1;
-				}
-				continue;
-			}
-			has_prefix_parts = true;
-			double adjusted_lower_bound = prefix_score + double(rank) * strategy.bucket_margin;
-			double candidate_lower_bound = adjusted_lower_bound - bodyguard_bonus_bound;
-			if (candidate_lower_bound > best_adjusted) {
-				if (_sim_profile_targeting_active) {
-					_sim_profile_tgt_candidates_prefix_pruned += 1;
-				}
-				continue;
-			}
-		}
 		if (_sim_profile_targeting_active) {
 			_sim_profile_tgt_candidates_scored += 1;
 		}
 		double dist = Math::sqrt(dist_sq);
-		double raw = has_prefix_parts
-				? _score_enemy_target_from_prefix_parts(unit, candidate, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, prefix_base_score, prefix_flanking_score)
-				: _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index);
+		
+		// Debug: accumulate breakdown for best candidate when debug enabled
+		ScoreBreakdown local_breakdown;
+		ScoreBreakdown *breakdown_ptr = _debug_targeting_scoring ? &local_breakdown : nullptr;
+		
+		double raw = _score_enemy_target(unit, candidate, ally_for_peel, strategy, ctx, score_ctx, dist, profile_sim, enemy_index, breakdown_ptr);
+		
+		// Debug: store candidate score
+		candidate_scores.push_back({candidate.instance_id, raw});
+		
 		if (current_target_index >= 0 && enemy_index == current_target_index) {
 			current_target_raw = raw;
 			current_target_raw_valid = true;
 			current_target_dist_for_switch = dist;
 		}
-		double adjusted = raw + double(rank) * strategy.bucket_margin;
-		// Simplified tiebreaking: (adjusted_score, distance, instance_id)
+		// Simplified tiebreaking: (raw_score, distance, instance_id)
 		// Ties are extremely rare due to continuous float scoring (distance, HP ratio, weighted factors)
 		bool is_better = best_live == nullptr;
 		if (!is_better) {
 			const int64_t best_instance_id = _targeting_frame[static_cast<size_t>(best_index)].instance_id;
 			if (_sim_profile_targeting_active) {
-				if (adjusted == best_adjusted) {
+				if (raw == best_raw) {
 					_sim_profile_tgt_ties_adjusted += 1;
 					if (dist == best_dist) {
 						_sim_profile_tgt_ties_distance += 1;
@@ -7040,16 +6023,15 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 					}
 				}
 			}
-			is_better = adjusted < best_adjusted
-					|| (adjusted == best_adjusted && dist < best_dist)
-					|| (adjusted == best_adjusted && dist == best_dist && candidate.instance_id < best_instance_id);
+			is_better = raw < best_raw
+					|| (raw == best_raw && dist < best_dist)
+					|| (raw == best_raw && dist == best_dist && candidate.instance_id < best_instance_id);
 		}
 		if (is_better) {
 			best_live = &_units[static_cast<size_t>(enemy_index)];
 			best_index = enemy_index;
-			best_adjusted = adjusted;
+			best_adjusted = raw;
 			best_raw = raw;
-			best_bucket_rank = rank;
 			best_dist = dist;
 		}
 	}
@@ -7062,6 +6044,27 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	}
 
 	const TargetingFrameEntry *best_frame = &_targeting_frame[static_cast<size_t>(best_index)];
+
+	// Debug: print candidate scores for all target evaluations
+	if (_debug_targeting_scoring) {
+		String msg = "[TARGET EVAL] Unit " + String::num_int64(unit.instance_id) + " (" + String(_uc(unit).archetype_id) + ") current target " + String::num_int64(unit.target_id) + " best " + String::num_int64(best_live->instance_id) + " (score " + String::num_real(best_raw) + "). All candidates:";
+		UtilityFunctions::print(msg);
+		for (const auto &pair : candidate_scores) {
+			const UnitStateCold &c = _uc(_units[_unit_index_by_id(pair.first)]);
+			String candidate_msg = "  - " + String::num_int64(pair.first) + " (" + String(c.archetype_id) + "): " + String::num_real(pair.second);
+			UtilityFunctions::print(candidate_msg);
+		}
+	}
+
+	// Debug: print detailed breakdown for best candidate when debug enabled
+	if (_debug_targeting_scoring) {
+		ScoreBreakdown best_breakdown;
+		ScoreBreakdown *breakdown_ptr = &best_breakdown;
+		double best_dist = Math::sqrt((best_frame->pos_x - unit.pos_x) * (best_frame->pos_x - unit.pos_x) + (best_frame->pos_y - unit.pos_y) * (best_frame->pos_y - unit.pos_y));
+		_score_enemy_target(unit, *best_frame, ally_for_peel, strategy, ctx, score_ctx, best_dist, profile_sim, best_index, breakdown_ptr);
+		best_breakdown.total = best_raw;
+		_print_score_breakdown(best_breakdown, _uc(unit).archetype_id, _uc(_units[static_cast<size_t>(best_index)]).archetype_id);
+	}
 
 	// Forced reasons: always pick immediately (no switch logic).
 	if (forced_reason) {
@@ -7082,7 +6085,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 		current_score = current_target_raw;
 	} else if (current_target != nullptr && current_target_live != nullptr) {
 		double current_dist = Math::sqrt((current_target->pos_x - unit.pos_x) * (current_target->pos_x - unit.pos_x) + (current_target->pos_y - unit.pos_y) * (current_target->pos_y - unit.pos_y));
-		current_score = _score_enemy_target(unit, *current_target, ally_for_peel, strategy, ctx, score_ctx, current_dist, profile_sim, current_target_index);
+		current_score = _score_enemy_target(unit, *current_target, ally_for_peel, strategy, ctx, score_ctx, current_dist, profile_sim, current_target_index, nullptr);
 	}
 
 	if (assassin_pressuring_frontline) {
@@ -7153,9 +6156,10 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 	double best_hp_ratio = std::numeric_limits<double>::infinity();
 	for (int64_t ally_index : pool) {
 		const TargetingFrameEntry &candidate = _targeting_frame[static_cast<size_t>(ally_index)];
-		int64_t unit_index = _unit_index_by_id(unit.instance_id);
-		double dist = -1.0;  // Let _score_ally_target use cache
-		double score = _score_ally_target(unit, candidate, strat, dist, unit_index, ally_index);
+		double dx = candidate.pos_x - unit.pos_x;
+		double dy = candidate.pos_y - unit.pos_y;
+		double dist = Math::sqrt(dx * dx + dy * dy);
+		double score = _score_ally_target(unit, candidate, strat, dist);
 		double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
 		if (_scratch_critical_allies.empty()) {
 			// Python: min by (score, distance, instance_id)
@@ -7762,9 +6766,6 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_uu_combat = 0;
 	_sim_profile_uu_movement = 0;
 	_sim_profile_se_base = 0;
-	_sim_profile_se_bodyguard = 0;
-	_sim_profile_se_obscurance = 0;
-	_sim_profile_se_flanking = 0;
 	_sim_profile_se_calls = 0;
 	_sim_profile_uc_attack_cooldown = 0;
 	_sim_profile_uc_distance_calc = 0;
@@ -7789,7 +6790,6 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_ctx_team_centers = 0;
 	_sim_profile_ctx_role_classification = 0;
 	_sim_profile_ctx_targeting_sync = 0;
-	_sim_profile_ctx_distance_cache = 0;
 	_sim_profile_ctx_spatial_grid = 0;
 	_sim_profile_ctx_density = 0;
 	_sim_profile_um_kiting = 0;
@@ -7810,7 +6810,6 @@ void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_tgt_frame_syncs = 0;
 	_sim_profile_tgt_ties_adjusted = 0;
 	_sim_profile_tgt_ties_raw = 0;
-	_sim_profile_tgt_ties_bucket = 0;
 	_sim_profile_tgt_ties_distance = 0;
 	_sim_profile_tgt_ties_instance = 0;
 }
@@ -7833,9 +6832,6 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	profile["uu_combat"] = _sim_profile_uu_combat;
 	profile["uu_movement"] = _sim_profile_uu_movement;
 	profile["se_base"] = _sim_profile_se_base;
-	profile["se_bodyguard"] = _sim_profile_se_bodyguard;
-	profile["se_obscurance"] = _sim_profile_se_obscurance;
-	profile["se_flanking"] = _sim_profile_se_flanking;
 	profile["se_calls"] = _sim_profile_se_calls;
 	profile["uc_attack_cooldown"] = _sim_profile_uc_attack_cooldown;
 	profile["uc_distance_calc"] = _sim_profile_uc_distance_calc;
@@ -7860,7 +6856,6 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	profile["ctx_team_centers"] = _sim_profile_ctx_team_centers;
 	profile["ctx_role_classification"] = _sim_profile_ctx_role_classification;
 	profile["ctx_targeting_sync"] = _sim_profile_ctx_targeting_sync;
-	profile["ctx_distance_cache"] = _sim_profile_ctx_distance_cache;
 	profile["ctx_spatial_grid"] = _sim_profile_ctx_spatial_grid;
 	profile["ctx_density"] = _sim_profile_ctx_density;
 	profile["um_kiting"] = _sim_profile_um_kiting;
@@ -7882,7 +6877,6 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 		profile["tgt_frame_syncs"] = _sim_profile_tgt_frame_syncs;
 		profile["tgt_ties_adjusted"] = _sim_profile_tgt_ties_adjusted;
 		profile["tgt_ties_raw"] = _sim_profile_tgt_ties_raw;
-		profile["tgt_ties_bucket"] = _sim_profile_tgt_ties_bucket;
 		profile["tgt_ties_distance"] = _sim_profile_tgt_ties_distance;
 		profile["tgt_ties_instance"] = _sim_profile_tgt_ties_instance;
 	}
@@ -7912,6 +6906,8 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	} else {
 		_update_projectiles();
 	}
+	// Process pending spawns before tick context is prepared so minions are included in role indices
+	_process_pending_spawns();
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();
 		_prepare_tick_context();
@@ -7919,8 +6915,6 @@ void TeamfightSimulationCore::_step_tick(bool profile_sim) {
 	} else {
 		_prepare_tick_context();
 	}
-	// Process pending spawns after tick context is prepared
-	_process_pending_spawns();
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();
 		for (UnitState &unit : _units) {
@@ -10953,6 +9947,18 @@ String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const
 	return String("ALIVE");
 }
 
+void TeamfightSimulationCore::_print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const {
+	UtilityFunctions::print("[SCORE BREAKDOWN] " + String(attacker_archetype) + " -> " + String(enemy_archetype));
+	UtilityFunctions::print("  Distance: " + String::num_real(breakdown.distance) + " (weighted: " + String::num_real(breakdown.distance_weighted) + ")");
+	UtilityFunctions::print("  HP Ratio: " + String::num_real(breakdown.hp_ratio) + " (weighted: " + String::num_real(breakdown.hp_weighted) + ")");
+	UtilityFunctions::print("  Role Priority: " + String::num_real(breakdown.role_priority));
+	UtilityFunctions::print("  Threat: " + String::num_real(breakdown.threat) + " (weighted: " + String::num_real(breakdown.threat_weighted) + ")");
+	UtilityFunctions::print("  In-Range Bonus: " + String::num_real(breakdown.in_range_bonus));
+	UtilityFunctions::print("  Execute Bonus: " + String::num_real(breakdown.execute_bonus));
+	UtilityFunctions::print("  Support Peel: " + String::num_real(breakdown.support_peel));
+	UtilityFunctions::print("  TOTAL: " + String::num_real(breakdown.total));
+}
+
 Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 	Dictionary root;
 	root["tick"] = _tick;
@@ -11411,8 +10417,14 @@ void TeamfightSimulationCore::_process_pending_spawns() {
 		// Set summoner relationship for minions
 		_units[unit_index].summoner_instance_id = pending.summoner_instance_id;
 		
-		// Sync targeting frame so minions are immediately targetable
-		_sync_targeting_frame_unit(_units[unit_index]);
+		// Add to targeting frame so minions are immediately targetable
+		// NOTE: Must use push_back instead of _sync_targeting_frame_unit because
+		// minions are spawned mid-game and don't have existing frame entries.
+		// The targeting frame arrays (_units, _unit_cold, _targeting_frame) grow
+		// monotonically - units are never removed on death to maintain index stability.
+		// This means dead units (including minions) accumulate in the arrays over time,
+		// but memory overhead is negligible for typical match sizes.
+		_targeting_frame.push_back(_make_targeting_frame_entry(_units[unit_index]));
 		
 		// Add to alive indices
 		_add_alive_index(pending.team, unit_index);
@@ -11612,4 +10624,5 @@ void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) co
 	
 	UtilityFunctions::push_warning(debug_output);
 }
+
 

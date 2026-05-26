@@ -35,24 +35,6 @@ public:
 		ROLE_SLOT_COUNT = 6,
 	};
 
-	/// Targeting bucket tags matching Python `classify_bucket` outputs.
-	enum class TargetBucketTag : uint8_t {
-		Commit = 0,
-		Peel,
-		Burst,
-		Kite,
-		Objective,
-		TagCount
-	};
-
-	/// Optional pre-flanking pruning gate for `_score_enemy_target_prefix` (adjusted lexicographic order).
-	struct EnemyPrefixAdjustedEarlyPrune {
-		double best_adjusted = 0.0;
-		int bucket_rank = 0;
-		double bodyguard_bonus_bound = 0.0;
-		bool *early_skip_dest = nullptr;
-	};
-
 	/// AOE shape kinds for expandable shape system.
 	enum class AoShapeKind : int {
 		Circle = 0,
@@ -605,6 +587,35 @@ private:
 		Dictionary stat_modifiers;  // key: "stat_name|reason", value: simple modifier info
 	};
 
+	// Data-driven role priority configuration
+	struct RolePriorityConfig {
+		StringName role;
+		double priority;
+	};
+
+	struct StrategyRolePriorities {
+		std::array<RolePriorityConfig, 8> enemy_priorities;
+		std::array<RolePriorityConfig, 8> ally_priorities;
+	};
+
+	// Debug: scoring breakdown for targeting decisions
+	// TODO: Consider changing to compile-time flag (#ifdef) for zero overhead in production
+	struct ScoreBreakdown {
+		double distance = 0.0;
+		double distance_weighted = 0.0;
+		double hp_ratio = 0.0;
+		double hp_weighted = 0.0;
+		double role_priority = 0.0;
+		double threat = 0.0;
+		double threat_weighted = 0.0;
+		double in_range_bonus = 0.0;
+		double execute_bonus = 0.0;
+		double support_peel = 0.0;
+		double spacing = 0.0;
+		double kiting_tempo = 0.0;
+		double total = 0.0;
+	};
+
 	struct UnitStrategy {
 		String display_name;
 		double distance_weight = 1.0;
@@ -613,28 +624,50 @@ private:
 		double ally_hp_weight = 0.0;
 		double ally_threat_weight = 0.0;
 		std::array<double, ROLE_SLOT_COUNT> ally_role_priorities{};
-		double stickiness_bonus = 2.0;
 		bool prefers_kiting = false;
-		double bucket_margin = 0.75;
-		std::array<StringName, 8> bucket_order{};
-		int bucket_order_len = 0;
-		std::array<int, static_cast<size_t>(TargetBucketTag::TagCount)> bucket_rank_by_tag{};
-		double switch_margin = 0.75;
+		double switch_margin = 2.0;
 		double in_range_bonus = 0.6;
-		double tank_penalty = 2.0;
 		double threat_response_weight = 0.0;
-		double projectile_time_weight = 0.0;
 		double execute_bonus_weight = 0.0;
-		double carry_peel_weight = 0.0;
-		double prey_instinct_weight = 0.0;
-		double cluster_weight = 0.0;
 		double spacing_weight = 0.0;
-		double bodyguard_weight = 0.0;
-		double obscurance_weight = 0.0;
-		double flanking_weight = 0.0;
 		double threat_decay_rate = 2.0;
 		bool uses_ally_targeting = false;
 		std::array<double, ROLE_SLOT_COUNT> role_priorities{};
+	};
+
+	// Comprehensive strategy configuration for data-driven role behavior
+	struct StrategyConfig {
+		// Identity
+		String display_name;
+		StringName role_name;
+
+		// Targeting weights
+		double distance_weight;
+		double hp_weight;
+		double ally_distance_weight;
+		double ally_hp_weight;
+		double ally_threat_weight;
+
+		// Behavior modifiers
+		double in_range_bonus;
+		double threat_response_weight;
+		double execute_bonus_weight;
+
+		// Positioning weights
+		double spacing_weight;
+
+		// Timing
+		double threat_decay_rate;
+
+		// Switching
+		double switch_margin;
+
+		// Flags
+		bool prefers_kiting;
+		bool uses_ally_targeting;
+
+		// Role priorities
+		StrategyRolePriorities role_priorities;
 	};
 
 	struct TickContext {
@@ -643,23 +676,14 @@ private:
 		Vector2 enemy_team_center;
 		bool has_player_center = false;
 		bool has_enemy_center = false;
-		/// Any alive unit on roster this tick needs cluster density (folded from _prepare_tick_context scans).
-		bool needs_cluster_density = false;
 		std::vector<int64_t> player_backliner_indices;
 		std::vector<int64_t> enemy_backliner_indices;
 		/// Alive backliner count for team; reset in _prepare_tick_context, decremented in _handle_death (matches `other.alive` scans over backliner lists).
 		int player_backliner_alive_count = 0;
 		int enemy_backliner_alive_count = 0;
-		/// Alive tank+fighter per team (obscurance brute / spatial grid insert).
+		/// Alive tank+fighter per team (spatial grid insert).
 		std::vector<int64_t> player_frontline_indices;
 		std::vector<int64_t> enemy_frontline_indices;
-		/// Alive marksman+mage per team (bodyguard bonus loop only).
-		std::vector<int64_t> player_carry_indices;
-		std::vector<int64_t> enemy_carry_indices;
-		/// Distance cache matrix: distance_cache[i * N + j] = distance between unit i and unit j.
-		/// Avoids redundant sqrt calculations during target scoring.
-		std::vector<double> distance_cache;
-		size_t distance_cache_size = 0;
 	};
 
 	struct TargetingFrameEntry {
@@ -687,7 +711,6 @@ private:
 		double attack_range = 0.0;
 		double effective_range = 0.0;
 		bool use_spatial = false;
-		bool has_obscurance_cache = false;
 		bool has_kite_bounds = false;
 		double kite_min_w = 0.0;
 		double kite_max_w = 0.0;
@@ -876,7 +899,7 @@ private:
 	//Increase rate currently unused.
 	static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.0001;
 	static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
-	static constexpr double TARGET_STICKINESS_THRESHOLD = 20.0;
+	static constexpr double TARGET_STICKINESS_THRESHOLD = 5.0;
 	static constexpr double STICKINESS_RETARGET_BONUS = 0.5;
 	static constexpr double REGEN_TICK_INTERVAL = 1.0;
 	static constexpr double CASTING_WINDUP = 0.5;
@@ -905,7 +928,7 @@ private:
 	// Positions are stored as IEEE 754 double for deterministic arithmetic.
 	static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
 	static constexpr double REACTIVE_PEEL_BONUS = 25.0;
-	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 0.85;
+	static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 1.0;
 	static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;
 	static constexpr double SCORE_THREAT_WEIGHT_SCALE = 5.0;
 	static constexpr double SCORE_DISTANCE_WEIGHT_SCALE = 10.0;
@@ -916,14 +939,7 @@ private:
 	static constexpr double THREAT_BURST_THRESHOLD = 0.1;
 	static constexpr double THREAT_BURST_MULTIPLIER = 5.0;
 	static constexpr double THREAT_DECAY_DEFAULT = 2.0;
-	static constexpr double THREAT_DECAY_TANK = 4.0;
-	static constexpr double THREAT_DECAY_FIGHTER = 4.5;
-	static constexpr double THREAT_DECAY_FRAGILE = 1.0;
-	static constexpr double TARGET_SWITCH_MARGIN = 0.75;
-	static constexpr double TARGET_BUCKET_MARGIN = 0.75;
-	static constexpr double STICKINESS_DEFAULT = 2.0;
-	static constexpr double STICKINESS_MARKSMAN = 5.0;
-	static constexpr double STICKINESS_SUPPORT = 1.0;
+	static constexpr double TARGET_SWITCH_MARGIN = 2.0;
 
 	// Random vertical spawning constants
 	static constexpr double SPAWN_Y_MIN = 3.0;
@@ -933,68 +949,208 @@ private:
 	static constexpr double PLAYER_SPAWN_X_BASE = 1.0;
 	static constexpr double ENEMY_SPAWN_X_BASE = 9.0;
 	static constexpr double SPAWN_Y_STEP = 0.5;
-	static constexpr double THREAT_RESPONSE_TANK = 2.0;
-	static constexpr double THREAT_RESPONSE_FIGHTER = 1.8;
-	static constexpr double THREAT_RESPONSE_ASSASSIN = 0.8;
-	static constexpr double THREAT_RESPONSE_MARKSMAN = 1.0;
-	static constexpr double THREAT_RESPONSE_MAGE = 1.1;
-	static constexpr double THREAT_RESPONSE_SUPPORT = 1.7;
-	static constexpr double HP_WEIGHT_ASSASSIN = 2.0;
-	static constexpr double HP_WEIGHT_MAGE = 2.5;
-	static constexpr double HP_WEIGHT_SUPPORT = 5.0;
-	static constexpr double DISTANCE_WEIGHT_TANK = 1.5;
-	static constexpr double DISTANCE_WEIGHT_ASSASSIN = 0.5;
-	static constexpr double DISTANCE_WEIGHT_MAGE = 1.2;
-	static constexpr double DISTANCE_WEIGHT_SUPPORT = 1.5;
-	static constexpr double DISTANCE_WEIGHT_FIGHTER_CLOSE = 3.0;
-	static constexpr double IN_RANGE_BONUS_TANK = 1.0;
-	static constexpr double IN_RANGE_BONUS_FIGHTER = 0.9;
-	static constexpr double IN_RANGE_BONUS_ASSASSIN = 0.6;
-	static constexpr double IN_RANGE_BONUS_MARKSMAN = 0.35;
-	static constexpr double IN_RANGE_BONUS_MAGE = 0.45;
-	static constexpr double IN_RANGE_BONUS_SUPPORT = 0.4;
-	static constexpr double TANK_PENALTY_TANK = 0.4;
-	static constexpr double TANK_PENALTY_FIGHTER = 1.0;
-	static constexpr double TANK_PENALTY_ASSASSIN = 7.0;
-	static constexpr double TANK_PENALTY_MARKSMAN = 2.6;
-	static constexpr double TANK_PENALTY_MAGE = 2.3;
-	static constexpr double TANK_PENALTY_SUPPORT = 1.5;
 	static constexpr double ASSASSIN_TANK_CONTEXT_PENALTY = 15.0;
 	static constexpr double EXECUTE_BONUS_WEIGHT_DEFAULT = 20.0;
 	static constexpr double PREY_INCOMING_TARGET_SCALE = 0.75;
 	static constexpr double PREY_PERCEIVED_THREAT_SCALE = 0.35;
 	static constexpr double PREY_FRONTLINE_SCALE = 0.0;
 	static constexpr double AOE_DENSITY_RADIUS = 2.0;
-	static constexpr double OBSCURANCE_WEIGHT_DEFAULT = 4.5;
-	static constexpr double OBSCURANCE_LINE_RADIUS = 0.35;
 	static constexpr double KITE_TARGET_WINDOW_MIN_FACTOR = 0.7;
 	static constexpr double KITE_TARGET_WINDOW_MAX_FACTOR = 1.3;
 	static constexpr double SWITCH_COMMIT_WINDOW_SECONDS = 0.18;
 	static constexpr double SWITCH_COMMIT_WINDOW_SWING_FRACTION = 0.25;
-	static constexpr double FLANKING_TEAM_CENTER_SCALE = 0.35;
-	static constexpr double FLANKING_WEIGHT_ASSASSIN = 2.0;
-	static constexpr double CLUSTER_WEIGHT_TANK = 1.5;
-	static constexpr double CLUSTER_WEIGHT_MAGE = 3.0;
-	static constexpr double SPACING_WEIGHT_MARKSMAN = 2.5;
-	static constexpr double SPACING_WEIGHT_MAGE = 1.5;
-	static constexpr double SPACING_WEIGHT_SUPPORT = 1.0;
 	static constexpr double SUPPORT_PEEL_BOOST = 2.2;
 	static constexpr double SUPPORT_PEEL_THREAT_THRESHOLD = 2.0;
 	static constexpr double TARGET_EXECUTE_HP_RATIO = 0.25;
-	static constexpr double BODYGUARD_RADIUS = 2.5;
-	static constexpr double BODYGUARD_WEIGHT_TANK = 3.0;
-	static constexpr double BODYGUARD_WEIGHT_SUPPORT = 4.0;
 	static constexpr double IN_RANGE_BONUS_DEFAULT = 0.6;
 	static constexpr double THREAT_RESPONSE_RANGE_DEFAULT = 0.0;
-	static constexpr double PROJECTILE_TIME_WEIGHT_MARKSMAN = 0.35;
-	static constexpr double PROJECTILE_TIME_WEIGHT_MAGE = 0.45;
-	static constexpr double PROJECTILE_TIME_WEIGHT_SUPPORT = 0.3;
 	static constexpr double UNIT_COLLISION_RADIUS = 0.15;
+
+	// Data-driven role priority configurations
+	// Tank role priorities include integrated tank penalty values
+	static StrategyRolePriorities get_tank_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"assassin", -5.0};
+		p.enemy_priorities[1] = {"fighter", -2.0};
+		p.enemy_priorities[2] = {"tank", 0.4};
+		p.ally_priorities[0] = {"marksman", -5.0};
+		p.ally_priorities[1] = {"mage", -5.0};
+		p.ally_priorities[2] = {"support", -3.0};
+		return p;
+	}
+
+	static StrategyRolePriorities get_assassin_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"marksman", -15.0};
+		p.enemy_priorities[1] = {"mage", -15.0};
+		p.enemy_priorities[2] = {"support", -10.0};
+		p.enemy_priorities[3] = {"fighter", 10.0};
+		p.enemy_priorities[4] = {"tank", 20.0};
+		return p;
+	}
+
+	static StrategyRolePriorities get_fighter_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"marksman", -1.0};
+		p.enemy_priorities[1] = {"mage", -1.0};
+		p.enemy_priorities[2] = {"tank", 1.0};
+		return p;
+	}
+
+	static StrategyRolePriorities get_marksman_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"tank", 1};
+		return p;
+	}
+
+	static StrategyRolePriorities get_mage_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"marksman", -4.0};
+		p.enemy_priorities[1] = {"support", -2.0};
+		p.enemy_priorities[2] = {"tank", 2};
+		return p;
+	}
+
+	static StrategyRolePriorities get_support_role_priorities() {
+		StrategyRolePriorities p;
+		p.enemy_priorities[0] = {"assassin", -8.0};
+		p.enemy_priorities[1] = {"fighter", -4.0};
+		p.enemy_priorities[2] = {"tank", 1.5};
+		p.ally_priorities[0] = {"marksman", -5.0};
+		p.ally_priorities[1] = {"mage", -5.0};
+		p.ally_priorities[2] = {"fighter", -2.0};
+		return p;
+	}
+
+	// Comprehensive strategy configuration getters
+	static StrategyConfig get_tank_config() {
+		StrategyConfig c;
+		c.display_name = "Protector";
+		c.role_name = "tank";
+		c.distance_weight = 1.5;
+		c.hp_weight = 0.0;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 0.0;
+		c.ally_threat_weight = 25.0;
+		c.in_range_bonus = 1.0;
+		c.threat_response_weight = 2.0;
+		c.execute_bonus_weight = 0.0;
+		c.spacing_weight = 0.0;
+		c.threat_decay_rate = 4.0;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = false;
+		c.uses_ally_targeting = true;
+		c.role_priorities = get_tank_role_priorities();
+		return c;
+	}
+
+	static StrategyConfig get_assassin_config() {
+		StrategyConfig c;
+		c.display_name = "Diver";
+		c.role_name = "assassin";
+		c.distance_weight = 0.01;
+		c.hp_weight = 2.0;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 0.0;
+		c.ally_threat_weight = 0.0;
+		c.in_range_bonus = 0.6;
+		c.threat_response_weight = 0.8;
+		c.execute_bonus_weight = 10.0;
+		c.spacing_weight = 0.0;
+		c.threat_decay_rate = 1.0;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = false;
+		c.uses_ally_targeting = false;
+		c.role_priorities = get_assassin_role_priorities();
+		return c;
+	}
+
+	static StrategyConfig get_fighter_config() {
+		StrategyConfig c;
+		c.display_name = "Brawler";
+		c.role_name = "fighter";
+		c.distance_weight = 3.0;
+		c.hp_weight = 0.5;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 0.0;
+		c.ally_threat_weight = 0.0;
+		c.in_range_bonus = 0.9;
+		c.threat_response_weight = 1.8;
+		c.execute_bonus_weight = 20.0;
+		c.spacing_weight = 0.0;
+		c.threat_decay_rate = 4.5;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = false;
+		c.uses_ally_targeting = false;
+		c.role_priorities = get_fighter_role_priorities();
+		return c;
+	}
+
+	static StrategyConfig get_marksman_config() {
+		StrategyConfig c;
+		c.display_name = "Kiter";
+		c.role_name = "marksman";
+		c.distance_weight = 1.0;
+		c.hp_weight = 0.5;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 0.0;
+		c.ally_threat_weight = 0.0;
+		c.in_range_bonus = 0.35;
+		c.threat_response_weight = 61.0;
+		c.execute_bonus_weight = 20.0;
+		c.spacing_weight = 2.5;
+		c.threat_decay_rate = 1.0;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = true;
+		c.uses_ally_targeting = false;
+		c.role_priorities = get_marksman_role_priorities();
+		return c;
+	}
+
+	static StrategyConfig get_mage_config() {
+		StrategyConfig c;
+		c.display_name = "Spellcaster";
+		c.role_name = "mage";
+		c.distance_weight = 1.2;
+		c.hp_weight = 2.5;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 0.0;
+		c.ally_threat_weight = 0.0;
+		c.in_range_bonus = 0.45;
+		c.threat_response_weight = 61.1;
+		c.execute_bonus_weight = 20.0;
+		c.spacing_weight = 1.5;
+		c.threat_decay_rate = 1.0;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = true;
+		c.uses_ally_targeting = false;
+		c.role_priorities = get_mage_role_priorities();
+		return c;
+	}
+
+	static StrategyConfig get_support_config() {
+		StrategyConfig c;
+		c.display_name = "Enchanter";
+		c.role_name = "support";
+		c.distance_weight = 1.5;
+		c.hp_weight = 0.0;
+		c.ally_distance_weight = 1.0;
+		c.ally_hp_weight = 10.0;
+		c.ally_threat_weight = 25.0;
+		c.in_range_bonus = 0.4;
+		c.threat_response_weight = 1.7;
+		c.execute_bonus_weight = 0.0;
+		c.spacing_weight = 1.0;
+		c.threat_decay_rate = 1.0;
+		c.switch_margin = 2.0;
+		c.prefers_kiting = true;
+		c.uses_ally_targeting = true;
+		c.role_priorities = get_support_role_priorities();
+		return c;
+	}
 	static constexpr int SPATIAL_GRID_DIM = 8;
-	/// Broad-phase for targeting/density/kite/obscurance only when a team has this many **alive** units (4+). Standard 5v5 can enter the spatial path under the current benchmark contract.
+	/// Broad-phase for targeting/density/kite only when a team has this many **alive** units (4+). Standard 5v5 can enter the spatial path under the current benchmark contract.
 	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4;
-	/// Conservative upper bound on `(align * isolation)` in `_score_enemy_target_prefix` flanking subtract (both in `[0,1]`).
-	static constexpr double TARGETING_PREFIX_FLANKING_ALIGN_ISOLATION_PRODUCT_MAX = 1.0;
 	/// Separation ally scan uses a grid only at this team alive count or above (custom large teams); 5v5 uses brute O(n) with tiny n.
 	static constexpr int SPATIAL_SEPARATION_TEAM_THRESHOLD = 6;
 
@@ -1050,6 +1206,7 @@ private:
 	std::vector<TraceEvent> _trace_buffer;
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
+	bool _debug_targeting_scoring = false;
 
 	/// Compact HUD/floating labels for the Godot simulation viewer (cleared each tick, filled during sim).
 	struct ViewerFxEvent {
@@ -1078,17 +1235,11 @@ private:
 	void _viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type);
 	void _viewer_record_passive_aoe_fx(const UnitState &p_unit, double p_radius, const StringName &p_passive_id);
 	String _viewer_state_string(const UnitState &p_u) const;
+	void _print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const;
 
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets;
-	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> _spatial_buckets_aux;
 	mutable std::vector<uint32_t> _spatial_stamp;
 	mutable uint32_t _spatial_generation = 1;
-	/// Aux spatial grid last filled from enemy frontline (player-side targeting); signature invalidates on tick or position drift.
-	int64_t _obscurance_aux_enemy_grid_tick = -1;
-	uint64_t _obscurance_aux_enemy_grid_sig = 0;
-	/// Aux grid last filled from player frontline (enemy-side targeting).
-	int64_t _obscurance_aux_player_grid_tick = -1;
-	uint64_t _obscurance_aux_player_grid_sig = 0;
 
 	/// TEAMFIGHT_SIM_PROFILE env: per-_simulate() wall time (nanoseconds) by _step_tick section.
 	uint64_t _sim_profile_ns_projectiles = 0;
@@ -1109,9 +1260,6 @@ private:
 	uint64_t _sim_profile_uu_movement = 0;
 	/// Sub-timers inside `_score_enemy_target` (summed over calls); use with `_sim_profile_se_calls` for per-call avg.
 	uint64_t _sim_profile_se_base = 0;
-	uint64_t _sim_profile_se_bodyguard = 0;
-	uint64_t _sim_profile_se_obscurance = 0;
-	uint64_t _sim_profile_se_flanking = 0;
 	int64_t _sim_profile_se_calls = 0;
 	/// Sub-timers for uu_combat
 	uint64_t _sim_profile_uc_attack_cooldown = 0;
@@ -1139,7 +1287,6 @@ private:
 	uint64_t _sim_profile_ctx_team_centers = 0;
 	uint64_t _sim_profile_ctx_role_classification = 0;
 	uint64_t _sim_profile_ctx_targeting_sync = 0;
-	uint64_t _sim_profile_ctx_distance_cache = 0;
 	uint64_t _sim_profile_ctx_spatial_grid = 0;
 	uint64_t _sim_profile_ctx_density = 0;
 	/// Sub-timers for uu_movement
@@ -1164,7 +1311,6 @@ private:
 	int64_t _sim_profile_tgt_frame_syncs = 0;
 	int64_t _sim_profile_tgt_ties_adjusted = 0;
 	int64_t _sim_profile_tgt_ties_raw = 0;
-	int64_t _sim_profile_tgt_ties_bucket = 0;
 	int64_t _sim_profile_tgt_ties_distance = 0;
 	int64_t _sim_profile_tgt_ties_instance = 0;
 
@@ -1209,9 +1355,7 @@ private:
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
 	void _remove_alive_index(const StringName &team, int64_t index);
-	/// When update_cluster_density is false, only refresh incoming_target_count (Python: end-of-tick
-	/// refresh_target_pressure does not recompute density cache).
-	void _refresh_target_pressure(bool update_cluster_density = true);
+	void _refresh_target_pressure();
 	void _prepare_tick_context();
 	void _build_role_strategy_cache();
 	const UnitStrategy &_strategy_for_unit(const UnitState &unit) const;
@@ -1223,13 +1367,9 @@ private:
 	void _prune_assist_window(UnitState &unit);
 	void _update_projectiles();
 	bool _kite_from_enemies(UnitState &unit, bool profile_sim = false);
-	/// When `attacker_enemy_distance` is >= 0, used as the attacker–enemy distance (avoids a duplicate sqrt vs `_distance_between`).
-	/// When `attacker_enemy_distance_sq` is >= 0, used as squared distance for in-range check (avoids sqrt when possible).
-	double _score_enemy_target_prefix(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, double attacker_enemy_distance_sq = -1.0, bool profile_score = false, int64_t enemy_index = -1, double *base_score_out = nullptr, double *flanking_score_out = nullptr, const EnemyPrefixAdjustedEarlyPrune *adjusted_early_prune = nullptr);
-	double _score_enemy_target_from_prefix_parts(const UnitState &attacker, const TargetingFrameEntry &enemy, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, double base_score, double flanking_score);
-	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1);
+	double _score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance = -1.0, bool profile_score = false, int64_t enemy_index = -1, ScoreBreakdown *breakdown = nullptr);
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
-	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const TeamfightSimulationCore::UnitStrategy &strategy, double unit_ally_distance = -1.0, int64_t unit_index = -1, int64_t ally_index = -1) const;
+	double _score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const TeamfightSimulationCore::UnitStrategy &strategy, double unit_ally_distance = -1.0) const;
 	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
 	bool _should_switch(const UnitState &unit, double current_score, double new_score, const UnitStrategy &strategy, double current_target_distance = -1.0) const;
 	bool _try_cast_ability(UnitState &unit, UnitState &target, double distance);
@@ -1586,7 +1726,6 @@ private:
 
 	void _spatial_ensure_stamp_size() const;
 	void _spatial_clear_buckets() const;
-	void _spatial_clear_buckets_aux() const;
 	double _spatial_cell_size() const;
 	int _spatial_flat_index(double x, double y) const;
 	void _spatial_add_alive_team(const StringName &team) const;
@@ -1595,12 +1734,8 @@ private:
 	void _spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const;
 	void _spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const;
 	bool _spatial_stamp_has(int64_t unit_index) const;
-	void _spatial_fill_buckets_for_indices_aux(const std::vector<int64_t> &indices) const;
-	uint64_t _obscurance_aux_frontline_signature(const std::vector<int64_t> &indices) const;
 	void _spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const;
 	int _spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const;
-	int _spatial_count_obscurance_blockers_cached(double ux, double uy, double tx, double ty, int64_t target_instance_id) const;
-	int _spatial_count_obscurance_blockers(double ux, double uy, double tx, double ty, const std::vector<int64_t> &frontline_indices, int64_t target_instance_id) const;
 	bool _use_spatial_broad_phase() const;
 
 public:

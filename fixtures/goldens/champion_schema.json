@@ -981,6 +981,84 @@
 		"ultimate_name": "Drunken Stance",
 		"unit_id": "monk"
 	},
+	"necromancer": {
+		"ability": {
+			"kind": "summon_ally",
+			"params": {
+				"minions": [
+					{
+						"count": 2,
+						"minion_id": "skeleton"
+					}
+				],
+				"reason": "Raise Dead",
+				"spawn_radius": 2.0
+			},
+			"requires_target_in_range": true
+		},
+		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
+		"ability_name": "Raise Dead",
+		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
+		"name": "Necromancer",
+		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
+		"passive_ids": [
+			"soul_harvest"
+		],
+		"passive_name": "Soul Harvest",
+		"role": "mage",
+		"stats": {
+			"ability_cd": 8.0,
+			"armor": 0.1,
+			"attack_damage": 8.0,
+			"attack_range": 2.5,
+			"attack_speed": 0.8,
+			"life_steal": 0.0,
+			"magic_resist": 0.25,
+			"mana_per_attack": 5.0,
+			"max_hp": 180.0,
+			"max_mana": 120.0,
+			"move_speed": 0.65,
+			"name": "Necromancer",
+			"passive_id": "",
+			"projectile_radius": 0.03,
+			"projectile_speed": 5.0,
+			"respawn_time": 5.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"unit_id": "necromancer"
+		},
+		"ultimate": {
+			"kind": "summon_ally",
+			"params": {
+				"effects": [
+					{
+						"kind": "aoe_heal_over_time",
+						"params": {
+							"allow_overheal": true,
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"heal_max_hp_ratio": 0.3,
+							"reason": "Army of Darkness",
+							"stacking_mode": "separate"
+						},
+						"requires_target_in_range": true
+					}
+				],
+				"minions": [
+					{
+						"count": 3,
+						"minion_id": "ghoul"
+					}
+				],
+				"reason": "Army of Darkness",
+				"spawn_radius": 3.0
+			},
+			"requires_target_in_range": true
+		},
+		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"ultimate_name": "Army of Darkness",
+		"unit_id": "necromancer"
+	},
 	"ninja": {
 		"ability": {
 			"kind": "multi_effect",

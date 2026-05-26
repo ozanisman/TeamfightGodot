@@ -2094,70 +2094,70 @@ const CHAMPION_DATA := {
 		},
 		"passive_ids": [&"restorative_mist"],
 	},
-	# &"necromancer": {
-	# 	"stats": {
-	# 		"unit_id": &"necromancer",
-	# 		"name": &"Necromancer",
-	# 		"role": &"mage",
-	# 		"max_hp": 180.0,
-	# 		"attack_damage": 8.0,
-	# 		"attack_range": 2.5,
-	# 		"attack_speed": 0.8,
-	# 		"move_speed": 0.65,
-	# 		"armor": 0.10,
-	# 		"magic_resist": 0.25,
-	# 		"tenacity": 0.0,
-	# 		"life_steal": 0.0,
-	# 		"max_mana": 120.0,
-	# 		"mana_per_attack": 5.0,
-	# 		"ability_cd": 8.0,
-	# 		"projectile_speed": 0.0,
-	# 		"projectile_radius": 0.0,
-	# 		"passive_id": &"",
-	# 		"respawn_time": 0.0,
-	# 	},
-	# 	"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
-	# 	"ability_desc": "Summons 2 Skeleton warriors to the fight.",
-	# 	"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
-	# 	"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
-	# 	"passive_name": "Soul Harvest",
-	# 	"ability_name": "Raise Dead",
-	# 	"ultimate_name": "Army of Darkness",
-	# 	"ability": {
-	# 		"kind": &"summon_ally",
-	# 		"params": {
-	# 			"spawn_radius": 2.0,
-	# 			"minions": [
-	# 				{"minion_id": "skeleton", "count": 2}
-	# 			],
-	# 			"reason": "Raise Dead"
-	# 		}
-	# 	},
-	# 	"ultimate": {
-	# 		"kind": &"summon_ally",
-	# 		"params": {
-	# 			"spawn_radius": 3.0,
-	# 			"minions": [
-	# 				{"minion_id": "ghoul", "count": 3}
-	# 			],
-	# 			"effects": [
-	# 				{
-	# 					"kind": &"aoe_heal_over_time",
-	# 					"params": {
-	# 						"duration": 5.0,
-	# 						"duration_type": "respawn",
-	# 						"heal_max_hp_ratio": 0.3,
-	# 						"stacking_mode": "separate",
-	# 						"reason": "Army of Darkness",
-	# 						"allow_overheal": true
-	# 					}
-	# 				}
-	# 			],
-	# 			"reason": "Army of Darkness"
-	# 		}
-	# 	},
-	# 	"passive_ids": [&"soul_harvest"],
-	# },
+	&"necromancer": {
+		"stats": {
+			"unit_id": &"necromancer",
+			"name": &"Necromancer",
+			"role": &"mage",
+			"max_hp": 180.0,
+			"attack_damage": 8.0,
+			"attack_range": 2.5,
+			"attack_speed": 0.8,
+			"move_speed": 0.65,
+			"armor": 0.10,
+			"magic_resist": 0.25,
+			"tenacity": 0.0,
+			"life_steal": 0.0,
+			"max_mana": 120.0,
+			"mana_per_attack": 5.0,
+			"ability_cd": 8.0,
+			"projectile_speed": 0.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
+		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
+		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
+		"passive_name": "Soul Harvest",
+		"ability_name": "Raise Dead",
+		"ultimate_name": "Army of Darkness",
+		"ability": {
+			"kind": &"summon_ally",
+			"params": {
+				"spawn_radius": 2.0,
+				"minions": [
+					{"minion_id": "skeleton", "count": 2}
+				],
+				"reason": "Raise Dead"
+			}
+		},
+		"ultimate": {
+			"kind": &"summon_ally",
+			"params": {
+				"spawn_radius": 3.0,
+				"minions": [
+					{"minion_id": "ghoul", "count": 3}
+				],
+				"effects": [
+					{
+						"kind": &"aoe_heal_over_time",
+						"params": {
+							"duration": 5.0,
+							"duration_type": "respawn",
+							"heal_max_hp_ratio": 0.3,
+							"stacking_mode": "separate",
+							"reason": "Army of Darkness",
+							"allow_overheal": true
+						}
+					}
+				],
+				"reason": "Army of Darkness"
+			}
+		},
+		"passive_ids": [&"soul_harvest"],
+	},
 }
 
 const PASSIVE_DATA := {
@@ -2667,11 +2667,11 @@ const MINION_DATA := {
 			"unit_id": &"skeleton",
 			"name": &"Skeleton",
 			"role": &"minion",
-			"max_hp": 80.0,
-			"attack_damage": 8.0,
+			"max_hp": 50.0,
+			"attack_damage": 12.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.0,
-			"move_speed": 0.6,
+			"move_speed": 0.75,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
@@ -2687,8 +2687,8 @@ const MINION_DATA := {
 		"description": "A fragile undead warrior that fights with basic attacks.",
 		"ability_desc": "",
 		"ultimate_desc": "",
-		"passive_desc": "",
-		"passive_name": "",
+		"passive_desc": "Skeletons take 5 damage every second",
+		"passive_name": "Unstable Creation",
 		"ability_name": "",
 		"ultimate_name": "",
 		"ability": {},

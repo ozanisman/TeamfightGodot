@@ -2882,7 +2882,7 @@ bool TeamfightSimulationCore::_use_spatial_broad_phase() const {
 double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance) const {
 	double dist = unit_ally_distance;
 	if (dist < 0.0) {
-		dist = Math::sqrt((ally.pos_x - unit.pos_x) * (ally.pos_x - unit.pos_x) + (ally.pos_y - unit.pos_y) * (ally.pos_y - unit.pos_y));
+		dist = _distance_between_coords(unit.pos_x, unit.pos_y, ally.pos_x, ally.pos_y);
 	}
 	double hp_ratio = ally.hp / Math::max(0.0001, ally.max_hp);
 	double score = dist * strategy.ally_distance_weight;
@@ -2910,7 +2910,7 @@ double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, c
 		if (attacker_enemy_distance >= 0.0) {
 			dist = attacker_enemy_distance;
 		} else {
-			dist = Math::sqrt((enemy.pos_x - attacker.pos_x) * (enemy.pos_x - attacker.pos_x) + (enemy.pos_y - attacker.pos_y) * (enemy.pos_y - attacker.pos_y));
+			dist = _distance_between_coords(attacker.pos_x, attacker.pos_y, enemy.pos_x, enemy.pos_y);
 		}
 		// Python parity: melee contact uses abs tolerance only (math.isclose rel_tol=0, abs_tol=MELEE_CONTACT_BUFFER).
 		// No buffer for testing
@@ -3219,13 +3219,7 @@ TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(U
 	context.damage = damage;
 	context.action_kind = action_kind;
 	if (target != nullptr) {
-		double sx = source.pos_x;
-		double sy = source.pos_y;
-		double tx = target->pos_x;
-		double ty = target->pos_y;
-		double dx = tx - sx;
-		double dy = ty - sy;
-		context.distance = Math::sqrt(dx * dx + dy * dy);
+		context.distance = _distance_between_coords(source.pos_x, source.pos_y, target->pos_x, target->pos_y);
 	}
 	return context;
 }
@@ -3620,7 +3614,7 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 		ally_context.damage = damage;
 		ally_context.action_kind = action_kind;
 		// Calculate distance from ally to target for effects that might use it
-		ally_context.distance = Math::sqrt(adx * adx + ady * ady);
+		ally_context.distance = _distance_between_coords(ally.pos_x, ally.pos_y, target.pos_x, target.pos_y);
 		
 		// Execute ally defense effects
 		for (const EffectRecord &effect : ally_defense_effects) {
@@ -3660,7 +3654,7 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 					// Calculate distance from source to ally for effects that might use it
 					double rdx = source.pos_x - ally.pos_x;
 					double rdy = source.pos_y - ally.pos_y;
-					redirect_context.distance = Math::sqrt(rdx * rdx + rdy * rdy);
+					redirect_context.distance = _distance_between_coords(source.pos_x, source.pos_y, ally.pos_x, ally.pos_y);
 					_apply_damage(source, ally, mitigated_damage, damage_type, sn_passive(), redirect_context);
 				}
 			} else {
@@ -3844,7 +3838,7 @@ bool TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &tar
 	double ty = target.pos_y;
 	double dx = tx - sx;
 	double dy = ty - sy;
-	double dist = Math::sqrt(dx * dx + dy * dy);
+	double dist = _distance_between_coords(sx, sy, tx, ty);
 	double nx = 0.0;
 	double ny = 0.0;
 	if (dist <= EPSILON) {
@@ -4441,6 +4435,41 @@ void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, Un
 	if (current_stacks > 0) {
 		double inverse_multiplicative = previous_multiplicative != 0.0 ? 1.0 / previous_multiplicative : 1.0;
 		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
+		
+		// Reset temp tracker when undoing previous modifiers
+		if (stat_name == StringName("max_hp")) {
+			target.stat_temp_max_hp = 0.0;
+		} else if (stat_name == StringName("attack_damage")) {
+			target.stat_temp_attack_damage = 0.0;
+		} else if (stat_name == StringName("attack_speed")) {
+			target.stat_temp_attack_speed = 0.0;
+		} else if (stat_name == StringName("move_speed")) {
+			target.stat_temp_move_speed = 0.0;
+		} else if (stat_name == StringName("armor")) {
+			target.stat_temp_armor = 0.0;
+		} else if (stat_name == StringName("magic_resist")) {
+			target.stat_temp_magic_resist = 0.0;
+		} else if (stat_name == StringName("tenacity")) {
+			target.stat_temp_tenacity = 0.0;
+		} else if (stat_name == StringName("life_steal")) {
+			target.stat_temp_life_steal = 0.0;
+		} else if (stat_name == StringName("max_mana")) {
+			target.stat_temp_max_mana = 0.0;
+		} else if (stat_name == StringName("mana_per_attack")) {
+			target.stat_temp_mana_per_attack = 0.0;
+		} else if (stat_name == StringName("ability_cd")) {
+			target.stat_temp_ability_cd = 0.0;
+		} else if (stat_name == StringName("projectile_speed")) {
+			target.stat_temp_projectile_speed = 0.0;
+		} else if (stat_name == StringName("projectile_radius")) {
+			target.stat_temp_projectile_radius = 0.0;
+		} else if (stat_name == StringName("respawn_time")) {
+			target.stat_temp_respawn_time = 0.0;
+		} else if (stat_name == StringName("attack_range")) {
+			target.stat_temp_attack_range = 0.0;
+		} else if (stat_name == StringName("cast_range")) {
+			target.stat_temp_cast_range = 0.0;
+		}
 	}
 
 	if (stack_behavior == StackBehavior::Reset) {
@@ -4505,6 +4534,41 @@ int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName st
 		// Remove the stack entry
 		unit.stat_stacks.erase(stack_key);
 		
+		// Reset the temp duration tracker to prevent stat from dropping below base
+		// when new stacks are applied later and expire
+		if (stat_name == StringName("max_hp")) {
+			unit.stat_temp_max_hp = 0.0;
+		} else if (stat_name == StringName("attack_damage")) {
+			unit.stat_temp_attack_damage = 0.0;
+		} else if (stat_name == StringName("attack_speed")) {
+			unit.stat_temp_attack_speed = 0.0;
+		} else if (stat_name == StringName("move_speed")) {
+			unit.stat_temp_move_speed = 0.0;
+		} else if (stat_name == StringName("armor")) {
+			unit.stat_temp_armor = 0.0;
+		} else if (stat_name == StringName("magic_resist")) {
+			unit.stat_temp_magic_resist = 0.0;
+		} else if (stat_name == StringName("tenacity")) {
+			unit.stat_temp_tenacity = 0.0;
+		} else if (stat_name == StringName("life_steal")) {
+			unit.stat_temp_life_steal = 0.0;
+		} else if (stat_name == StringName("max_mana")) {
+			unit.stat_temp_max_mana = 0.0;
+		} else if (stat_name == StringName("mana_per_attack")) {
+			unit.stat_temp_mana_per_attack = 0.0;
+		} else if (stat_name == StringName("ability_cd")) {
+			unit.stat_temp_ability_cd = 0.0;
+		} else if (stat_name == StringName("projectile_speed")) {
+			unit.stat_temp_projectile_speed = 0.0;
+		} else if (stat_name == StringName("projectile_radius")) {
+			unit.stat_temp_projectile_radius = 0.0;
+		} else if (stat_name == StringName("respawn_time")) {
+			unit.stat_temp_respawn_time = 0.0;
+		} else if (stat_name == StringName("attack_range")) {
+			unit.stat_temp_attack_range = 0.0;
+		} else if (stat_name == StringName("cast_range")) {
+			unit.stat_temp_cast_range = 0.0;
+		}
 	}
 	
 	return current_stacks;
@@ -4532,6 +4596,41 @@ void TeamfightSimulationCore::_set_stat_stacks(UnitState &unit, StringName stat_
 		double applied_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
 		double inverse_multiplicative = applied_multiplicative != 0.0 ? 1.0 / applied_multiplicative : 1.0;
 		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
+		
+		// Reset temp tracker when undoing existing modifiers
+		if (stat_name == StringName("max_hp")) {
+			unit.stat_temp_max_hp = 0.0;
+		} else if (stat_name == StringName("attack_damage")) {
+			unit.stat_temp_attack_damage = 0.0;
+		} else if (stat_name == StringName("attack_speed")) {
+			unit.stat_temp_attack_speed = 0.0;
+		} else if (stat_name == StringName("move_speed")) {
+			unit.stat_temp_move_speed = 0.0;
+		} else if (stat_name == StringName("armor")) {
+			unit.stat_temp_armor = 0.0;
+		} else if (stat_name == StringName("magic_resist")) {
+			unit.stat_temp_magic_resist = 0.0;
+		} else if (stat_name == StringName("tenacity")) {
+			unit.stat_temp_tenacity = 0.0;
+		} else if (stat_name == StringName("life_steal")) {
+			unit.stat_temp_life_steal = 0.0;
+		} else if (stat_name == StringName("max_mana")) {
+			unit.stat_temp_max_mana = 0.0;
+		} else if (stat_name == StringName("mana_per_attack")) {
+			unit.stat_temp_mana_per_attack = 0.0;
+		} else if (stat_name == StringName("ability_cd")) {
+			unit.stat_temp_ability_cd = 0.0;
+		} else if (stat_name == StringName("projectile_speed")) {
+			unit.stat_temp_projectile_speed = 0.0;
+		} else if (stat_name == StringName("projectile_radius")) {
+			unit.stat_temp_projectile_radius = 0.0;
+		} else if (stat_name == StringName("respawn_time")) {
+			unit.stat_temp_respawn_time = 0.0;
+		} else if (stat_name == StringName("attack_range")) {
+			unit.stat_temp_attack_range = 0.0;
+		} else if (stat_name == StringName("cast_range")) {
+			unit.stat_temp_cast_range = 0.0;
+		}
 		
 		// Get parameters from existing entry
 		max_stacks = int(stack_entry.get("max_stacks", max_stacks));
@@ -4611,6 +4710,42 @@ void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, doub
 		if (current_stacks > 0) {
 			_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
 		}
+		
+		// Reset the temp duration tracker to ensure stat returns to base
+		if (stat_name == StringName("max_hp")) {
+			unit.stat_temp_max_hp = 0.0;
+		} else if (stat_name == StringName("attack_damage")) {
+			unit.stat_temp_attack_damage = 0.0;
+		} else if (stat_name == StringName("attack_speed")) {
+			unit.stat_temp_attack_speed = 0.0;
+		} else if (stat_name == StringName("move_speed")) {
+			unit.stat_temp_move_speed = 0.0;
+		} else if (stat_name == StringName("armor")) {
+			unit.stat_temp_armor = 0.0;
+		} else if (stat_name == StringName("magic_resist")) {
+			unit.stat_temp_magic_resist = 0.0;
+		} else if (stat_name == StringName("tenacity")) {
+			unit.stat_temp_tenacity = 0.0;
+		} else if (stat_name == StringName("life_steal")) {
+			unit.stat_temp_life_steal = 0.0;
+		} else if (stat_name == StringName("max_mana")) {
+			unit.stat_temp_max_mana = 0.0;
+		} else if (stat_name == StringName("mana_per_attack")) {
+			unit.stat_temp_mana_per_attack = 0.0;
+		} else if (stat_name == StringName("ability_cd")) {
+			unit.stat_temp_ability_cd = 0.0;
+		} else if (stat_name == StringName("projectile_speed")) {
+			unit.stat_temp_projectile_speed = 0.0;
+		} else if (stat_name == StringName("projectile_radius")) {
+			unit.stat_temp_projectile_radius = 0.0;
+		} else if (stat_name == StringName("respawn_time")) {
+			unit.stat_temp_respawn_time = 0.0;
+		} else if (stat_name == StringName("attack_range")) {
+			unit.stat_temp_attack_range = 0.0;
+		} else if (stat_name == StringName("cast_range")) {
+			unit.stat_temp_cast_range = 0.0;
+		}
+		
 		keys_to_remove.append(key);
 	}
 	for (int i = 0; i < keys_to_remove.size(); i++) {
@@ -4691,11 +4826,14 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	}
 	
 	// Calculate total damage from ratios at application time
-	double damage_total = get_effective_attack_damage(source) * attack_damage_ratio;
+	double source_attack_damage = get_effective_attack_damage(source);
+	double damage_total = source_attack_damage * attack_damage_ratio;
 	damage_total += get_effective_max_hp(target) * max_hp_ratio;
 	damage_total += flat_amount;
 	
 	if (duration <= 0.0 || damage_total <= 0.0) {
+		UtilityFunctions::push_error(vformat("DoT effect '%s' failed: duration=%f, damage_total=%f (source_attack_damage=%f, attack_damage_ratio=%f, max_hp_ratio=%f, flat_amount=%f, source_id=%d, source_alive=%d)", 
+			String(effect_type), duration, damage_total, source_attack_damage, attack_damage_ratio, max_hp_ratio, flat_amount, source.instance_id, source.alive));
 		return;
 	}
 	
@@ -4825,6 +4963,8 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	heal_total += flat_amount;
 	
 	if (duration <= 0.0 || heal_total <= 0.0) {
+		UtilityFunctions::push_error(vformat("HoT effect '%s' failed: duration=%f, heal_total=%f (max_hp_ratio=%f, current_hp_ratio=%f, missing_hp_ratio=%f, flat_amount=%f)", 
+			String(effect_type), duration, heal_total, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount));
 		return;
 	}
 	
@@ -4942,7 +5082,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	new_effect.total_missing_hp_ratio = missing_hp_ratio;
 	new_effect.total_flat_amount = flat_amount;
 	new_effect.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
-	
 	periodic_effects.push_back(new_effect);
 }
 
@@ -5117,9 +5256,7 @@ bool TeamfightSimulationCore::_should_interrupt_channel(UnitState &unit, const U
 		
 		for (int64_t index : enemy_indices) {
 			UnitState &enemy = _units[static_cast<size_t>(index)];
-			double dx = enemy.pos_x - unit.pos_x;
-			double dy = enemy.pos_y - unit.pos_y;
-			double dist = Math::sqrt(dx * dx + dy * dy);
+			double dist = _distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
 			if (dist <= attack_range) {
 				has_target_in_range = true;
 				break;
@@ -5213,9 +5350,7 @@ void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delt
 				
 				for (int64_t index : enemy_indices) {
 					UnitState &enemy = _units[static_cast<size_t>(index)];
-					double dx = enemy.pos_x - unit.pos_x;
-					double dy = enemy.pos_y - unit.pos_y;
-					double dist = Math::sqrt(dx * dx + dy * dy);
+					double dist = _distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
 					if (dist < closest_dist) {
 						closest_dist = dist;
 						closest = &enemy;
@@ -6060,7 +6195,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	if (_debug_targeting_scoring) {
 		ScoreBreakdown best_breakdown;
 		ScoreBreakdown *breakdown_ptr = &best_breakdown;
-		double best_dist = Math::sqrt((best_frame->pos_x - unit.pos_x) * (best_frame->pos_x - unit.pos_x) + (best_frame->pos_y - unit.pos_y) * (best_frame->pos_y - unit.pos_y));
+		double best_dist = _distance_between_coords(unit.pos_x, unit.pos_y, best_frame->pos_x, best_frame->pos_y);
 		_score_enemy_target(unit, *best_frame, ally_for_peel, strategy, ctx, score_ctx, best_dist, profile_sim, best_index, breakdown_ptr);
 		best_breakdown.total = best_raw;
 		_print_score_breakdown(best_breakdown, _uc(unit).archetype_id, _uc(_units[static_cast<size_t>(best_index)]).archetype_id);
@@ -6084,7 +6219,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 	if (current_target_raw_valid) {
 		current_score = current_target_raw;
 	} else if (current_target != nullptr && current_target_live != nullptr) {
-		double current_dist = Math::sqrt((current_target->pos_x - unit.pos_x) * (current_target->pos_x - unit.pos_x) + (current_target->pos_y - unit.pos_y) * (current_target->pos_y - unit.pos_y));
+		double current_dist = _distance_between_coords(unit.pos_x, unit.pos_y, current_target->pos_x, current_target->pos_y);
 		current_score = _score_enemy_target(unit, *current_target, ally_for_peel, strategy, ctx, score_ctx, current_dist, profile_sim, current_target_index, nullptr);
 	}
 
@@ -6156,9 +6291,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 	double best_hp_ratio = std::numeric_limits<double>::infinity();
 	for (int64_t ally_index : pool) {
 		const TargetingFrameEntry &candidate = _targeting_frame[static_cast<size_t>(ally_index)];
-		double dx = candidate.pos_x - unit.pos_x;
-		double dy = candidate.pos_y - unit.pos_y;
-		double dist = Math::sqrt(dx * dx + dy * dy);
+		double dist = _distance_between_coords(unit.pos_x, unit.pos_y, candidate.pos_x, candidate.pos_y);
 		double score = _score_ally_target(unit, candidate, strat, dist);
 		double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
 		if (_scratch_critical_allies.empty()) {
@@ -6197,9 +6330,7 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target
 }
 
 double TeamfightSimulationCore::_distance_between(const UnitState &left, const UnitState &right) const {
-	double dx = right.pos_x - left.pos_x;
-	double dy = right.pos_y - left.pos_y;
-	return Math::sqrt(dx * dx + dy * dy);
+	return _distance_between_coords(left.pos_x, left.pos_y, right.pos_x, right.pos_y);
 }
 
 bool TeamfightSimulationCore::_position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const {
@@ -6241,7 +6372,7 @@ Vector2 TeamfightSimulationCore::_find_valid_dash_position(double start_x, doubl
 	double step_size = 0.01;
 	double outward_dist = step_size;
 	double inward_dist = step_size;
-	double target_to_start_dist = Math::sqrt((target_x - start_x) * (target_x - start_x) + (target_y - start_y) * (target_y - start_y));
+	double target_to_start_dist = _distance_between_coords(target_x, target_y, start_x, start_y);
 	
 	while (outward_dist <= max_distance || inward_dist <= target_to_start_dist) {
 		// Test outward positions (beyond target)
@@ -7145,13 +7276,15 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				|| unit.stat_temp_respawn_time > 0.0
 				|| unit.stat_temp_attack_range > 0.0
 				|| unit.stat_temp_cast_range > 0.0;
+		
+		// Update stacks first so temp tracker resets take effect before clearing expired modifiers
+		if (!unit.stat_stacks.is_empty()) {
+			_update_stacks(unit, _tick_rate, _time);
+		}
+		
 		if (has_temporary_stat_modifiers) {
 			_update_stat_modifier_durations(unit, _tick_rate);
 			_clear_expired_stat_modifiers(unit);
-		}
-		
-		if (!unit.stat_stacks.is_empty()) {
-			_update_stacks(unit, _tick_rate, _time);
 		}
 		if (unit.forced_target_remaining <= 0.0) {
 			unit.forced_target_remaining = 0.0;
@@ -7292,17 +7425,17 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				}
 			}
 
-			// Tick periodic effects (DoT/HoT)
-			{
-				SimProfileAccScope _ur_per(profile_sim, _sim_profile_ur_periodic);
-				_tick_periodic_effects(unit, _tick_rate);
-			}
-
 			// Process channel effects
 			if (_uc(unit).is_channeling) {
 				SimProfileAccScope _ur_chn(profile_sim, _sim_profile_ur_channel);
 				_process_channel_tick(unit, _tick_rate);
 			}
+		}
+
+		// Tick periodic effects (DoT/HoT) independently of on_tick effects
+		if (!cold.periodic_effects.empty()) {
+			SimProfileAccScope _ur_per(profile_sim, _sim_profile_ur_periodic);
+			_tick_periodic_effects(unit, _tick_rate);
 		}
 
 		if (unit.stun_remaining > 0.0) {
@@ -7599,7 +7732,7 @@ void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &ta
 	}
 	double dx = target.pos_x - unit.pos_x;
 	double dy = target.pos_y - unit.pos_y;
-	double distance = Math::sqrt(dx * dx + dy * dy);
+	double distance = _distance_between_coords(unit.pos_x, unit.pos_y, target.pos_x, target.pos_y);
 	if (distance <= EPSILON) {
 		return;
 	}
@@ -7625,7 +7758,7 @@ void TeamfightSimulationCore::_move_toward_target_with_range(UnitState &unit, Un
 	}
 	double dx = target.pos_x - unit.pos_x;
 	double dy = target.pos_y - unit.pos_y;
-	double distance = Math::sqrt(dx * dx + dy * dy);
+	double distance = _distance_between_coords(unit.pos_x, unit.pos_y, target.pos_x, target.pos_y);
 	if (distance <= EPSILON) {
 		return;
 	}
@@ -7708,7 +7841,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit, bool profile_s
 	if (count <= 0) {
 		return false;
 	}
-	double mag = Math::sqrt(rep_x * rep_x + rep_y * rep_y);
+	double mag = _distance_between_coords(0.0, 0.0, rep_x, rep_y);
 	if (mag <= EPSILON) {
 		return false;
 	}
@@ -7734,7 +7867,7 @@ bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit, bool profile_s
 	}
 	// Python parity: renormalize after boundary blocking so wall-hugging units
 	// still move at full kite speed (Python unit_movement.py lines 99-101).
-	double new_mag = Math::sqrt(vel_x * vel_x + vel_y * vel_y);
+	double new_mag = _distance_between_coords(0.0, 0.0, vel_x, vel_y);
 	if (new_mag <= EPSILON) {
 		return false;
 	}
@@ -7798,7 +7931,7 @@ void TeamfightSimulationCore::_update_projectiles() {
 		}
 		double dx = target->pos_x - data.pos_x;
 		double dy = target->pos_y - data.pos_y;
-		double dist = Math::sqrt(dx * dx + dy * dy);
+		double dist = _distance_between_coords(data.pos_x, data.pos_y, target->pos_x, target->pos_y);
 		double move_dist = data.speed * _tick_rate;
 		if (dist <= move_dist + data.radius) {
 			ProjectileState hit = data;
@@ -8571,7 +8704,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						double target_y = target_unit->pos_y;
 						double dx = target_x - current_x;
 						double dy = target_y - current_y;
-						double dist = Math::sqrt(dx * dx + dy * dy);
+						double dist = _distance_between_coords(current_x, current_y, target_x, target_y);
 						if (dist > 0.0) {
 							double move_dist = Math::min(dash_distance, dist);
 							new_x = current_x + (dx / dist) * move_dist;
@@ -8600,7 +8733,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 					double target_y = target_unit->pos_y;
 					double final_dx = target_x - new_x;
 					double final_dy = target_y - new_y;
-					double final_dist = Math::sqrt(final_dx * final_dx + final_dy * final_dy);
+					double final_dist = _distance_between_coords(new_x, new_y, target_x, target_y);
 					// Consider target reached if we're within attack range (with melee buffer)
 					bool reached = (final_dist <= get_effective_attack_range(source) + 0.1);
 					dash_result["reached_target"] = reached;
@@ -8612,7 +8745,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			_sync_targeting_frame_unit(source);
 			
 			// Calculate actual distance traveled
-			double actual_distance = Math::sqrt((new_x - current_x) * (new_x - current_x) + (new_y - current_y) * (new_y - current_y));
+			double actual_distance = _distance_between_coords(current_x, current_y, new_x, new_y);
 			dash_result["distance_traveled"] = actual_distance;
 			
 			return dash_result;
@@ -10021,9 +10154,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 	if (u.target_id > 0) {
 		const UnitState *target = _unit_by_id(u.target_id);
 		if (target != nullptr && target->alive) {
-			double dx = target->pos_x - u.pos_x;
-			double dy = target->pos_y - u.pos_y;
-			double distance = Math::sqrt(dx * dx + dy * dy);
+			double distance = _distance_between_coords(u.pos_x, u.pos_y, target->pos_x, target->pos_y);
 			d["target_distance"] = distance;
 			// Use effective attack range for in_range determination (allows melee to attack while closing gap)
 			double effective_range = _effective_attack_range(u);

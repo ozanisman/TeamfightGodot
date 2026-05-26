@@ -1724,6 +1724,10 @@ private:
 		}
 	}
 
+	static inline double _distance_between_coords(double x1, double y1, double x2, double y2) {
+		return Math::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+	}
+
 	void _spatial_ensure_stamp_size() const;
 	void _spatial_clear_buckets() const;
 	double _spatial_cell_size() const;

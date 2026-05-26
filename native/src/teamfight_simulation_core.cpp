@@ -4437,39 +4437,7 @@ void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, Un
 		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
 		
 		// Reset temp tracker when undoing previous modifiers
-		if (stat_name == StringName("max_hp")) {
-			target.stat_temp_max_hp = 0.0;
-		} else if (stat_name == StringName("attack_damage")) {
-			target.stat_temp_attack_damage = 0.0;
-		} else if (stat_name == StringName("attack_speed")) {
-			target.stat_temp_attack_speed = 0.0;
-		} else if (stat_name == StringName("move_speed")) {
-			target.stat_temp_move_speed = 0.0;
-		} else if (stat_name == StringName("armor")) {
-			target.stat_temp_armor = 0.0;
-		} else if (stat_name == StringName("magic_resist")) {
-			target.stat_temp_magic_resist = 0.0;
-		} else if (stat_name == StringName("tenacity")) {
-			target.stat_temp_tenacity = 0.0;
-		} else if (stat_name == StringName("life_steal")) {
-			target.stat_temp_life_steal = 0.0;
-		} else if (stat_name == StringName("max_mana")) {
-			target.stat_temp_max_mana = 0.0;
-		} else if (stat_name == StringName("mana_per_attack")) {
-			target.stat_temp_mana_per_attack = 0.0;
-		} else if (stat_name == StringName("ability_cd")) {
-			target.stat_temp_ability_cd = 0.0;
-		} else if (stat_name == StringName("projectile_speed")) {
-			target.stat_temp_projectile_speed = 0.0;
-		} else if (stat_name == StringName("projectile_radius")) {
-			target.stat_temp_projectile_radius = 0.0;
-		} else if (stat_name == StringName("respawn_time")) {
-			target.stat_temp_respawn_time = 0.0;
-		} else if (stat_name == StringName("attack_range")) {
-			target.stat_temp_attack_range = 0.0;
-		} else if (stat_name == StringName("cast_range")) {
-			target.stat_temp_cast_range = 0.0;
-		}
+		_reset_stat_temp_tracker(target, stat_name);
 	}
 
 	if (stack_behavior == StackBehavior::Reset) {
@@ -4510,6 +4478,42 @@ void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, Un
 }
 
 // Stack management functions
+void TeamfightSimulationCore::_reset_stat_temp_tracker(UnitState &unit, StringName stat_name) {
+	if (stat_name == StringName("max_hp")) {
+		unit.stat_temp_max_hp = 0.0;
+	} else if (stat_name == StringName("attack_damage")) {
+		unit.stat_temp_attack_damage = 0.0;
+	} else if (stat_name == StringName("attack_speed")) {
+		unit.stat_temp_attack_speed = 0.0;
+	} else if (stat_name == StringName("move_speed")) {
+		unit.stat_temp_move_speed = 0.0;
+	} else if (stat_name == StringName("armor")) {
+		unit.stat_temp_armor = 0.0;
+	} else if (stat_name == StringName("magic_resist")) {
+		unit.stat_temp_magic_resist = 0.0;
+	} else if (stat_name == StringName("tenacity")) {
+		unit.stat_temp_tenacity = 0.0;
+	} else if (stat_name == StringName("life_steal")) {
+		unit.stat_temp_life_steal = 0.0;
+	} else if (stat_name == StringName("max_mana")) {
+		unit.stat_temp_max_mana = 0.0;
+	} else if (stat_name == StringName("mana_per_attack")) {
+		unit.stat_temp_mana_per_attack = 0.0;
+	} else if (stat_name == StringName("ability_cd")) {
+		unit.stat_temp_ability_cd = 0.0;
+	} else if (stat_name == StringName("projectile_speed")) {
+		unit.stat_temp_projectile_speed = 0.0;
+	} else if (stat_name == StringName("projectile_radius")) {
+		unit.stat_temp_projectile_radius = 0.0;
+	} else if (stat_name == StringName("respawn_time")) {
+		unit.stat_temp_respawn_time = 0.0;
+	} else if (stat_name == StringName("attack_range")) {
+		unit.stat_temp_attack_range = 0.0;
+	} else if (stat_name == StringName("cast_range")) {
+		unit.stat_temp_cast_range = 0.0;
+	}
+}
+
 String TeamfightSimulationCore::_get_stack_key(StringName stat_name, const String &reason) {
 	return String(stat_name) + "|" + reason;
 }
@@ -4536,39 +4540,7 @@ int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName st
 		
 		// Reset the temp duration tracker to prevent stat from dropping below base
 		// when new stacks are applied later and expire
-		if (stat_name == StringName("max_hp")) {
-			unit.stat_temp_max_hp = 0.0;
-		} else if (stat_name == StringName("attack_damage")) {
-			unit.stat_temp_attack_damage = 0.0;
-		} else if (stat_name == StringName("attack_speed")) {
-			unit.stat_temp_attack_speed = 0.0;
-		} else if (stat_name == StringName("move_speed")) {
-			unit.stat_temp_move_speed = 0.0;
-		} else if (stat_name == StringName("armor")) {
-			unit.stat_temp_armor = 0.0;
-		} else if (stat_name == StringName("magic_resist")) {
-			unit.stat_temp_magic_resist = 0.0;
-		} else if (stat_name == StringName("tenacity")) {
-			unit.stat_temp_tenacity = 0.0;
-		} else if (stat_name == StringName("life_steal")) {
-			unit.stat_temp_life_steal = 0.0;
-		} else if (stat_name == StringName("max_mana")) {
-			unit.stat_temp_max_mana = 0.0;
-		} else if (stat_name == StringName("mana_per_attack")) {
-			unit.stat_temp_mana_per_attack = 0.0;
-		} else if (stat_name == StringName("ability_cd")) {
-			unit.stat_temp_ability_cd = 0.0;
-		} else if (stat_name == StringName("projectile_speed")) {
-			unit.stat_temp_projectile_speed = 0.0;
-		} else if (stat_name == StringName("projectile_radius")) {
-			unit.stat_temp_projectile_radius = 0.0;
-		} else if (stat_name == StringName("respawn_time")) {
-			unit.stat_temp_respawn_time = 0.0;
-		} else if (stat_name == StringName("attack_range")) {
-			unit.stat_temp_attack_range = 0.0;
-		} else if (stat_name == StringName("cast_range")) {
-			unit.stat_temp_cast_range = 0.0;
-		}
+		_reset_stat_temp_tracker(unit, stat_name);
 	}
 	
 	return current_stacks;
@@ -4598,39 +4570,7 @@ void TeamfightSimulationCore::_set_stat_stacks(UnitState &unit, StringName stat_
 		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
 		
 		// Reset temp tracker when undoing existing modifiers
-		if (stat_name == StringName("max_hp")) {
-			unit.stat_temp_max_hp = 0.0;
-		} else if (stat_name == StringName("attack_damage")) {
-			unit.stat_temp_attack_damage = 0.0;
-		} else if (stat_name == StringName("attack_speed")) {
-			unit.stat_temp_attack_speed = 0.0;
-		} else if (stat_name == StringName("move_speed")) {
-			unit.stat_temp_move_speed = 0.0;
-		} else if (stat_name == StringName("armor")) {
-			unit.stat_temp_armor = 0.0;
-		} else if (stat_name == StringName("magic_resist")) {
-			unit.stat_temp_magic_resist = 0.0;
-		} else if (stat_name == StringName("tenacity")) {
-			unit.stat_temp_tenacity = 0.0;
-		} else if (stat_name == StringName("life_steal")) {
-			unit.stat_temp_life_steal = 0.0;
-		} else if (stat_name == StringName("max_mana")) {
-			unit.stat_temp_max_mana = 0.0;
-		} else if (stat_name == StringName("mana_per_attack")) {
-			unit.stat_temp_mana_per_attack = 0.0;
-		} else if (stat_name == StringName("ability_cd")) {
-			unit.stat_temp_ability_cd = 0.0;
-		} else if (stat_name == StringName("projectile_speed")) {
-			unit.stat_temp_projectile_speed = 0.0;
-		} else if (stat_name == StringName("projectile_radius")) {
-			unit.stat_temp_projectile_radius = 0.0;
-		} else if (stat_name == StringName("respawn_time")) {
-			unit.stat_temp_respawn_time = 0.0;
-		} else if (stat_name == StringName("attack_range")) {
-			unit.stat_temp_attack_range = 0.0;
-		} else if (stat_name == StringName("cast_range")) {
-			unit.stat_temp_cast_range = 0.0;
-		}
+		_reset_stat_temp_tracker(unit, stat_name);
 		
 		// Get parameters from existing entry
 		max_stacks = int(stack_entry.get("max_stacks", max_stacks));
@@ -4712,39 +4652,7 @@ void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, doub
 		}
 		
 		// Reset the temp duration tracker to ensure stat returns to base
-		if (stat_name == StringName("max_hp")) {
-			unit.stat_temp_max_hp = 0.0;
-		} else if (stat_name == StringName("attack_damage")) {
-			unit.stat_temp_attack_damage = 0.0;
-		} else if (stat_name == StringName("attack_speed")) {
-			unit.stat_temp_attack_speed = 0.0;
-		} else if (stat_name == StringName("move_speed")) {
-			unit.stat_temp_move_speed = 0.0;
-		} else if (stat_name == StringName("armor")) {
-			unit.stat_temp_armor = 0.0;
-		} else if (stat_name == StringName("magic_resist")) {
-			unit.stat_temp_magic_resist = 0.0;
-		} else if (stat_name == StringName("tenacity")) {
-			unit.stat_temp_tenacity = 0.0;
-		} else if (stat_name == StringName("life_steal")) {
-			unit.stat_temp_life_steal = 0.0;
-		} else if (stat_name == StringName("max_mana")) {
-			unit.stat_temp_max_mana = 0.0;
-		} else if (stat_name == StringName("mana_per_attack")) {
-			unit.stat_temp_mana_per_attack = 0.0;
-		} else if (stat_name == StringName("ability_cd")) {
-			unit.stat_temp_ability_cd = 0.0;
-		} else if (stat_name == StringName("projectile_speed")) {
-			unit.stat_temp_projectile_speed = 0.0;
-		} else if (stat_name == StringName("projectile_radius")) {
-			unit.stat_temp_projectile_radius = 0.0;
-		} else if (stat_name == StringName("respawn_time")) {
-			unit.stat_temp_respawn_time = 0.0;
-		} else if (stat_name == StringName("attack_range")) {
-			unit.stat_temp_attack_range = 0.0;
-		} else if (stat_name == StringName("cast_range")) {
-			unit.stat_temp_cast_range = 0.0;
-		}
+		_reset_stat_temp_tracker(unit, stat_name);
 		
 		keys_to_remove.append(key);
 	}
@@ -4832,8 +4740,6 @@ void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, d
 	damage_total += flat_amount;
 	
 	if (duration <= 0.0 || damage_total <= 0.0) {
-		UtilityFunctions::push_error(vformat("DoT effect '%s' failed: duration=%f, damage_total=%f (source_attack_damage=%f, attack_damage_ratio=%f, max_hp_ratio=%f, flat_amount=%f, source_id=%d, source_alive=%d)", 
-			String(effect_type), duration, damage_total, source_attack_damage, attack_damage_ratio, max_hp_ratio, flat_amount, source.instance_id, source.alive));
 		return;
 	}
 	
@@ -4963,8 +4869,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 	heal_total += flat_amount;
 	
 	if (duration <= 0.0 || heal_total <= 0.0) {
-		UtilityFunctions::push_error(vformat("HoT effect '%s' failed: duration=%f, heal_total=%f (max_hp_ratio=%f, current_hp_ratio=%f, missing_hp_ratio=%f, flat_amount=%f)", 
-			String(effect_type), duration, heal_total, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount));
 		return;
 	}
 	

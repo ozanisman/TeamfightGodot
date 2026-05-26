@@ -1501,6 +1501,7 @@ private:
 	void _validate_stack_consistency(UnitState &unit);
 
 	// Stack management functions
+	void _reset_stat_temp_tracker(UnitState &unit, StringName stat_name);
 	String _get_stack_key(StringName stat_name, const String &reason);
 	void _update_stacks(UnitState &unit, double delta, double current_time);
 	void _cleanup_expired_stacks(UnitState &unit, double current_time);

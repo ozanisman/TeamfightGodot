@@ -17,7 +17,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <queue>
 
 using namespace godot;
 
@@ -240,60 +239,6 @@ private:
 		Refresh = 0,    // Reset duration to max (current behavior)
 		Accumulate = 1, // Add duration to current
 		Reset = 2       // Reset stacks to 1, refresh duration
-	};
-
-	/// Optimized stack entry with pre-computed hash for performance
-	struct StackEntry {
-		uint64_t key_hash = 0;
-		int current_stacks = 0;
-		int max_stacks = 1;
-		double base_value = 0.0;
-		double duration = 0.0;
-		bool is_multiplicative = false;
-		String reason = "";
-		double last_applied_time = 0.0;
-		StackBehavior stack_behavior = StackBehavior::Refresh;
-		bool active = true;
-		int pool_index = -1;
-	};
-
-	/// Stack validation parameters for robust error checking
-	struct StackParams {
-		int max_stacks = 1;
-		double base_value = 0.0;
-		StackBehavior behavior = StackBehavior::Refresh;
-		StringName stat_name;
-		String reason;
-		
-		bool validate(const TeamfightSimulationCore* core) const {
-			return max_stacks > 0 && max_stacks <= 100 &&
-				   base_value >= -10000.0 && base_value <= 10000.0 &&
-				   core->_is_valid_stat_name(stat_name);
-		}
-	};
-
-	/// Stack error codes for proper error handling
-	enum class StackError : int8_t {
-		None = 0,
-		InvalidStat = 1,
-		InvalidMaxStacks = 2,
-		InvalidBaseValue = 3,
-		CorruptedData = 4,
-		Overflow = 5
-	};
-
-	/// Function pointer type for stat application
-	using StatApplyFunc = void(*)(UnitState&, double, bool);
-
-	/// Expiration entry for priority queue
-	struct ExpirationEntry {
-		double expire_time = 0.0;
-		uint64_t stack_key_hash = 0;
-		UnitState* unit = nullptr;
-		
-		bool operator<(const ExpirationEntry& other) const {
-			return expire_time > other.expire_time; // Min-heap behavior
-		}
 	};
 
 	/// Pending spawn entry for mid-tick unit creation
@@ -1463,12 +1408,6 @@ private:
 	Dictionary _build_summary();
 	Dictionary _build_stats_summary();
 	
-	// Optimized stack management infrastructure
-	static thread_local std::vector<StackEntry> _stack_pool;
-	static thread_local std::unordered_map<uint64_t, int> _stack_key_to_pool_index;
-	std::priority_queue<ExpirationEntry> _expiration_queue;
-	static constexpr int _pool_capacity = 0;
-	
 	// Pending spawns queue for mid-tick unit creation
 	std::vector<PendingSpawn> _pending_spawns;
 	
@@ -1490,15 +1429,8 @@ private:
 	static void _apply_stat_attack_range(UnitState &unit, double value, bool is_multiplicative);
 	static void _apply_stat_cast_range(UnitState &unit, double value, bool is_multiplicative);
 	
-	// Optimized stack management functions
-	StackError _apply_stat_modifier_optimized(UnitState &source, UnitState &target, const StackParams &params, double duration, bool is_match_duration, double current_time);
-	uint64_t _compute_stack_key(StringName stat_name, const String &reason);
-	StackEntry* _get_stack_entry(UnitState &unit, uint64_t key_hash);
-	StackEntry* _allocate_stack_entry();
-	void _free_stack_entry(StackEntry* entry);
-	void _process_expiration_queue(double current_time);
+	// Pending spawns processing
 	void _process_pending_spawns();
-	void _validate_stack_consistency(UnitState &unit);
 
 	// Stack management functions
 	void _reset_stat_temp_tracker(UnitState &unit, StringName stat_name);

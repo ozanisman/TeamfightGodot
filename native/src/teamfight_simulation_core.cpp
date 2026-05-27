@@ -950,7 +950,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = (speed_v.get_type() == Variant::NIL) ? -1.0 : double(speed_v);
 		Variant radius_v = tracker.get("radius_override", Variant());
 		compiled.scalar1 = (radius_v.get_type() == Variant::NIL) ? -1.0 : double(radius_v);
-		compiled.scalar2 = double(tracker.get("damage_ratio", 1.0));
+		compiled.scalar2 = double(tracker.get("damage_ratio", 0.0));
 		compiled.scalar3 = double(tracker.get("stun_duration", 0.0));
 		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
@@ -986,7 +986,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 	} else if (kind == sn_aoe_damage()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
-		compiled.scalar1 = double(tracker.get("damage_ratio", 1.0));
+		compiled.scalar1 = double(tracker.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(tracker.get("splash_ratio", 1.0));
 		compiled.scalar3 = double(tracker.get("flat_amount", 0.0));
 		compiled.scalar4 = double(tracker.get("max_hp_ratio", 0.0));
@@ -1112,7 +1112,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_damage()) {
 		compiled.stat_name = StringName(tracker.get("stat_name", ""));
-		compiled.scalar0 = double(tracker.get("base_damage_ratio", 1.0));
+		compiled.scalar0 = double(tracker.get("base_damage_ratio", 0.0));
 		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
 		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
 		compiled.damage_type = StringName(tracker.get("damage_type", "physical"));
@@ -1120,14 +1120,14 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_heal()) {
 		compiled.stat_name = StringName(tracker.get("stat_name", ""));
-		compiled.scalar0 = double(tracker.get("base_heal_ratio", 1.0));
+		compiled.scalar0 = double(tracker.get("base_heal_ratio", 0.0));
 		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
 		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
 		compiled.string1 = String(tracker.get("stack_reason", ""));
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_shield()) {
 		compiled.stat_name = StringName(tracker.get("stat_name", ""));
-		compiled.scalar0 = double(tracker.get("base_shield_ratio", 1.0));
+		compiled.scalar0 = double(tracker.get("base_shield_ratio", 0.0));
 		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
 		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
 		compiled.string1 = String(tracker.get("stack_reason", ""));
@@ -1144,7 +1144,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_channel()) {
 		compiled.scalar0 = double(tracker.get("duration", 0.0));  // total duration
-		compiled.scalar1 = double(tracker.get("tick_interval", 0.5));  // tick interval
+		compiled.scalar1 = double(tracker.get("tick_interval", 1.0));  // tick interval
 		compiled.int0 = tracker.get("allow_movement", false) ? 1 : 0;
 		compiled.string0 = String(tracker.get("target_mode", "fixed"));  // "fixed" or "dynamic"
 		compiled.reason = String(tracker.get("reason", ""));
@@ -1180,7 +1180,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(tracker.get("stun_duration", 0.0));
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_self_dash()) {
-		compiled.scalar0 = double(tracker.get("distance", 1.0));
+		compiled.scalar0 = double(tracker.get("distance", 0.0));
 		Dictionary direction = Dictionary(tracker.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
@@ -1191,7 +1191,6 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(tracker.get("on_hit_multiplier", 1.0));
 		// INCONSISTENT: no reason string
 	}
-	// New effect compilation
 	else if (kind == sn_slow()) {
 		compiled.scalar0 = double(tracker.get("slow_percentage", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
@@ -1277,7 +1276,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar2 = double(tracker.get("redirect_cap", 0.0));
 		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_summon_ally()) {
-		compiled.scalar0 = double(tracker.get("spawn_radius", 2.0));
+		compiled.scalar0 = double(tracker.get("spawn_radius", 0.0));
 		// Parse minions array: each entry has minion_id and count
 		Array minions_array = tracker.get("minions", Array());
 		for (int64_t i = 0; i < minions_array.size(); ++i) {

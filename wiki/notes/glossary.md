@@ -16,7 +16,7 @@ Role = unit archetype: tank, fighter, assassin, marksman, mage, support
 
 Hook = trigger point for passive effects: on_tick, on_take_damage, on_deal_damage, etc.
 
-Windup = casting delay before ability execution (default 0.5s)
+Windup = casting delay before ability execution (default 0.5s). Can be overridden per ability/ultimate via "windup_override" param in effect params.
 
 CC = crowd control status: stun, slow, root, silence, disarm, stealth
 

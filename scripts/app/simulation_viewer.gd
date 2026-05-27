@@ -83,6 +83,7 @@ var _projectile_nodes: Dictionary = {}  # projectile_id -> Node2D
 var _floating_texts: Array = []  # Array of floating text nodes
 var _hot_status_rings: Dictionary = {}  # instance_id -> Node2D (current HoT ring per unit)
 var _passive_aoe_rings: Dictionary = {}  # instance_id -> Array[Node2D] (persistent passive AOE rings)
+var _active_tweens: Array = []  # Array of active Tween nodes
 
 # Selection
 var _selected_unit_id: int = 0
@@ -184,6 +185,7 @@ func _on_speed_toggle() -> void:
 	_sim_speed = 0.5 if is_equal_approx(_sim_speed, 1.0) else 1.0
 	if _speed_button != null:
 		_speed_button.text = "Speed: 0.5x" if _sim_speed < 0.75 else "Speed: 1x"
+	_update_tween_speed_scale()
 
 
 func _create_ui_structure() -> void:
@@ -1198,33 +1200,69 @@ func _reflow_one_roster_column(vb: VBoxContainer) -> void:
 
 func _apply_tick_fx(snapshot: Dictionary) -> void:
 	var evs: Array = snapshot.get("tick_fx", [])
+	
+	# Consolidate damage/heal/shield by target_id
+	var consolidated: Dictionary = {}  # target_id -> {damage: float, heal: float, shield: float, damage_type: String, x: float, y: float}
+	var other_events: Array = []
+	
 	for e in evs:
 		if e is not Dictionary:
 			continue
 		var d: Dictionary = e
 		var k: String = str(d.get("kind", ""))
+		var target_id: int = int(d.get("target_id", 0))
+		var wx: float = float(d.get("x", 0.0))
+		var wy: float = float(d.get("y", 0.0))
+		
+		if k == "damage" or k == "dmg":
+			if not consolidated.has(target_id):
+				consolidated[target_id] = {damage = 0.0, heal = 0.0, shield = 0.0, damage_type = "physical", x = wx, y = wy}
+			consolidated[target_id].damage += float(d.get("val", 0.0))
+			var damage_type: String = str(d.get("damage_type", "physical"))
+			# Prioritize magic/true damage types for color
+			if damage_type == "magic" or damage_type == "true":
+				consolidated[target_id].damage_type = damage_type
+		elif k == "heal":
+			if not consolidated.has(target_id):
+				consolidated[target_id] = {damage = 0.0, heal = 0.0, shield = 0.0, damage_type = "physical", x = wx, y = wy}
+			consolidated[target_id].heal += float(d.get("val", 0.0))
+		elif k == "shield":
+			if not consolidated.has(target_id):
+				consolidated[target_id] = {damage = 0.0, heal = 0.0, shield = 0.0, damage_type = "physical", x = wx, y = wy}
+			consolidated[target_id].shield += float(d.get("val", 0.0))
+		else:
+			other_events.append(d)
+	
+	# Spawn consolidated floating texts
+	for target_id in consolidated:
+		var data: Dictionary = consolidated[target_id]
+		var sp: Vector2 = world_to_screen(data.x, data.y)
+		
+		if data.damage > 0.0:
+			var color: Color
+			if data.damage_type == "magic":
+				color = Color(0.3, 0.6, 1.0)  # Blue
+			elif data.damage_type == "true":
+				color = Color(1.0, 1.0, 1.0)  # White
+			else:
+				color = Color(0.9, 0.45, 0.45)  # Red (physical)
+			_spawn_floating_text_screen("-%d" % int(ceil(data.damage)), sp, color)
+		
+		if data.heal > 0.0:
+			_spawn_floating_text_screen("+%d" % int(ceil(data.heal)), sp, COLOR_SUCCESS)
+		
+		if data.shield > 0.0:
+			_spawn_floating_text_screen("[%d]" % int(ceil(data.shield)), sp, Color(0.55, 0.75, 1.0))
+	
+	# Process other events (hot_status, passive_aoe, melee_slash, aoe_*)
+	for d in other_events:
+		var k: String = str(d.get("kind", ""))
 		var wx: float = float(d.get("x", 0.0))
 		var wy: float = float(d.get("y", 0.0))
 		var sp: Vector2 = world_to_screen(wx, wy)
 		var sp_battle: Vector2 = world_to_battle_local(wx, wy)
-		if k == "damage" or k == "dmg":
-			var amt: float = float(d.get("val", 0.0))
-			var damage_type: String = str(d.get("damage_type", "physical"))
-			var color: Color
-			if damage_type == "magic":
-				color = Color(0.3, 0.6, 1.0)  # Blue
-			elif damage_type == "true":
-				color = Color(1.0, 1.0, 1.0)  # White
-			else:
-				color = Color(0.9, 0.45, 0.45)  # Red (physical)
-			_spawn_floating_text_screen("-%d" % int(ceil(amt)), sp, color)
-		elif k == "heal":
-			var h: float = float(d.get("val", 0.0))
-			_spawn_floating_text_screen("+%d" % int(ceil(h)), sp, COLOR_SUCCESS)
-		elif k == "shield":
-			var sh: float = float(d.get("val", 0.0))
-			_spawn_floating_text_screen("[%d]" % int(ceil(sh)), sp, Color(0.55, 0.75, 1.0))
-		elif k == "hot_status":
+		
+		if k == "hot_status":
 			var target_id: int = int(d.get("target_id", 0))
 			var duration: float = float(d.get("val", 0.0))
 			_spawn_hot_status_ring(target_id, duration, snapshot)
@@ -1343,6 +1381,7 @@ func _spawn_aoe_shape_fx(ev: Dictionary, snapshot: Dictionary) -> void:
 	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
 	n.modulate = Color(1, 1, 1, 0.92)
 	var tw := create_tween()
+	_register_tween(tw)
 	tw.tween_property(n, "modulate:a", 0.0, dur)
 	tw.tween_callback(n.queue_free)
 
@@ -1480,6 +1519,7 @@ func _spawn_hot_status_ring(target_id: int, duration: float, snapshot: Dictionar
 	# Tween to fade out over duration
 	n.modulate = Color(1, 1, 1, 1.0)
 	var tw := create_tween()
+	_register_tween(tw)
 	tw.tween_property(n, "modulate:a", 0.0, duration)
 	tw.tween_callback(_cleanup_hot_status_ring.bind(target_id))
 
@@ -1571,6 +1611,7 @@ func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_
 	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
 	n.modulate = Color(1, 1, 1, 0.92)
 	var tw := create_tween()
+	_register_tween(tw)
 	tw.tween_property(n, "modulate:a", 0.0, dur)
 	tw.tween_callback(n.queue_free)
 
@@ -1587,6 +1628,7 @@ func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
 	s.add_child(line)
 	_world_layer.add_child(s)
 	var tw := create_tween()
+	_register_tween(tw)
 	tw.tween_property(line, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(s.queue_free)
 
@@ -1601,6 +1643,7 @@ func _spawn_floating_text_screen(text: String, screen_pos: Vector2, color: Color
 	_ui_layer.add_child(label)
 	_floating_texts.append(label)
 	var tween := create_tween()
+	_register_tween(tween)
 	tween.parallel().tween_property(label, "position", screen_pos + Vector2(0, -40), 0.8)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(label.queue_free)
@@ -1971,7 +2014,7 @@ func _on_start_match_clicked() -> void:
 		_enemy_picks,
 		SimConstantsScript.DEFAULT_TICK_RATE,
 		true,      # debug_combat_trace
-		true       # debug_targeting_scoring
+		true      # debug_targeting_scoring
 	)
 	
 	_backend.begin_match(match_input)
@@ -2152,6 +2195,34 @@ func _toggle_pause() -> void:
 		_hud_pause.visible = _combat_paused and _game_state == COMBAT
 		if _hud_pause.visible:
 			_hud_pause.text = "PAUSED (Space)  |  K: speed"
+	_update_tween_pause_state()
+
+
+func _update_tween_speed_scale() -> void:
+	for tween in _active_tweens:
+		if is_instance_valid(tween):
+			tween.set_speed_scale(_sim_speed)
+
+
+func _update_tween_pause_state() -> void:
+	for tween in _active_tweens:
+		if is_instance_valid(tween):
+			if _combat_paused:
+				tween.pause()
+			else:
+				tween.play()
+
+
+func _register_tween(tween: Tween) -> void:
+	tween.set_speed_scale(_sim_speed)
+	if _combat_paused:
+		tween.pause()
+	_active_tweens.append(tween)
+	tween.finished.connect(_cleanup_tween.bind(tween))
+
+
+func _cleanup_tween(tween: Tween) -> void:
+	_active_tweens.erase(tween)
 
 
 func _restart_match() -> void:

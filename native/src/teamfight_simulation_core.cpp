@@ -807,6 +807,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	StringName kind;
 	Dictionary params = Dictionary(effect.get("params", Dictionary()));
 	ParamTracker tracker(params);
+	compiled.windup = double(tracker.get("windup_override", -1.0));
 	if (kind_str == "multi_target") {
 		kind = sn_multi_target();
 	} else if (kind_str == "multi_effect") {
@@ -7021,7 +7022,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 	}
 
 	bool should_return_casting = false;
-	if (unit.casting_remaining > 0.0) {
+	if (unit.casting_remaining >= 0.0 && unit.has_casting_effect) {
 		SimProfileAccScope _uu_cast(profile_sim, _sim_profile_uu_casting);
 		unit.casting_remaining = Math::max(0.0, unit.casting_remaining - _tick_rate);
 		if (unit.casting_remaining <= 0.0) {
@@ -7174,10 +7175,14 @@ bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, do
 	} else {
 		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
 	}
-	unit.casting_remaining = CASTING_WINDUP;
 	UnitStateCold &ucast = _uc(unit);
 	ucast.casting_kind = action_kind;
 	ucast.casting_effect = action_kind == sn_ability() ? ucast.ability_effect : ucast.ultimate_effect;
+	double windup = CASTING_WINDUP;
+	if (ucast.casting_effect.windup >= 0.0) {
+		windup = ucast.casting_effect.windup;
+	}
+	unit.casting_remaining = windup;
 	unit.has_casting_effect = true;
 	unit.casting_target_id = unit.target_id != 0 ? unit.target_id : target.instance_id;
 	unit.casting_ally_target_id = unit.current_ally_target_id != 0 ? unit.current_ally_target_id : (target_ally == nullptr ? 0 : target_ally->instance_id);
@@ -9101,6 +9106,8 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		entry["d_ab"] = 0.0;
 		entry["d_ult"] = 0.0;
 		entry["d_passive"] = 0.0;
+		entry["minion_dmg_d"] = 0.0;
+		entry["minion_dmg_r"] = 0.0;
 		return entry;
 	};
 	auto make_role_entry = [&make_stat_entry]() -> Dictionary {
@@ -9294,6 +9301,59 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		_prepare_tick_context();
 		_simulate();
 
+		// Aggregate minion stats to summoners
+		std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
+		std::unordered_map<int64_t, double> summoner_minion_damage_received;
+		for (const UnitState &unit : _units) {
+			if (unit.summoner_instance_id != 0) {
+				const UnitStateCold &c = _uc(unit);
+				summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
+				summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
+			}
+		}
+
+		// Define lambdas that capture the summoner maps (must be after maps are created)
+		auto accumulate_common_with_minions = [&summoner_minion_damage_dealt, &summoner_minion_damage_received](Dictionary &entry, const UnitStateCold &c, int64_t instance_id) {
+			entry["dmg_d"] = double(entry["dmg_d"]) + c.damage_dealt;
+			entry["dmg_r"] = double(entry["dmg_r"]) + c.damage_received;
+			entry["dmg_m"] = double(entry["dmg_m"]) + c.damage_mitigated;
+			entry["heal"] = double(entry["heal"]) + c.healing_done;
+			entry["heal_auto"] = double(entry["heal_auto"]) + c.healing_done_auto;
+			entry["heal_ability"] = double(entry["heal_ability"]) + c.healing_done_ability;
+			entry["heal_ultimate"] = double(entry["heal_ultimate"]) + c.healing_done_ultimate;
+			entry["heal_passive"] = double(entry["heal_passive"]) + c.healing_done_passive;
+			entry["shield"] = double(entry["shield"]) + c.shielding_done;
+			entry["shield_auto"] = double(entry["shield_auto"]) + c.shielding_done_auto;
+			entry["shield_ability"] = double(entry["shield_ability"]) + c.shielding_done_ability;
+			entry["shield_ultimate"] = double(entry["shield_ultimate"]) + c.shielding_done_ultimate;
+			entry["shield_passive"] = double(entry["shield_passive"]) + c.shielding_done_passive;
+			entry["stuns"] = int64_t(entry["stuns"]) + c.stuns;
+			entry["d_auto"] = double(entry["d_auto"]) + c.damage_dealt_auto;
+			entry["d_ab"] = double(entry["d_ab"]) + c.damage_dealt_ability;
+			entry["d_ult"] = double(entry["d_ult"]) + c.damage_dealt_ultimate;
+			entry["d_passive"] = double(entry["d_passive"]) + c.damage_dealt_passive;
+			// Add minion damage for this summoner
+			auto it_dealt = summoner_minion_damage_dealt.find(instance_id);
+			auto it_received = summoner_minion_damage_received.find(instance_id);
+			entry["minion_dmg_d"] = double(entry["minion_dmg_d"]) + (it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0);
+			entry["minion_dmg_r"] = double(entry["minion_dmg_r"]) + (it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0);
+		};
+		auto add_record_with_minions = [&accumulate_common_with_minions](Dictionary &entry, const UnitStateCold &c, int64_t instance_id, bool won, bool draw, bool include_kda) {
+			if (draw) {
+				entry["d"] = int64_t(entry["d"]) + 1;
+			} else if (won) {
+				entry["w"] = int64_t(entry["w"]) + 1;
+			} else {
+				entry["l"] = int64_t(entry["l"]) + 1;
+			}
+			accumulate_common_with_minions(entry, c, instance_id);
+			if (include_kda) {
+				entry["kills"] = int64_t(entry["kills"]) + c.kills;
+				entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;
+				entry["assists"] = int64_t(entry["assists"]) + c.assists;
+			}
+		};
+
 		const bool player_won = _winner_team == sn_player();
 		const bool enemy_won = _winner_team == sn_enemy();
 		const bool draw = !player_won && !enemy_won;
@@ -9329,7 +9389,7 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 				hero_entry = make_stat_entry();
 			}
 			const bool unit_won = _winner_team != StringName() && unit.team == _winner_team;
-			add_record(hero_entry, c, unit_won, draw, true);
+			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true);
 			heroes[hero] = hero_entry;
 
 			const String role = String(Dictionary(c.stats).get("role", String("unknown")));
@@ -9337,7 +9397,7 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 			if (role_entry.is_empty()) {
 				role_entry = make_role_entry();
 			}
-			add_record(role_entry, c, unit_won, draw, false);
+			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false);
 			roles[role] = role_entry;
 		}
 		bucket["heroes"] = heroes;

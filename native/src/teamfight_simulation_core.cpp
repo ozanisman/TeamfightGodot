@@ -782,11 +782,31 @@ const StringName &TeamfightSimulationCore::_kind_for_opcode(int64_t opcode) {
 	}
 }
 
+void TeamfightSimulationCore::ParamTracker::report_unused(const String &effect_kind) const {
+	// Report parameters that were provided but never accessed
+	Array keys = params.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String key = String(keys[i]);
+		bool was_accessed = false;
+		for (const auto &accessed_key : accessed) {
+			if (key == accessed_key) {
+				was_accessed = true;
+				break;
+			}
+		}
+		if (!was_accessed) {
+			ERR_PRINT(vformat("EFFECT PARAMETER MISMATCH: Effect kind '%s' has unused parameter '%s'. This parameter was not read by the C++ compilation code. Check if the parameter name is correct.", effect_kind, key));
+		}
+	}
+}
+
 TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
 	EffectRecord compiled;
 	String kind_str = String(effect.get("kind", ""));
 	
 	StringName kind;
+	Dictionary params = Dictionary(effect.get("params", Dictionary()));
+	ParamTracker tracker(params);
 	if (kind_str == "multi_target") {
 		kind = sn_multi_target();
 	} else if (kind_str == "multi_effect") {
@@ -887,33 +907,32 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		kind = StringName(kind_str);
 	}
 	compiled.opcode = _opcode_for_kind(kind);
-	Dictionary params = Dictionary(effect.get("params", Dictionary()));
 	if (kind == sn_multi_effect()) {
-		Variant effects_value = params.get("effects", Variant());
+		Variant effects_value = tracker.get("effects", Variant());
 		Array effects = effects_value.get_type() == Variant::ARRAY ? Array(effects_value) : Array();
 		compiled.children = _compile_effect_array(effects);
 		return compiled;
 	}
 	if (kind == sn_constant_multiplier()) {
-		compiled.scalar0 = double(params.get("multiplier", 1.0));
+		compiled.scalar0 = double(tracker.get("multiplier", 1.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_hp_threshold_damage_multiplier()) {
-		compiled.scalar0 = double(params.get("above_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("below_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("multiplier", 1.0));
+		compiled.scalar0 = double(tracker.get("above_hp_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("below_hp_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("multiplier", 1.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_distance_threshold_multiplier()) {
-		compiled.scalar0 = double(params.get("min_distance", 0.0));
-		compiled.scalar1 = double(params.get("multiplier", 1.0));
+		compiled.scalar0 = double(tracker.get("min_distance", 0.0));
+		compiled.scalar1 = double(tracker.get("multiplier", 1.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_damage()) {
-		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
-		compiled.scalar2 = double(params.get("flat_amount", 0.0));
-		compiled.scalar3 = bool(params.get("trigger_on_hit", false)) ? 1.0 : 0.0;
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;
-		compiled.int1 = params.get("use_accumulated_damage", false) ? 1 : 0;
-		String damage_type_str = String(params.get("damage_type", "physical"));
+		compiled.scalar0 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar3 = bool(tracker.get("trigger_on_hit", false)) ? 1.0 : 0.0;
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.int1 = tracker.get("use_accumulated_damage", false) ? 1 : 0;
+		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
 		} else if (damage_type_str == "magic") {
@@ -923,17 +942,17 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.reason = String(params.get("reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_projectile()) {
 		// Use -1.0 as sentinel for "use unit's projectile_speed/radius stat" when override is null.
 		// Python parity: speed_override=None → unit.stats.projectile_speed, radius_override=None → unit.stats.projectile_radius.
-		Variant speed_v = params.get("speed_override", Variant());
+		Variant speed_v = tracker.get("speed_override", Variant());
 		compiled.scalar0 = (speed_v.get_type() == Variant::NIL) ? -1.0 : double(speed_v);
-		Variant radius_v = params.get("radius_override", Variant());
+		Variant radius_v = tracker.get("radius_override", Variant());
 		compiled.scalar1 = (radius_v.get_type() == Variant::NIL) ? -1.0 : double(radius_v);
-		compiled.scalar2 = double(params.get("damage_ratio", 1.0));
-		compiled.scalar3 = double(params.get("stun_duration", 0.0));
-		String damage_type_str = String(params.get("damage_type", "physical"));
+		compiled.scalar2 = double(tracker.get("damage_ratio", 1.0));
+		compiled.scalar3 = double(tracker.get("stun_duration", 0.0));
+		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
 		} else if (damage_type_str == "magic") {
@@ -943,34 +962,34 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.reason = String(params.get("reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_stun()) {
-		compiled.scalar0 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_shield()) {
-		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
-		compiled.scalar2 = double(params.get("flat_amount", 0.0));
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("flat_amount", 0.0));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_heal()) {
-		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("flat_amount", 0.0));
-		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("current_hp_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar3 = double(tracker.get("missing_hp_ratio", 0.0));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;  // target_self parameter
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_aoe_taunt()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
+		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == sn_aoe_damage()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("damage_ratio", 1.0));
-		compiled.scalar2 = double(params.get("splash_ratio", 1.0));
-		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		String damage_type_str = String(params.get("damage_type", "physical"));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("damage_ratio", 1.0));
+		compiled.scalar2 = double(tracker.get("splash_ratio", 1.0));
+		compiled.scalar3 = double(tracker.get("flat_amount", 0.0));
+		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
 		} else if (damage_type_str == "magic") {
@@ -980,16 +999,16 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.reason = String(params.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == sn_damage_over_time()) {
 		// Ratio-based parameters (now represent TOTAL amounts over full duration)
-		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("tick_interval", 1.0));
-		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		compiled.scalar4 = double(params.get("duration", 0.0));  // Duration moved to scalar4
-		String damage_type_str = String(params.get("damage_type", "physical"));
+		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("tick_interval", 1.0));
+		compiled.scalar3 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar4 = double(tracker.get("duration", 0.0));  // Duration moved to scalar4
+		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
 		} else if (damage_type_str == "magic") {
@@ -999,39 +1018,39 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
-		compiled.effect_type = StringName(params.get("effect_type", "generic"));
-		compiled.reason = String(params.get("reason", ""));
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
-		compiled.int1 = int64_t(params.get("max_stacks", 1));
-		String calculation_str = String(params.get("calculation", "fixed"));
+		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
+		compiled.reason = String(tracker.get("reason", ""));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;  // target_self parameter
+		compiled.int1 = int64_t(tracker.get("max_stacks", 1));
+		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int2 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 	} else if (kind == sn_heal_over_time()) {
 		// Ratio-based parameters (now represent TOTAL amounts over full duration)
-		compiled.scalar0 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar1 = double(params.get("current_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("tick_interval", 1.0));
-		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
-		compiled.scalar4 = double(params.get("flat_amount", 0.0));
-		compiled.scalar5 = double(params.get("duration", 0.0));  // Duration moved to scalar5
-		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
-		compiled.effect_type = StringName(params.get("effect_type", "generic"));
-		compiled.reason = String(params.get("reason", ""));
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;  // target_self parameter
-		compiled.int1 = int64_t(params.get("max_stacks", 1));
-		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
-		String calculation_str = String(params.get("calculation", "fixed"));
+		compiled.scalar0 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("current_hp_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("tick_interval", 1.0));
+		compiled.scalar3 = double(tracker.get("missing_hp_ratio", 0.0));
+		compiled.scalar4 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar5 = double(tracker.get("duration", 0.0));  // Duration moved to scalar5
+		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
+		compiled.reason = String(tracker.get("reason", ""));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;  // target_self parameter
+		compiled.int1 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int2 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
+		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int3 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 	} else if (kind == sn_aoe_damage_over_time()) {
 		// AoE parameters
-		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		// DoT ratio parameters (now represent TOTAL amounts over full duration)
-		compiled.scalar1 = double(params.get("damage_ratio", 0.0));
-		compiled.scalar2 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar3 = double(params.get("flat_amount", 0.0));
-		compiled.scalar4 = double(params.get("tick_interval", 1.0));
-		compiled.scalar5 = double(params.get("duration", 0.0));  // Duration moved to scalar5
-		String damage_type_str = String(params.get("damage_type", "physical"));
+		compiled.scalar1 = double(tracker.get("damage_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar3 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar4 = double(tracker.get("tick_interval", 1.0));
+		compiled.scalar5 = double(tracker.get("duration", 0.0));  // Duration moved to scalar5
+		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
 		} else if (damage_type_str == "magic") {
@@ -1041,92 +1060,92 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
-		compiled.effect_type = StringName(params.get("effect_type", "generic"));
-		compiled.reason = String(params.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.int0 = int64_t(params.get("max_stacks", 1));
-		String calculation_str = String(params.get("calculation", "fixed"));
+		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
+		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.int0 = int64_t(tracker.get("max_stacks", 1));
+		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int1 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
-		compiled.int2 = params.get("target_self", false) ? 1 : 0;
+		compiled.int2 = tracker.get("target_self", false) ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == sn_aoe_heal_over_time()) {
 		// AoE parameters
-		compiled.scalar0 = double(params.get("radius", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		// HoT ratio parameters (now represent TOTAL amounts over full duration)
-		compiled.scalar1 = double(params.get("max_hp_ratio", 0.0));
-		compiled.scalar2 = double(params.get("current_hp_ratio", 0.0));
-		compiled.scalar3 = double(params.get("missing_hp_ratio", 0.0));
-		compiled.scalar4 = double(params.get("flat_amount", 0.0));
-		compiled.scalar5 = double(params.get("tick_interval", 1.0));
-		compiled.stacking_mode = StringName(params.get("stacking_mode", "refresh"));
-		compiled.effect_type = StringName(params.get("effect_type", "generic"));
-		compiled.reason = String(params.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.int0 = int64_t(params.get("max_stacks", 1));
-		compiled.int1 = int64_t(params.get("duration", 0.0));  // Duration stays in int1
-		compiled.int2 = bool(params.get("allow_overheal", false)) ? 1 : 0;
-		compiled.int3 = params.get("target_self", false) ? 1 : 0;
-		String calculation_str = String(params.get("calculation", "fixed"));
+		compiled.scalar1 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.scalar2 = double(tracker.get("current_hp_ratio", 0.0));
+		compiled.scalar3 = double(tracker.get("missing_hp_ratio", 0.0));
+		compiled.scalar4 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar5 = double(tracker.get("tick_interval", 1.0));
+		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
+		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
+		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.int0 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int1 = int64_t(tracker.get("duration", 0.0));  // Duration stays in int1
+		compiled.int2 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
+		compiled.int3 = tracker.get("target_self", false) ? 1 : 0;
+		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int4 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
 	} else if (kind == sn_damage_threshold_trigger()) {
-		compiled.scalar0 = double(params.get("threshold_multiplier", 1.0));
-		Variant nested = params.get("effect", Variant());
+		compiled.scalar0 = double(tracker.get("threshold_multiplier", 1.0));
+		Variant nested = tracker.get("effect", Variant());
 		if (nested.get_type() == Variant::DICTIONARY) {
 			compiled.children.push_back(_compile_effect(Dictionary(nested)));
 		}
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_mana_regen()) {
-		compiled.scalar0 = double(params.get("flat_amount", 0.0));
-		compiled.scalar1 = double(params.get("max_mana_ratio", 0.0));
+		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar1 = double(tracker.get("max_mana_ratio", 0.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_post_damage_mana_gain()) {
-		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
+		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_damage_based_heal()) {
-		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-		compiled.int0 = params.get("use_accumulated_damage", false) ? 1 : 0;
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
+		compiled.int0 = tracker.get("use_accumulated_damage", false) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_damage_based_shield()) {
-		compiled.scalar0 = double(params.get("damage_ratio", 0.0));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_damage()) {
-		compiled.stat_name = StringName(params.get("stat_name", ""));
-		compiled.scalar0 = double(params.get("base_damage_ratio", 1.0));
-		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
-		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
-		compiled.damage_type = StringName(params.get("damage_type", "physical"));
-		compiled.string1 = String(params.get("stack_reason", ""));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.stat_name = StringName(tracker.get("stat_name", ""));
+		compiled.scalar0 = double(tracker.get("base_damage_ratio", 1.0));
+		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
+		compiled.damage_type = StringName(tracker.get("damage_type", "physical"));
+		compiled.string1 = String(tracker.get("stack_reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_heal()) {
-		compiled.stat_name = StringName(params.get("stat_name", ""));
-		compiled.scalar0 = double(params.get("base_heal_ratio", 1.0));
-		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
-		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
-		compiled.string1 = String(params.get("stack_reason", ""));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.stat_name = StringName(tracker.get("stat_name", ""));
+		compiled.scalar0 = double(tracker.get("base_heal_ratio", 1.0));
+		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
+		compiled.string1 = String(tracker.get("stack_reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_consume_stacks_shield()) {
-		compiled.stat_name = StringName(params.get("stat_name", ""));
-		compiled.scalar0 = double(params.get("base_shield_ratio", 1.0));
-		compiled.scalar1 = double(params.get("stack_bonus_ratio", 0.0));
-		compiled.string0 = String(params.get("stacking_mode", "multiplicative"));
-		compiled.string1 = String(params.get("stack_reason", ""));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.stat_name = StringName(tracker.get("stat_name", ""));
+		compiled.scalar0 = double(tracker.get("base_shield_ratio", 1.0));
+		compiled.scalar1 = double(tracker.get("stack_bonus_ratio", 0.0));
+		compiled.string0 = String(tracker.get("stacking_mode", "multiplicative"));
+		compiled.string1 = String(tracker.get("stack_reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_set_stacks()) {
-		compiled.stat_name = StringName(params.get("stat_name", ""));
-		compiled.int0 = int64_t(params.get("stack_count", 0));
-		compiled.int1 = params.get("to_max", false);
-		compiled.int2 = int64_t(params.get("max_stacks", 0));  // Fallback max_stacks when entry doesn't exist
-		compiled.scalar0 = double(params.get("duration", 0.0));
-		compiled.scalar1 = double(params.get("additive_per_stack", 0.0));  // Fallback when entry doesn't exist
-		compiled.scalar2 = double(params.get("multiplicative_per_stack", 1.0));  // Fallback when entry doesn't exist
-		compiled.string0 = String(params.get("reason", ""));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.stat_name = StringName(tracker.get("stat_name", ""));
+		compiled.int0 = int64_t(tracker.get("stack_count", 0));
+		compiled.int1 = tracker.get("to_max", false);
+		compiled.int2 = int64_t(tracker.get("max_stacks", 0));  // Fallback max_stacks when entry doesn't exist
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
+		compiled.scalar1 = double(tracker.get("additive_per_stack", 0.0));  // Fallback when entry doesn't exist
+		compiled.scalar2 = double(tracker.get("multiplicative_per_stack", 1.0));  // Fallback when entry doesn't exist
+		compiled.string0 = String(tracker.get("reason", ""));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_channel()) {
-		compiled.scalar0 = double(params.get("duration", 0.0));  // total duration
-		compiled.scalar1 = double(params.get("tick_interval", 0.5));  // tick interval
-		compiled.int0 = params.get("allow_movement", false) ? 1 : 0;
-		compiled.string0 = String(params.get("target_mode", "fixed"));  // "fixed" or "dynamic"
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));  // total duration
+		compiled.scalar1 = double(tracker.get("tick_interval", 0.5));  // tick interval
+		compiled.int0 = tracker.get("allow_movement", false) ? 1 : 0;
+		compiled.string0 = String(tracker.get("target_mode", "fixed"));  // "fixed" or "dynamic"
+		compiled.reason = String(tracker.get("reason", ""));
 		
 		// Parse sub_effect (required)
 		if (params.has("sub_effect")) {
@@ -1146,116 +1165,116 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.sub_effects.push_back(_compile_effect(post_interrupt_dict));
 		}
 	} else if (kind == sn_mana_restore_on_hit()) {
-		compiled.scalar0 = double(params.get("flat_amount", 0.0));
+		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_drain_target_mana_on_hit()) {
-		compiled.scalar0 = double(params.get("flat_amount", 0.0));
+		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_every_n_attacks_stun()) {
-		compiled.int0 = int64_t(params.get("every_n", 0));
-		compiled.scalar0 = double(params.get("stun_duration", 0.0));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.int0 = int64_t(tracker.get("every_n", 0));
+		compiled.scalar0 = double(tracker.get("stun_duration", 0.0));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_self_dash()) {
-		compiled.scalar0 = double(params.get("distance", 1.0));
-		Dictionary direction = Dictionary(params.get("direction", Dictionary()));
+		compiled.scalar0 = double(tracker.get("distance", 1.0));
+		Dictionary direction = Dictionary(tracker.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
 		// INCONSISTENT: no reason string
 	} else if (kind == sn_auto_dodge()) {
-		compiled.scalar0 = double(params.get("dodge_chance", 0.0));
-		compiled.scalar1 = double(params.get("on_dodge_multiplier", 0.0));
-		compiled.scalar2 = double(params.get("on_hit_multiplier", 1.0));
+		compiled.scalar0 = double(tracker.get("dodge_chance", 0.0));
+		compiled.scalar1 = double(tracker.get("on_dodge_multiplier", 0.0));
+		compiled.scalar2 = double(tracker.get("on_hit_multiplier", 1.0));
 		// INCONSISTENT: no reason string
 	}
 	// New effect compilation
 	else if (kind == sn_slow()) {
-		compiled.scalar0 = double(params.get("slow_percentage", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "Slow"));
+		compiled.scalar0 = double(tracker.get("slow_percentage", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
+		compiled.reason = String(tracker.get("reason", "Slow"));
 	} else if (kind == sn_root()) {
-		compiled.scalar0 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "Root"));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
+		compiled.reason = String(tracker.get("reason", "Root"));
 	} else if (kind == sn_silence()) {
-		compiled.scalar0 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
-		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
-		compiled.reason = String(params.get("reason", "Silence"));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("block_abilities", true) ? 1 : 0;
+		compiled.int1 = tracker.get("block_ultimate", true) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Silence"));
 	} else if (kind == sn_disarm()) {
-		compiled.scalar0 = double(params.get("duration", 0.0));
-		compiled.reason = String(params.get("reason", "Disarm"));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
+		compiled.reason = String(tracker.get("reason", "Disarm"));
 	} else if (kind == sn_stealth()) {
-		Dictionary break_conditions = Dictionary(params.get("break_conditions", Dictionary()));
-		compiled.scalar0 = double(params.get("duration", 0.0));
+		Dictionary break_conditions = Dictionary(tracker.get("break_conditions", Dictionary()));
+		compiled.scalar0 = double(tracker.get("duration", 0.0));
 		compiled.int0 = bool(break_conditions.get("on_attack", false)) ? 1 : 0;
 		compiled.int1 = bool(break_conditions.get("on_ability", false)) ? 1 : 0;
 		compiled.int2 = bool(break_conditions.get("on_damage_taken", false)) ? 1 : 0;
-		compiled.int3 = params.get("target_self", false) ? 1 : 0;
-		compiled.reason = String(params.get("reason", "Stealth"));
+		compiled.int3 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Stealth"));
 	} else if (kind == sn_knockback()) {
-		compiled.scalar0 = double(params.get("distance", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
-		compiled.reason = String(params.get("reason", "Knockback"));
+		compiled.scalar0 = double(tracker.get("distance", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Knockback"));
 	} else if (kind == sn_reflect()) {
-		compiled.scalar0 = double(params.get("reflect_percentage", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
-		compiled.reason = String(params.get("reason", "Reflect"));
+		compiled.scalar0 = double(tracker.get("reflect_percentage", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Reflect"));
 	} else if (kind == sn_aoe_slow()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("slow_percentage", 0.0));
-		compiled.scalar2 = double(params.get("duration", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("slow_percentage", 0.0));
+		compiled.scalar2 = double(tracker.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Slow"));
+		compiled.reason = String(tracker.get("reason", "AOE Slow"));
 	} else if (kind == sn_aoe_root()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Root"));
+		compiled.reason = String(tracker.get("reason", "AOE Root"));
 	} else if (kind == sn_aoe_silence()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("block_abilities", true) ? 1 : 0;
-		compiled.int1 = params.get("block_ultimate", true) ? 1 : 0;
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("block_abilities", true) ? 1 : 0;
+		compiled.int1 = tracker.get("block_ultimate", true) ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Silence"));
+		compiled.reason = String(tracker.get("reason", "AOE Silence"));
 	} else if (kind == sn_aoe_disarm()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Disarm"));
+		compiled.reason = String(tracker.get("reason", "AOE Disarm"));
 	} else if (kind == sn_aoe_knockback()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("distance", 0.0));
-		compiled.scalar2 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("distance", 0.0));
+		compiled.scalar2 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Knockback"));
+		compiled.reason = String(tracker.get("reason", "AOE Knockback"));
 	} else if (kind == sn_aoe_reflect()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("reflect_percentage", 0.0));
-		compiled.scalar2 = double(params.get("duration", 0.0));
-		compiled.int0 = params.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("reflect_percentage", 0.0));
+		compiled.scalar2 = double(tracker.get("duration", 0.0));
+		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Reflect"));
+		compiled.reason = String(tracker.get("reason", "AOE Reflect"));
 	} else if (kind == sn_aoe_stun()) {
-		compiled.scalar0 = double(params.get("radius", 0.0));
-		compiled.scalar1 = double(params.get("duration", 0.0));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		compiled.scalar1 = double(tracker.get("duration", 0.0));
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
-		compiled.reason = String(params.get("reason", "AOE Stun"));
+		compiled.reason = String(tracker.get("reason", "AOE Stun"));
 	} else if (kind == sn_reflect_damage()) {
-		compiled.scalar0 = double(params.get("pct", 0.0));
-		compiled.int0 = params.get("all_damage_types", false) ? 1 : 0;
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = double(tracker.get("reflect_percentage", 0.0));
+		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_redirect_damage()) {
-		compiled.scalar0 = Math::clamp(double(params.get("redirect_ratio", 0.0)), 0.0, 1.0);
-		compiled.scalar1 = Math::clamp(double(params.get("reduction_ratio", 0.0)), 0.0, 1.0);
-		compiled.scalar2 = double(params.get("redirect_cap", 0.0));
-		compiled.reason = String(params.get("reason", ""));
+		compiled.scalar0 = Math::clamp(double(tracker.get("redirect_ratio", 0.0)), 0.0, 1.0);
+		compiled.scalar1 = Math::clamp(double(tracker.get("reduction_ratio", 0.0)), 0.0, 1.0);
+		compiled.scalar2 = double(tracker.get("redirect_cap", 0.0));
+		compiled.reason = String(tracker.get("reason", ""));
 	} else if (kind == sn_summon_ally()) {
-		compiled.scalar0 = double(params.get("spawn_radius", 2.0));
+		compiled.scalar0 = double(tracker.get("spawn_radius", 2.0));
 		// Parse minions array: each entry has minion_id and count
-		Array minions_array = params.get("minions", Array());
+		Array minions_array = tracker.get("minions", Array());
 		for (int64_t i = 0; i < minions_array.size(); ++i) {
 			Dictionary minion_entry = minions_array[i];
 			StringName minion_id = StringName(String(minion_entry.get("minion_id", "")));
@@ -1268,13 +1287,13 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			minion_spec.int0 = count;
 			compiled.children.push_back(minion_spec);
 		}
-		compiled.reason = String(params.get("reason", "Summon Ally"));
+		compiled.reason = String(tracker.get("reason", "Summon Ally"));
 	} else if (kind == sn_knockback_shield()) {
-		compiled.scalar0 = double(params.get("shield_ratio", 0.0));
-		compiled.reason = String(params.get("reason", "Knockback shield"));
+		compiled.scalar0 = double(tracker.get("shield_ratio", 0.0));
+		compiled.reason = String(tracker.get("reason", "Knockback shield"));
 	} else if (kind == sn_target_status_multiplier()) {
-		compiled.scalar0 = double(params.get("multiplier", 1.0));
-		String status_kind_str = String(params.get("status_kind", ""));
+		compiled.scalar0 = double(tracker.get("multiplier", 1.0));
+		String status_kind_str = String(tracker.get("status_kind", ""));
 		if (status_kind_str == "slow") {
 			compiled.damage_type = sn_slow();
 		} else if (status_kind_str == "root") {
@@ -1292,24 +1311,24 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.damage_type = StringName(status_kind_str);
 		}
-		compiled.reason = String(params.get("reason", "Target status multiplier"));
+		compiled.reason = String(tracker.get("reason", "Target status multiplier"));
 	} else if (kind == sn_stat_modifier()) {
 		// Validate stat name
-		StringName stat_name = StringName(String(params.get("stat_name", "")));
+		StringName stat_name = StringName(String(tracker.get("stat_name", "")));
 		if (!_is_valid_stat_name(stat_name)) {
 			compiled.opcode = EFFECT_OPCODE_UNKNOWN;
 			return compiled;
 		}
 
 		compiled.damage_type = stat_name;
-		compiled.scalar0 = double(params.get("additive", 0.0));
-		compiled.scalar1 = double(params.get("multiplicative", 1.0));
-		compiled.scalar2 = double(params.get("duration", 0.0));
-		compiled.scalar3 = double(params.get("heal_gained_ratio", 0.0));
-		compiled.int0 = params.get("target_self", false) ? 1 : 0;
-		compiled.int1 = params.get("duration_type", "respawn") == "match" ? 1 : 0;
-		compiled.int2 = int64_t(params.get("max_stacks", 1));
-		String stack_behavior = String(params.get("stack_behavior", "refresh"));
+		compiled.scalar0 = double(tracker.get("additive", 0.0));
+		compiled.scalar1 = double(tracker.get("multiplicative", 1.0));
+		compiled.scalar2 = double(tracker.get("duration", 0.0));
+		compiled.scalar3 = double(tracker.get("heal_gained_ratio", 0.0));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.int1 = tracker.get("duration_type", "respawn") == "match" ? 1 : 0;
+		compiled.int2 = int64_t(tracker.get("max_stacks", 1));
+		String stack_behavior = String(tracker.get("stack_behavior", "refresh"));
 		if (stack_behavior == "accumulate") {
 			compiled.int3 = 1;
 		} else if (stack_behavior == "reset") {
@@ -1317,11 +1336,11 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		} else {
 			compiled.int3 = 0;
 		}
-		compiled.reason = String(params.get("reason", "Stat modifier"));
+		compiled.reason = String(tracker.get("reason", "Stat modifier"));
 	} else if (kind == sn_multi_target()) {
 		// Multi-target effect parameters
-		compiled.int0 = int64_t(params.get("target_count", 1));
-		String strategy_str = String(params.get("selection_strategy", "closest"));
+		compiled.int0 = int64_t(tracker.get("target_count", 1));
+		String strategy_str = String(tracker.get("selection_strategy", "closest"));
 		if (strategy_str == "random") {
 			compiled.int1 = TARGET_SELECTION_RANDOM;
 		} else if (strategy_str == "lowest_hp") {
@@ -1340,8 +1359,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			UtilityFunctions::push_error(vformat("Invalid selection_strategy '%s' for multi_target effect", strategy_str));
 			compiled.int1 = -1;
 		}
-		compiled.int2 = params.get("include_self", false) ? 1 : 0;
-		String handling_str = String(params.get("excess_handling", "drop"));
+		compiled.int2 = tracker.get("include_self", false) ? 1 : 0;
+		String handling_str = String(tracker.get("excess_handling", "drop"));
 		if (handling_str == "stack") {
 			compiled.int3 = EXCESS_TARGET_STACK;
 		} else if (handling_str == "drop") {
@@ -1350,8 +1369,8 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			UtilityFunctions::push_error(vformat("Invalid excess_handling '%s' for multi_target effect", handling_str));
 			compiled.int3 = -1;
 		}
-		compiled.int4 = int64_t(params.get("repeat_count", 1));
-		String team_filter_str = String(params.get("team_filter", ""));
+		compiled.int4 = int64_t(tracker.get("repeat_count", 1));
+		String team_filter_str = String(tracker.get("team_filter", ""));
 		if (team_filter_str == "ally") {
 			compiled.team_filter = sn_ally();
 		} else if (team_filter_str == "enemy") {
@@ -1361,7 +1380,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		}
 		
 		// Compile sub_effects
-		Variant sub_effects_value = params.get("sub_effects", Variant());
+		Variant sub_effects_value = tracker.get("sub_effects", Variant());
 		if (sub_effects_value.get_type() == Variant::ARRAY) {
 			Array sub_effects_array = sub_effects_value;
 			compiled.sub_effects = _compile_effect_array(sub_effects_array);
@@ -1370,15 +1389,15 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.sub_effects.push_back(_compile_effect(sub_effect_dict));
 		}
 		
-		compiled.reason = String(params.get("reason", "Multiple target"));
+		compiled.reason = String(tracker.get("reason", "Multiple target"));
 	}
 	
 	// Handle conditional execution parameters
-	compiled.requires_result_from = StringName(String(params.get("requires_result_from", "")));
-	compiled.requires_field = StringName(String(params.get("requires_field", "")));
-	compiled.requires_value = params.get("requires_value", Variant());
-	compiled.requires_target_status = StringName(String(params.get("requires_target_status", "")));
-	compiled.status_target = StringName(String(params.get("status_target", "target")));
+	compiled.requires_result_from = StringName(String(tracker.get("requires_result_from", "")));
+	compiled.requires_field = StringName(String(tracker.get("requires_field", "")));
+	compiled.requires_value = tracker.get("requires_value", Variant());
+	compiled.requires_target_status = StringName(String(tracker.get("requires_target_status", "")));
+	compiled.status_target = StringName(String(tracker.get("status_target", "target")));
 	
 	// Validate status_target parameter
 	if (!compiled.status_target.is_empty() && compiled.status_target != sn_source() && compiled.status_target != sn_target()) {
@@ -1387,9 +1406,12 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	}
 	
 	// Handle on_tick_interval parameter for timing control
-	compiled.on_tick_interval = double(params.get("on_tick_interval", 1.0));
+	compiled.on_tick_interval = double(tracker.get("on_tick_interval", 1.0));
 	// Validate minimum on_tick_interval (must be at least game tick rate)
 	compiled.on_tick_interval = Math::max(compiled.on_tick_interval, DEFAULT_TICK_RATE);
+	
+	// Report any unused parameters to catch mismatches
+	tracker.report_unused(kind_str);
 	
 	return compiled;
 }
@@ -2373,9 +2395,6 @@ std::pair<TeamfightSimulationCore::UnitState, TeamfightSimulationCore::UnitState
 	cold.last_hit_time = 0.0;
 	std::fill(cold.on_tick_effect_accumulators.begin(), cold.on_tick_effect_accumulators.end(), 0.0);
 	unit.regen_accumulator = 0.0;
-	unit.reflect_buff_remaining = 0.0;
-	unit.reflect_buff_pct_all = 0.0;
-	unit.reflect_buff_pct_physical = 0.0;
 	_finalize_reflect_passives(unit, cold);
 	return { unit, std::move(cold) };
 }
@@ -3218,7 +3237,7 @@ bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const 
 		return target.stun_remaining > 0.0;
 	}
 	if (status_kind == sn_reflect()) {
-		return target.reflect_buff_remaining > 0.0 || target.reflect_passive_pct_all > 0.0 || target.reflect_passive_pct_physical > 0.0;
+		return !_uc(target).reflect_buffs.empty() || target.reflect_passive_pct_all > 0.0 || target.reflect_passive_pct_physical > 0.0;
 	}
 	return false;
 }
@@ -3460,29 +3479,59 @@ void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, U
 	if (total_damage_applied <= 1e-9) {
 		return;
 	}
-	double pct = defender.reflect_passive_pct_all;
+
+	// Handle passive reflect (from passive effects)
+	double passive_pct = defender.reflect_passive_pct_all;
 	if (damage_type == sn_physical()) {
-		pct += defender.reflect_passive_pct_physical;
+		passive_pct += defender.reflect_passive_pct_physical;
 	}
-	if (defender.reflect_buff_remaining > 0.0) {
-		pct += defender.reflect_buff_pct_all;
-		if (damage_type == sn_physical()) {
-			pct += defender.reflect_buff_pct_physical;
+	if (passive_pct > 1e-9) {
+		passive_pct = Math::clamp(passive_pct, 0.0, 1.0);
+		double reflected = total_damage_applied * passive_pct;
+		if (reflected > 1e-9) {
+			EffectContext bounce = context;
+			bounce.suppress_reflect_chain = true;
+			bounce.source = &defender;
+			bounce.target = &attacker;
+			_apply_damage(defender, attacker, reflected, damage_type, sn_passive(), bounce);
 		}
 	}
-	pct = Math::clamp(pct, 0.0, 1.0);
-	if (pct <= 1e-9) {
-		return;
+
+	// Handle active reflect buffs (from abilities/ultimates)
+	for (const UnitStateCold::ReflectBuff &buff : _uc(defender).reflect_buffs) {
+		if (buff.remaining_duration <= 0.0) {
+			continue;
+		}
+
+		// Check if this buff applies to the damage type
+		bool applies = false;
+		if (buff.damage_type == StringName("all")) {
+			applies = true;
+		} else if (buff.damage_type == StringName("physical") && damage_type == sn_physical()) {
+			applies = true;
+		}
+
+		if (!applies) {
+			continue;
+		}
+
+		double reflected = total_damage_applied * buff.percentage;
+		if (reflected <= 1e-9) {
+			continue;
+		}
+
+		// Determine source: use buff.source_instance_id if available, otherwise defender
+		UnitState *damage_source = _unit_by_id(buff.source_instance_id);
+		if (damage_source == nullptr || !damage_source->alive) {
+			damage_source = &defender;
+		}
+
+		EffectContext bounce = context;
+		bounce.suppress_reflect_chain = true;
+		bounce.source = damage_source;
+		bounce.target = &attacker;
+		_apply_damage(*damage_source, attacker, reflected, damage_type, buff.action_kind, bounce);
 	}
-	double reflected = total_damage_applied * pct;
-	if (reflected <= 1e-9) {
-		return;
-	}
-	EffectContext bounce = context;
-	bounce.suppress_reflect_chain = true;
-	bounce.source = &defender;
-	bounce.target = &attacker;
-	_apply_damage(defender, attacker, reflected, damage_type, sn_passive(), bounce);
 }
 
 void TeamfightSimulationCore::_touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage) {
@@ -3731,17 +3780,21 @@ void TeamfightSimulationCore::_apply_aoe_stun(UnitState &source, double radius, 
 	_apply_aoe_stun_shape(source, nullptr, effect, duration);
 }
 
-void TeamfightSimulationCore::_apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types) {
+void TeamfightSimulationCore::_apply_reflect_buff(UnitState &source, UnitState &target, double pct, double duration, const StringName &action_kind, const StringName &damage_type, const String &reason) {
 	if (duration <= 0.0 || pct <= 0.0) {
 		return;
 	}
 	double p = Math::clamp(pct, 0.0, 1.0);
-	unit.reflect_buff_remaining = Math::max(unit.reflect_buff_remaining, duration);
-	if (all_damage_types) {
-		unit.reflect_buff_pct_all = Math::clamp(unit.reflect_buff_pct_all + p, 0.0, 1.0);
-	} else {
-		unit.reflect_buff_pct_physical = Math::clamp(unit.reflect_buff_pct_physical + p, 0.0, 1.0);
-	}
+	
+	UnitStateCold::ReflectBuff new_buff;
+	new_buff.percentage = p;
+	new_buff.remaining_duration = duration;
+	new_buff.action_kind = action_kind;
+	new_buff.source_instance_id = source.instance_id;
+	new_buff.damage_type = damage_type;
+	new_buff.reason = reason;
+	
+	_uc(target).reflect_buffs.push_back(new_buff);
 }
 
 void TeamfightSimulationCore::_apply_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
@@ -3749,7 +3802,7 @@ void TeamfightSimulationCore::_apply_aoe_reflect(UnitState &source, double radiu
 	effect.aoe_shape_params.shape = AoShapeKind::Circle;
 	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
 	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_reflect_shape(source, nullptr, effect, pct, duration, all_damage_types);
+	_apply_aoe_reflect_shape(source, nullptr, effect, pct, duration, all_damage_types, StringName("ability"), String("aoe_reflect"));
 }
 
 bool TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source) {
@@ -5309,7 +5362,7 @@ bool TeamfightSimulationCore::_apply_aoe_knockback_shape(UnitState &source, Unit
 	return applied;
 }
 
-void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types) {
+void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types, const StringName &action_kind, const String &reason) {
 	if (effect.aoe_shape_params.radius <= 0.0 || duration <= 0.0 || pct <= 0.0) {
 		return;
 	}
@@ -5329,8 +5382,10 @@ void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitSt
 	shape_iter.source = &source;
 	shape_iter.target_override = shape_target;
 
+	StringName damage_type = all_damage_types ? StringName("all") : StringName("physical");
+
 	_for_each_unit_in_shape(shape_iter, [&](UnitState &ally) {
-		_apply_reflect_buff(ally, pct, duration, all_damage_types);
+		_apply_reflect_buff(source, ally, pct, duration, action_kind, damage_type, reason);
 	});
 }
 
@@ -6274,9 +6329,7 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.stealth_break_on_attack = false;
 	unit.stealth_break_on_ability = false;
 	unit.stealth_break_on_damage_taken = false;
-	unit.reflect_buff_remaining = 0.0;
-	unit.reflect_buff_pct_all = 0.0;
-	unit.reflect_buff_pct_physical = 0.0;
+	_uc(unit).reflect_buffs.clear();
 	unit.taunt_remaining = 0.0;
 	unit.forced_target_remaining = 0.0;
 	unit.last_kite_timer = 0.0;
@@ -6721,13 +6774,17 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 				unit.shield = 0.0;
 			}
 		}
-		if (unit.reflect_buff_remaining > 0.0) {
+		if (!_uc(unit).reflect_buffs.empty()) {
 			SimProfileAccScope _ucc_ref(profile_sim, _sim_profile_ucc_reflect);
-			unit.reflect_buff_remaining = Math::max(0.0, unit.reflect_buff_remaining - _tick_rate);
-			if (unit.reflect_buff_remaining <= 0.0) {
-				unit.reflect_buff_remaining = 0.0;
-				unit.reflect_buff_pct_all = 0.0;
-				unit.reflect_buff_pct_physical = 0.0;
+			auto &reflect_buffs = _uc(unit).reflect_buffs;
+			size_t index = 0;
+			while (index < reflect_buffs.size()) {
+				reflect_buffs[index].remaining_duration = Math::max(0.0, reflect_buffs[index].remaining_duration - _tick_rate);
+				if (reflect_buffs[index].remaining_duration <= 0.0) {
+					reflect_buffs.erase(reflect_buffs.begin() + static_cast<std::ptrdiff_t>(index));
+				} else {
+					++index;
+				}
 			}
 		}
 		if (unit.taunt_remaining > 0.0) {
@@ -8020,7 +8077,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_AOE_REFLECT: {
 			Dictionary aoe_rf_result;
 			aoe_rf_result["success"] = true;
-			_apply_aoe_reflect_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.int0 == 1);
+			_apply_aoe_reflect_shape(source, target, effect, effect.scalar1, effect.scalar2, effect.int0 == 1, context.action_kind, effect.reason);
 			return aoe_rf_result;
 		}
 		case EFFECT_OPCODE_AOE_STUN: {
@@ -8055,7 +8112,8 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_REFLECT: {
 			Dictionary rf_result;
 			rf_result["success"] = true;
-			_apply_reflect_buff(source, effect.scalar0, effect.scalar1, effect.int0 == 1);
+			StringName damage_type = effect.int0 == 1 ? StringName("all") : StringName("physical");
+			_apply_reflect_buff(source, source, effect.scalar0, effect.scalar1, context.action_kind, damage_type, effect.reason);
 			return rf_result;
 		}
 		case EFFECT_OPCODE_REFLECT_DAMAGE: {
@@ -9537,7 +9595,7 @@ String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const
 	if (p_u.silence_remaining > 0.0 && (p_u.silence_blocks_abilities || p_u.silence_blocks_ultimates)) {
 		return String("SILENCED");
 	}
-	if (p_u.reflect_buff_remaining > 0.0) {
+	if (!_uc(p_u).reflect_buffs.empty()) {
 		return String("REFLECTING");
 	}
 	if (p_u.disarm_remaining > 0.0) {
@@ -9605,7 +9663,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 		d["silence_remaining"] = u.silence_remaining;
 		d["disarm_remaining"] = u.disarm_remaining;
 		d["stealth_remaining"] = u.stealth_remaining;
-		d["reflect_buff_remaining"] = u.reflect_buff_remaining;
+		d["reflect_buff_remaining"] = _uc(u).reflect_buffs.empty() ? 0.0 : 1.0;
 		d["alive"] = u.alive;
 		d["state"] = _viewer_state_string(u);
 		d["acd"] = u.attack_cooldown;

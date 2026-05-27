@@ -1158,12 +1158,17 @@ private:
 	struct ParamTracker {
 		Dictionary params;
 		mutable std::vector<String> accessed;
+		String reason;
 		
 		ParamTracker(const Dictionary &p) : params(p) {}
 		
 		Variant get(const String &key, const Variant &default_value) {
 			accessed.push_back(key);
 			return params.get(key, default_value);
+		}
+		
+		void mark_accessed(const String &key) {
+			accessed.push_back(key);
 		}
 		
 		void report_unused(const String &effect_kind) const;
@@ -1338,7 +1343,7 @@ private:
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
 	Vector2 _resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override = nullptr) const;
-	AoShapeParams _parse_aoe_shape_metadata(const Dictionary &params) const;
+	AoShapeParams _parse_aoe_shape_metadata(const Dictionary &params, ParamTracker &tracker) const;
 
 	/// Parameters for circular AoE iteration over an alive-team index list (`_alive_*_indices`).
 	/// `spatial_team` must match `UnitState::team` for units referenced by `indices` (used by broad-phase stamp).

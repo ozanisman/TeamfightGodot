@@ -7601,7 +7601,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			if (effect.int1 != 0 && context.channel_accumulated_damage > 0.0) {
 				damage = context.channel_accumulated_damage * effect.scalar1;
 			} else {
-				damage = get_effective_max_hp(source) * effect.scalar0;  // max_hp_ratio
+				damage = get_effective_max_hp(*damage_target) * effect.scalar0;  // max_hp_ratio
 				damage += get_effective_attack_damage(source) * effect.scalar1;  // damage_ratio
 				damage += effect.scalar2;  // flat_amount
 			}
@@ -7695,7 +7695,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary shield_result;
 			shield_result["success"] = true;
 			UnitState &shield_target = (effect.int0 == 1) ? source : (target_ally == nullptr ? source : *target_ally);
-			double amount = get_effective_max_hp(source) * effect.scalar0;
+			double amount = get_effective_max_hp(shield_target) * effect.scalar0;
 			
 			// Use context.damage, but fall back to accumulated damage if needed
 			double damage_for_ratio = context.damage;
@@ -7719,13 +7719,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			shield_result["amount"] = amount;
 			return shield_result;
 		}
-		case EFFECT_OPCODE_HEAL: {
+		case EFFECT_OPCODE_HEAL: { 
 			Dictionary heal_result;
 			heal_result["success"] = true;
 			UnitState &heal_target = (effect.int0 == 1) ?
 				source :
 				(target_ally == nullptr ? source : *target_ally);
-			double heal_amount = get_effective_max_hp(source) * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
+			double heal_amount = get_effective_max_hp(heal_target) * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
 			// Add missing HP scaling
 			double missing_hp = get_effective_max_hp(heal_target) - heal_target.hp;
 			heal_amount += missing_hp * effect.scalar3;

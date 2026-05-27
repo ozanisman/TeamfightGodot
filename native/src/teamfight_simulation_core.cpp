@@ -1147,7 +1147,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(tracker.get("duration", 0.0));  // total duration
 		compiled.scalar1 = double(tracker.get("tick_interval", 1.0));  // tick interval
 		compiled.int0 = tracker.get("allow_movement", false) ? 1 : 0;
-		compiled.string0 = String(tracker.get("target_mode", "fixed"));  // "fixed" or "dynamic"
+		compiled.string0 = String(tracker.get("target_mode", "fixed"));  // "fixed", "dynamic", or "self"
 		compiled.reason = String(tracker.get("reason", ""));
 		
 		// Parse sub_effect (required)
@@ -4821,6 +4821,9 @@ void TeamfightSimulationCore::_complete_channel(UnitState &unit, UnitStateCold &
 	// Execute post-complete effect
 	if (cold.channel_post_complete_effect.opcode != 0) {
 		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
+		if (cold.channel_target_mode == StringName("self")) {
+			target = &unit;
+		}
 		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_complete"));
 		context.channel_remaining_duration = cold.channel_remaining_duration;
 		context.channel_tick_count = _get_channel_tick_count(cold);
@@ -4844,6 +4847,9 @@ void TeamfightSimulationCore::_interrupt_channel(UnitState &unit, UnitStateCold 
 	// Execute post-interrupt effect
 	if (cold.channel_post_interrupt_effect.opcode != 0) {
 		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
+		if (cold.channel_target_mode == StringName("self")) {
+			target = &unit;
+		}
 		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_interrupted"));
 		context.channel_remaining_duration = cold.channel_remaining_duration;
 		context.channel_tick_count = _get_channel_tick_count(cold);
@@ -4879,7 +4885,9 @@ void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delt
 		
 		// Select target
 		UnitState *target = nullptr;
-		if (cold.channel_target_mode == StringName("fixed")) {
+		if (cold.channel_target_mode == StringName("self")) {
+			target = &unit;
+		} else if (cold.channel_target_mode == StringName("fixed")) {
 			target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
 		} else if (cold.channel_target_mode == StringName("dynamic")) {
 			// For dynamic target mode, use the closest enemy for now
@@ -6733,9 +6741,12 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 
 		if (unit.attack_cooldown > 0.0) {
 			SimProfileAccScope _ucc_acd(profile_sim, _sim_profile_ucc_attack_cd);
-			unit.attack_cooldown -= _tick_rate;
-			if (unit.attack_cooldown < 0.0) {
-				unit.attack_cooldown = 0.0;
+			// Prevent attack cd from decrementing while channeling/casting
+			if (!_uc(unit).is_channeling && !(unit.casting_remaining >= 0.0 && unit.has_casting_effect)) {
+				unit.attack_cooldown -= _tick_rate;
+				if (unit.attack_cooldown < 0.0) {
+					unit.attack_cooldown = 0.0;
+				}
 			}
 		}
 		if (unit.ability_cooldown > 0.0) {

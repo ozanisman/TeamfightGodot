@@ -4860,7 +4860,7 @@ void TeamfightSimulationCore::_complete_channel(UnitState &unit, UnitStateCold &
 		if (cold.channel_target_mode == StringName("self")) {
 			target = &unit;
 		}
-		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_complete"));
+		EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
 		context.channel_remaining_duration = cold.channel_remaining_duration;
 		context.channel_tick_count = _get_channel_tick_count(cold);
 		context.channel_accumulated_damage = cold.channel_accumulated_damage;
@@ -4886,7 +4886,7 @@ void TeamfightSimulationCore::_interrupt_channel(UnitState &unit, UnitStateCold 
 		if (cold.channel_target_mode == StringName("self")) {
 			target = &unit;
 		}
-		EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_interrupted"));
+		EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
 		context.channel_remaining_duration = cold.channel_remaining_duration;
 		context.channel_tick_count = _get_channel_tick_count(cold);
 		context.channel_accumulated_damage = cold.channel_accumulated_damage;
@@ -4950,7 +4950,7 @@ void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delt
 		}
 		
 		if (target != nullptr && target->alive) {
-			EffectContext context = _build_context(unit, target, nullptr, 0.0, StringName("channel_tick"));
+			EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
 			context.channel_remaining_duration = cold.channel_remaining_duration;
 			context.channel_tick_count = _get_channel_tick_count(cold);
 			context.channel_accumulated_damage = cold.channel_accumulated_damage;

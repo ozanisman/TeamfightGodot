@@ -251,12 +251,18 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	else:
 		_behavior_label.visible = false
 	
-	# Set ability label based on ability cooldown or casting
+	# Set ability label based on ability cooldown, casting, or channeling
 	var ability_cd: float = float(ud.get("abi", 0.0))
 	var casting_rem: float = float(ud.get("casting_remaining", 0.0))
 	var casting_kind: String = str(ud.get("casting_kind", ""))
+	var is_channeling: bool = bool(ud.get("is_channeling", false))
+	var channel_rem: float = float(ud.get("channel_remaining_duration", 0.0))
+	var channel_kind: String = str(ud.get("channel_action_kind", ""))
 	var ability_text := ""
-	if casting_rem > 0.0 and (casting_kind.to_lower().contains("ability") or casting_kind == "ability"):
+	if is_channeling and (channel_kind.to_lower().contains("ability") or channel_kind == "ability"):
+		ability_text = "Ability: [CHANNELING %.1fs]" % channel_rem
+		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+	elif casting_rem > 0.0 and (casting_kind.to_lower().contains("ability") or casting_kind == "ability"):
 		ability_text = "Ability: [CASTING %.1fs]" % casting_rem
 		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
 	elif ability_cd <= 0.0:
@@ -272,11 +278,14 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	else:
 		_ability_label.visible = false
 	
-	# Set ultimate label based on mana or casting
+	# Set ultimate label based on mana, casting, or channeling
 	var max_mn: float = float(ud.get("max_mana", 0.0))
 	var mn: float = float(ud.get("mana", 0.0))
 	var ultimate_text := ""
-	if casting_rem > 0.0 and casting_kind.to_lower().contains("ult"):
+	if is_channeling and (channel_kind.to_lower().contains("ult") or channel_kind == "ultimate"):
+		ultimate_text = "Ultimate: [CHANNELING %.1fs]" % channel_rem
+		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+	elif casting_rem > 0.0 and casting_kind.to_lower().contains("ult"):
 		ultimate_text = "Ultimate: [CASTING %.1fs]" % casting_rem
 		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
 	elif max_mn > SimConstantsScript.EPSILON * 2.0:

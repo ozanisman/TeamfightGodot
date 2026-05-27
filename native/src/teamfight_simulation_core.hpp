@@ -336,6 +336,17 @@ private:
 		};
 		std::vector<PeriodicEffect> periodic_effects;
 
+		// Reflect buff effects (active reflect from abilities/ultimates)
+		struct ReflectBuff {
+			double percentage = 0.0;
+			double remaining_duration = 0.0;
+			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
+			int64_t source_instance_id = 0;  // Who granted this buff (for AOE reflect attribution)
+			StringName damage_type;  // "all" or "physical"
+			String reason;
+		};
+		std::vector<ReflectBuff> reflect_buffs;
+
 		// Channel effect state
 		bool is_channeling = false;
 		double channel_remaining_duration = 0.0;
@@ -412,9 +423,6 @@ private:
 		/// Passive `reflect_damage` (on_defense): portions by damage-type applicability.
 		double reflect_passive_pct_all = 0.0;
 		double reflect_passive_pct_physical = 0.0;
-		double reflect_buff_remaining = 0.0;
-		double reflect_buff_pct_all = 0.0;
-		double reflect_buff_pct_physical = 0.0;
 		double respawn_timer = 0.0;
 		bool respawned_this_tick = false;
 		bool alive = true;
@@ -1145,6 +1153,22 @@ private:
 	static void _parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
 	static int64_t _opcode_for_kind(const StringName &kind);
 	static const StringName &_kind_for_opcode(int64_t opcode);
+	
+	// Parameter validation helper
+	struct ParamTracker {
+		Dictionary params;
+		mutable std::vector<String> accessed;
+		
+		ParamTracker(const Dictionary &p) : params(p) {}
+		
+		Variant get(const String &key, const Variant &default_value) {
+			accessed.push_back(key);
+			return params.get(key, default_value);
+		}
+		
+		void report_unused(const String &effect_kind) const;
+	};
+	
 	EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;
@@ -1210,8 +1234,9 @@ private:
 	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
-	void _apply_reflect_buff(UnitState &unit, double pct, double duration, bool all_damage_types);
+	void _apply_reflect_buff(UnitState &source, UnitState &target, double pct, double duration, const StringName &action_kind, const StringName &damage_type, const String &reason);
 	void _apply_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types);
+	void _apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types, const StringName &action_kind, const String &reason);
 	void _maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context);
 	bool _apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source);
 	bool _apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);

@@ -21,6 +21,7 @@ var _kda_label: Label
 var _respawn_label: Label
 var _behavior_label: Label
 var _ability_label: Label
+var _ultimate_label: Label
 var _hp_shield_bar: Control
 var _mana_bar: ProgressBar
 var _align_right: bool
@@ -102,6 +103,11 @@ func setup(
 	_ability_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
 	_inner.add_child(_ability_label)
 
+	_ultimate_label = Label.new()
+	_ultimate_label.visible = false
+	_ultimate_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+	_inner.add_child(_ultimate_label)
+
 	_respawn_label = Label.new()
 	_respawn_label.visible = false
 	_respawn_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
@@ -122,6 +128,7 @@ func setup(
 	_kda_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_respawn_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ability_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ultimate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_shield_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mana_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -141,6 +148,7 @@ func setup(
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_ultimate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
@@ -243,13 +251,13 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	else:
 		_behavior_label.visible = false
 	
-	# Set ability label based on ability cooldown
+	# Set ability label based on ability cooldown or casting
 	var ability_cd: float = float(ud.get("abi", 0.0))
 	var casting_rem: float = float(ud.get("casting_remaining", 0.0))
 	var casting_kind: String = str(ud.get("casting_kind", ""))
 	var ability_text := ""
 	if casting_rem > 0.0 and (casting_kind.to_lower().contains("ability") or casting_kind == "ability"):
-		ability_text = "Ability: [CASTING]"
+		ability_text = "Ability: [CASTING %.1fs]" % casting_rem
 		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
 	elif ability_cd <= 0.0:
 		ability_text = "Ability: [READY]"
@@ -263,6 +271,23 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_ability_label.visible = true
 	else:
 		_ability_label.visible = false
+	
+	# Set ultimate label based on mana or casting
+	var max_mn: float = float(ud.get("max_mana", 0.0))
+	var mn: float = float(ud.get("mana", 0.0))
+	var ultimate_text := ""
+	if casting_rem > 0.0 and casting_kind.to_lower().contains("ult"):
+		ultimate_text = "Ultimate: [CASTING %.1fs]" % casting_rem
+		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+	elif max_mn > SimConstantsScript.EPSILON * 2.0:
+		ultimate_text = "Ultimate: [%d/%d]" % [int(mn), int(max_mn)]
+		_ultimate_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+	
+	if not ultimate_text.is_empty():
+		_ultimate_label.text = ultimate_text
+		_ultimate_label.visible = true
+	else:
+		_ultimate_label.visible = false
 	
 	var name_c: Color = _role_color_for_archetype(nm)
 	if st == "DEAD" or not bool(ud.get("alive", true)):
@@ -282,8 +307,6 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var shield: float = float(ud.get("shield", 0.0))
 	if _hp_shield_bar != null and _hp_shield_bar.has_method("set_data"):
 		_hp_shield_bar.set_data(max_hp, hp, shield)
-	var max_mn: float = float(ud.get("max_mana", 0.0))
-	var mn: float = float(ud.get("mana", 0.0))
 	if max_mn > SimConstantsScript.EPSILON * 2.0:
 		_mana_bar.visible = true
 		_mana_bar.max_value = max_mn
@@ -301,6 +324,7 @@ func apply_font_and_bar_scales() -> void:
 	var kda_fs: int = int(clampf(s * 0.102, 9.0, 15.0))
 	var behavior_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var ability_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
+	var ultimate_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var respawn_fs: int = int(clampf(s * 0.094, 8.0, 14.0))
 	var bar_h: float = clampf(s * 0.082, 4.0, 12.0)
 	var sep: int = int(clampf(s * 0.034, 2.0, 6.0))
@@ -309,6 +333,7 @@ func apply_font_and_bar_scales() -> void:
 	_kda_label.add_theme_font_size_override("font_size", kda_fs)
 	_behavior_label.add_theme_font_size_override("font_size", behavior_fs)
 	_ability_label.add_theme_font_size_override("font_size", ability_fs)
+	_ultimate_label.add_theme_font_size_override("font_size", ultimate_fs)
 	_respawn_label.add_theme_font_size_override("font_size", respawn_fs)
 	_hp_shield_bar.custom_minimum_size = Vector2(0, bar_h)
 	_mana_bar.custom_minimum_size = Vector2(0, bar_h)
@@ -317,4 +342,5 @@ func apply_font_and_bar_scales() -> void:
 		_kda_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_behavior_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_ultimate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_respawn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

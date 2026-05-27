@@ -34,4 +34,4 @@ The JSON is regenerated automatically if `champion_catalog.gd` has changed.
 - `scripts/simulation/champion_catalog.gd` - **Source of truth** (edit here)
 - `scripts/tools/export_champion_schema.gd` - Export script
 - `fixtures/goldens/champion_schema.json` - **Generated artifact** (do not edit)
-- `schemas/contract_schema.json` - Validation schema (generated from GDScript)
+- `fixtures/goldens/contract_schema.json` - Contract schema (generated via `--dump-contract-json`)

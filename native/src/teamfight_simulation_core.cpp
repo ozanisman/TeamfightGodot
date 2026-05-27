@@ -5211,6 +5211,39 @@ void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState 
 	});
 }
 
+double TeamfightSimulationCore::_apply_aoe_damage_shape_per_target(UnitState &source, UnitState *target, const EffectRecord &effect, double damage_ratio, double flat_amount, double max_hp_ratio, double splash_ratio, const StringName &damage_type, const StringName &action_kind) {
+	StringName source_team = source.team;
+	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
+	const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
+	double total_damage = 0.0;
+	UnitState *shape_target = target;
+	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
+		shape_target = _unit_by_id(effect.aoe_shape_params.target_id);
+	}
+	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_damage"));
+	
+	AoShapeIterationParams shape_iter;
+	shape_iter.shape_params = effect.aoe_shape_params;
+	shape_iter.indices = &enemy_indices;
+	shape_iter.spatial_team = enemy_team;
+	shape_iter.exclude_instance_id = 0;
+	shape_iter.source = &source;
+	shape_iter.target_override = shape_target;
+	
+	_for_each_unit_in_shape(shape_iter, [&](UnitState &unit) {
+		// Calculate damage per-target using target's max_hp
+		double target_damage = get_effective_max_hp(unit) * max_hp_ratio;
+		target_damage += get_effective_attack_damage(source) * damage_ratio;
+		target_damage += flat_amount;
+		if (splash_ratio != 1.0) {
+			target_damage *= splash_ratio;
+		}
+		EffectContext context = _build_context(source, &unit, nullptr, target_damage, action_kind);
+		total_damage += _apply_damage(source, unit, target_damage, damage_type, action_kind, context);
+	});
+	return total_damage;
+}
+
 double TeamfightSimulationCore::_apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind) {
 	StringName source_team = source.team;
 	StringName enemy_team = source_team == StringName("player") ? StringName("enemy") : StringName("player");
@@ -7717,26 +7750,26 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 		case EFFECT_OPCODE_AOE_DAMAGE: {
 			Dictionary aoe_damage_result;
 			aoe_damage_result["success"] = true;
-			double aoe_damage;
 			// Use accumulated damage if requested
 			if (effect.int0 != 0 && context.channel_accumulated_damage > 0.0) {
-				aoe_damage = context.channel_accumulated_damage * effect.scalar1;
+				double aoe_damage = context.channel_accumulated_damage * effect.scalar1;
+				double splash_ratio = effect.scalar2;
+				if (splash_ratio != 1.0) {
+					aoe_damage *= splash_ratio;
+				}
+				double total_damage = _apply_aoe_damage_shape(source, target, effect, aoe_damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
+				aoe_damage_result["aoe_damage_applied"] = true;
+				aoe_damage_result["damage"] = total_damage;
+				context.damage = total_damage;
+				return aoe_damage_result;
 			} else {
-				aoe_damage = get_effective_max_hp(source) * effect.scalar4;  // max_hp_ratio
-				aoe_damage += get_effective_attack_damage(source) * effect.scalar1;  // damage_ratio
-				aoe_damage += effect.scalar3;  // flat_amount
+				// Calculate per-target damage using target's max_hp for max_hp_ratio
+				double total_damage = _apply_aoe_damage_shape_per_target(source, target, effect, effect.scalar1, effect.scalar3, effect.scalar4, effect.scalar2, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
+				aoe_damage_result["aoe_damage_applied"] = true;
+				aoe_damage_result["damage"] = total_damage;
+				context.damage = total_damage;
+				return aoe_damage_result;
 			}
-			double splash_ratio = effect.scalar2;
-			if (splash_ratio != 1.0) {
-				aoe_damage *= splash_ratio;
-			}
-			double total_damage = _apply_aoe_damage_shape(source, target, effect, aoe_damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
-			aoe_damage_result["aoe_damage_applied"] = true;
-			aoe_damage_result["damage"] = total_damage;
-			// Store total damage in context for damage_based_heal to use
-			context.damage = total_damage;
-			// INCONSISTENT: has damage field while AOE status effects only return success
-			return aoe_damage_result;
 		}
 	case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: {
 		{

@@ -1342,6 +1342,7 @@ private:
 	void _interrupt_channel(UnitState &unit, UnitStateCold &cold);
 	void _clear_channel_state(UnitStateCold &cold);
 	int64_t _get_channel_tick_count(const UnitStateCold &cold);
+	double _get_max_radius_from_effect(const EffectRecord &effect);
 
 	Dictionary _champion_for(const StringName &archetype_id) const;
 

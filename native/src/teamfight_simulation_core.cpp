@@ -4754,6 +4754,38 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 
 // Channel effect functions
 
+double TeamfightSimulationCore::_get_max_radius_from_effect(const EffectRecord &effect) {
+	double max_radius = 0.0;
+	
+	// Check AOE shape parameters
+	if (effect.aoe_shape_params.radius > max_radius) {
+		max_radius = effect.aoe_shape_params.radius;
+	}
+	
+	// Check scalar0 (used for radius in some AOE effects)
+	if (effect.scalar0 > max_radius) {
+		max_radius = effect.scalar0;
+	}
+	
+	// Recurse into children (multi_effect)
+	for (const EffectRecord &child : effect.children) {
+		double child_radius = _get_max_radius_from_effect(child);
+		if (child_radius > max_radius) {
+			max_radius = child_radius;
+		}
+	}
+	
+	// Recurse into sub_effects (multi_target)
+	for (const EffectRecord &sub_effect : effect.sub_effects) {
+		double sub_radius = _get_max_radius_from_effect(sub_effect);
+		if (sub_radius > max_radius) {
+			max_radius = sub_radius;
+		}
+	}
+	
+	return max_radius;
+}
+
 int64_t TeamfightSimulationCore::_get_channel_tick_count(const UnitStateCold &cold) {
 	if (cold.channel_tick_interval <= 0.0) {
 		return 0;
@@ -4792,16 +4824,20 @@ bool TeamfightSimulationCore::_should_interrupt_channel(UnitState &unit, const U
 	
 	// Movement interrupts (if not allowed and not rooted)
 	if (!cold.channel_allow_movement && unit.root_remaining <= 0.0) {
-		// Interrupt if no valid targets in attack range
+		// Interrupt if no valid targets in ability radius
 		StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
 		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-		double attack_range = get_effective_attack_range(unit);
+		double ability_radius = _get_max_radius_from_effect(cold.channel_sub_effect);
+		// Fallback to attack range if no radius found in effect
+		if (ability_radius <= 0.0) {
+			ability_radius = get_effective_attack_range(unit);
+		}
 		bool has_target_in_range = false;
 		
 		for (int64_t index : enemy_indices) {
 			UnitState &enemy = _units[static_cast<size_t>(index)];
 			double dist = _distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
-			if (dist <= attack_range) {
+			if (dist <= ability_radius) {
 				has_target_in_range = true;
 				break;
 			}
@@ -7988,7 +8024,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			// Initialize channel state
 			UnitStateCold &cold = _uc(source);
 			cold.is_channeling = true;
-			cold.channel_remaining_duration = effect.scalar0;  // duration
+			cold.channel_remaining_duration = effect.scalar0 + effect.scalar1;  // duration + tick_interval (accounts for immediate first tick)
 			cold.channel_tick_interval = effect.scalar1;  // tick_interval
 			cold.channel_allow_movement = effect.int0 != 0;
 			cold.channel_target_mode = effect.string0;

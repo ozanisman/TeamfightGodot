@@ -3408,7 +3408,9 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	double absorbed = Math::min(shield_before, incoming);
 	target.shield = Math::max(0.0, shield_before - absorbed);
 	double hp_loss = Math::max(0.0, incoming - absorbed);
+	double hp_before = target.hp;
 	target.hp = Math::max(0.0, target.hp - hp_loss);
+	hp_loss = Math::min(hp_loss, hp_before);
 	_uc(target).damage_received += hp_loss;
 	_uc(target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	double total_damage = absorbed + hp_loss;

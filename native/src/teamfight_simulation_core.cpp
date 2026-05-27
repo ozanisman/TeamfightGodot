@@ -795,7 +795,7 @@ void TeamfightSimulationCore::ParamTracker::report_unused(const String &effect_k
 			}
 		}
 		if (!was_accessed) {
-			ERR_PRINT(vformat("EFFECT PARAMETER MISMATCH: Effect kind '%s' has unused parameter '%s'. This parameter was not read by the C++ compilation code. Check if the parameter name is correct.", effect_kind, key));
+			ERR_PRINT(vformat("EFFECT PARAMETER MISMATCH: Effect kind '%s' (reason: '%s') has unused parameter '%s'. This parameter was not read by the C++ compilation code. Check if the parameter name is correct.", effect_kind, reason, key));
 		}
 	}
 }
@@ -983,12 +983,14 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
 		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 	} else if (kind == sn_aoe_damage()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("damage_ratio", 1.0));
 		compiled.scalar2 = double(tracker.get("splash_ratio", 1.0));
 		compiled.scalar3 = double(tracker.get("flat_amount", 0.0));
+		compiled.scalar4 = double(tracker.get("max_hp_ratio", 0.0));
+		compiled.int0 = tracker.get("use_accumulated_damage", false) ? 1 : 0;
 		String damage_type_str = String(tracker.get("damage_type", "physical"));
 		if (damage_type_str == "physical") {
 			compiled.damage_type = sn_physical();
@@ -1000,7 +1002,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 			compiled.damage_type = StringName(damage_type_str);
 		}
 		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 	} else if (kind == sn_damage_over_time()) {
 		// Ratio-based parameters (now represent TOTAL amounts over full duration)
 		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
@@ -1067,7 +1069,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int1 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 		compiled.int2 = tracker.get("target_self", false) ? 1 : 0;
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 	} else if (kind == sn_aoe_heal_over_time()) {
 		// AoE parameters
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
@@ -1086,7 +1088,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.int3 = tracker.get("target_self", false) ? 1 : 0;
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int4 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 	} else if (kind == sn_damage_threshold_trigger()) {
 		compiled.scalar0 = double(tracker.get("threshold_multiplier", 1.0));
 		Variant nested = tracker.get("effect", Variant());
@@ -1149,18 +1151,21 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		
 		// Parse sub_effect (required)
 		if (params.has("sub_effect")) {
+			tracker.mark_accessed("sub_effect");
 			Dictionary sub_effect_dict = params["sub_effect"];
 			compiled.children.push_back(_compile_effect(sub_effect_dict));
 		}
 		
 		// Parse post_complete_effect (optional)
 		if (params.has("post_complete_effect")) {
+			tracker.mark_accessed("post_complete_effect");
 			Dictionary post_complete_dict = params["post_complete_effect"];
 			compiled.sub_effects.push_back(_compile_effect(post_complete_dict));
 		}
 		
 		// Parse post_interrupt_effect (optional)
 		if (params.has("post_interrupt_effect")) {
+			tracker.mark_accessed("post_interrupt_effect");
 			Dictionary post_interrupt_dict = params["post_interrupt_effect"];
 			compiled.sub_effects.push_back(_compile_effect(post_interrupt_dict));
 		}
@@ -1224,43 +1229,43 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("slow_percentage", 0.0));
 		compiled.scalar2 = double(tracker.get("duration", 0.0));
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Slow"));
 	} else if (kind == sn_aoe_root()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Root"));
 	} else if (kind == sn_aoe_silence()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
 		compiled.int0 = tracker.get("block_abilities", true) ? 1 : 0;
 		compiled.int1 = tracker.get("block_ultimate", true) ? 1 : 0;
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Silence"));
 	} else if (kind == sn_aoe_disarm()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Disarm"));
 	} else if (kind == sn_aoe_knockback()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("distance", 0.0));
 		compiled.scalar2 = double(tracker.get("duration", 0.0));
 		compiled.int0 = tracker.get("direction", "away_from_source") == "away_from_source" ? 1 : 0;
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Knockback"));
 	} else if (kind == sn_aoe_reflect()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("reflect_percentage", 0.0));
 		compiled.scalar2 = double(tracker.get("duration", 0.0));
 		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Reflect"));
 	} else if (kind == sn_aoe_stun()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
-		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params);
+		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Stun"));
 	} else if (kind == sn_reflect_damage()) {
 		compiled.scalar0 = double(tracker.get("reflect_percentage", 0.0));
@@ -1409,6 +1414,9 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 	compiled.on_tick_interval = double(tracker.get("on_tick_interval", 1.0));
 	// Validate minimum on_tick_interval (must be at least game tick rate)
 	compiled.on_tick_interval = Math::max(compiled.on_tick_interval, DEFAULT_TICK_RATE);
+	
+	// Set reason for error reporting
+	tracker.reason = compiled.reason;
 	
 	// Report any unused parameters to catch mismatches
 	tracker.report_unused(kind_str);
@@ -5056,7 +5064,7 @@ Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const UnitState &source,
 	return forward;
 }
 
-TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape_metadata(const Dictionary &params) const {
+TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape_metadata(const Dictionary &params, ParamTracker &tracker) const {
 	AoShapeParams shape_params;
 	shape_params.shape = AoShapeKind::Circle;
 	shape_params.anchor = AoAnchorKind::Self;
@@ -5070,6 +5078,7 @@ TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape
 	
 	// Parse shape
 	Variant shape_var = params.get("shape", Variant());
+	tracker.mark_accessed("shape");
 	if (shape_var.get_type() == Variant::STRING) {
 		String shape_str = String(shape_var);
 		if (shape_str == "circle") {
@@ -5083,6 +5092,7 @@ TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape
 	
 	// Parse anchor
 	Variant anchor_var = params.get("anchor", Variant());
+	tracker.mark_accessed("anchor");
 	if (anchor_var.get_type() == Variant::STRING) {
 		String anchor_str = String(anchor_var);
 		if (anchor_str == "self") {
@@ -5098,11 +5108,15 @@ TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape
 	
 	// Parse numeric parameters
 	shape_params.radius = params.get("radius", 0.0);
+	tracker.mark_accessed("radius");
 	shape_params.width = params.get("width", 0.0);
+	tracker.mark_accessed("width");
 	shape_params.height = params.get("height", 0.0);
+	tracker.mark_accessed("height");
 	
 	// Parse rotation (degrees to radians)
 	Variant rotation_var = params.get("rotation_degrees", Variant());
+	tracker.mark_accessed("rotation_degrees");
 	if (rotation_var.get_type() == Variant::FLOAT || rotation_var.get_type() == Variant::INT) {
 		double rotation_degrees = rotation_var;
 		shape_params.rotation_radians = Math::deg_to_rad(rotation_degrees);
@@ -5110,10 +5124,13 @@ TeamfightSimulationCore::AoShapeParams TeamfightSimulationCore::_parse_aoe_shape
 	
 	// Parse anchor position for Point anchor
 	shape_params.anchor_x = params.get("anchor_x", 0.0);
+	tracker.mark_accessed("anchor_x");
 	shape_params.anchor_y = params.get("anchor_y", 0.0);
+	tracker.mark_accessed("anchor_y");
 	
 	// Parse target_id for Target anchor
 	shape_params.target_id = params.get("target_id", 0);
+	tracker.mark_accessed("target_id");
 	
 	return shape_params;
 }
@@ -7702,10 +7719,13 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			Dictionary aoe_damage_result;
 			aoe_damage_result["success"] = true;
 			double aoe_damage;
-			if (effect.scalar3 > 0.0) {
-				aoe_damage = effect.scalar3;
+			// Use accumulated damage if requested
+			if (effect.int0 != 0 && context.channel_accumulated_damage > 0.0) {
+				aoe_damage = context.channel_accumulated_damage * effect.scalar1;
 			} else {
-				aoe_damage = get_effective_attack_damage(source) * effect.scalar1;
+				aoe_damage = get_effective_max_hp(source) * effect.scalar4;  // max_hp_ratio
+				aoe_damage += get_effective_attack_damage(source) * effect.scalar1;  // damage_ratio
+				aoe_damage += effect.scalar3;  // flat_amount
 			}
 			double splash_ratio = effect.scalar2;
 			if (splash_ratio != 1.0) {

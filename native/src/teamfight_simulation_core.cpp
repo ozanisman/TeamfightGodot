@@ -3904,15 +3904,15 @@ void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, d
 		_viewer_record_heal_fx(target, gained);
 	}
 	_sync_targeting_frame_unit(target);
-	_uc(source).healing_done += amount;
+	_uc(source).healing_done += gained;
 	if (action_kind == sn_auto()) {
-		_uc(source).healing_done_auto += amount;
+		_uc(source).healing_done_auto += gained;
 	} else if (action_kind == sn_ability()) {
-		_uc(source).healing_done_ability += amount;
+		_uc(source).healing_done_ability += gained;
 	} else if (action_kind == sn_ultimate()) {
-		_uc(source).healing_done_ultimate += amount;
+		_uc(source).healing_done_ultimate += gained;
 	} else if (action_kind == sn_passive()) {
-		_uc(source).healing_done_passive += amount;
+		_uc(source).healing_done_passive += gained;
 	}
 	if (source.instance_id != target.instance_id) {
 		_uc(target).recent_benefactors[source.instance_id] = _time;

@@ -1255,6 +1255,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Knockback"));
 	} else if (kind == sn_aoe_reflect()) {
+		// TODO: Rework reflect_type to be selectable per damage type (physical, magic, true) instead of binary "all" vs "physical"
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("reflect_percentage", 0.0));
 		compiled.scalar2 = double(tracker.get("duration", 0.0));
@@ -1267,6 +1268,7 @@ TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(c
 		compiled.aoe_shape_params = _parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Stun"));
 	} else if (kind == sn_reflect_damage()) {
+		// TODO: Rework reflect_type to be selectable per damage type (physical, magic, true) instead of binary "all" vs "physical"
 		compiled.scalar0 = double(tracker.get("reflect_percentage", 0.0));
 		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
 		compiled.reason = String(tracker.get("reason", ""));
@@ -1457,11 +1459,13 @@ const TeamfightSimulationCore::UnitStateCold &TeamfightSimulationCore::_uc(const
 }
 
 void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitStateCold &cold) {
+	// TODO: Rework reflect_type to be selectable per damage type (physical, magic, true) instead of binary "all" vs "physical"
+	// Or remove entirely and use separate reflect effects per damage type
 	unit.reflect_passive_pct_all = 0.0;
 	unit.reflect_passive_pct_physical = 0.0;
 	for (const EffectRecord &eff : cold.passive_effects[1]) {
 		if (eff.opcode == EFFECT_OPCODE_REFLECT_DAMAGE) {
-			double p = Math::clamp(eff.scalar0, 0.0, 1.0);
+			double p = eff.scalar0;
 			if (eff.int0 == 1) {
 				unit.reflect_passive_pct_all += p;
 			} else {
@@ -1469,8 +1473,6 @@ void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitSt
 			}
 		}
 	}
-	unit.reflect_passive_pct_all = Math::clamp(unit.reflect_passive_pct_all, 0.0, 1.0);
-	unit.reflect_passive_pct_physical = Math::clamp(unit.reflect_passive_pct_physical, 0.0, 1.0);
 }
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
@@ -3493,7 +3495,6 @@ void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, U
 		passive_pct += defender.reflect_passive_pct_physical;
 	}
 	if (passive_pct > 1e-9) {
-		passive_pct = Math::clamp(passive_pct, 0.0, 1.0);
 		double reflected = total_damage_applied * passive_pct;
 		if (reflected > 1e-9) {
 			EffectContext bounce = context;
@@ -3648,11 +3649,6 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 				Dictionary result = _execute_effect(effect, ally_context);
 			}
 		}
-	}
-	
-	// Clamp total redirected to not exceed original damage
-	if (total_redirected > damage) {
-		total_redirected = damage;
 	}
 	
 	return total_redirected;  // Return redirected damage to reduce original target's damage

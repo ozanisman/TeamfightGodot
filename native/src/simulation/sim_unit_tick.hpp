@@ -1,6 +1,7 @@
 #ifndef SIM_UNIT_TICK_HPP
 #define SIM_UNIT_TICK_HPP
 
+#include "sim_channel.hpp"
 #include "sim_combat.hpp"
 #include "sim_world.hpp"
 
@@ -63,10 +64,6 @@ struct UnitTickHostHooks {
 
 	void (*respawn_unit)(void *user_data, UnitState &unit) = nullptr;
 	const UnitStrategy &(*strategy_for_unit)(void *user_data, const UnitState &unit) = nullptr;
-	void (*update_stacks)(void *user_data, UnitState &unit, double delta, double current_time) = nullptr;
-	void (*update_stat_modifier_durations)(void *user_data, UnitState &unit, double delta) = nullptr;
-	void (*clear_expired_stat_modifiers)(void *user_data, UnitState &unit) = nullptr;
-	void (*process_channel_tick)(void *user_data, UnitState &unit, double delta) = nullptr;
 	UnitState *(*select_enemy_target)(void *user_data, UnitState &unit, bool profile_sim) = nullptr;
 	UnitState *(*select_ally_target)(void *user_data, UnitState &unit) = nullptr;
 	void (*prune_assist_window)(void *user_data, UnitState &unit) = nullptr;
@@ -100,6 +97,7 @@ bool regen_and_periodic(
 		SimWorld &world,
 		UnitState &unit,
 		SimHostCallbacks &host,
+		const channel::ChannelHostHooks &channel_hooks,
 		const UnitTickHostHooks &tick_hooks,
 		UnitTickProfileCounters &profile);
 
@@ -138,6 +136,7 @@ void update_unit(
 		SimWorld &world,
 		UnitState &unit,
 		SimHostCallbacks &host,
+		const channel::ChannelHostHooks &channel_hooks,
 		const combat::CombatHostHooks &combat_hooks,
 		const UnitTickHostHooks &tick_hooks,
 		const UnitTickMatchState &match,

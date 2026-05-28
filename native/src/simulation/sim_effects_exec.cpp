@@ -1,7 +1,11 @@
 #include "sim_effects_exec.hpp"
 #include "sim_effects_compile.hpp"
 
+#include "sim_channel.hpp"
+#include "sim_combat.hpp"
 #include "sim_constants.hpp"
+#include "sim_movement.hpp"
+#include "sim_stats_modifiers.hpp"
 #include "sim_damage.hpp"
 #include "sim_periodic.hpp"
 #include "sim_stats.hpp"
@@ -438,10 +442,10 @@ UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 	return &world.units[static_cast<size_t>(index)];
 }
 
-Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks);
+Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const effects::SimMatchHost &match_host);
 
-Dictionary execute_recursive(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks) {
-	return execute_impl(effect, context, world, host, hooks);
+Dictionary execute_recursive(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const effects::SimMatchHost &match_host) {
+	return execute_impl(effect, context, world, host, hooks, match_host);
 }
 
 void merge_accumulated_results(Dictionary &target, const Dictionary &source) {
@@ -546,7 +550,7 @@ void merge_result(Dictionary &target_result, const Dictionary &source_result) {
 }
 
 
-Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks) {
+Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const effects::SimMatchHost &match_host) {
 	Dictionary result;
 	
 	// DEBUG: Log when _execute_effect is called with unknown opcode
@@ -575,7 +579,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			for (const EffectRecord &child : effect.children) {
 				// Update context with accumulated results before executing child
 				context.accumulated_results = combined_results;
-				Dictionary child_result = execute_recursive(child, context, world, host, hooks);
+				Dictionary child_result = execute_recursive(child, context, world, host, hooks, match_host);
 				// Store the result under the effect's kind name for conditional access
 				const StringName &child_kind = sim::effects::compile::kind_for_opcode(child.opcode);
 				if (!child_kind.is_empty()) {
@@ -624,7 +628,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			
 			// trigger_on_hit logic
 			if (effect.scalar3 > 0.5) {
-				hooks.run_post_attack_effects(hooks.user_data, source, *damage_target, dealt, context);
+				sim::combat::run_post_attack_effects(world, host, source, *damage_target, dealt, context);
 				
 				// Apply lifesteal for abilities with trigger_on_hit (excluding self-damage)
 				if (source.instance_id != damage_target->instance_id) {
@@ -634,7 +638,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 						double heal_amount = dealt * life_steal;
 						sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
 						double heal_gained = source.hp - old_hp;
-						hooks.run_post_heal_effects(hooks.user_data, source, source, heal_amount, heal_gained, context);
+						sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 					}
 				}
 			}
@@ -733,7 +737,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			double old_hp = heal_target.hp;
 			sim::status::heal_unit(world, source, heal_target, heal_amount, context.action_kind);
 			double heal_gained = heal_target.hp - old_hp;
-			hooks.run_post_heal_effects(hooks.user_data, source, heal_target, heal_amount, heal_gained, context);
+			sim::combat::run_post_heal_effects(world, host, source, heal_target, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
 			return heal_result;
@@ -777,7 +781,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			Dictionary threshold_result;
 			threshold_result["success"] = true;
 			if (context.damage > get_effective_attack_damage(source) * effect.scalar0 && !effect.children.empty()) {
-				Dictionary child_result = execute_recursive(effect.children[0], context, world, host, hooks);
+				Dictionary child_result = execute_recursive(effect.children[0], context, world, host, hooks, match_host);
 				threshold_result["triggered"] = true;
 				merge_accumulated_results(threshold_result, child_result);
 				return threshold_result;
@@ -855,7 +859,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			double heal_amount = damage_to_use * effect.scalar0;
 			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
 			double heal_gained = source.hp - old_hp;
-			hooks.run_post_heal_effects(hooks.user_data, source, source, heal_amount, heal_gained, context);
+			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
 			return heal_result;
@@ -878,7 +882,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 				return result;
 			}
 			double attack_damage = get_effective_attack_damage(source);
-			int stacks = hooks.consume_stat_stacks(hooks.user_data, source, effect.stat_name, effect.string1);
+			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;
 			String stacking_mode = effect.string0;
@@ -899,7 +903,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			Dictionary result;
 			result["success"] = true;
 			double max_hp = get_effective_max_hp(source);
-			int stacks = hooks.consume_stat_stacks(hooks.user_data, source, effect.stat_name, effect.string1);
+			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;
 			String stacking_mode = effect.string0;
@@ -913,7 +917,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			double old_hp = source.hp;
 			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
 			double heal_gained = source.hp - old_hp;
-			hooks.run_post_heal_effects(hooks.user_data, source, source, heal_amount, heal_gained, context);
+			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			result["heal_applied"] = true;
 			result["amount"] = heal_gained;
 			result["stacks_consumed"] = stacks;
@@ -923,7 +927,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			Dictionary result;
 			result["success"] = true;
 			double max_hp = get_effective_max_hp(source);
-			int stacks = hooks.consume_stat_stacks(hooks.user_data, source, effect.stat_name, effect.string1);
+			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;
 			String stacking_mode = effect.string0;
@@ -950,9 +954,9 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			double fallback_additive_per_stack = effect.scalar1;
 			double fallback_multiplicative_per_stack = effect.scalar2;
 			String stack_reason = effect.string0;
-			hooks.set_stat_stacks(hooks.user_data, source, effect.stat_name, stack_reason, stack_count, duration, to_max, fallback_max_stacks, fallback_additive_per_stack, fallback_multiplicative_per_stack);
+			sim::stats_modifiers::set_stat_stacks(source, effect.stat_name, stack_reason, stack_count, duration, to_max, fallback_max_stacks, fallback_additive_per_stack, fallback_multiplicative_per_stack);
 			// Return the actual stack count after setting (accounting for to_max and clamping)
-			String stack_key = hooks.get_stack_key(hooks.user_data, effect.stat_name, stack_reason);
+			String stack_key = sim::stats_modifiers::get_stack_key(effect.stat_name, stack_reason);
 			Dictionary stack_entry = Dictionary(source.stat_stacks.get(stack_key, Dictionary()));
 			int final_stacks = int(stack_entry.get("current_stacks", stack_count));
 			result["stacks_set"] = final_stacks;
@@ -1022,7 +1026,10 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			}
 			
 			// Process first tick immediately to avoid 1-tick delay
-			hooks.process_channel_tick(hooks.user_data, source, cold.channel_tick_interval);
+			channel::ChannelHostHooks channel_hooks;
+			channel_hooks.user_data = hooks.user_data;
+			channel_hooks.debug_combat_trace = hooks.debug_combat_trace;
+			channel::process_channel_tick(world, host, channel_hooks, source, cold.channel_tick_interval);
 			
 			channel_result["channel_started"] = true;
 			return channel_result;
@@ -1201,7 +1208,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			StringName source_team = source.team;
 
 			// Use tracked max instance ID for efficient ID generation
-			int64_t next_instance_id = hooks.get_max_instance_id(hooks.user_data) + 1;
+			int64_t next_instance_id = (match_host.max_instance_id != nullptr ? *match_host.max_instance_id : 0) + 1;
 
 			// Max radius for expansion fallback (3x initial radius, capped at 5.0)
 			constexpr double max_spawn_radius_expansion = 5.0;
@@ -1216,7 +1223,9 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 				int64_t count = minion_spec.int0;
 
 				// Get minion data from minion_catalog
-				Dictionary minion_data = hooks.get_minion_data(hooks.user_data, minion_id);
+				Dictionary minion_data = match_host.get_minion_data != nullptr
+						? match_host.get_minion_data(match_host.user_data, minion_id)
+						: Dictionary();
 				if (minion_data.is_empty()) {
 					UtilityFunctions::push_error(vformat("Summon failed: unknown minion archetype: %s", String(minion_id)));
 					continue;
@@ -1225,7 +1234,16 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			// Spawn count minions of this type
 			for (int64_t i = 0; i < count; ++i) {
 				// Find random valid position within spawn_radius, with expansion fallback on failure
-				Vector2 spawn_pos = hooks.find_random_spawn_position_near_excluding_with_expansion(hooks.user_data, source_pos_x, source_pos_y, spawn_radius, max_spawn_radius, source_instance_id, pending_positions);
+				Vector2 spawn_pos = match_host.find_random_spawn_position_near_excluding_with_expansion != nullptr
+						? match_host.find_random_spawn_position_near_excluding_with_expansion(
+								match_host.user_data,
+								source_pos_x,
+								source_pos_y,
+								spawn_radius,
+								max_spawn_radius,
+								source_instance_id,
+								pending_positions)
+						: Vector2(-1.0, -1.0);
 				if (spawn_pos.x < 0.0) {
 					// Failed to find valid position even with expansion
 					UtilityFunctions::push_error(vformat("Summon failed: could not find valid spawn position for minion %s (%d/%d) near (%.2f, %.2f) with radius %.2f (expanded to %.2f). Active units: %d",
@@ -1247,10 +1265,14 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 				pending.spawn_spec = spawn_spec;
 				pending.team = source_team;
 				pending.summoner_instance_id = source_instance_id;
-				hooks.queue_pending_spawn(hooks.user_data, pending);
+				if (match_host.pending_spawns != nullptr) {
+					match_host.pending_spawns->push_back(pending);
+				}
 
 				next_instance_id++;
-				hooks.set_max_instance_id(hooks.user_data, next_instance_id);
+				if (match_host.max_instance_id != nullptr) {
+					*match_host.max_instance_id = next_instance_id;
+				}
 				total_spawned++;
 			}
 			}
@@ -1305,7 +1327,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			
 			// Find valid position avoiding unit collisions
 			int64_t source_id = source.instance_id;
-			Vector2 valid_pos = hooks.find_valid_dash_position(hooks.user_data, current_x, current_y, new_x, new_y, dash_distance, source_id);
+			Vector2 valid_pos = sim::movement::find_valid_dash_position(world, current_x, current_y, new_x, new_y, dash_distance, source_id);
 			new_x = valid_pos.x;
 			new_y = valid_pos.y;
 			
@@ -1366,24 +1388,23 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 					} else if (effect.int3 == 2) {
 						stack_behavior = StackBehavior::Reset;
 					}
-					hooks.apply_stacked_stat_modifier(hooks.user_data, 
-						source,
-						modifier_target,
-						effect.damage_type,
-						additive_value,
-						effect.scalar1,
-						effect.scalar2,
-						effect.int1 != 0,
-						int(effect.int2),
-						stack_behavior,
-						effect.reason
-					);
+					sim::stats_modifiers::apply_stacked_stat_modifier(
+							source,
+							modifier_target,
+							effect.damage_type,
+							additive_value,
+							effect.scalar1,
+							effect.scalar2,
+							effect.int1 != 0,
+							int(effect.int2),
+							stack_behavior,
+							effect.reason);
 					stat_result["stat_modifier_applied"] = true;
 					stat_result["use_stacking"] = true;
 					stat_result["max_stacks"] = effect.int2;
 					stat_result["stack_behavior"] = effect.int3;
 				} else {
-					hooks.apply_simple_stat_modifier(hooks.user_data, source, modifier_target, effect.damage_type, additive_value, effect.scalar1, effect.scalar2, effect.int1 != 0, effect.reason);
+					sim::stats_modifiers::apply_simple_stat_modifier(source, modifier_target, effect.damage_type, additive_value, effect.scalar1, effect.scalar2, effect.int1 != 0, effect.reason);
 					stat_result["stat_modifier_applied"] = true;
 					stat_result["use_stacking"] = false;
 				}
@@ -1482,7 +1503,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 						sub_context.target_ally = current_target;
 						
 						// Execute sub-effect
-						Dictionary sub_result = execute_recursive(sub_effect, sub_context, world, host, hooks);
+						Dictionary sub_result = execute_recursive(sub_effect, sub_context, world, host, hooks, match_host);
 						
 						// Check if sub-effect failed
 						if (!sub_result.has("success") || !bool(sub_result.get("success", false))) {
@@ -1599,8 +1620,8 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 
 } // namespace
 
-Dictionary execute(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks) {
-	return execute_impl(effect, context, world, host, hooks);
+Dictionary execute(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const effects::SimMatchHost &match_host) {
+	return execute_impl(effect, context, world, host, hooks, match_host);
 }
 
 } // namespace sim::effects::execution

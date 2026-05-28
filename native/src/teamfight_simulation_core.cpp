@@ -2,6 +2,7 @@
 
 #include "simulation/sim_aoe.hpp"
 #include "simulation/sim_catalog.hpp"
+#include "simulation/sim_channel.hpp"
 #include "simulation/sim_combat.hpp"
 #include "simulation/sim_effects_compile.hpp"
 #include "simulation/sim_effects_exec.hpp"
@@ -11,8 +12,10 @@
 #include "simulation/sim_periodic.hpp"
 #include "simulation/sim_spatial.hpp"
 #include "simulation/sim_stats.hpp"
+#include "simulation/sim_stats_modifiers.hpp"
 #include "simulation/sim_status.hpp"
 #include "simulation/sim_targeting.hpp"
+#include "simulation/sim_targeting_strategies.hpp"
 #include "simulation/sim_unit_tick.hpp"
 #include "simulation/sim_world.hpp"
 
@@ -491,28 +494,6 @@ static bool bench_phases_env_enabled() {
 }
 } // namespace
 
-static int64_t role_slot_for_name(const StringName &role) {
-	if (role == sn_tank()) {
-		return TeamfightSimulationCore::ROLE_SLOT_TANK;
-	}
-	if (role == sn_fighter()) {
-		return TeamfightSimulationCore::ROLE_SLOT_FIGHTER;
-	}
-	if (role == sn_assassin()) {
-		return TeamfightSimulationCore::ROLE_SLOT_ASSASSIN;
-	}
-	if (role == sn_marksman()) {
-		return TeamfightSimulationCore::ROLE_SLOT_MARKSMAN;
-	}
-	if (role == sn_mage()) {
-		return TeamfightSimulationCore::ROLE_SLOT_MAGE;
-	}
-	if (role == sn_support()) {
-		return TeamfightSimulationCore::ROLE_SLOT_SUPPORT;
-	}
-	return -1;
-}
-
 static double strategy_role_prio(const std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, int64_t role_slot) {
 	if (role_slot < 0 || role_slot >= TeamfightSimulationCore::ROLE_SLOT_COUNT) {
 		return 0.0;
@@ -689,22 +670,6 @@ const UnitStrategy &sim_host_unit_tick_strategy(void *user_data, const UnitState
 	return static_cast<TeamfightSimulationCore *>(user_data)->_strategy_for_unit(unit);
 }
 
-void sim_host_unit_tick_update_stacks(void *user_data, UnitState &unit, double delta, double current_time) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_update_stacks(unit, delta, current_time);
-}
-
-void sim_host_unit_tick_update_stat_modifier_durations(void *user_data, UnitState &unit, double delta) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_update_stat_modifier_durations(unit, delta);
-}
-
-void sim_host_unit_tick_clear_expired_stat_modifiers(void *user_data, UnitState &unit) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_clear_expired_stat_modifiers(unit);
-}
-
-void sim_host_unit_tick_process_channel_tick(void *user_data, UnitState &unit, double delta) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_process_channel_tick(unit, delta);
-}
-
 UnitState *sim_host_unit_tick_select_enemy_target(void *user_data, UnitState &unit, bool profile_sim) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_select_enemy_target(unit, profile_sim);
 }
@@ -722,44 +687,15 @@ sim::unit_tick::UnitTickHostHooks TeamfightSimulationCore::_unit_tick_host_hooks
 	hooks.user_data = const_cast<TeamfightSimulationCore *>(this);
 	hooks.respawn_unit = &sim_host_unit_tick_respawn;
 	hooks.strategy_for_unit = &sim_host_unit_tick_strategy;
-	hooks.update_stacks = &sim_host_unit_tick_update_stacks;
-	hooks.update_stat_modifier_durations = &sim_host_unit_tick_update_stat_modifier_durations;
-	hooks.clear_expired_stat_modifiers = &sim_host_unit_tick_clear_expired_stat_modifiers;
-	hooks.process_channel_tick = &sim_host_unit_tick_process_channel_tick;
 	hooks.select_enemy_target = &sim_host_unit_tick_select_enemy_target;
 	hooks.select_ally_target = &sim_host_unit_tick_select_ally_target;
 	hooks.prune_assist_window = &sim_host_unit_tick_prune_assist_window;
 	return hooks;
 }
 
-
 // --- sim::effects::exec host hooks ---
-void sim_host_run_post_attack_effects(void *user_data, UnitState &source, UnitState &target, double damage, const EffectContext &context) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_run_post_attack_effects(source, target, damage, context);
-}
-
-void sim_host_run_post_heal_effects(void *user_data, UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &context) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_run_post_heal_effects(source, target, heal_amount, heal_gained, context);
-}
-
 void sim_host_push_projectile(void *user_data, const ProjectileState &projectile) {
 	static_cast<TeamfightSimulationCore *>(user_data)->_projectiles.push_back(projectile);
-}
-
-int sim_host_consume_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_consume_stat_stacks(unit, stat_name, reason);
-}
-
-void sim_host_set_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_set_stat_stacks(unit, stat_name, reason, stack_count, duration, to_max, fallback_max_stacks, fallback_additive_per_stack, fallback_multiplicative_per_stack);
-}
-
-String sim_host_get_stack_key(void *user_data, StringName stat_name, const String &reason) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_get_stack_key(stat_name, reason);
-}
-
-void sim_host_process_channel_tick(void *user_data, UnitState &unit, double delta) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_process_channel_tick(unit, delta);
 }
 
 std::vector<UnitState *> sim_host_select_targets(void *user_data, UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter) {
@@ -770,56 +706,35 @@ Vector2 sim_host_find_random_spawn_position_near_excluding_with_expansion(void *
 	return static_cast<TeamfightSimulationCore *>(user_data)->_find_random_spawn_position_near_excluding_with_expansion(center_x, center_y, initial_radius, max_radius, exclude_instance_id, pending_positions);
 }
 
-void sim_host_queue_pending_spawn(void *user_data, const PendingSpawn &pending) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_pending_spawns.push_back(pending);
-}
-
-int64_t sim_host_get_max_instance_id(void *user_data) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_max_instance_id;
-}
-
-void sim_host_set_max_instance_id(void *user_data, int64_t value) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_max_instance_id = value;
-}
-
 Dictionary sim_host_get_minion_data(void *user_data, const StringName &minion_id) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_catalog.minion_catalog.get(String(minion_id), Dictionary());
-}
-
-Vector2 sim_host_find_valid_dash_position(void *user_data, double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_find_valid_dash_position(tx, ty, new_x, new_y, effective_distance, target_instance_id);
-}
-
-void sim_host_apply_stacked_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_apply_stacked_stat_modifier(source, target, stat_name, additive, multiplicative, duration, is_match_duration, max_stacks, stack_behavior, reason);
-}
-
-void sim_host_apply_simple_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_apply_simple_stat_modifier(source, target, stat_name, additive, multiplicative, duration, is_match_duration, reason);
 }
 
 bool sim_host_debug_combat_trace(void *user_data) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_debug_combat_trace;
 }
 
+sim::channel::ChannelHostHooks TeamfightSimulationCore::_channel_host_hooks() const {
+	sim::channel::ChannelHostHooks hooks;
+	hooks.user_data = const_cast<TeamfightSimulationCore *>(this);
+	hooks.debug_combat_trace = &sim_host_debug_combat_trace;
+	return hooks;
+}
+
+sim::effects::SimMatchHost TeamfightSimulationCore::_sim_match_host() const {
+	sim::effects::SimMatchHost match_host;
+	match_host.user_data = const_cast<TeamfightSimulationCore *>(this);
+	match_host.pending_spawns = const_cast<std::vector<PendingSpawn> *>(&_pending_spawns);
+	match_host.max_instance_id = const_cast<int64_t *>(&_max_instance_id);
+	match_host.get_minion_data = &sim_host_get_minion_data;
+	match_host.find_random_spawn_position_near_excluding_with_expansion = &sim_host_find_random_spawn_position_near_excluding_with_expansion;
+	return match_host;
+}
+
 void TeamfightSimulationCore::_bind_sim_exec_hooks() {
 	_sim_exec_callbacks.user_data = this;
-	_sim_exec_callbacks.run_post_attack_effects = &sim_host_run_post_attack_effects;
-	_sim_exec_callbacks.run_post_heal_effects = &sim_host_run_post_heal_effects;
 	_sim_exec_callbacks.push_projectile = &sim_host_push_projectile;
-	_sim_exec_callbacks.consume_stat_stacks = &sim_host_consume_stat_stacks;
-	_sim_exec_callbacks.set_stat_stacks = &sim_host_set_stat_stacks;
-	_sim_exec_callbacks.get_stack_key = &sim_host_get_stack_key;
-	_sim_exec_callbacks.process_channel_tick = &sim_host_process_channel_tick;
 	_sim_exec_callbacks.select_targets = &sim_host_select_targets;
-	_sim_exec_callbacks.find_random_spawn_position_near_excluding_with_expansion = &sim_host_find_random_spawn_position_near_excluding_with_expansion;
-	_sim_exec_callbacks.queue_pending_spawn = &sim_host_queue_pending_spawn;
-	_sim_exec_callbacks.get_max_instance_id = &sim_host_get_max_instance_id;
-	_sim_exec_callbacks.set_max_instance_id = &sim_host_set_max_instance_id;
-	_sim_exec_callbacks.get_minion_data = &sim_host_get_minion_data;
-	_sim_exec_callbacks.find_valid_dash_position = &sim_host_find_valid_dash_position;
-	_sim_exec_callbacks.apply_stacked_stat_modifier = &sim_host_apply_stacked_stat_modifier;
-	_sim_exec_callbacks.apply_simple_stat_modifier = &sim_host_apply_simple_stat_modifier;
 	_sim_exec_callbacks.debug_combat_trace = &sim_host_debug_combat_trace;
 }
 
@@ -898,7 +813,7 @@ double TeamfightSimulationCore::_randf() {
 void TeamfightSimulationCore::_reset_runtime_state() {
 	// Clear stat modifiers for all units before clearing the vectors
 	for (UnitState &unit : _units) {
-		_clear_all_stat_modifiers(unit);
+		sim::stats_modifiers::clear_all_stat_modifiers(unit);
 	}
 
 	_units.clear();
@@ -1257,7 +1172,7 @@ std::pair<UnitState, UnitStateCold> TeamfightSimulationCore::_build_unit_state(c
 	}
 
 	// Assign role slot and flags using effective role
-	unit.role_slot = role_slot_for_name(effective_role_name);
+	unit.role_slot = sim::targeting::role_slot_for_name(effective_role_name);
 	unit.is_tank_role = effective_role_name == sn_tank();
 	unit.is_fighter_role = effective_role_name == sn_fighter();
 	unit.is_assassin_role = effective_role_name == sn_assassin();
@@ -1384,103 +1299,11 @@ std::pair<UnitState, UnitStateCold> TeamfightSimulationCore::_build_unit_state(c
 }
 
 void TeamfightSimulationCore::_build_role_strategy_cache() {
-	_role_strategy_cache_by_slot.fill(UnitStrategy());
-	auto put = [&](const StringName &role, UnitStrategy s) {
-		int64_t slot = role_slot_for_name(role);
-		if (slot >= 0) {
-			_role_strategy_cache_by_slot[static_cast<size_t>(slot)] = std::move(s);
-		}
-	};
-	auto apply_role_priorities = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const TeamfightSimulationCore::StrategyRolePriorities &prio_config) {
-		for (const auto &prio : prio_config.enemy_priorities) {
-			if (prio.role != StringName()) {
-				int64_t slot = role_slot_for_name(prio.role);
-				if (slot >= 0) {
-					slots[static_cast<size_t>(slot)] = prio.priority;
-				}
-			}
-		}
-	};
-	auto apply_ally_role_priorities = [](std::array<double, TeamfightSimulationCore::ROLE_SLOT_COUNT> &slots, const TeamfightSimulationCore::StrategyRolePriorities &prio_config) {
-		for (const auto &prio : prio_config.ally_priorities) {
-			if (prio.role != StringName()) {
-				int64_t slot = role_slot_for_name(prio.role);
-				if (slot >= 0) {
-					slots[static_cast<size_t>(slot)] = prio.priority;
-				}
-			}
-		}
-	};
-	auto apply_strategy_config = [&](UnitStrategy &s, const TeamfightSimulationCore::StrategyConfig &config) {
-		s.display_name = config.display_name;
-		s.distance_weight = config.distance_weight;
-		s.hp_weight = config.hp_weight;
-		s.ally_distance_weight = config.ally_distance_weight;
-		s.ally_hp_weight = config.ally_hp_weight;
-		s.ally_threat_weight = config.ally_threat_weight;
-		s.in_range_bonus = config.in_range_bonus;
-		s.threat_response_weight = config.threat_response_weight;
-		s.execute_bonus_weight = config.execute_bonus_weight;
-		s.spacing_weight = config.spacing_weight;
-		s.threat_decay_rate = config.threat_decay_rate;
-		s.switch_margin = config.switch_margin;
-		s.prefers_kiting = config.prefers_kiting;
-		s.uses_ally_targeting = config.uses_ally_targeting;
-		apply_role_priorities(s.role_priorities, config.role_priorities);
-		apply_ally_role_priorities(s.ally_role_priorities, config.role_priorities);
-	};
-
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_tank_config());
-		put(StringName("tank"), std::move(s));
-	}
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_assassin_config());
-		put(StringName("assassin"), std::move(s));
-	}
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_marksman_config());
-		put(StringName("marksman"), std::move(s));
-	}
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_fighter_config());
-		put(StringName("fighter"), std::move(s));
-	}
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_mage_config());
-		put(StringName("mage"), std::move(s));
-	}
-	{
-		UnitStrategy s;
-		apply_strategy_config(s, TeamfightSimulationCore::get_support_config());
-		put(StringName("support"), std::move(s));
-	}
-
-	_default_strategy = UnitStrategy();
-	_default_strategy.display_name = String("Default");
-	_default_strategy.distance_weight = 1.0;
-	_default_strategy.hp_weight = 0.0;
-	_default_strategy.ally_distance_weight = 1.0;
-	_default_strategy.ally_hp_weight = 0.0;
-	_default_strategy.ally_threat_weight = 0.0;
-	_default_strategy.in_range_bonus = 0.6;
-	_default_strategy.threat_response_weight = 0.0;
-	_default_strategy.execute_bonus_weight = 0.0;
-	_default_strategy.threat_decay_rate = 2.0;
-	_default_strategy.switch_margin = 0.75;
+	sim::targeting::build_role_strategy_cache(_role_strategy_cache_by_slot, _default_strategy);
 }
 
 const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) const {
-	int64_t slot = unit.role_slot;
-	if (slot >= 0 && slot < ROLE_SLOT_COUNT) {
-		return _role_strategy_cache_by_slot[static_cast<size_t>(slot)];
-	}
-	return _default_strategy;
+	return sim::targeting::strategy_for_unit(unit, _role_strategy_cache_by_slot, _default_strategy);
 }
 
 void TeamfightSimulationCore::_prepare_tick_context() {
@@ -1866,383 +1689,6 @@ void TeamfightSimulationCore::_restore_mana(UnitState &source, UnitState &target
 	sim::status::restore_mana(w, source, target, amount);
 }
 
-void TeamfightSimulationCore::_apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration) {
-	if (additive == 0.0 && multiplicative == 1.0) {
-		return;
-	}
-	
-	// Validate and clamp dangerous values
-	if (additive < -10000.0) {
-		additive = -10000.0; // Prevent extreme negative additive values
-	}
-	if (multiplicative < 0.0) {
-		multiplicative = 0.0; // Prevent negative multiplication
-	}
-	if (multiplicative > 1000.0) {
-		multiplicative = 1000.0; // Prevent extreme values
-	}
-	if (multiplicative == 0.0) {
-		multiplicative = 0.0001; // Prevent permanent stat zeroing
-	}
-	if (duration < 0.0) {
-		duration = 0.0; // Prevent negative durations
-	}
-	
-	// Apply modifiers based on stat name - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	if (stat_name == StringName(#name)) { \
-		target.stat_additive_##name += additive; \
-		target.stat_multiplicative_##name *= multiplicative; \
-		if (is_match_duration) { \
-			double effective_duration = (duration > 0.0) ? duration : MATCH_DURATION; \
-			target.stat_perm_##name = Math::max(target.stat_perm_##name, effective_duration); \
-		} else if (duration > 0.0) { \
-			target.stat_temp_##name = Math::max(target.stat_temp_##name, duration); \
-		} \
-		return; \
-	}
-	STAT_LIST
-#undef X
-}
-
-void TeamfightSimulationCore::_apply_simple_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason) {
-	if (additive == 0.0 && multiplicative == 1.0) {
-		return;
-	}
-	if (duration <= 0.0) {
-		_apply_stat_modifier(source, target, stat_name, additive, multiplicative, duration, is_match_duration);
-		return;
-	}
-
-	String modifier_key = _get_stack_key(stat_name, reason);
-	Dictionary existing = Dictionary(target.stat_modifiers.get(modifier_key, Dictionary()));
-	if (!existing.is_empty()) {
-		double previous_additive = double(existing.get("additive", 0.0));
-		double previous_multiplicative = double(existing.get("multiplicative", 1.0));
-		double inverse_multiplicative = previous_multiplicative != 0.0 ? 1.0 / previous_multiplicative : 1.0;
-		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
-	}
-
-	_apply_stat_modifier(source, target, stat_name, additive, multiplicative, 0.0, false);
-
-	Dictionary entry;
-	entry["stat_name"] = stat_name;
-	entry["additive"] = additive;
-	entry["multiplicative"] = multiplicative;
-	entry["duration"] = duration;
-	entry["is_match_duration"] = is_match_duration;
-	target.stat_modifiers[modifier_key] = entry;
-}
-
-void TeamfightSimulationCore::_set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration) {
-	if (duration < 0.0) {
-		duration = 0.0;
-	}
-	// Set stat modifier duration - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	if (stat_name == StringName(#name)) { \
-		if (is_match_duration) { \
-			unit.stat_perm_##name = Math::max(unit.stat_perm_##name, duration); \
-		} else { \
-			unit.stat_temp_##name = Math::max(unit.stat_temp_##name, duration); \
-		} \
-		return; \
-	}
-	STAT_LIST
-#undef X
-}
-
-void TeamfightSimulationCore::_clear_all_stat_modifiers(UnitState &unit) {
-	// Clear only temporary stat modifiers (respawn-duration)
-	// Preserve match-duration stat modifiers (stat_perm_* fields and their additive/multiplicative values)
-#define X(name, def, min_val, max_val) \
-	unit.stat_temp_##name = 0.0;
-	STAT_LIST
-#undef X
-	
-	// Clear stack tracking
-	unit.stat_stacks.clear();
-	unit.stat_modifiers.clear();
-}
-
-bool TeamfightSimulationCore::_is_valid_stat_name(const StringName &stat_name) const {
-	// List of all valid stat names - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	if (stat_name == StringName(#name)) return true;
-	STAT_LIST
-#undef X
-	return false;
-}
-
-void TeamfightSimulationCore::_update_stat_modifier_durations(UnitState &unit, double delta) {
-	Array keys_to_remove;
-	Array modifier_keys = unit.stat_modifiers.keys();
-	for (int i = 0; i < modifier_keys.size(); i++) {
-		Variant key_variant = modifier_keys[i];
-		if (key_variant.get_type() != Variant::STRING) {
-			continue;
-		}
-		String key = key_variant;
-		Dictionary modifier = unit.stat_modifiers[key];
-		bool is_match_duration = bool(modifier.get("is_match_duration", false));
-		if (is_match_duration) {
-			continue;
-		}
-		double duration = double(modifier.get("duration", 0.0)) - delta;
-		if (duration > 0.0) {
-			modifier["duration"] = duration;
-			unit.stat_modifiers[key] = modifier;
-			continue;
-		}
-		StringName stat_name = StringName(String(modifier.get("stat_name", "")));
-		double additive = double(modifier.get("additive", 0.0));
-		double multiplicative = double(modifier.get("multiplicative", 1.0));
-		double inverse_multiplicative = multiplicative != 0.0 ? 1.0 / multiplicative : 1.0;
-		_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
-		keys_to_remove.append(key);
-	}
-	for (int i = 0; i < keys_to_remove.size(); i++) {
-		unit.stat_modifiers.erase(String(keys_to_remove[i]));
-	}
-
-	// Update temporary modifier durations - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	unit.stat_temp_##name = Math::max(0.0, unit.stat_temp_##name - delta);
-	STAT_LIST
-#undef X
-}
-
-void TeamfightSimulationCore::_clear_expired_stat_modifiers(UnitState &unit) {
-	// Clear expired temporary modifiers (but preserve match-duration modifiers) - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	if (unit.stat_temp_##name <= 0.0 && unit.stat_perm_##name <= 0.0) { \
-		unit.stat_additive_##name = 0.0; \
-		unit.stat_multiplicative_##name = 1.0; \
-	}
-	STAT_LIST
-#undef X
-}
-
-void TeamfightSimulationCore::_apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason) {
-	if (max_stacks <= 0) {
-		return;
-	}
-
-	String stack_key = _get_stack_key(stat_name, reason);
-	Dictionary stack_entry = Dictionary(target.stat_stacks.get(stack_key, Dictionary()));
-	int current_stacks = int(stack_entry.get("current_stacks", 0));
-	double previous_additive = double(stack_entry.get("applied_additive", 0.0));
-	double previous_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
-	double previous_duration = double(stack_entry.get("duration", 0.0));
-
-	if (current_stacks > 0) {
-		double inverse_multiplicative = previous_multiplicative != 0.0 ? 1.0 / previous_multiplicative : 1.0;
-		_apply_stat_modifier(source, target, stat_name, -previous_additive, inverse_multiplicative, 0.0, false);
-		
-		// Reset temp tracker when undoing previous modifiers
-		_reset_stat_temp_tracker(target, stat_name);
-	}
-
-	if (stack_behavior == StackBehavior::Reset) {
-		current_stacks = 0;
-		previous_duration = 0.0;
-	}
-
-	if (current_stacks < max_stacks) {
-		current_stacks++;
-	}
-
-	double applied_additive = additive * double(current_stacks);
-	double applied_multiplicative = 1.0;
-	if (!Math::is_equal_approx(multiplicative, 1.0)) {
-		applied_multiplicative = Math::pow(multiplicative, double(current_stacks));
-	}
-	_apply_stat_modifier(source, target, stat_name, applied_additive, applied_multiplicative, 0.0, false);
-
-	double next_duration = duration;
-	if (stack_behavior == StackBehavior::Accumulate) {
-		next_duration = previous_duration + duration;
-	}
-	if (next_duration < 0.0) {
-		next_duration = 0.0;
-	}
-
-	stack_entry["current_stacks"] = current_stacks;
-	stack_entry["max_stacks"] = max_stacks;
-	stack_entry["duration"] = next_duration;
-	stack_entry["additive_per_stack"] = additive;
-	stack_entry["multiplicative_per_stack"] = multiplicative;
-	stack_entry["applied_additive"] = applied_additive;
-	stack_entry["applied_multiplicative"] = applied_multiplicative;
-	stack_entry["stack_behavior"] = int(stack_behavior);
-	stack_entry["is_match_duration"] = is_match_duration;
-	target.stat_stacks[stack_key] = stack_entry;
-	_set_stat_modifier_duration(target, stat_name, next_duration, is_match_duration);
-}
-
-// Stack management functions
-void TeamfightSimulationCore::_reset_stat_temp_tracker(UnitState &unit, StringName stat_name) {
-#define X(name, def, min_val, max_val) \
-	if (stat_name == StringName(#name)) { \
-		unit.stat_temp_##name = 0.0; \
-		return; \
-	}
-	STAT_LIST
-#undef X
-}
-
-String TeamfightSimulationCore::_get_stack_key(StringName stat_name, const String &reason) {
-	return String(stat_name) + "|" + reason;
-}
-
-int TeamfightSimulationCore::_consume_stat_stacks(UnitState &unit, StringName stat_name, String reason) {
-	if (!_is_valid_stat_name(stat_name)) {
-		return 0;
-	}
-	
-	String stack_key = _get_stack_key(stat_name, reason);
-	Dictionary stack_entry = Dictionary(unit.stat_stacks.get(stack_key, Dictionary()));
-	int current_stacks = int(stack_entry.get("current_stacks", 0));
-	
-	if (current_stacks > 0) {
-		double applied_additive = double(stack_entry.get("applied_additive", 0.0));
-		double applied_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
-		
-		// Undo the stat modifiers
-		double inverse_multiplicative = applied_multiplicative != 0.0 ? 1.0 / applied_multiplicative : 1.0;
-		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
-		
-		// Remove the stack entry
-		unit.stat_stacks.erase(stack_key);
-		
-		// Reset the temp duration tracker to prevent stat from dropping below base
-		// when new stacks are applied later and expire
-		_reset_stat_temp_tracker(unit, stat_name);
-	}
-	
-	return current_stacks;
-}
-
-void TeamfightSimulationCore::_set_stat_stacks(UnitState &unit, StringName stat_name, String reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack) {
-	if (!_is_valid_stat_name(stat_name)) {
-		return;
-	}
-	
-	String stack_key = _get_stack_key(stat_name, reason);
-	Dictionary stack_entry = Dictionary(unit.stat_stacks.get(stack_key, Dictionary()));
-	
-	int max_stacks = fallback_max_stacks > 0 ? fallback_max_stacks : 1;
-	double additive_per_stack = fallback_additive_per_stack;
-	double multiplicative_per_stack = fallback_multiplicative_per_stack;
-	double current_duration = duration;
-	int stack_behavior = int(StackBehavior::Refresh);
-	bool is_match_duration = false;
-	bool entry_existed = !stack_entry.is_empty();
-	
-	if (entry_existed) {
-		// Entry exists, undo current modifiers
-		double applied_additive = double(stack_entry.get("applied_additive", 0.0));
-		double applied_multiplicative = double(stack_entry.get("applied_multiplicative", 1.0));
-		double inverse_multiplicative = applied_multiplicative != 0.0 ? 1.0 / applied_multiplicative : 1.0;
-		_apply_stat_modifier(unit, unit, stat_name, -applied_additive, inverse_multiplicative, 0.0, false);
-		
-		// Reset temp tracker when undoing existing modifiers
-		_reset_stat_temp_tracker(unit, stat_name);
-		
-		// Get parameters from existing entry
-		max_stacks = int(stack_entry.get("max_stacks", max_stacks));
-		additive_per_stack = double(stack_entry.get("additive_per_stack", additive_per_stack));
-		multiplicative_per_stack = double(stack_entry.get("multiplicative_per_stack", multiplicative_per_stack));
-		if (duration <= 0.0) {
-			current_duration = double(stack_entry.get("duration", 0.0));
-		}
-		stack_behavior = int(stack_entry.get("stack_behavior", int(StackBehavior::Refresh)));
-		is_match_duration = bool(stack_entry.get("is_match_duration", false));
-	}
-	
-	// Determine final stack count
-	int final_stacks = stack_count;
-	if (to_max) {
-		final_stacks = max_stacks;
-	}
-	if (final_stacks < 0) {
-		final_stacks = 0;
-	}
-	if (final_stacks > max_stacks) {
-		final_stacks = max_stacks;
-	}
-	
-	// Calculate new applied values
-	double new_applied_additive = additive_per_stack * double(final_stacks);
-	double new_applied_multiplicative = 1.0;
-	if (!Math::is_equal_approx(multiplicative_per_stack, 1.0)) {
-		new_applied_multiplicative = Math::pow(multiplicative_per_stack, double(final_stacks));
-	}
-	
-	// Apply new modifiers
-	_apply_stat_modifier(unit, unit, stat_name, new_applied_additive, new_applied_multiplicative, 0.0, false);
-	
-	// Update or create stack entry
-	stack_entry["current_stacks"] = final_stacks;
-	stack_entry["max_stacks"] = max_stacks;
-	stack_entry["duration"] = current_duration;
-	stack_entry["additive_per_stack"] = additive_per_stack;
-	stack_entry["multiplicative_per_stack"] = multiplicative_per_stack;
-	stack_entry["applied_additive"] = new_applied_additive;
-	stack_entry["applied_multiplicative"] = new_applied_multiplicative;
-	stack_entry["stack_behavior"] = stack_behavior;
-	stack_entry["is_match_duration"] = is_match_duration;
-	unit.stat_stacks[stack_key] = stack_entry;
-	_set_stat_modifier_duration(unit, stat_name, current_duration, is_match_duration);
-}
-
-
-void TeamfightSimulationCore::_update_stacks(UnitState &unit, double delta, double current_time) {
-	(void)current_time;
-	Array keys_to_remove;
-	Array stack_keys = unit.stat_stacks.keys();
-	for (int i = 0; i < stack_keys.size(); i++) {
-		Variant key_variant = stack_keys[i];
-		if (key_variant.get_type() != Variant::STRING) {
-			continue;
-		}
-		String key = key_variant;
-		Dictionary stack_dict = unit.stat_stacks[key];
-		double duration = double(stack_dict.get("duration", 0.0));
-		if (duration <= 0.0) {
-			continue;
-		}
-		duration -= delta;
-		if (duration > 0.0) {
-			stack_dict["duration"] = duration;
-			unit.stat_stacks[key] = stack_dict;
-			continue;
-		}
-
-		StringName stat_name = StringName(key.get_slice("|", 0));
-		double additive = double(stack_dict.get("applied_additive", 0.0));
-		double multiplicative = double(stack_dict.get("applied_multiplicative", 1.0));
-		double inverse_multiplicative = multiplicative != 0.0 ? 1.0 / multiplicative : 1.0;
-		int current_stacks = int(stack_dict.get("current_stacks", 0));
-		if (current_stacks > 0) {
-			_apply_stat_modifier(unit, unit, stat_name, -additive, inverse_multiplicative, 0.0, false);
-		}
-		
-		// Reset the temp duration tracker to ensure stat returns to base
-		_reset_stat_temp_tracker(unit, stat_name);
-		
-		keys_to_remove.append(key);
-	}
-	for (int i = 0; i < keys_to_remove.size(); i++) {
-		unit.stat_stacks.erase(String(keys_to_remove[i]));
-	}
-}
-
-void TeamfightSimulationCore::_cleanup_expired_stacks(UnitState &unit, double current_time) {
-	(void)unit;
-	(void)current_time;
-}
-
 void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
 	sim::SimWorld w = _sim_world();
 	sim::combat::run_post_attack_effects(w, _sim_host_callbacks, source, target, damage, context);
@@ -2271,238 +1717,6 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double delta) {
 	sim::SimWorld w = _sim_world();
 	sim::periodic::tick_periodic_effects(w, _sim_host_callbacks, unit, delta);
-}
-
-// Channel effect functions
-
-double TeamfightSimulationCore::_get_max_radius_from_effect(const EffectRecord &effect) {
-	double max_radius = 0.0;
-	
-	// Check AOE shape parameters
-	if (effect.aoe_shape_params.radius > max_radius) {
-		max_radius = effect.aoe_shape_params.radius;
-	}
-	
-	// Check scalar0 (used for radius in some AOE effects)
-	if (effect.scalar0 > max_radius) {
-		max_radius = effect.scalar0;
-	}
-	
-	// Recurse into children (multi_effect)
-	for (const EffectRecord &child : effect.children) {
-		double child_radius = _get_max_radius_from_effect(child);
-		if (child_radius > max_radius) {
-			max_radius = child_radius;
-		}
-	}
-	
-	// Recurse into sub_effects (multi_target)
-	for (const EffectRecord &sub_effect : effect.sub_effects) {
-		double sub_radius = _get_max_radius_from_effect(sub_effect);
-		if (sub_radius > max_radius) {
-			max_radius = sub_radius;
-		}
-	}
-	
-	return max_radius;
-}
-
-int64_t TeamfightSimulationCore::_get_channel_tick_count(const UnitStateCold &cold) {
-	if (cold.channel_tick_interval <= 0.0) {
-		return 0;
-	}
-	double total_ticked = cold.channel_tick_accumulator;
-	return static_cast<int64_t>(total_ticked / cold.channel_tick_interval);
-}
-
-void TeamfightSimulationCore::_clear_channel_state(UnitStateCold &cold) {
-	cold.is_channeling = false;
-	cold.channel_remaining_duration = 0.0;
-	cold.channel_tick_interval = 0.0;
-	cold.channel_tick_accumulator = 0.0;
-	cold.channel_accumulated_damage = 0.0;
-	cold.channel_target_instance_id = 0;
-	cold.channel_source_instance_id = 0;
-	cold.channel_reason = StringName();
-	cold.channel_action_kind = StringName();
-	cold.channel_allow_movement = false;
-	cold.channel_target_mode = StringName();
-	cold.channel_sub_effect = EffectRecord();
-	cold.channel_post_complete_effect = EffectRecord();
-	cold.channel_post_interrupt_effect = EffectRecord();
-}
-
-bool TeamfightSimulationCore::_should_interrupt_channel(UnitState &unit, const UnitStateCold &cold) {
-	// Death interrupts
-	if (!unit.alive) return true;
-	
-	// Stun interrupts
-	if (unit.stun_remaining > 0.0) return true;
-	
-	// Silence interrupts (check relevant type)
-	if (cold.channel_action_kind == sn_ability() && unit.silence_blocks_abilities) return true;
-	if (cold.channel_action_kind == sn_ultimate() && unit.silence_blocks_ultimates) return true;
-	
-	// Movement interrupts (if not allowed and not rooted)
-	if (!cold.channel_allow_movement && unit.root_remaining <= 0.0) {
-		// Interrupt if no valid targets in ability radius
-		StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
-		const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-		double ability_radius = _get_max_radius_from_effect(cold.channel_sub_effect);
-		// Fallback to attack range if no radius found in effect
-		if (ability_radius <= 0.0) {
-			ability_radius = get_effective_attack_range(unit);
-		}
-		bool has_target_in_range = false;
-		
-		for (int64_t index : enemy_indices) {
-			UnitState &enemy = _units[static_cast<size_t>(index)];
-			double dist = sim::distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
-			if (dist <= ability_radius) {
-				has_target_in_range = true;
-				break;
-			}
-		}
-		
-		if (!has_target_in_range) {
-			return true;
-		}
-	}
-	
-	return false;
-}
-
-void TeamfightSimulationCore::_complete_channel(UnitState &unit, UnitStateCold &cold) {
-	cold.is_channeling = false;
-	
-	// Execute post-complete effect
-	if (cold.channel_post_complete_effect.opcode != 0) {
-		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
-		if (cold.channel_target_mode == StringName("self")) {
-			target = &unit;
-		}
-		EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
-		context.channel_remaining_duration = cold.channel_remaining_duration;
-		context.channel_tick_count = _get_channel_tick_count(cold);
-		context.channel_accumulated_damage = cold.channel_accumulated_damage;
-		context.channel_completed = true;
-		_execute_effect(cold.channel_post_complete_effect, context);
-	}
-	
-	// Start cooldown
-	if (cold.channel_action_kind == sn_ability()) {
-		unit.ability_cooldown = get_effective_ability_cd(unit);
-	}
-	// Ultimates use mana-based cooldowns (mana consumed on cast start, no refund on completion)
-	
-	_clear_channel_state(cold);
-}
-
-void TeamfightSimulationCore::_interrupt_channel(UnitState &unit, UnitStateCold &cold) {
-	cold.is_channeling = false;
-	
-	// Execute post-interrupt effect
-	if (cold.channel_post_interrupt_effect.opcode != 0) {
-		UnitState *target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
-		if (cold.channel_target_mode == StringName("self")) {
-			target = &unit;
-		}
-		EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
-		context.channel_remaining_duration = cold.channel_remaining_duration;
-		context.channel_tick_count = _get_channel_tick_count(cold);
-		context.channel_accumulated_damage = cold.channel_accumulated_damage;
-		context.channel_completed = false;
-		_execute_effect(cold.channel_post_interrupt_effect, context);
-	}
-	
-	// Apply cooldown on interrupt (no refund)
-	if (cold.channel_action_kind == sn_ability()) {
-		unit.ability_cooldown = get_effective_ability_cd(unit);
-	}
-	// Ultimates: mana already consumed on cast, no additional action needed
-	
-	_clear_channel_state(cold);
-}
-
-void TeamfightSimulationCore::_process_channel_tick(UnitState &unit, double delta) {
-	UnitStateCold &cold = _uc(unit);
-	
-	// Check interrupt conditions
-	if (_should_interrupt_channel(unit, cold)) {
-		_interrupt_channel(unit, cold);
-		return;
-	}
-	
-	// Update tick accumulator
-	cold.channel_tick_accumulator += delta;
-	
-	// Execute sub-effect on each tick
-	if (cold.channel_tick_accumulator >= cold.channel_tick_interval) {
-		cold.channel_tick_accumulator -= cold.channel_tick_interval;
-		
-		// Select target
-		UnitState *target = nullptr;
-		if (cold.channel_target_mode == StringName("self")) {
-			target = &unit;
-		} else if (cold.channel_target_mode == StringName("fixed")) {
-			target = cold.channel_target_instance_id != 0 ? _unit_by_id(cold.channel_target_instance_id) : nullptr;
-		} else if (cold.channel_target_mode == StringName("dynamic")) {
-			// For dynamic target mode, use the closest enemy for now
-			// This can be extended later to support other selection strategies
-			StringName enemy_team = unit.team == StringName("player") ? StringName("enemy") : StringName("player");
-			const std::vector<int64_t> &enemy_indices = _alive_indices_for_team(enemy_team);
-			
-			if (!enemy_indices.empty()) {
-				// Find closest enemy
-				UnitState *closest = nullptr;
-				double closest_dist = std::numeric_limits<double>::max();
-				
-				for (int64_t index : enemy_indices) {
-					UnitState &enemy = _units[static_cast<size_t>(index)];
-					double dist = sim::distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
-					if (dist < closest_dist) {
-						closest_dist = dist;
-						closest = &enemy;
-					}
-				}
-				
-				target = closest;
-			}
-		}
-		
-		if (target != nullptr && target->alive) {
-			EffectContext context = _build_context(unit, target, nullptr, 0.0, cold.channel_action_kind);
-			context.channel_remaining_duration = cold.channel_remaining_duration;
-			context.channel_tick_count = _get_channel_tick_count(cold);
-			context.channel_accumulated_damage = cold.channel_accumulated_damage;
-			
-			Dictionary result = _execute_effect(cold.channel_sub_effect, context);
-			
-			// Accumulate damage from result
-			if (result.has("damage")) {
-				cold.channel_accumulated_damage += double(result["damage"]);
-			}
-		} else {
-			// Log warning when no valid target exists (only in debug mode)
-			if (_debug_combat_trace) {
-				String warning_msg = "Channel tick skipped: no valid target. Unit ID: ";
-				warning_msg += String::num_int64(unit.instance_id);
-				warning_msg += ", Channel reason: ";
-				warning_msg += cold.channel_reason;
-				warning_msg += ", Target mode: ";
-				warning_msg += cold.channel_target_mode;
-				UtilityFunctions::push_warning(warning_msg);
-			}
-		}
-	}
-	
-	// Update duration
-	cold.channel_remaining_duration -= delta;
-	
-	// Check if channel completed
-	if (cold.channel_remaining_duration <= 0.0) {
-		_complete_channel(unit, cold);
-	}
 }
 
 void TeamfightSimulationCore::_cleanse_dots(UnitState &unit, const StringName &effect_type_filter) {
@@ -3246,7 +2460,7 @@ void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
 	unit.respawn_timer = 0.0;
 	
 	// Clear respawn-duration stat modifiers
-	_clear_all_stat_modifiers(unit);
+	sim::stats_modifiers::clear_all_stat_modifiers(unit);
 		
 	c.damage_sources.clear();
 	c.recent_benefactors.clear();
@@ -3630,6 +2844,7 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			w,
 			unit,
 			_sim_host_callbacks,
+			_channel_host_hooks(),
 			_combat_host_hooks(),
 			_unit_tick_host_hooks(),
 			match,
@@ -3698,7 +2913,7 @@ void TeamfightSimulationCore::_update_projectiles() {
 
 Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, EffectContext &context) {
 	sim::SimWorld world = _sim_world();
-	return sim::effects::execution::execute(effect, context, world, _sim_host_callbacks, _sim_exec_callbacks);
+	return sim::effects::execution::execute(effect, context, world, _sim_host_callbacks, _sim_exec_callbacks, _sim_match_host());
 }
 
 sim::match::MatchSnapshot TeamfightSimulationCore::_match_snapshot() const {

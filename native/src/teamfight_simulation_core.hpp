@@ -14,10 +14,12 @@
 
 #include "simulation/sim_aoe.hpp"
 #include "simulation/sim_catalog.hpp"
+#include "simulation/sim_channel.hpp"
 #include "simulation/sim_combat.hpp"
 #include "simulation/sim_constants.hpp"
 #include "simulation/sim_effects_compile.hpp"
 #include "simulation/sim_effects_exec.hpp"
+#include "simulation/sim_effects_host.hpp"
 #include "simulation/sim_match.hpp"
 #include "simulation/sim_movement.hpp"
 #include "simulation/simulation_types.hpp"
@@ -158,188 +160,6 @@ public:
 	static constexpr double THREAT_RESPONSE_RANGE_DEFAULT = 0.0;
 	static constexpr double UNIT_COLLISION_RADIUS = 0.15;
 
-	// Data-driven role priority configurations
-	// Tank role priorities include integrated tank penalty values
-	static StrategyRolePriorities get_tank_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"assassin", -5.0};
-		p.enemy_priorities[1] = {"fighter", -2.0};
-		p.enemy_priorities[2] = {"tank", 0.4};
-		p.ally_priorities[0] = {"marksman", -5.0};
-		p.ally_priorities[1] = {"mage", -5.0};
-		p.ally_priorities[2] = {"support", -3.0};
-		return p;
-	}
-
-	static StrategyRolePriorities get_assassin_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"marksman", -15.0};
-		p.enemy_priorities[1] = {"mage", -15.0};
-		p.enemy_priorities[2] = {"support", -10.0};
-		p.enemy_priorities[3] = {"fighter", 10.0};
-		p.enemy_priorities[4] = {"tank", 20.0};
-		return p;
-	}
-
-	static StrategyRolePriorities get_fighter_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"marksman", -1.0};
-		p.enemy_priorities[1] = {"mage", -1.0};
-		p.enemy_priorities[2] = {"tank", 1.0};
-		return p;
-	}
-
-	static StrategyRolePriorities get_marksman_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"tank", 1};
-		return p;
-	}
-
-	static StrategyRolePriorities get_mage_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"marksman", -4.0};
-		p.enemy_priorities[1] = {"support", -2.0};
-		p.enemy_priorities[2] = {"tank", 2};
-		return p;
-	}
-
-	static StrategyRolePriorities get_support_role_priorities() {
-		StrategyRolePriorities p;
-		p.enemy_priorities[0] = {"assassin", -8.0};
-		p.enemy_priorities[1] = {"fighter", -4.0};
-		p.enemy_priorities[2] = {"tank", 1.5};
-		p.ally_priorities[0] = {"marksman", -5.0};
-		p.ally_priorities[1] = {"mage", -5.0};
-		p.ally_priorities[2] = {"fighter", -2.0};
-		return p;
-	}
-
-	// Comprehensive strategy configuration getters
-	static StrategyConfig get_tank_config() {
-		StrategyConfig c;
-		c.display_name = "Protector";
-		c.role_name = "tank";
-		c.distance_weight = 1.5;
-		c.hp_weight = 0.0;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 0.0;
-		c.ally_threat_weight = 25.0;
-		c.in_range_bonus = 1.0;
-		c.threat_response_weight = 2.0;
-		c.execute_bonus_weight = 0.0;
-		c.spacing_weight = 0.0;
-		c.threat_decay_rate = 4.0;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = false;
-		c.uses_ally_targeting = true;
-		c.role_priorities = get_tank_role_priorities();
-		return c;
-	}
-
-	static StrategyConfig get_assassin_config() {
-		StrategyConfig c;
-		c.display_name = "Diver";
-		c.role_name = "assassin";
-		c.distance_weight = 0.01;
-		c.hp_weight = 2.0;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 0.0;
-		c.ally_threat_weight = 0.0;
-		c.in_range_bonus = 0.6;
-		c.threat_response_weight = 0.8;
-		c.execute_bonus_weight = 10.0;
-		c.spacing_weight = 0.0;
-		c.threat_decay_rate = 1.0;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = false;
-		c.uses_ally_targeting = false;
-		c.role_priorities = get_assassin_role_priorities();
-		return c;
-	}
-
-	static StrategyConfig get_fighter_config() {
-		StrategyConfig c;
-		c.display_name = "Brawler";
-		c.role_name = "fighter";
-		c.distance_weight = 3.0;
-		c.hp_weight = 0.5;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 0.0;
-		c.ally_threat_weight = 0.0;
-		c.in_range_bonus = 0.9;
-		c.threat_response_weight = 1.8;
-		c.execute_bonus_weight = 20.0;
-		c.spacing_weight = 0.0;
-		c.threat_decay_rate = 4.5;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = false;
-		c.uses_ally_targeting = false;
-		c.role_priorities = get_fighter_role_priorities();
-		return c;
-	}
-
-	static StrategyConfig get_marksman_config() {
-		StrategyConfig c;
-		c.display_name = "Kiter";
-		c.role_name = "marksman";
-		c.distance_weight = 1.0;
-		c.hp_weight = 0.5;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 0.0;
-		c.ally_threat_weight = 0.0;
-		c.in_range_bonus = 0.35;
-		c.threat_response_weight = 61.0;
-		c.execute_bonus_weight = 20.0;
-		c.spacing_weight = 2.5;
-		c.threat_decay_rate = 1.0;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = true;
-		c.uses_ally_targeting = false;
-		c.role_priorities = get_marksman_role_priorities();
-		return c;
-	}
-
-	static StrategyConfig get_mage_config() {
-		StrategyConfig c;
-		c.display_name = "Spellcaster";
-		c.role_name = "mage";
-		c.distance_weight = 1.2;
-		c.hp_weight = 2.5;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 0.0;
-		c.ally_threat_weight = 0.0;
-		c.in_range_bonus = 0.45;
-		c.threat_response_weight = 61.1;
-		c.execute_bonus_weight = 20.0;
-		c.spacing_weight = 1.5;
-		c.threat_decay_rate = 1.0;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = true;
-		c.uses_ally_targeting = false;
-		c.role_priorities = get_mage_role_priorities();
-		return c;
-	}
-
-	static StrategyConfig get_support_config() {
-		StrategyConfig c;
-		c.display_name = "Enchanter";
-		c.role_name = "support";
-		c.distance_weight = 1.5;
-		c.hp_weight = 0.0;
-		c.ally_distance_weight = 1.0;
-		c.ally_hp_weight = 10.0;
-		c.ally_threat_weight = 25.0;
-		c.in_range_bonus = 0.4;
-		c.threat_response_weight = 1.7;
-		c.execute_bonus_weight = 0.0;
-		c.spacing_weight = 1.0;
-		c.threat_decay_rate = 1.0;
-		c.switch_margin = 2.0;
-		c.prefers_kiting = true;
-		c.uses_ally_targeting = true;
-		c.role_priorities = get_support_role_priorities();
-		return c;
-	}
 	static constexpr int SPATIAL_GRID_DIM = 8;
 	/// Broad-phase for targeting/density/kite only when a team has this many **alive** units (4+). Standard 5v5 can enter the spatial path under the current benchmark contract.
 	static constexpr int SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4;
@@ -516,7 +336,9 @@ public:
 	void _bind_sim_exec_hooks();
 	sim::SimHostCallbacks _sim_host_callbacks{};
 	sim::effects::execution::SimExecCallbacks _sim_exec_callbacks{};
+	sim::effects::SimMatchHost _sim_match_host() const;
 	sim::combat::CombatHostHooks _combat_host_hooks() const;
+	sim::channel::ChannelHostHooks _channel_host_hooks() const;
 	sim::unit_tick::UnitTickHostHooks _unit_tick_host_hooks() const;
 
 	friend Dictionary sim_host_execute_effect(void *user_data, const EffectRecord &effect, EffectContext &context);
@@ -539,22 +361,10 @@ public:
 			const StringName &action_kind,
 			bool allow_overheal);
 	friend UnitState *sim_host_select_ally_target(void *user_data, UnitState &unit);
-	friend void sim_host_run_post_attack_effects(void *user_data, UnitState &source, UnitState &target, double damage, const EffectContext &context);
-	friend void sim_host_run_post_heal_effects(void *user_data, UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &context);
 	friend void sim_host_push_projectile(void *user_data, const ProjectileState &projectile);
-	friend int sim_host_consume_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason);
-	friend void sim_host_set_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack);
-	friend String sim_host_get_stack_key(void *user_data, StringName stat_name, const String &reason);
-	friend void sim_host_process_channel_tick(void *user_data, UnitState &unit, double delta);
 	friend std::vector<UnitState *> sim_host_select_targets(void *user_data, UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter);
 	friend Vector2 sim_host_find_random_spawn_position_near_excluding_with_expansion(void *user_data, double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions);
-	friend void sim_host_queue_pending_spawn(void *user_data, const PendingSpawn &pending);
-	friend int64_t sim_host_get_max_instance_id(void *user_data);
-	friend void sim_host_set_max_instance_id(void *user_data, int64_t value);
 	friend Dictionary sim_host_get_minion_data(void *user_data, const StringName &minion_id);
-	friend Vector2 sim_host_find_valid_dash_position(void *user_data, double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id);
-	friend void sim_host_apply_stacked_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
-	friend void sim_host_apply_simple_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason);
 	friend bool sim_host_debug_combat_trace(void *user_data);
 
 	UnitState *_unit_by_id(int64_t instance_id);
@@ -648,13 +458,6 @@ public:
 	void _add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind);
 	void _heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal = false);
 	void _restore_mana(UnitState &source, UnitState &target, double amount);
-	void _apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
-	void _apply_simple_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason);
-	void _set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration);
-	void _apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
-	void _clear_all_stat_modifiers(UnitState &unit);
-	void _update_stat_modifier_durations(UnitState &unit, double delta);
-	void _clear_expired_stat_modifiers(UnitState &unit);
 	void _handle_death(UnitState &killer, UnitState &target);
 	Vector2 _find_valid_dash_position(double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id) const;
 	void _tick_periodic_effects(UnitState &unit, double delta);
@@ -676,15 +479,6 @@ public:
 	// Pending spawns processing
 	void _process_pending_spawns();
 
-	// Stack management functions
-	void _reset_stat_temp_tracker(UnitState &unit, StringName stat_name);
-	String _get_stack_key(StringName stat_name, const String &reason);
-	void _update_stacks(UnitState &unit, double delta, double current_time);
-	void _cleanup_expired_stacks(UnitState &unit, double current_time);
-	bool _is_valid_stat_name(const StringName &stat_name) const;
-	int _consume_stat_stacks(UnitState &unit, StringName stat_name, String reason);
-	void _set_stat_stacks(UnitState &unit, StringName stat_name, String reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack);
-	
 	// Stack debugging functions
 	void _debug_print_stack_state(const UnitState &unit) const;
 	String _join_team_names(const Array &team) const;
@@ -699,15 +493,6 @@ public:
 	void _apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
 	void _apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
 	void _apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic = false);
-
-	// Channel effect functions
-	void _process_channel_tick(UnitState &unit, double delta);
-	bool _should_interrupt_channel(UnitState &unit, const UnitStateCold &cold);
-	void _complete_channel(UnitState &unit, UnitStateCold &cold);
-	void _interrupt_channel(UnitState &unit, UnitStateCold &cold);
-	void _clear_channel_state(UnitStateCold &cold);
-	int64_t _get_channel_tick_count(const UnitStateCold &cold);
-	double _get_max_radius_from_effect(const EffectRecord &effect);
 
 	Dictionary _champion_for(const StringName &archetype_id) const;
 

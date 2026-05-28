@@ -14,6 +14,14 @@ struct SimMatchHost {
 	std::vector<PendingSpawn> *pending_spawns = nullptr;
 	int64_t *max_instance_id = nullptr;
 	Dictionary (*get_minion_data)(void *user_data, const StringName &minion_id) = nullptr;
+	Vector2 (*find_random_spawn_position_near_excluding_with_expansion)(
+			void *user_data,
+			double center_x,
+			double center_y,
+			double initial_radius,
+			double max_radius,
+			int64_t exclude_instance_id,
+			const std::vector<Vector2> &pending_positions) = nullptr;
 };
 
 } // namespace effects

@@ -244,7 +244,7 @@ const CHAMPION_DATA := {
 			"name": &"Swordsman",
 			"role": &"fighter",
 			"max_hp": 290.0,
-			"attack_damage": 18.0,
+			"attack_damage": 17.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.2,
 			"move_speed": 0.75,
@@ -262,8 +262,8 @@ const CHAMPION_DATA := {
 		},
 		"description": "A skilled duelist who grows more dangerous as he fights, excelling in prolonged combats.",
 		"ability_desc": "Deals 120% damage and applies a bleed that deals 250% AD as a bleed over 3s.",
-		"ultimate_desc": "Deals 200% physical damage. Consumes all passive stacks to increase damage by 30% per stack. If it kills the target, gain full passive stacks.",
-		"passive_desc": "Gains 4 attack damage for 3s after each auto-attack. (Max 7 stacks)",
+		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase damage by 50% per stack. If it kills the target, gain full passive stacks.",
+		"passive_desc": "Gains 2 attack damage for 3s after each auto-attack. (Max 7 stacks)",
 		"passive_name": "Duelist",
 		"ability_name": "Bleeding Cut",
 		"ultimate_name": "Execution",
@@ -301,8 +301,8 @@ const CHAMPION_DATA := {
 						"kind": &"consume_stacks_damage",
 						"params": {
 							"stat_name": "attack_damage",
-							"base_damage_ratio": 2.0,
-							"stack_bonus_ratio": 0.3,
+							"base_damage_ratio": 2.5,
+							"stack_bonus_ratio": 0.5,
 							"stacking_mode": "additive",
 							"damage_type": "physical",
 							"stack_reason": "Duelist",
@@ -316,7 +316,7 @@ const CHAMPION_DATA := {
 							"to_max": true,
 							"max_stacks": 7,
 							"duration": 3.0,
-							"additive_per_stack": 4.0,
+							"additive_per_stack": 2.0,
 							"requires_result_from": "consume_stacks_damage",
 							"requires_field": "target_killed",
 							"requires_value": true,
@@ -581,7 +581,7 @@ const CHAMPION_DATA := {
 		"description": "An elite marksman specializing in devastating single-target shots.",
 		"ability_desc": "High-precision strike for 150% damage.",
 		"ultimate_desc": "Lethal long-range shot for 350% damage.",
-		"passive_desc": "Deals 20% bonus damage to targets at least 3 tiles away.",
+		"passive_desc": "Deals 30% bonus damage to targets at least 2.0 tiles away.",
 		"passive_name": "Deadeye",
 		"ability_name": "Headshot",
 		"ultimate_name": "Snipe",
@@ -671,7 +671,7 @@ const CHAMPION_DATA := {
 		"ultimate": {
 			"kind": &"damage",
 			"params": {
-				"damage_ratio": 40.0,
+				"damage_ratio": 4.0,
 				"damage_type": "true",
 				"trigger_on_hit": true,
 				"reason": "Berserker Rage"
@@ -1031,24 +1031,24 @@ const CHAMPION_DATA := {
 			"max_hp": 250.0,
 			"attack_damage": 20.0,
 			"attack_range": 0.3,
-			"attack_speed": 0.8,
-			"move_speed": 0.65,
+			"attack_speed": 0.70,
+			"move_speed": 0.70,
 			"armor": 0.15,
 			"magic_resist": 0.15,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 30.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 4.0,
+			"ability_cd": 2.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"soul_feast",
 			"respawn_time": 0.0,
 		},
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
-		"ability_desc": "Channels for 3s. Every 0.5s deals 75% magic damage in a 1.5 tile radius and heals for 50% of damage dealt. At the end, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 30% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
 		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
-		"passive_desc": "Gains permanent max HP equal to 20% of all self healing.",
+		"passive_desc": "Gains permanent max HP equal to 25% of all self healing.",
 		"passive_name": "Soul Feast",
 		"ability_name": "Chaos Rift",
 		"ultimate_name": "",
@@ -1068,7 +1068,7 @@ const CHAMPION_DATA := {
 								"kind": &"aoe_damage",
 								"params": {
 									"radius": 1.5,
-									"damage_ratio": 0.75,
+									"damage_ratio": 0.50,
 									"damage_type": "magic",
 									"reason": "Chaos Rift"
 								}
@@ -1076,7 +1076,7 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"damage_based_heal",
 								"params": {
-									"damage_ratio": 0.5,
+									"damage_ratio": 0.30,
 									"use_accumulated_damage": false,
 									"reason": "Chaos Rift"
 								}
@@ -1093,7 +1093,7 @@ const CHAMPION_DATA := {
 								"kind": &"aoe_damage",
 								"params": {
 									"radius": 3.0,
-									"damage_ratio": 1.0,
+									"damage_ratio": 0.5,
 									"use_accumulated_damage": true,
 									"damage_type": "magic",
 									"reason": "Chaos Rift"
@@ -2136,22 +2136,9 @@ const CHAMPION_DATA := {
 		"ultimate": {
 			"kind": &"summon_ally",
 			"params": {
-				"spawn_radius": 3.0,
+				"spawn_radius": 2.0,
 				"minions": [
 					{"minion_id": "ghoul", "count": 3}
-				],
-				"effects": [
-					{
-						"kind": &"aoe_heal_over_time",
-						"params": {
-							"duration": 5.0,
-							"duration_type": "respawn",
-							"heal_max_hp_ratio": 0.3,
-							"stacking_mode": "separate",
-							"reason": "Army of Darkness",
-							"allow_overheal": true
-						}
-					}
 				],
 				"reason": "Army of Darkness"
 			}
@@ -2166,7 +2153,7 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "attack_damage",
-				"additive": 4.0,
+				"additive": 2.0,
 				"duration": 3.0,
 				"duration_type": "respawn",
 				"max_stacks": 7,
@@ -2239,8 +2226,8 @@ const PASSIVE_DATA := {
 		&"on_attack": [{
 			"kind": &"distance_threshold_multiplier",
 			"params": {
-				"min_distance": 3.0,
-				"multiplier": 1.20
+				"min_distance": 2.0,
+				"multiplier": 1.30
 			}
 		}],
 	},
@@ -2305,7 +2292,7 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "attack_damage",
-				"additive": 9995.0,
+				"additive": 5.0,
 				"duration_type": "match",
 				"target_self": true,
 				"reason": "Slayer"
@@ -2317,7 +2304,7 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "max_hp",
-				"heal_gained_ratio": 0.20,
+				"heal_gained_ratio": 0.25,
 				"duration_type": "match",
 				"stack_behavior": "stack",
 				"target_self": true,
@@ -2344,7 +2331,6 @@ const PASSIVE_DATA := {
 				"damage_ratio": 0.3,
 				"damage_type": "physical",
 				"reason": "Explosion",
-				"color": [255, 100, 50]
 			}
 		}],
 	},

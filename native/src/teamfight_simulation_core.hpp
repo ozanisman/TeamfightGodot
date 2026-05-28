@@ -251,6 +251,13 @@ private:
 		int64_t summoner_instance_id;
 	};
 
+	/// Passive reflect entry for tracking reflect damage sources
+	struct PassiveReflectEntry {
+		double percentage = 0.0;
+		StringName damage_type;  // "all" or "physical"
+		StringName action_kind;  // "passive", "ability", "ultimate"
+	};
+
 	/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
 	struct UnitStateCold {
 		struct DamageSourceEntry {
@@ -268,6 +275,7 @@ private:
 			double radius;
 		};
 		std::vector<PassiveAoeInfo> passive_aoe_info;
+		std::vector<PassiveReflectEntry> passive_reflect_entries;
 		EffectRecord ability_effect;
 		EffectRecord ultimate_effect;
 		double spawn_pos_x = 0.0;
@@ -422,9 +430,6 @@ private:
 		bool stealth_break_on_attack = false;
 		bool stealth_break_on_ability = false;
 		bool stealth_break_on_damage_taken = false;
-		/// Passive `reflect_damage` (on_defense): portions by damage-type applicability.
-		double reflect_passive_pct_all = 0.0;
-		double reflect_passive_pct_physical = 0.0;
 		double respawn_timer = 0.0;
 		bool respawned_this_tick = false;
 		bool alive = true;
@@ -1248,8 +1253,8 @@ private:
 	bool _apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source);
 	bool _apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source);
 	void _run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context);
-	void _run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const StringName &action_kind, const EffectContext &base_context);
-	void _run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const StringName &action_kind, const EffectContext &base_context);
+	void _run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &base_context);
+	void _run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const EffectContext &base_context);
 	void _apply_stun(UnitState &source, UnitState &target, double duration);
 	void _apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration);
 	void _apply_root(UnitState &source, UnitState &target, double duration);

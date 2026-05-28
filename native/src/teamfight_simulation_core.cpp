@@ -1462,16 +1462,14 @@ const TeamfightSimulationCore::UnitStateCold &TeamfightSimulationCore::_uc(const
 void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitStateCold &cold) {
 	// TODO: Rework reflect_type to be selectable per damage type (physical, magic, true) instead of binary "all" vs "physical"
 	// Or remove entirely and use separate reflect effects per damage type
-	unit.reflect_passive_pct_all = 0.0;
-	unit.reflect_passive_pct_physical = 0.0;
+	cold.passive_reflect_entries.clear();
 	for (const EffectRecord &eff : cold.passive_effects[1]) {
 		if (eff.opcode == EFFECT_OPCODE_REFLECT_DAMAGE) {
-			double p = eff.scalar0;
-			if (eff.int0 == 1) {
-				unit.reflect_passive_pct_all += p;
-			} else {
-				unit.reflect_passive_pct_physical += p;
-			}
+			PassiveReflectEntry entry;
+			entry.percentage = eff.scalar0;
+			entry.damage_type = eff.int0 == 1 ? StringName("all") : StringName("physical");
+			entry.action_kind = sn_passive();  // Passive effects are always granted by passives
+			cold.passive_reflect_entries.push_back(entry);
 		}
 	}
 }
@@ -3247,7 +3245,7 @@ bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const 
 		return target.stun_remaining > 0.0;
 	}
 	if (status_kind == sn_reflect()) {
-		return !_uc(target).reflect_buffs.empty() || target.reflect_passive_pct_all > 0.0 || target.reflect_passive_pct_physical > 0.0;
+		return !_uc(target).reflect_buffs.empty() || !_uc(target).passive_reflect_entries.empty();
 	}
 	return false;
 }
@@ -3329,7 +3327,7 @@ double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitSt
 
 double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage) {
 	(void)distance;
-	EffectContext context = _build_context(unit, &target, nullptr, damage, sn_auto());
+	EffectContext context = _build_context(unit, &target, nullptr, damage, sn_passive());
 	const std::vector<EffectRecord> &effects = _uc(unit).passive_effects[EFFECT_BUCKET_ON_ATTACK];
 	double modified_damage = damage;
 	for (const EffectRecord &effect : effects) {
@@ -3410,7 +3408,6 @@ double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &targ
 	double hp_loss = Math::max(0.0, incoming - absorbed);
 	double hp_before = target.hp;
 	target.hp = Math::max(0.0, target.hp - hp_loss);
-	hp_loss = Math::min(hp_loss, hp_before);
 	_uc(target).damage_received += hp_loss;
 	_uc(target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	double total_damage = absorbed + hp_loss;
@@ -3493,18 +3490,26 @@ void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, U
 	}
 
 	// Handle passive reflect (from passive effects)
-	double passive_pct = defender.reflect_passive_pct_all;
-	if (damage_type == sn_physical()) {
-		passive_pct += defender.reflect_passive_pct_physical;
-	}
-	if (passive_pct > 1e-9) {
-		double reflected = total_damage_applied * passive_pct;
+	for (const PassiveReflectEntry &entry : _uc(defender).passive_reflect_entries) {
+		// Check if this entry applies to the damage type
+		bool applies = false;
+		if (entry.damage_type == StringName("all")) {
+			applies = true;
+		} else if (entry.damage_type == StringName("physical") && damage_type == sn_physical()) {
+			applies = true;
+		}
+
+		if (!applies) {
+			continue;
+		}
+
+		double reflected = total_damage_applied * entry.percentage;
 		if (reflected > 1e-9) {
 			EffectContext bounce = context;
 			bounce.suppress_reflect_chain = true;
 			bounce.source = &defender;
 			bounce.target = &attacker;
-			_apply_damage(defender, attacker, reflected, damage_type, sn_passive(), bounce);
+			_apply_damage(defender, attacker, reflected, damage_type, entry.action_kind, bounce);
 		}
 	}
 
@@ -3646,7 +3651,7 @@ double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target,
 					double rdx = source.pos_x - ally.pos_x;
 					double rdy = source.pos_y - ally.pos_y;
 					redirect_context.distance = _distance_between_coords(source.pos_x, source.pos_y, ally.pos_x, ally.pos_y);
-					_apply_damage(source, ally, mitigated_damage, damage_type, sn_passive(), redirect_context);
+					_apply_damage(source, ally, mitigated_damage, damage_type, redirect_context.action_kind, redirect_context);
 				}
 			} else {
 				Dictionary result = _execute_effect(effect, ally_context);
@@ -4322,12 +4327,13 @@ void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitSt
 	}
 	EffectContext effect_context = context;
 	effect_context.damage = damage;
+	effect_context.action_kind = sn_passive();
 	for (const EffectRecord &effect : post_attack_effects) {
 		_execute_effect(effect, effect_context);
 	}
 }
 
-void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const StringName &action_kind, const EffectContext &base_context) {
+void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &base_context) {
 	const std::vector<EffectRecord> &post_heal_effects = _uc(target).passive_effects[EFFECT_BUCKET_POST_HEAL];
 	if (post_heal_effects.empty()) {
 		return;
@@ -4335,7 +4341,7 @@ void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitStat
 	EffectContext effect_context = base_context;
 	effect_context.heal_amount = heal_amount;
 	effect_context.heal_gained = heal_gained;
-	effect_context.action_kind = action_kind;
+	effect_context.action_kind = sn_passive();
 	effect_context.source = &source;
 	effect_context.target = &target;
 	
@@ -4344,7 +4350,7 @@ void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitStat
 	}
 }
 
-void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const StringName &action_kind, const EffectContext &base_context) {
+void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const EffectContext &base_context) {
 	const std::vector<EffectRecord> &takedown_effects = _uc(participant).passive_effects[EFFECT_BUCKET_ON_TAKEDOWN];
 	if (takedown_effects.empty()) {
 		return;
@@ -4354,7 +4360,7 @@ void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, U
 	effect_context.takedown_damage_dealt = damage_dealt;
 	effect_context.is_takedown_kill = is_kill;
 	effect_context.damage = damage_dealt;
-	effect_context.action_kind = action_kind;
+	effect_context.action_kind = sn_passive();
 	effect_context.source = &participant;
 	effect_context.target = &victim;
 	
@@ -4598,7 +4604,7 @@ void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, d
 		double old_hp = target.hp;
 		_heal_unit(source, target, per_tick, action_kind, allow_overheal);
 		double heal_gained = target.hp - old_hp;
-		_run_post_heal_effects(source, target, per_tick, heal_gained, action_kind, context);
+		_run_post_heal_effects(source, target, per_tick, heal_gained, context);
 	}
 	
 	// Store adjusted total for periodic ticks (per_tick * tick_count)
@@ -4728,7 +4734,7 @@ void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double del
 					double old_hp = unit.hp;
 					_heal_unit(*source, unit, heal_per_tick, effect.action_kind, effect.allow_overheal);
 					double heal_gained = unit.hp - old_hp;
-					_run_post_heal_effects(*source, unit, heal_per_tick, heal_gained, effect.action_kind, context);
+					_run_post_heal_effects(*source, unit, heal_per_tick, heal_gained, context);
 					if (!unit.alive) {
 						return;
 					}
@@ -6321,7 +6327,7 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 		}
 		// Run on_takedown effects for killer (runs before assists - killer gets first credit)
 		EffectContext takedown_context = _build_context(*killer_unit, &target, nullptr, killer_damage, StringName("takedown"));
-		_run_on_takedown_effects(*killer_unit, target, killer_damage, true, StringName("takedown"), takedown_context);
+		_run_on_takedown_effects(*killer_unit, target, killer_damage, true, takedown_context);
 	}
 
 	// Collect assist IDs and award assists (both damage sources and benefactors)
@@ -6370,7 +6376,7 @@ void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target
 		if (assist_unit != nullptr) {
 			double damage = assist_damage_map[assist_id];
 			EffectContext takedown_context = _build_context(*assist_unit, &target, nullptr, damage, StringName("takedown"));
-			_run_on_takedown_effects(*assist_unit, target, damage, false, StringName("takedown"), takedown_context);
+			_run_on_takedown_effects(*assist_unit, target, damage, false, takedown_context);
 		}
 	}
 
@@ -7314,6 +7320,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 	// Python parity: damage + on_attack modifiers first, then projectile/hit,
 	// then mana gain, then attack cooldown (resolve_attack → mana → cooldown).
 	double damage = get_effective_attack_damage(unit);
+	EffectContext attack_context = _build_context(unit, &target, nullptr, damage, StringName("auto"));
 	damage = _apply_attack_modifiers(unit, target, distance, damage);
 	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
 		ProjectileState projectile;
@@ -7341,7 +7348,7 @@ void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &t
 			double heal_amount = dealt * life_steal;
 			_heal_unit(unit, unit, heal_amount, StringName("auto"));
 			double heal_gained = unit.hp - old_hp;
-			_run_post_heal_effects(unit, unit, heal_amount, heal_gained, StringName("auto"), context);
+			_run_post_heal_effects(unit, unit, heal_amount, heal_gained, context);
 		}
 	}
 	// Python parity: mana gain happens after attack resolution.
@@ -7543,7 +7550,7 @@ void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &project
 			double heal_amount = dealt * life_steal;
 			_heal_unit(*source, *source, heal_amount, sn_auto());
 			double heal_gained = source->hp - old_hp;
-			_run_post_heal_effects(*source, *source, heal_amount, heal_gained, sn_auto(), context);
+			_run_post_heal_effects(*source, *source, heal_amount, heal_gained, context);
 		}
 	}
 	if (projectile.stun_duration > 0.0 && target->alive) {
@@ -7683,7 +7690,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 						double heal_amount = dealt * life_steal;
 						_heal_unit(source, source, heal_amount, context.action_kind);
 						double heal_gained = source.hp - old_hp;
-						_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
+						_run_post_heal_effects(source, source, heal_amount, heal_gained, context);
 					}
 				}
 			}
@@ -7782,7 +7789,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double old_hp = heal_target.hp;
 			_heal_unit(source, heal_target, heal_amount, context.action_kind);
 			double heal_gained = heal_target.hp - old_hp;
-			_run_post_heal_effects(source, heal_target, heal_amount, heal_gained, context.action_kind, context);
+			_run_post_heal_effects(source, heal_target, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
 			return heal_result;
@@ -7904,7 +7911,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double heal_amount = damage_to_use * effect.scalar0;
 			_heal_unit(source, source, heal_amount, context.action_kind);
 			double heal_gained = source.hp - old_hp;
-			_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
+			_run_post_heal_effects(source, source, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
 			return heal_result;
@@ -7962,7 +7969,7 @@ Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, 
 			double old_hp = source.hp;
 			_heal_unit(source, source, heal_amount, context.action_kind);
 			double heal_gained = source.hp - old_hp;
-			_run_post_heal_effects(source, source, heal_amount, heal_gained, context.action_kind, context);
+			_run_post_heal_effects(source, source, heal_amount, heal_gained, context);
 			result["heal_applied"] = true;
 			result["amount"] = heal_gained;
 			result["stacks_consumed"] = stacks;
@@ -10097,5 +10104,6 @@ void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) co
 	
 	UtilityFunctions::push_warning(debug_output);
 }
+
 
 

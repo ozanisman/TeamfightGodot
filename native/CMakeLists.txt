@@ -40,9 +40,12 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_stats.cpp
     src/simulation/sim_spatial.cpp
     src/simulation/sim_targeting.cpp
+    src/simulation/sim_targeting_strategies.cpp
     src/simulation/sim_damage.cpp
     src/simulation/sim_status.cpp
     src/simulation/sim_periodic.cpp
+    src/simulation/sim_channel.cpp
+    src/simulation/sim_stats_modifiers.cpp
     src/simulation/sim_combat.cpp
     src/simulation/sim_movement.cpp
     src/simulation/sim_effects_compile.cpp

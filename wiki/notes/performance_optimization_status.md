@@ -1,10 +1,12 @@
 # Performance Optimization Status
 
-## Post refactor iteration 2 (May 2026)
+## Post refactor iteration 2 continuation (May 28, 2026)
 
-- **Coordinator size:** `teamfight_simulation_core.cpp` ~4,900 lines (down from ~8,150); hot logic in `native/src/simulation/*` with Release LTO (`/GL` + `/LTCG` on MSVC).
-- **Bench:** re-measure with `.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1` after native rebuild; target within ±2% of pre-refactor baseline unless a semantic fix explains drift.
-- **Deferred perf (Phase L):** `EffectExecStore`, projectile spatial index, targeting score cache — only after fixture parity is green.
+- **Coordinator size:** `teamfight_simulation_core.cpp` ~4,090 lines; `teamfight_simulation_core.hpp` ~587 lines (strategy tables moved to `sim_targeting_strategies.cpp`).
+- **New modules:** `sim_channel`, `sim_stats_modifiers`, `sim_targeting_strategies`; exec uses `SimMatchHost` + 4 `SimExecCallbacks` (push projectile, select targets, debug trace, user_data).
+- **Bench (continuation branch, workers=1, 5v5, 2000 batch):** **99.28 matches/sec** (`duration_sec` 20.15). Rebuild with `--config Release` and confirm godot-cpp is not `template_debug` before comparing to older ~106–132 m/s baselines.
+- **Validation:** `--check-only`, `--check-native-load`, `--check-match-telemetry`, fixture parity (7 cases) green on current tree.
+- **Deferred perf (Phase L):** `EffectExecStore`, projectile spatial index, targeting score cache — only if bench gap persists after confirmed Release DLL.
 
 See `wiki/notes/simulation_module_map.md` for module ownership.
 

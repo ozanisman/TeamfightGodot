@@ -9,13 +9,16 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_spatial` | Grid buckets, stamp generation |
 | `sim_aoe.hpp` | `for_each_unit_in_circle` / `for_each_unit_in_shape` |
 | `sim_targeting` | Scoring, selection, `prepare_tick_context` |
+| `sim_targeting_strategies` | Role strategy tables, `build_role_strategy_cache` |
+| `sim_channel` | Channel tick (interrupt/complete/tick effects) |
+| `sim_stats_modifiers` | Stat stacks, duration modifiers, consume/set stacks |
 | `sim_damage` | Defense, modifiers, `apply_damage` hub |
 | `sim_status` | CC, heal, shield, AOE status, `resolve_aoe_direction` |
 | `sim_periodic` | DoT/HoT, AOE damage/taunt, knockback, reflect |
 | `sim_combat` | Cast, auto-attack, projectiles, post-attack/heal |
 | `sim_movement` | Move toward target, kite, dash collision |
 | `sim_unit_tick` | Per-unit tick phases (`_update_unit` sequencer) |
-| `sim_effects_compile` / `sim_effects_exec` | Effect VM |
+| `sim_effects_compile` / `sim_effects_exec` | Effect VM (`SimMatchHost` for spawn/minion catalog) |
 | `sim_catalog` | Champion/minion JSON, balance patches |
 | `sim_match` | `_build_summary` / stats summary |
 

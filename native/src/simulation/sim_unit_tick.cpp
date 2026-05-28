@@ -6,6 +6,7 @@
 #include "sim_periodic.hpp"
 #include "sim_spatial.hpp"
 #include "sim_stats.hpp"
+#include "sim_stats_modifiers.hpp"
 #include "sim_targeting.hpp"
 
 #include "../stat_definitions.hpp"
@@ -209,17 +210,13 @@ void cooldowns_and_cc(
 #undef X
 			;
 
-	if (!unit.stat_stacks.is_empty() && tick_hooks.update_stacks != nullptr) {
-		tick_hooks.update_stacks(tick_hooks.user_data, unit, tick_rate, world.time);
+	if (!unit.stat_stacks.is_empty()) {
+		stats_modifiers::update_stacks(unit, tick_rate, world.time);
 	}
 
 	if (has_temporary_stat_modifiers) {
-		if (tick_hooks.update_stat_modifier_durations != nullptr) {
-			tick_hooks.update_stat_modifier_durations(tick_hooks.user_data, unit, tick_rate);
-		}
-		if (tick_hooks.clear_expired_stat_modifiers != nullptr) {
-			tick_hooks.clear_expired_stat_modifiers(tick_hooks.user_data, unit);
-		}
+		stats_modifiers::update_stat_modifier_durations(unit, tick_rate);
+		stats_modifiers::clear_expired_stat_modifiers(unit);
 	}
 	if (unit.forced_target_remaining <= 0.0) {
 		unit.forced_target_remaining = 0.0;
@@ -350,6 +347,7 @@ bool regen_and_periodic(
 		SimWorld &world,
 		UnitState &unit,
 		SimHostCallbacks &host,
+		const channel::ChannelHostHooks &channel_hooks,
 		const UnitTickHostHooks &tick_hooks,
 		UnitTickProfileCounters &profile) {
 	const bool profile_sim = profile.profile_sim;
@@ -378,9 +376,9 @@ bool regen_and_periodic(
 			}
 		}
 
-		if (uc(world, unit).is_channeling && tick_hooks.process_channel_tick != nullptr) {
+		if (uc(world, unit).is_channeling) {
 			SimProfileAccScope _ur_chn(profile_sim, profile.ur_channel);
-			tick_hooks.process_channel_tick(tick_hooks.user_data, unit, tick_rate);
+			channel::process_channel_tick(world, host, channel_hooks, unit, tick_rate);
 		}
 	}
 
@@ -533,6 +531,7 @@ void update_unit(
 		SimWorld &world,
 		UnitState &unit,
 		SimHostCallbacks &host,
+		const channel::ChannelHostHooks &channel_hooks,
 		const combat::CombatHostHooks &combat_hooks,
 		const UnitTickHostHooks &tick_hooks,
 		const UnitTickMatchState &match,
@@ -559,7 +558,7 @@ void update_unit(
 	separation(world, unit, profile);
 	threat_and_assist(world, unit, strategy, host, tick_hooks, profile);
 
-	if (regen_and_periodic(world, unit, host, tick_hooks, profile)) {
+	if (regen_and_periodic(world, unit, host, channel_hooks, tick_hooks, profile)) {
 		return;
 	}
 	if (casting(world, unit, host, combat_hooks, profile)) {

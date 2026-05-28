@@ -1,5 +1,23 @@
 # Performance Optimization Status
 
+## Iteration 9 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~296**; glue in **`sim_coordinator_{state,catalog,targeting,viewer,tick,bindings}.cpp`**.
+- **Runtime:** **`sim_match_runtime_state.{hpp,cpp}`** — `MatchRuntimeState`, `runtime_from()`; tick hot path keeps direct `SimWorld` / `MatchLoopState` field wiring on coordinator.
+- **Damage:** split into **`sim_damage_internal`**, **`sim_damage_modifiers`** (~153), **`sim_damage_apply`** (~285); stub **`sim_damage.cpp`**.
+- **Periodic hygiene:** `cleanse_dots` / `clear_periodic_effects` moved to **`sim_periodic_internal.cpp`**; **`sim_periodic_dot_hot.cpp`** **385** lines.
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~137.6 matches/sec** (`duration_sec` 14.54; clean re-run). Within ~6% of Iter 8 **~146.8 m/s**; prior ~90–96 m/s runs were interference (background Godot).
+- **Validation:** full gate green (7 fixture cases); **0** `core._*` in `sim_match_benchmark.cpp`.
+
+## Iteration 8 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~703**; tick glue in **`sim_coordinator_tick.cpp`** (~80); bindings in **`sim_coordinator_bindings.cpp`** (~80).
+- **Unit tick:** split into **`sim_unit_tick_{internal,cooldowns,regen,cast,combat,movement}.cpp`** (largest **168** lines).
+- **Combat:** split into **`sim_combat_{internal,actions,projectile}.cpp`** + core **`sim_combat.cpp`** (largest **188** lines).
+- **Profile:** `sim::profile::RuntimeFlags` (`sim_active`, `targeting_active`) on coordinator.
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~146.8 matches/sec** (`duration_sec` 13.62).
+- **Validation:** full gate green (7 fixture cases).
+
 ## Iteration 7 exit (May 28, 2026)
 
 - **Coordinator:** `teamfight_simulation_core.cpp` **~839**; match API in **`sim_coordinator_match.cpp`** (~235).

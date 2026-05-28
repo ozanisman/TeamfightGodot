@@ -69,7 +69,7 @@ void emit_json_stderr(const TeamfightSimulationCore &core) {
 	profile["ur_effects"] = core._sim_profile_counters.ur_effects;
 	profile["ur_periodic"] = core._sim_profile_counters.ur_periodic;
 	profile["ur_channel"] = core._sim_profile_counters.ur_channel;
-	if (core._sim_profile_targeting_active) {
+	if (core._sim_profile_runtime.targeting_active) {
 		profile["tgt_retarget_keeps"] = core._sim_profile_counters.tgt_retarget_keeps;
 		profile["tgt_enemy_scans"] = core._sim_profile_counters.tgt_enemy_scans;
 		profile["tgt_candidates_scored"] = core._sim_profile_counters.tgt_candidates_scored;

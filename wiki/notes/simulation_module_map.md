@@ -13,17 +13,18 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_targeting_strategies` | Role strategy tables, `build_role_strategy_cache` |
 | `sim_channel` | Channel tick (interrupt/complete/tick effects) |
 | `sim_stats_modifiers` | Stat stacks, duration modifiers, consume/set stacks |
-| `sim_damage` | Defense, modifiers, `apply_damage` hub |
+| `sim_damage` (+ `_internal`, `_modifiers`, `_apply`) | Defense, multiplier modifiers, `apply_damage` / reflect / ally defense |
+| `sim_match_runtime_state` | `MatchRuntimeState` refs bundle; `sim_world()` / `match_loop_state()` builders |
 | `sim_status` | CC, heal, shield, AOE status, `resolve_aoe_direction` |
 | `sim_periodic` (+ `_internal`, `_dot_hot`, `_aoe`, `_reflect`) | DoT/HoT, AOE damage/taunt, knockback, reflect |
-| `sim_combat` | Cast, auto-attack, projectiles, post-attack/heal |
+| `sim_combat` (+ `_internal`, `_actions`, `_projectile`) | Cast, auto-attack, projectiles, post-attack/heal |
 | `sim_movement` | Move toward target, kite, dash collision |
-| `sim_unit_tick` | Per-unit tick phases (`_update_unit` sequencer) |
+| `sim_unit_tick` (+ `_internal`, `_cooldowns`, `_regen`, `_cast`, `_combat`, `_movement`) | Per-unit tick phases (`update_unit` sequencer) |
 | `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` trampoline (no coordinator hop) |
 | `sim_effect_kinds.inl.hpp` | Shared lazy `StringName` accessors for effect kinds / trace keys |
 | `sim_effects_compile` (+ `_internal`, `_damage`, `_status`, `_aoe`, `_spawn`) / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect compile + VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
 | `sim_coordinator_host.cpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer, world, benchmark batch setup) |
-| `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; counter storage struct |
+| `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; `Counters` + `RuntimeFlags` |
 | `sim_match_benchmark_host.hpp` | `GeneratedMatchHost` alias for batch runners |
 | `sim_catalog` | Champion/minion JSON, balance patches |
 | `sim_match` | `_build_summary` / stats summary |
@@ -35,6 +36,12 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_match_benchmark` / `sim_match_benchmark_stats` | Generated batch sim-only + stats partial aggregation |
 | `sim_match_benchmark_host` | `GeneratedMatchHost` accessors for benchmark setup |
 | `sim_coordinator_match.cpp` | Godot match/batch API implementations |
+| `sim_coordinator_tick.cpp` | `_update_unit` / `_update_projectiles` + unit-tick profile wiring |
+| `sim_coordinator_bindings.cpp` | `_bind_sim_host`, exec bindings, combat/unit-tick/channel host hooks |
+| `sim_coordinator_state.cpp` | Roster/score/spawn builders, `_reset_runtime_state`, `_sim_world` / `_match_loop_state` |
+| `sim_coordinator_catalog.cpp` | Catalog load, compile/finalize reflect passives |
+| `sim_coordinator_targeting.cpp` | Targeting frame sync, select helpers, tick context prep |
+| `sim_coordinator_viewer.cpp` | Trace emit, tick snapshot, score breakdown |
 | `sim_coordinator_host.hpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer/world) |
 
 ## Adding features

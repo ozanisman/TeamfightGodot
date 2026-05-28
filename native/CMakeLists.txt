@@ -69,6 +69,8 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_roster.cpp
     src/simulation/sim_match_lifecycle.cpp
     src/simulation/sim_match_loop.cpp
+    src/simulation/sim_viewer.cpp
+    src/simulation/sim_match_benchmark.cpp
     src/teamfight_simulation_core.cpp
 )
 

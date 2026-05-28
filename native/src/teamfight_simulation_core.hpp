@@ -28,7 +28,10 @@
 #include "simulation/sim_unit_builder.hpp"
 #include "simulation/simulation_types.hpp"
 #include "simulation/sim_status.hpp"
+#include "simulation/sim_targeting.hpp"
 #include "simulation/sim_unit_tick.hpp"
+#include "simulation/sim_coordinator_host.hpp"
+#include "simulation/sim_match_benchmark.hpp"
 #include "simulation/sim_viewer.hpp"
 #include "simulation/sim_world.hpp"
 
@@ -45,6 +48,21 @@ using namespace godot;
 // delegators unless marked as catalog/match cold path.
 class TeamfightSimulationCore : public RefCounted {
 	GDCLASS(TeamfightSimulationCore, RefCounted);
+
+	friend struct sim::CoordinatorHostAccess;
+	friend struct sim::match::benchmark::BatchRunner;
+	friend void sim::match::benchmark::run_generated_matches_simulation_only(
+			TeamfightSimulationCore &core,
+			int64_t base_seed,
+			int64_t batch_count,
+			int64_t team_size);
+	friend godot::Dictionary sim::match::benchmark::run_generated_matches_stats_partial(
+			TeamfightSimulationCore &core,
+			int64_t base_seed,
+			int64_t batch_count,
+			int64_t team_size,
+			bool include_match_log,
+			double tick_rate);
 
 protected:
 	static void _bind_methods();
@@ -128,18 +146,8 @@ public:
 	bool _debug_combat_trace = false;
 	bool _debug_targeting_scoring = false;
 
-	static constexpr size_t VIEWER_FX_CAP = 256;
-	std::vector<ViewerFxEvent> _viewer_fx_events;
+	sim::viewer::ViewerFxBuffer _viewer_fx;
 
-	void _viewer_fx_push(const ViewerFxEvent &p_ev);
-	void _viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind, const StringName &p_damage_type);
-	void _viewer_record_heal_fx(const UnitState &p_target, double p_amount);
-	void _viewer_record_shield_fx(const UnitState &p_target, double p_amount);
-	void _viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind);
-	void _viewer_record_aoe_shape_fx(const UnitState &p_source, const UnitState *p_target, const AoShapeParams &params, const StringName &kind);
-	void _viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type);
-	void _viewer_record_passive_aoe_fx(const UnitState &p_unit, double p_radius, const StringName &p_passive_id);
-	String _viewer_state_string(const UnitState &p_u) const;
 	void _print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const;
 
 	mutable std::array<std::vector<int64_t>, sim::SPATIAL_GRID_DIM * sim::SPATIAL_GRID_DIM> _spatial_buckets;
@@ -220,6 +228,7 @@ public:
 	int64_t _sim_profile_tgt_ties_instance = 0;
 
 	static bool _sim_profile_env_enabled();
+	static bool targeting_profile_env_enabled();
 	void _sim_profile_reset();
 	void _sim_profile_emit_json_stderr() const;
 
@@ -245,6 +254,13 @@ public:
 	const UnitStateCold &_uc(const UnitState &u) const;
 
 	sim::SimWorld _sim_world() const;
+	struct CoordinatorMatchContext {
+		sim::match::MatchLoopHost loop_host{};
+		sim::unit_builder::UnitBuilderHost unit_builder_host{};
+	};
+	CoordinatorMatchContext _match_ctx{};
+
+	void _refresh_match_context();
 	sim::unit_builder::UnitBuilderHost _unit_builder_host() const;
 	sim::match_roster::MatchRosterState _match_roster_state();
 	sim::match::MatchScoreState _match_score_state();
@@ -259,20 +275,6 @@ public:
 	sim::combat::CombatHostHooks _combat_host_hooks() const;
 	sim::channel::ChannelHostHooks _channel_host_hooks() const;
 	sim::unit_tick::UnitTickHostHooks _unit_tick_host_hooks() const;
-
-	friend void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target);
-	friend void sim_host_sync_targeting_frame_unit(void *user_data, const UnitState &unit);
-	friend void sim_host_sync_targeting_frame_index(void *user_data, int64_t index, const UnitState &unit);
-	friend void sim_host_emit_trace(void *user_data, const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
-	friend void sim_host_viewer_record_damage_fx(
-			void *user_data,
-			const UnitState &source,
-			const UnitState &target,
-			double total_damage,
-			const StringName &action_kind,
-			const StringName &damage_type);
-	friend UnitState *sim_host_select_ally_target(void *user_data, UnitState &unit);
-	friend bool sim_host_debug_combat_trace(void *user_data);
 
 	UnitState *_unit_by_id(int64_t instance_id);
 	const UnitState *_unit_by_id(int64_t instance_id) const;
@@ -294,10 +296,8 @@ public:
 	double _effective_attack_range(const UnitState &unit) const;
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
 	bool _position_collides_with_pending(double x, double y, const std::vector<Vector2> &pending_positions) const;
-	Vector2 _find_random_spawn_position_near(double center_x, double center_y, double radius);
-	Vector2 _find_random_spawn_position_near_excluding(double center_x, double center_y, double radius, int64_t exclude_instance_id);
-	Vector2 _find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions = std::vector<Vector2>());
 	Vector2 _find_valid_dash_position(double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id) const;
+	sim::targeting::CoordinatorTargetingState _targeting_coordinator_state(bool profile_score_enemy);
 	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
 	UnitState *_select_ally_target(UnitState &unit);
 	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const;

@@ -27,7 +27,9 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_match_lifecycle` | Death scoring/assists/takedowns, respawn reset, spawn slot assign/release |
 | `sim_match_roster` | Unit registration, pending spawn drain, team append |
 | `sim_unit_builder` | Champion/minion unit construction |
-| `sim_viewer` | `ViewerHooks` for heal/shield/AOE-shape FX (optional, via `SimHostCallbacks::viewer_hooks`) |
+| `sim_viewer` | `ViewerFxBuffer`, FX record helpers, `build_tick_snapshot`; `ViewerHooks` callbacks |
+| `sim_match_benchmark` | `run_generated_matches_simulation_only` / `run_generated_matches_stats_partial` batch runners |
+| `sim_coordinator_host.hpp` | Declarations for `sim_host_*` trampolines; `CoordinatorHostAccess` viewer bridge |
 
 ## Adding features
 

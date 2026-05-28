@@ -95,6 +95,42 @@ UnitState *select_enemy_target(
 
 UnitState *select_ally_target(SimWorld &world, UnitState &unit, const UnitStrategy &strategy, const TargetingProfileCounters *profile = nullptr);
 
+struct CoordinatorTargetingState {
+	bool profile_targeting_active = false;
+	bool profile_score_enemy = false;
+	bool debug_targeting_scoring = false;
+	void *debug_user_data = nullptr;
+	StringName (*debug_archetype_for_unit)(void *user_data, const UnitState &unit) = nullptr;
+	void (*debug_print_line)(void *user_data, const String &line) = nullptr;
+	void (*debug_print_score_breakdown)(
+			void *user_data,
+			const ScoreBreakdown &breakdown,
+			const StringName &attacker_archetype,
+			const StringName &enemy_archetype) = nullptr;
+	int64_t *tgt_retarget_keeps = nullptr;
+	int64_t *tgt_enemy_scans = nullptr;
+	int64_t *tgt_candidates_scored = nullptr;
+	int64_t *tgt_ties_adjusted = nullptr;
+	int64_t *tgt_ties_distance = nullptr;
+	int64_t *tgt_ties_instance = nullptr;
+	int64_t *tgt_ally_scans = nullptr;
+	uint64_t *profile_se_base = nullptr;
+	int64_t *profile_se_calls = nullptr;
+};
+
+UnitState *select_enemy_target_coordinator(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitStrategy &strategy,
+		SimHostCallbacks *host,
+		const CoordinatorTargetingState &state);
+
+UnitState *select_ally_target_coordinator(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitStrategy &strategy,
+		const CoordinatorTargetingState &state);
+
 void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host);
 
 std::vector<UnitState *> select_targets(

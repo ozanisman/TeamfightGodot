@@ -28,7 +28,7 @@ Dictionary execute_effect(SimHostCallbacks &host, const EffectRecord &effect, Ef
 	if (host.execute_effect == nullptr) {
 		return Dictionary();
 	}
-	return host.execute_effect(host.user_data, effect, context);
+	return host.execute_effect(host, effect, context);
 }
 
 double get_max_radius_from_effect(const EffectRecord &effect) {

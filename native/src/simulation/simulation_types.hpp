@@ -547,7 +547,7 @@ struct TickContext {
 	bool has_enemy_center = false;
 	std::vector<int64_t> player_backliner_indices;
 	std::vector<int64_t> enemy_backliner_indices;
-	/// Alive backliner count for team; reset in _prepare_tick_context, decremented in _handle_death (matches `other.alive` scans over backliner lists).
+	/// Alive backliner count for team; reset in _prepare_tick_context, decremented in match lifecycle handle_death (matches `other.alive` scans over backliner lists).
 	int player_backliner_alive_count = 0;
 	int enemy_backliner_alive_count = 0;
 	/// Alive tank+fighter per team (spatial grid insert).

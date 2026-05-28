@@ -14,7 +14,6 @@ namespace combat {
 
 struct CombatHostHooks {
 	void *user_data = nullptr;
-	double (*heal_unit)(void *user_data, UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal) = nullptr;
 	UnitState *(*select_ally_target)(void *user_data, UnitState &unit) = nullptr;
 };
 

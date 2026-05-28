@@ -97,6 +97,17 @@ UnitState *select_ally_target(SimWorld &world, UnitState &unit, const UnitStrate
 
 void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host);
 
+std::vector<UnitState *> select_targets(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		UnitState &source,
+		UnitState *target,
+		int64_t target_count,
+		TargetSelectionStrategy strategy,
+		bool include_source,
+		ExcessTargetHandling excess_handling,
+		const StringName &team_filter);
+
 } // namespace targeting
 } // namespace sim
 

@@ -1,12 +1,30 @@
 # Performance Optimization Status
 
-## Post refactor iteration 2 continuation (May 28, 2026)
+## Iteration 3 exit (May 28, 2026)
 
-- **Coordinator size:** `teamfight_simulation_core.cpp` ~4,090 lines; `teamfight_simulation_core.hpp` ~587 lines (strategy tables moved to `sim_targeting_strategies.cpp`).
-- **New modules:** `sim_channel`, `sim_stats_modifiers`, `sim_targeting_strategies`; exec uses `SimMatchHost` + 4 `SimExecCallbacks` (push projectile, select targets, debug trace, user_data).
-- **Bench (continuation branch, workers=1, 5v5, 2000 batch):** **99.28 matches/sec** (`duration_sec` 20.15). Rebuild with `--config Release` and confirm godot-cpp is not `template_debug` before comparing to older ~106–132 m/s baselines.
-- **Validation:** `--check-only`, `--check-native-load`, `--check-match-telemetry`, fixture parity (7 cases) green on current tree.
-- **Deferred perf (Phase L):** `EffectExecStore`, projectile spatial index, targeting score cache — only if bench gap persists after confirmed Release DLL.
+- **Coordinator:** `teamfight_simulation_core.cpp` **~2830**; `teamfight_simulation_core.hpp` **~394**; private methods **< 40**; `sim_host_*` friends **7**.
+- **Modules added:** `sim_viewer`, `sim_unit_builder`, `sim_match_roster`, `sim_match_lifecycle`, `sim_match_loop`, `sim_effects_host`; `sim_effects_exec` split into category `.cpp` files.
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **110.71 matches/sec** (`duration_sec` 18.06). At/above May 24 baseline (106.68 m/s).
+- **Validation:** full gate green (7 fixture cases).
+- **Phase L follow-up:** projectile spatial index only if profiling regresses; not required for exit.
+
+## Iteration 3 Phase 3e — match loop extract (May 28, 2026)
+
+- **Module:** `sim_match_loop.hpp/cpp` — `MatchLoopState`, `MatchLoopHost`, `step_tick()`, `simulate()`, `determine_winner()`.
+- **Coordinator:** `run_match` / batch paths call `sim::match::simulate`; `advance_one_tick` calls `sim::match::step_tick`. One `SimWorld` reused per `step_tick`.
+- **Lines:** `teamfight_simulation_core.cpp` **2825** (was 3098); `sim_match_loop.cpp` **139**; `< 2500` target remains for later phases (3d lifecycle + further extractions).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **97.42 matches/sec** (`duration_sec` 20.53). ~−3.1% vs branch baseline 100.57 m/s (within structural tolerance band; no hot-path logic change).
+- **Validation:** full gate green (7 fixture cases).
+
+## Iteration 2 exit closure (May 28, 2026)
+
+- **Release build:** `GODOTCPP_TARGET` follows `CMAKE_BUILD_TYPE` (Release → `template_release`). Confirm build log shows `libgodot-cpp.windows.template_release.*`.
+- **Coordinator:** `teamfight_simulation_core.cpp` ~3,900 lines; `teamfight_simulation_core.hpp` **489** lines (constants deduped to `sim_constants.hpp`).
+- **Exec surface:** `SimExecCallbacks` = `debug_combat_trace` only; `SimMatchHost` holds `pending_spawns`, `projectiles`, `max_instance_id`, `catalog`.
+- **Friends:** 9 (`sim_host_*` for host callbacks + debug trace).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **100.57 matches/sec** (`duration_sec` 19.89). Branch baseline for ±2% checks.
+- **Validation:** full gate green (7 fixture cases).
+- **Phase L:** deferred — Release bench within ~6% of May 24 baseline (106.68 m/s); next candidate is projectile spatial index if profiling shows hot collision scans.
 
 See `wiki/notes/simulation_module_map.md` for module ownership.
 

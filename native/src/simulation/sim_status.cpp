@@ -1,5 +1,6 @@
 #include "sim_status.hpp"
 
+#include "sim_viewer.hpp"
 #include "sim_constants.hpp"
 #include "sim_stats.hpp"
 #include "sim_targeting.hpp"
@@ -269,16 +270,20 @@ void apply_stealth(SimWorld &world, UnitState &source, UnitState &target, double
 	target.stealth_break_on_damage_taken = break_on_damage_taken;
 }
 
-void add_shield(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
+void add_shield(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, const ViewerHooks *viewer, SimHostCallbacks *host) {
+	(void)host;
 	if (amount <= 0.0) {
 		return;
 	}
 	target.shield += amount;
 	record_shielding_by_action_kind(uc(world, source), amount, action_kind);
 	record_benefactor(world, source, target);
+	if (amount > 1e-9 && viewer != nullptr && viewer->record_shield_fx != nullptr) {
+		viewer->record_shield_fx(viewer->user_data, target, amount);
+	}
 }
 
-double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal) {
+double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal, const ViewerHooks *viewer, SimHostCallbacks *host) {
 	if (amount <= 0.0) {
 		return 0.0;
 	}
@@ -293,6 +298,12 @@ double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double a
 	if (gained > 1e-9) {
 		record_healing_by_action_kind(uc(world, source), gained, action_kind);
 		record_benefactor(world, source, target);
+		if (viewer != nullptr && viewer->record_heal_fx != nullptr) {
+			viewer->record_heal_fx(viewer->user_data, target, gained);
+		}
+		if (host != nullptr && host->sync_targeting_frame_unit != nullptr) {
+			host->sync_targeting_frame_unit(host->user_data, target);
+		}
 	}
 	return gained;
 }
@@ -364,7 +375,8 @@ void apply_aoe_slow(SimWorld &world, UnitState &source, double radius, double sl
 	apply_aoe_slow_shape(world, source, nullptr, make_circle_self_aoe(radius), slow_percentage, duration);
 }
 
-void apply_aoe_slow_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration) {
+void apply_aoe_slow_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration, const SimHostCallbacks *host) {
+	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_slow"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
 		apply_slow(world, source, unit, slow_percentage, duration);
 	});
@@ -374,7 +386,8 @@ void apply_aoe_root(SimWorld &world, UnitState &source, double radius, double du
 	apply_aoe_root_shape(world, source, nullptr, make_circle_self_aoe(radius), duration);
 }
 
-void apply_aoe_root_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
+void apply_aoe_root_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, const SimHostCallbacks *host) {
+	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_root"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
 		apply_root(world, source, unit, duration);
 	});
@@ -384,7 +397,8 @@ void apply_aoe_silence(SimWorld &world, UnitState &source, double radius, double
 	apply_aoe_silence_shape(world, source, nullptr, make_circle_self_aoe(radius), duration, block_abilities, block_ultimate);
 }
 
-void apply_aoe_silence_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate) {
+void apply_aoe_silence_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate, const SimHostCallbacks *host) {
+	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_silence"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
 		apply_silence(world, source, unit, duration, block_abilities, block_ultimate);
 	});
@@ -394,7 +408,8 @@ void apply_aoe_disarm(SimWorld &world, UnitState &source, double radius, double 
 	apply_aoe_disarm_shape(world, source, nullptr, make_circle_self_aoe(radius), duration);
 }
 
-void apply_aoe_disarm_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
+void apply_aoe_disarm_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, const SimHostCallbacks *host) {
+	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_disarm"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
 		apply_disarm(world, source, unit, duration);
 	});
@@ -404,7 +419,8 @@ void apply_aoe_stun(SimWorld &world, UnitState &source, double radius, double du
 	apply_aoe_stun_shape(world, source, nullptr, make_circle_self_aoe(radius), duration);
 }
 
-void apply_aoe_stun_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
+void apply_aoe_stun_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, const SimHostCallbacks *host) {
+	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_stun"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
 		apply_stun(world, source, unit, duration);
 	});

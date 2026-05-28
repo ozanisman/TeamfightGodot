@@ -129,7 +129,7 @@ void apply_aoe_hot_shape(
 		bool is_dynamic = false);
 
 void apply_aoe_taunt(SimWorld &world, UnitState &source, double radius, double duration);
-void apply_aoe_taunt_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration);
+void apply_aoe_taunt_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, const SimHostCallbacks *host = nullptr);
 
 double apply_aoe_damage(
 		SimWorld &world,

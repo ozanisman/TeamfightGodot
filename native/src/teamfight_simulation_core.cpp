@@ -10,6 +10,8 @@
 #include "simulation/sim_damage.hpp"
 #include "simulation/sim_match.hpp"
 #include "simulation/sim_match_lifecycle.hpp"
+#include "simulation/sim_coordinator_host.hpp"
+#include "simulation/sim_match_benchmark.hpp"
 #include "simulation/sim_match_loop.hpp"
 #include "simulation/sim_match_roster.hpp"
 #include "simulation/sim_movement.hpp"
@@ -557,6 +559,8 @@ void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitSt
 	}
 }
 
+namespace sim {
+
 void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target) {
 	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
 	sim::SimWorld w = core->_sim_world();
@@ -585,6 +589,14 @@ void sim_host_emit_trace(void *user_data, const StringName &kind, int64_t src_id
 	static_cast<TeamfightSimulationCore *>(user_data)->_emit_trace(kind, src_id, tgt_id, val);
 }
 
+viewer::ViewerFxBuffer &CoordinatorHostAccess::viewer_fx(TeamfightSimulationCore *core) {
+	return core->_viewer_fx;
+}
+
+SimWorld CoordinatorHostAccess::sim_world(TeamfightSimulationCore *core) {
+	return core->_sim_world();
+}
+
 void sim_host_viewer_record_damage_fx(
 		void *user_data,
 		const UnitState &source,
@@ -592,19 +604,23 @@ void sim_host_viewer_record_damage_fx(
 		double total_damage,
 		const StringName &action_kind,
 		const StringName &damage_type) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_damage_fx(source, target, total_damage, action_kind, damage_type);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_damage_fx(CoordinatorHostAccess::viewer_fx(core), source, target, total_damage, action_kind, damage_type);
 }
 
 void sim_host_viewer_record_hot_status_fx(void *user_data, const UnitState &target, double duration, const StringName &effect_type) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_hot_status_fx(target, duration, effect_type);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_hot_status_fx(CoordinatorHostAccess::viewer_fx(core), target, duration, effect_type);
 }
 
 void sim_host_viewer_record_heal_fx(void *user_data, const UnitState &target, double amount) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_heal_fx(target, amount);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_heal_fx(CoordinatorHostAccess::viewer_fx(core), target, amount);
 }
 
 void sim_host_viewer_record_shield_fx(void *user_data, const UnitState &target, double amount) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_shield_fx(target, amount);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_shield_fx(CoordinatorHostAccess::viewer_fx(core), target, amount);
 }
 
 void sim_host_viewer_record_aoe_shape_fx(
@@ -613,7 +629,9 @@ void sim_host_viewer_record_aoe_shape_fx(
 		const UnitState *target,
 		const AoShapeParams &params,
 		const StringName &kind) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_aoe_shape_fx(source, target, params, kind);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::SimWorld w = CoordinatorHostAccess::sim_world(core);
+	sim::viewer::record_aoe_shape_fx(CoordinatorHostAccess::viewer_fx(core), w, source, target, params, kind);
 }
 
 void sim_host_viewer_record_passive_aoe_fx(
@@ -621,7 +639,8 @@ void sim_host_viewer_record_passive_aoe_fx(
 		const UnitState &unit,
 		double radius,
 		const StringName &passive_id) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_passive_aoe_fx(unit, radius, passive_id);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_passive_aoe_fx(CoordinatorHostAccess::viewer_fx(core), unit, radius, passive_id);
 }
 
 Dictionary sim_host_effective_champion_for(void *user_data, const StringName &archetype_id) {
@@ -678,11 +697,6 @@ UnitState *sim_host_select_ally_target(void *user_data, UnitState &unit) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_select_ally_target(unit);
 }
 
-void sim_host_match_profile_emit_json_stderr(void *user_data);
-bool sim_host_match_profile_env_enabled(void *user_data);
-bool sim_host_match_targeting_profile_enabled(void *user_data);
-void sim_host_match_log_sudden_death_draw(void *user_data);
-
 void sim_host_match_update_projectiles(void *user_data, bool /*profile_sim*/) {
 	static_cast<TeamfightSimulationCore *>(user_data)->_update_projectiles();
 }
@@ -695,11 +709,11 @@ void sim_host_match_update_unit(void *user_data, UnitState &unit, bool profile_s
 	static_cast<TeamfightSimulationCore *>(user_data)->_update_unit(unit, profile_sim);
 }
 
-sim::match_roster::MatchRosterState sim_host_match_roster_state(void *user_data) {
+match_roster::MatchRosterState sim_host_match_roster_state(void *user_data) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_match_roster_state();
 }
 
-sim::unit_builder::UnitBuilderHost sim_host_match_unit_builder_host(void *user_data) {
+unit_builder::UnitBuilderHost sim_host_match_unit_builder_host(void *user_data) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_unit_builder_host();
 }
 
@@ -712,8 +726,55 @@ void sim_host_match_profile_emit_json_stderr(void *user_data) {
 }
 
 bool sim_host_match_profile_env_enabled(void *user_data) {
+	(void)user_data;
 	return TeamfightSimulationCore::_sim_profile_env_enabled();
 }
+
+void sim_host_unit_tick_respawn(void *user_data, UnitState &unit) {
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::SimWorld w = core->_sim_world();
+	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
+	sim::match::MatchScoreState score = core->_match_score_state();
+	score.roster = &roster;
+	sim::match::respawn_unit(
+			w,
+			core->_sim_host_callbacks,
+			&core->_viewer_hooks,
+			score,
+			core->_spawn_slot_state(),
+			unit);
+}
+
+const UnitStrategy &sim_host_unit_tick_strategy(void *user_data, const UnitState &unit) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_strategy_for_unit(unit);
+}
+
+UnitState *sim_host_unit_tick_select_enemy_target(void *user_data, UnitState &unit, bool profile_sim) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_select_enemy_target(unit, profile_sim);
+}
+
+UnitState *sim_host_unit_tick_select_ally_target(void *user_data, UnitState &unit) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_select_ally_target(unit);
+}
+
+void sim_host_unit_tick_prune_assist_window(void *user_data, UnitState &unit) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_prune_assist_window(unit);
+}
+
+bool sim_host_debug_combat_trace(void *user_data) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_debug_combat_trace;
+}
+
+bool sim_host_match_targeting_profile_enabled(void *user_data) {
+	(void)user_data;
+	return TeamfightSimulationCore::targeting_profile_env_enabled();
+}
+
+void sim_host_match_log_sudden_death_draw(void *user_data) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_log_sudden_death_draw();
+}
+
+} // namespace sim
 
 sim::SimWorld TeamfightSimulationCore::_sim_world() const {
 	TeamfightSimulationCore &self = const_cast<TeamfightSimulationCore &>(*this);
@@ -732,16 +793,32 @@ sim::SimWorld TeamfightSimulationCore::_sim_world() const {
 			&self._spatial_generation);
 }
 
-sim::unit_builder::UnitBuilderHost TeamfightSimulationCore::_unit_builder_host() const {
-	sim::unit_builder::UnitBuilderHost host;
-	host.user_data = const_cast<TeamfightSimulationCore *>(this);
+void TeamfightSimulationCore::_refresh_match_context() {
+	sim::unit_builder::UnitBuilderHost &host = _match_ctx.unit_builder_host;
+	host.user_data = this;
 	host.catalog = &_catalog;
 	host.compile_effect = &sim_host_compile_effect;
 	host.effective_champion_for = &sim_host_effective_champion_for;
 	host.finalize_reflect_passives = &sim_host_finalize_reflect_passives;
 	host.assign_spawn_slot = &sim_host_assign_spawn_slot;
 	host.get_random_spawn_position = &sim_host_get_random_spawn_position;
-	return host;
+
+	sim::match::MatchLoopHost &loop = _match_ctx.loop_host;
+	loop.user_data = this;
+	loop.update_projectiles = &sim_host_match_update_projectiles;
+	loop.prepare_tick_context = &sim_host_match_prepare_tick_context;
+	loop.update_unit = &sim_host_match_update_unit;
+	loop.match_roster_state = &sim_host_match_roster_state;
+	loop.unit_builder_host = &sim_host_match_unit_builder_host;
+	loop.profile_reset = &sim_host_match_profile_reset;
+	loop.profile_emit_json_stderr = &sim_host_match_profile_emit_json_stderr;
+	loop.profile_env_enabled = &sim_host_match_profile_env_enabled;
+	loop.targeting_profile_enabled = &sim_host_match_targeting_profile_enabled;
+	loop.log_sudden_death_draw = &sim_host_match_log_sudden_death_draw;
+}
+
+sim::unit_builder::UnitBuilderHost TeamfightSimulationCore::_unit_builder_host() const {
+	return _match_ctx.unit_builder_host;
 }
 
 sim::match_roster::MatchRosterState TeamfightSimulationCore::_match_roster_state() {
@@ -791,7 +868,7 @@ sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
 		_player_kills,
 		_enemy_kills,
 		_winner_team,
-		_viewer_fx_events,
+		_viewer_fx.events,
 	};
 	state.profile.ns_projectiles = &_sim_profile_ns_projectiles;
 	state.profile.ns_prepare_tick_ctx = &_sim_profile_ns_prepare_tick_ctx;
@@ -803,19 +880,7 @@ sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
 }
 
 sim::match::MatchLoopHost TeamfightSimulationCore::_match_loop_host() const {
-	sim::match::MatchLoopHost host;
-	host.user_data = const_cast<TeamfightSimulationCore *>(this);
-	host.update_projectiles = &sim_host_match_update_projectiles;
-	host.prepare_tick_context = &sim_host_match_prepare_tick_context;
-	host.update_unit = &sim_host_match_update_unit;
-	host.match_roster_state = &sim_host_match_roster_state;
-	host.unit_builder_host = &sim_host_match_unit_builder_host;
-	host.profile_reset = &sim_host_match_profile_reset;
-	host.profile_emit_json_stderr = &sim_host_match_profile_emit_json_stderr;
-	host.profile_env_enabled = &sim_host_match_profile_env_enabled;
-	host.targeting_profile_enabled = &sim_host_match_targeting_profile_enabled;
-	host.log_sudden_death_draw = &sim_host_match_log_sudden_death_draw;
-	return host;
+	return _match_ctx.loop_host;
 }
 
 void TeamfightSimulationCore::_bind_effect_exec_bindings() {
@@ -869,37 +934,6 @@ sim::combat::CombatHostHooks TeamfightSimulationCore::_combat_host_hooks() const
 	return hooks;
 }
 
-void sim_host_unit_tick_respawn(void *user_data, UnitState &unit) {
-	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
-	sim::SimWorld w = core->_sim_world();
-	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
-	sim::match::MatchScoreState score = core->_match_score_state();
-	score.roster = &roster;
-	sim::match::respawn_unit(
-			w,
-			core->_sim_host_callbacks,
-			&core->_viewer_hooks,
-			score,
-			core->_spawn_slot_state(),
-			unit);
-}
-
-const UnitStrategy &sim_host_unit_tick_strategy(void *user_data, const UnitState &unit) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_strategy_for_unit(unit);
-}
-
-UnitState *sim_host_unit_tick_select_enemy_target(void *user_data, UnitState &unit, bool profile_sim) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_select_enemy_target(unit, profile_sim);
-}
-
-UnitState *sim_host_unit_tick_select_ally_target(void *user_data, UnitState &unit) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_select_ally_target(unit);
-}
-
-void sim_host_unit_tick_prune_assist_window(void *user_data, UnitState &unit) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_prune_assist_window(unit);
-}
-
 sim::unit_tick::UnitTickHostHooks TeamfightSimulationCore::_unit_tick_host_hooks() const {
 	sim::unit_tick::UnitTickHostHooks hooks;
 	hooks.user_data = const_cast<TeamfightSimulationCore *>(this);
@@ -909,10 +943,6 @@ sim::unit_tick::UnitTickHostHooks TeamfightSimulationCore::_unit_tick_host_hooks
 	hooks.select_ally_target = &sim_host_unit_tick_select_ally_target;
 	hooks.prune_assist_window = &sim_host_unit_tick_prune_assist_window;
 	return hooks;
-}
-
-bool sim_host_debug_combat_trace(void *user_data) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_debug_combat_trace;
 }
 
 sim::channel::ChannelHostHooks TeamfightSimulationCore::_channel_host_hooks() const {
@@ -928,6 +958,7 @@ void TeamfightSimulationCore::_bind_sim_exec_hooks() {
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
 	_bind_sim_host();
+	_refresh_match_context();
 
 	_scratch_projectiles.reserve(32);
 	_active_projectiles.reserve(32);
@@ -1050,8 +1081,9 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_trace_buffer.clear();
 	_debug_combat_trace = false;
 	_debug_targeting_scoring = false;
-	_viewer_fx_events.clear();
+	_viewer_fx.clear();
 	_pending_spawns.clear();
+	_refresh_match_context();
 }
 
 Dictionary TeamfightSimulationCore::_load_json_file(const String &path) const {
@@ -1236,68 +1268,41 @@ Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const UnitState &source,
 	return sim::status::resolve_aoe_direction(w, source, params, target_override);
 }
 
+sim::targeting::CoordinatorTargetingState TeamfightSimulationCore::_targeting_coordinator_state(bool profile_score_enemy) {
+	sim::targeting::CoordinatorTargetingState state;
+	state.profile_targeting_active = _sim_profile_targeting_active;
+	state.profile_score_enemy = profile_score_enemy;
+	state.debug_targeting_scoring = _debug_targeting_scoring;
+	state.debug_user_data = const_cast<TeamfightSimulationCore *>(this);
+	state.debug_archetype_for_unit = &sim_host_archetype_for_unit;
+	state.debug_print_line = &sim_host_print_line;
+	state.debug_print_score_breakdown = &sim_host_print_score_breakdown;
+	state.tgt_retarget_keeps = &_sim_profile_tgt_retarget_keeps;
+	state.tgt_enemy_scans = &_sim_profile_tgt_enemy_scans;
+	state.tgt_candidates_scored = &_sim_profile_tgt_candidates_scored;
+	state.tgt_ties_adjusted = &_sim_profile_tgt_ties_adjusted;
+	state.tgt_ties_distance = &_sim_profile_tgt_ties_distance;
+	state.tgt_ties_instance = &_sim_profile_tgt_ties_instance;
+	state.tgt_ally_scans = &_sim_profile_tgt_ally_scans;
+	state.profile_se_base = &_sim_profile_se_base;
+	state.profile_se_calls = &_sim_profile_se_calls;
+	return state;
+}
+
 UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
 	sim::SimWorld w = _sim_world();
-	const UnitStrategy &strategy = _strategy_for_unit(unit);
-	TargetScoreContext score_ctx;
-	score_ctx.attack_range = sim::targeting::attack_range(unit);
-	score_ctx.effective_range = sim::targeting::effective_attack_range(unit);
-	score_ctx.use_spatial = sim::use_spatial_broad_phase(w);
-	if (strategy.prefers_kiting) {
-		score_ctx.has_kite_bounds = true;
-		score_ctx.kite_min_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
-		score_ctx.kite_max_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
-	} else {
-		score_ctx.has_kite_bounds = false;
-	}
-
-	sim::targeting::TargetingProfileCounters profile;
-	profile.active = _sim_profile_targeting_active;
-	if (profile.active) {
-		profile.retarget_keeps = &_sim_profile_tgt_retarget_keeps;
-		profile.enemy_scans = &_sim_profile_tgt_enemy_scans;
-		profile.candidates_scored = &_sim_profile_tgt_candidates_scored;
-		profile.ties_adjusted = &_sim_profile_tgt_ties_adjusted;
-		profile.ties_distance = &_sim_profile_tgt_ties_distance;
-		profile.ties_instance = &_sim_profile_tgt_ties_instance;
-	}
-
-	sim::targeting::ScoreEnemyProfileCounters score_profile;
-	score_profile.active = profile_sim;
-	if (profile_sim) {
-		score_profile.se_base = &_sim_profile_se_base;
-		score_profile.se_calls = &_sim_profile_se_calls;
-	}
-
-	sim::targeting::TargetingDebugHooks debug;
-	debug.enabled = _debug_targeting_scoring;
-	if (debug.enabled) {
-		debug.user_data = this;
-		debug.archetype_for_unit = &sim_host_archetype_for_unit;
-		debug.print_line = &sim_host_print_line;
-		debug.print_score_breakdown = &sim_host_print_score_breakdown;
-	}
-
-	return sim::targeting::select_enemy_target(
+	return sim::targeting::select_enemy_target_coordinator(
 			w,
 			unit,
-			strategy,
-			score_ctx,
+			_strategy_for_unit(unit),
 			&_sim_host_callbacks,
-			profile.active ? &profile : nullptr,
-			score_profile.active ? &score_profile : nullptr,
-			debug.enabled ? &debug : nullptr);
+			_targeting_coordinator_state(profile_sim));
 }
 
 UnitState *TeamfightSimulationCore::_select_ally_target(UnitState &unit) {
 	sim::SimWorld w = _sim_world();
-	const UnitStrategy &strategy = _strategy_for_unit(unit);
-	sim::targeting::TargetingProfileCounters profile;
-	profile.active = _sim_profile_targeting_active;
-	if (profile.active) {
-		profile.ally_scans = &_sim_profile_tgt_ally_scans;
-	}
-	return sim::targeting::select_ally_target(w, unit, strategy, profile.active ? &profile : nullptr);
+	return sim::targeting::select_ally_target_coordinator(
+			w, unit, _strategy_for_unit(unit), _targeting_coordinator_state(false));
 }
 
 double TeamfightSimulationCore::_distance_between(const UnitState &left, const UnitState &right) const {
@@ -1322,104 +1327,6 @@ Vector2 TeamfightSimulationCore::_get_random_spawn_position(const StringName &te
 	int index = (_rng.genrand_uint32() % (max_index + 1));
 
 	return Vector2(x_base, spawn_points[index]);
-}
-
-Vector2 TeamfightSimulationCore::_find_random_spawn_position_near(double center_x, double center_y, double radius) {
-	return _find_random_spawn_position_near_excluding(center_x, center_y, radius, 0);
-}
-
-Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding(double center_x, double center_y, double radius, int64_t exclude_instance_id) {
-	// Try random positions within radius, with collision checking
-	constexpr int max_attempts = 50;
-	constexpr double pi = 3.14159265358979323846;
-
-	for (int attempt = 0; attempt < max_attempts; ++attempt) {
-		// Generate random angle and distance
-		double angle = _rng.random_random() * pi * 2.0;
-		double distance = _rng.random_random() * radius;
-
-		double test_x = center_x + Math::cos(angle) * distance;
-		double test_y = center_y + Math::sin(angle) * distance;
-
-		// Clamp to world boundaries
-		test_x = Math::clamp(test_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-		test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-
-		// Check collision with existing units, excluding specified unit
-		if (!_position_collides_with_unit(test_x, test_y, exclude_instance_id)) {
-			return Vector2(test_x, test_y);
-		}
-	}
-
-	// Failed to find valid position, return invalid position
-	return Vector2(-1.0, -1.0);
-}
-
-Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with_expansion(double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions) {
-	double collision_radius_sq = UNIT_COLLISION_RADIUS * UNIT_COLLISION_RADIUS * 4.0; // (2 * r)^2
-	
-	// Try with initial radius first
-	Vector2 result = _find_random_spawn_position_near_excluding(center_x, center_y, initial_radius, exclude_instance_id);
-	if (result.x >= 0.0) {
-		// Check collision with pending positions
-		bool collides_with_pending = false;
-		for (const Vector2 &pending_pos : pending_positions) {
-			double dx = result.x - pending_pos.x;
-			double dy = result.y - pending_pos.y;
-			double dist_sq = dx * dx + dy * dy;
-			if (dist_sq < collision_radius_sq) {
-				collides_with_pending = true;
-				break;
-			}
-		}
-		if (!collides_with_pending) {
-			return result;
-		}
-	}
-
-	// Failed with initial radius, warn and expand to max_radius with exponential backoff
-	//UtilityFunctions::push_warning(vformat("Spawn position not found within initial radius %.2f, expanding to max radius %.2f", initial_radius, max_radius));
-
-	constexpr int expansion_steps = 5;
-	constexpr double pi = 3.14159265358979323846;
-	constexpr int attempts_per_step = 30;
-
-	for (int step = 0; step < expansion_steps; ++step) {
-		double expansion_factor = 1.0 + (double(step + 1) / double(expansion_steps)) * ((max_radius / initial_radius) - 1.0);
-		double current_radius = initial_radius * expansion_factor;
-
-		for (int attempt = 0; attempt < attempts_per_step; ++attempt) {
-			double angle = _rng.random_random() * pi * 2.0;
-			double distance = _rng.random_random() * current_radius;
-
-			double test_x = center_x + Math::cos(angle) * distance;
-			double test_y = center_y + Math::sin(angle) * distance;
-
-			test_x = Math::clamp(test_x, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-			test_y = Math::clamp(test_y, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-
-			if (!_position_collides_with_unit(test_x, test_y, exclude_instance_id)) {
-				// Check collision with pending positions
-				bool collides_with_pending = false;
-				for (const Vector2 &pending_pos : pending_positions) {
-					double dx = test_x - pending_pos.x;
-					double dy = test_y - pending_pos.y;
-					double dist_sq = dx * dx + dy * dy;
-					if (dist_sq < collision_radius_sq) {
-						collides_with_pending = true;
-						break;
-					}
-				}
-				if (!collides_with_pending) {
-					return Vector2(test_x, test_y);
-				}
-			}
-		}
-	}
-
-	// Still failed after all expansion attempts, log critical error
-	UtilityFunctions::push_error(vformat("Spawn position failed completely: could not find valid position within max radius %.2f near (%.2f, %.2f). Active units: %d", max_radius, center_x, center_y, _units.size()));
-	return Vector2(-1.0, -1.0);
 }
 
 double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) const {
@@ -1456,8 +1363,7 @@ bool TeamfightSimulationCore::_sim_profile_env_enabled() {
 	return !(v[0] == '0' && v[1] == '\0');
 }
 
-namespace {
-bool targeting_profile_enabled() {
+bool TeamfightSimulationCore::targeting_profile_env_enabled() {
 	if (s_targeting_profile_force_enabled.load(std::memory_order_relaxed)) {
 		return true;
 	}
@@ -1467,15 +1373,7 @@ bool targeting_profile_enabled() {
 	}
 	return !(v[0] == '0' && v[1] == '\0');
 }
-} // namespace
 
-bool sim_host_match_targeting_profile_enabled(void * /*user_data*/) {
-	return targeting_profile_enabled();
-}
-
-void sim_host_match_log_sudden_death_draw(void *user_data) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_log_sudden_death_draw();
-}
 
 void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_ns_projectiles = 0;
@@ -1780,531 +1678,17 @@ void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inp
 }
 
 void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size) {
-	if (batch_count <= 0) {
-		return;
-	}
-	const bool bench_phases = bench_phases_env_enabled();
-	uint64_t ns_catalog_ensure = 0;
-	uint64_t ns_chunk_preamble = 0;
-	uint64_t ns_match_setup_total = 0;
-	uint64_t ns_simulate_total = 0;
-	auto t_catalog0 = std::chrono::steady_clock::now();
-	_ensure_catalog_loaded();
-	if (bench_phases) {
-		ns_catalog_ensure = sim_profile_elapsed_ns(t_catalog0);
-	}
-	auto t_preamble0 = std::chrono::steady_clock::now();
-	Array champion_keys = _catalog.effective_champion_by_archetype.keys();
-	const int64_t champion_count = champion_keys.size();
-	if (champion_count <= 0) {
-		UtilityFunctions::push_error("TeamfightSimulationCore.run_generated_matches_simulation_only() requires champion catalog.");
-		return;
-	}
-	const int64_t units_per_team = Math::max(int64_t(1), team_size);
-	std::vector<StringName> archetypes;
-	archetypes.reserve(static_cast<size_t>(champion_count));
-	for (int64_t index = 0; index < champion_count; ++index) {
-		archetypes.push_back(StringName(String(champion_keys[index])));
-	}
-	Dictionary spawn_spec;
-	int64_t next_progress = 0;
-	if (bench_phases) {
-		ns_chunk_preamble = sim_profile_elapsed_ns(t_preamble0);
-	}
-	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
-		auto t_match0 = std::chrono::steady_clock::now();
-		const int64_t seed = base_seed + match_index;
-		_reset_runtime_state();
-		_seed = seed;
-		_tick_rate = DEFAULT_TICK_RATE;
-		_record_events = false;
-		_debug_combat_trace = false;
-		_trace_buffer.clear();
-		_rng.seed_int64(_seed);
-		CPythonRandom draft_rng;
-		draft_rng.seed_int64(seed);
-		int64_t next_instance_id = 1;
-		
-		// Create a mutable copy of archetypes for selection
-		std::vector<StringName> available_archetypes = archetypes;
-		
-		// Generate player team
-		for (int64_t slot = 0; slot < units_per_team; ++slot) {
-			if (available_archetypes.empty()) {
-				break; // No more champions available
-			}
-			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(available_archetypes.size()));
-			StringName selected_archetype = available_archetypes[archetype_index];
-			
-			// Remove selected archetype from available pool
-			available_archetypes.erase(available_archetypes.begin() + archetype_index);
-			
-			spawn_spec.clear();
-			spawn_spec["archetype_id"] = selected_archetype;
-			sim::SimWorld w = _sim_world();
-			std::pair<UnitState, UnitStateCold> built =
-					sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, sn_player(), next_instance_id);
-			const int64_t unit_index = sim::match_roster::register_built_unit(
-					w, _match_roster_state(), std::move(built), sn_player(), next_instance_id);
-			if (unit_index < 0) {
-				continue;
-			}
-			_player_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-			next_instance_id += 1;
-		}
-		
-		// Generate enemy team from remaining champions
-		for (int64_t slot = 0; slot < units_per_team; ++slot) {
-			if (available_archetypes.empty()) {
-				break; // No more champions available
-			}
-			const size_t archetype_index = static_cast<size_t>(draft_rng.genrand_uint32() % uint32_t(available_archetypes.size()));
-			StringName selected_archetype = available_archetypes[archetype_index];
-			
-			// Remove selected archetype from available pool
-			available_archetypes.erase(available_archetypes.begin() + archetype_index);
-			
-			spawn_spec.clear();
-			spawn_spec["archetype_id"] = selected_archetype;
-			sim::SimWorld w = _sim_world();
-			std::pair<UnitState, UnitStateCold> built =
-					sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, sn_enemy(), next_instance_id);
-			const int64_t unit_index = sim::match_roster::register_built_unit(
-					w, _match_roster_state(), std::move(built), sn_enemy(), next_instance_id);
-			if (unit_index < 0) {
-				continue;
-			}
-			_enemy_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-			next_instance_id += 1;
-		}
-		_build_role_strategy_cache();
-		_prepare_tick_context();
-		if (bench_phases) {
-			ns_match_setup_total += sim_profile_elapsed_ns(t_match0);
-		}
-		auto t_sim0 = std::chrono::steady_clock::now();
-		sim::match::simulate(_match_loop_state(), _match_loop_host());
-		if (bench_phases) {
-			ns_simulate_total += sim_profile_elapsed_ns(t_sim0);
-		}
-		_reset_runtime_state();
-		next_progress += 1;
-		if (next_progress == 1000) {
-			benchmark_progress_add(1000);
-			next_progress = 0;
-		}
-	}
-	if (next_progress != 0) {
-		benchmark_progress_add(next_progress);
-	}
-	if (bench_phases) {
-		const double inv_bc = batch_count > 0 ? 1.0 / double(batch_count) : 0.0;
-		std::fprintf(stderr,
-				"{\"bench_phases\":{\"batch_count\":%lld,\"ns_catalog_ensure\":%llu,\"ns_chunk_preamble\":%llu,"
-				"\"ns_match_setup_total\":%llu,\"ns_simulate_total\":%llu,"
-				"\"avg_ns_per_match_setup\":%.0f,\"avg_ns_per_match_simulate\":%.0f}}\n",
-				static_cast<long long>(batch_count),
-				static_cast<unsigned long long>(ns_catalog_ensure),
-				static_cast<unsigned long long>(ns_chunk_preamble),
-				static_cast<unsigned long long>(ns_match_setup_total),
-				static_cast<unsigned long long>(ns_simulate_total),
-				double(ns_match_setup_total) * inv_bc,
-				double(ns_simulate_total) * inv_bc);
-		std::fflush(stderr);
-	}
+	sim::match::benchmark::run_generated_matches_simulation_only(*this, base_seed, batch_count, team_size);
 }
 
-Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t base_seed, int64_t batch_count, int64_t team_size, bool include_match_log, double tick_rate) {
-	_ensure_catalog_loaded();
-	Dictionary result;
-	if (batch_count <= 0) {
-		result["stats_partial"] = Dictionary();
-		result["matchup_data"] = Dictionary();
-		return result;
-	}
-
-	Array champion_keys = _catalog.effective_champion_by_archetype.keys();
-	const int64_t champion_count = champion_keys.size();
-	if (champion_count <= 0) {
-		UtilityFunctions::push_error("TeamfightSimulationCore.run_generated_matches_stats_partial() requires champion catalog.");
-		result["stats_partial"] = Dictionary();
-		result["matchup_data"] = Dictionary();
-		return result;
-	}
-
-	const int64_t units_per_team = Math::max(int64_t(1), team_size);
-	std::vector<StringName> archetypes;
-	archetypes.reserve(static_cast<size_t>(champion_count));
-	for (int64_t index = 0; index < champion_count; ++index) {
-		archetypes.push_back(StringName(String(champion_keys[index])));
-	}
-
-	auto make_stat_entry = []() -> Dictionary {
-		Dictionary entry;
-		entry["w"] = int64_t(0);
-		entry["l"] = int64_t(0);
-		entry["d"] = int64_t(0);
-		entry["dmg_d"] = 0.0;
-		entry["dmg_r"] = 0.0;
-		entry["dmg_m"] = 0.0;
-		entry["heal"] = 0.0;
-		entry["heal_auto"] = 0.0;
-		entry["heal_ability"] = 0.0;
-		entry["heal_ultimate"] = 0.0;
-		entry["heal_passive"] = 0.0;
-		entry["shield"] = 0.0;
-		entry["shield_auto"] = 0.0;
-		entry["shield_ability"] = 0.0;
-		entry["shield_ultimate"] = 0.0;
-		entry["shield_passive"] = 0.0;
-		entry["stuns"] = int64_t(0);
-		entry["kills"] = int64_t(0);
-		entry["deaths"] = int64_t(0);
-		entry["assists"] = int64_t(0);
-		entry["d_auto"] = 0.0;
-		entry["d_ab"] = 0.0;
-		entry["d_ult"] = 0.0;
-		entry["d_passive"] = 0.0;
-		entry["minion_dmg_d"] = 0.0;
-		entry["minion_dmg_r"] = 0.0;
-		return entry;
-	};
-	auto make_role_entry = [&make_stat_entry]() -> Dictionary {
-		Dictionary entry = make_stat_entry();
-		entry.erase("kills");
-		entry.erase("deaths");
-		entry.erase("assists");
-		return entry;
-	};
-	auto accumulate_common = [](Dictionary &entry, const UnitStateCold &c) {
-		entry["dmg_d"] = double(entry["dmg_d"]) + c.damage_dealt;
-		entry["dmg_r"] = double(entry["dmg_r"]) + c.damage_received;
-		entry["dmg_m"] = double(entry["dmg_m"]) + c.damage_mitigated;
-		entry["heal"] = double(entry["heal"]) + c.healing_done;
-		entry["heal_auto"] = double(entry["heal_auto"]) + c.healing_done_auto;
-		entry["heal_ability"] = double(entry["heal_ability"]) + c.healing_done_ability;
-		entry["heal_ultimate"] = double(entry["heal_ultimate"]) + c.healing_done_ultimate;
-		entry["heal_passive"] = double(entry["heal_passive"]) + c.healing_done_passive;
-		entry["shield"] = double(entry["shield"]) + c.shielding_done;
-		entry["shield_auto"] = double(entry["shield_auto"]) + c.shielding_done_auto;
-		entry["shield_ability"] = double(entry["shield_ability"]) + c.shielding_done_ability;
-		entry["shield_ultimate"] = double(entry["shield_ultimate"]) + c.shielding_done_ultimate;
-		entry["shield_passive"] = double(entry["shield_passive"]) + c.shielding_done_passive;
-		entry["stuns"] = int64_t(entry["stuns"]) + c.stuns;
-		entry["d_auto"] = double(entry["d_auto"]) + c.damage_dealt_auto;
-		entry["d_ab"] = double(entry["d_ab"]) + c.damage_dealt_ability;
-		entry["d_ult"] = double(entry["d_ult"]) + c.damage_dealt_ultimate;
-		entry["d_passive"] = double(entry["d_passive"]) + c.damage_dealt_passive;
-	};
-	auto add_record = [&accumulate_common](Dictionary &entry, const UnitStateCold &c, bool won, bool draw, bool include_kda) {
-		if (draw) {
-			entry["d"] = int64_t(entry["d"]) + 1;
-		} else if (won) {
-			entry["w"] = int64_t(entry["w"]) + 1;
-		} else {
-			entry["l"] = int64_t(entry["l"]) + 1;
-		}
-		accumulate_common(entry, c);
-		if (include_kda) {
-			entry["kills"] = int64_t(entry["kills"]) + c.kills;
-			entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;
-			entry["assists"] = int64_t(entry["assists"]) + c.assists;
-		}
-	};
-	auto sorted_combo_label = [](const Array &comp) -> String {
-		std::vector<String> names;
-		names.reserve(static_cast<size_t>(comp.size()));
-		for (int64_t i = 0; i < comp.size(); ++i) {
-			names.push_back(String(comp[i]));
-		}
-		std::sort(names.begin(), names.end());
-		String label;
-		for (size_t i = 0; i < names.size(); ++i) {
-			if (i > 0) {
-				label += " + ";
-			}
-			label += names[i];
-		}
-		return label;
-	};
-	auto record_matchup = [](Dictionary &matchup_data, const StringName &champion_id, const String &key, bool won) {
-		const String champion = String(champion_id);
-		Dictionary champion_data = Dictionary(matchup_data.get(champion, Dictionary()));
-		Dictionary data = Dictionary(champion_data.get(key, Dictionary()));
-		if (data.is_empty()) {
-			data["wins"] = int64_t(0);
-			data["losses"] = int64_t(0);
-			data["winrate"] = 0.0;
-		}
-		if (won) {
-			data["wins"] = int64_t(data["wins"]) + 1;
-		} else {
-			data["losses"] = int64_t(data["losses"]) + 1;
-		}
-		const int64_t wins = int64_t(data["wins"]);
-		const int64_t losses = int64_t(data["losses"]);
-		const int64_t total = wins + losses;
-		data["winrate"] = total > 0 ? double(wins) / double(total) : 0.0;
-		champion_data[key] = data;
-		matchup_data[champion] = champion_data;
-	};
-	auto record_matchup_result = [&record_matchup](Dictionary &matchup_data, const Array &winners, const Array &losers) {
-		for (int64_t wi = 0; wi < winners.size(); ++wi) {
-			StringName winner = StringName(winners[wi]);
-			for (int64_t li = 0; li < losers.size(); ++li) {
-				StringName loser = StringName(losers[li]);
-				record_matchup(matchup_data, winner, "vs_" + String(loser), true);
-			}
-			for (int64_t ai = 0; ai < winners.size(); ++ai) {
-				StringName ally = StringName(winners[ai]);
-				if (winner != ally) {
-					record_matchup(matchup_data, winner, "with_" + String(ally), true);
-				}
-			}
-		}
-		for (int64_t li = 0; li < losers.size(); ++li) {
-			StringName loser = StringName(losers[li]);
-			for (int64_t wi = 0; wi < winners.size(); ++wi) {
-				StringName winner = StringName(winners[wi]);
-				record_matchup(matchup_data, loser, "vs_" + String(winner), false);
-			}
-			for (int64_t ai = 0; ai < losers.size(); ++ai) {
-				StringName ally = StringName(losers[ai]);
-				if (loser != ally) {
-					record_matchup(matchup_data, loser, "with_" + String(ally), false);
-				}
-			}
-		}
-	};
-	auto append_generated_unit = [this](Dictionary &spawn_spec, const StringName &team, const StringName &archetype, int64_t &next_instance_id, Array &comp) {
-		spawn_spec.clear();
-		spawn_spec["archetype_id"] = archetype;
-		sim::SimWorld w = _sim_world();
-		std::pair<UnitState, UnitStateCold> built = sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, team, next_instance_id);
-		const int64_t unit_index = sim::match_roster::register_built_unit(w, _match_roster_state(), std::move(built), team, next_instance_id);
-		if (unit_index < 0) {
-			return;
-		}
-		comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-		next_instance_id += 1;
-	};
-	auto pick_index = [](const Ref<RandomNumberGenerator> &rng, int64_t upper_inclusive) -> int64_t {
-		return int64_t(rng->randi_range(0, int32_t(upper_inclusive)));
-	};
-
-	Dictionary bucket;
-	bucket["p1"] = int64_t(0);
-	bucket["p2"] = int64_t(0);
-	bucket["draws"] = int64_t(0);
-	bucket["total"] = int64_t(0);
-	bucket["heroes"] = Dictionary();
-	bucket["roles"] = Dictionary();
-	bucket["combos"] = Dictionary();
-	Array match_logs;
-	Dictionary matchup_data;
-	Dictionary spawn_spec;
-	int64_t next_progress = 0;
-
-	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
-		const int64_t seed = base_seed + match_index;
-		_reset_runtime_state();
-		_seed = seed;
-		_tick_rate = tick_rate;
-		_record_events = false;
-		_debug_combat_trace = false;
-		_trace_buffer.clear();
-		_rng.seed_int64(_seed);
-
-		Ref<RandomNumberGenerator> draft_rng;
-		draft_rng.instantiate();
-		draft_rng->set_seed(uint64_t(seed));
-		int64_t next_instance_id = 1;
-		if (champion_count < units_per_team * 2) {
-			for (int64_t slot = 0; slot < units_per_team; ++slot) {
-				const int64_t archetype_index = pick_index(draft_rng, champion_count - 1);
-				append_generated_unit(spawn_spec, sn_player(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, _player_comp);
-			}
-			for (int64_t slot = 0; slot < units_per_team; ++slot) {
-				const int64_t archetype_index = pick_index(draft_rng, champion_count - 1);
-				append_generated_unit(spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, _enemy_comp);
-			}
-		} else {
-			std::vector<int64_t> indices;
-			indices.reserve(static_cast<size_t>(champion_count));
-			for (int64_t i = 0; i < champion_count; ++i) {
-				indices.push_back(i);
-			}
-			for (int64_t i = champion_count - 1; i > 0; --i) {
-				const int64_t j = pick_index(draft_rng, i);
-				std::swap(indices[static_cast<size_t>(i)], indices[static_cast<size_t>(j)]);
-			}
-			for (int64_t slot = 0; slot < units_per_team; ++slot) {
-				append_generated_unit(spawn_spec, sn_player(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(slot)])], next_instance_id, _player_comp);
-			}
-			for (int64_t slot = 0; slot < units_per_team; ++slot) {
-				const int64_t source_index = slot + units_per_team;
-				append_generated_unit(spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(source_index)])], next_instance_id, _enemy_comp);
-			}
-		}
-		_build_role_strategy_cache();
-		_prepare_tick_context();
-		sim::match::simulate(_match_loop_state(), _match_loop_host());
-
-		// Aggregate minion stats to summoners
-		std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
-		std::unordered_map<int64_t, double> summoner_minion_damage_received;
-		for (const UnitState &unit : _units) {
-			if (unit.summoner_instance_id != 0) {
-				const UnitStateCold &c = _uc(unit);
-				summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
-				summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
-			}
-		}
-
-		// Define lambdas that capture the summoner maps (must be after maps are created)
-		auto accumulate_common_with_minions = [&summoner_minion_damage_dealt, &summoner_minion_damage_received](Dictionary &entry, const UnitStateCold &c, int64_t instance_id) {
-			entry["dmg_d"] = double(entry["dmg_d"]) + c.damage_dealt;
-			entry["dmg_r"] = double(entry["dmg_r"]) + c.damage_received;
-			entry["dmg_m"] = double(entry["dmg_m"]) + c.damage_mitigated;
-			entry["heal"] = double(entry["heal"]) + c.healing_done;
-			entry["heal_auto"] = double(entry["heal_auto"]) + c.healing_done_auto;
-			entry["heal_ability"] = double(entry["heal_ability"]) + c.healing_done_ability;
-			entry["heal_ultimate"] = double(entry["heal_ultimate"]) + c.healing_done_ultimate;
-			entry["heal_passive"] = double(entry["heal_passive"]) + c.healing_done_passive;
-			entry["shield"] = double(entry["shield"]) + c.shielding_done;
-			entry["shield_auto"] = double(entry["shield_auto"]) + c.shielding_done_auto;
-			entry["shield_ability"] = double(entry["shield_ability"]) + c.shielding_done_ability;
-			entry["shield_ultimate"] = double(entry["shield_ultimate"]) + c.shielding_done_ultimate;
-			entry["shield_passive"] = double(entry["shield_passive"]) + c.shielding_done_passive;
-			entry["stuns"] = int64_t(entry["stuns"]) + c.stuns;
-			entry["d_auto"] = double(entry["d_auto"]) + c.damage_dealt_auto;
-			entry["d_ab"] = double(entry["d_ab"]) + c.damage_dealt_ability;
-			entry["d_ult"] = double(entry["d_ult"]) + c.damage_dealt_ultimate;
-			entry["d_passive"] = double(entry["d_passive"]) + c.damage_dealt_passive;
-			// Add minion damage for this summoner
-			auto it_dealt = summoner_minion_damage_dealt.find(instance_id);
-			auto it_received = summoner_minion_damage_received.find(instance_id);
-			entry["minion_dmg_d"] = double(entry["minion_dmg_d"]) + (it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0);
-			entry["minion_dmg_r"] = double(entry["minion_dmg_r"]) + (it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0);
-		};
-		auto add_record_with_minions = [&accumulate_common_with_minions](Dictionary &entry, const UnitStateCold &c, int64_t instance_id, bool won, bool draw, bool include_kda) {
-			if (draw) {
-				entry["d"] = int64_t(entry["d"]) + 1;
-			} else if (won) {
-				entry["w"] = int64_t(entry["w"]) + 1;
-			} else {
-				entry["l"] = int64_t(entry["l"]) + 1;
-			}
-			accumulate_common_with_minions(entry, c, instance_id);
-			if (include_kda) {
-				entry["kills"] = int64_t(entry["kills"]) + c.kills;
-				entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;
-				entry["assists"] = int64_t(entry["assists"]) + c.assists;
-			}
-		};
-
-		const bool player_won = _winner_team == sn_player();
-		const bool enemy_won = _winner_team == sn_enemy();
-		const bool draw = !player_won && !enemy_won;
-		if (player_won) {
-			bucket["p1"] = int64_t(bucket["p1"]) + 1;
-		} else if (enemy_won) {
-			bucket["p2"] = int64_t(bucket["p2"]) + 1;
-		} else {
-			bucket["draws"] = int64_t(bucket["draws"]) + 1;
-		}
-		bucket["total"] = int64_t(bucket["total"]) + 1;
-		if (include_match_log) {
-			Dictionary row;
-			row["team_size"] = team_size;
-			row["seed"] = _seed;
-			row["winner"] = String(_winner_team);
-			row["sudden_death_ticks"] = int64_t(_sudden_death_ticks);
-			row["duration"] = _time;
-			match_logs.append(row);
-		}
-
-		Dictionary heroes = Dictionary(bucket["heroes"]);
-		Dictionary roles = Dictionary(bucket["roles"]);
-		for (const UnitState &unit : _units) {
-			const UnitStateCold &c = _uc(unit);
-			// Skip minions (spawned during combat, not drafted champions)
-			if (c.role_id == StringName("minion")) {
-				continue;
-			}
-			const String hero = String(c.archetype_id);
-			Dictionary hero_entry = Dictionary(heroes.get(hero, Dictionary()));
-			if (hero_entry.is_empty()) {
-				hero_entry = make_stat_entry();
-			}
-			const bool unit_won = _winner_team != StringName() && unit.team == _winner_team;
-			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true);
-			heroes[hero] = hero_entry;
-
-			const String role = String(Dictionary(c.stats).get("role", String("unknown")));
-			Dictionary role_entry = Dictionary(roles.get(role, Dictionary()));
-			if (role_entry.is_empty()) {
-				role_entry = make_role_entry();
-			}
-			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false);
-			roles[role] = role_entry;
-		}
-		bucket["heroes"] = heroes;
-		bucket["roles"] = roles;
-
-		if (team_size > 1) {
-			Dictionary combos = Dictionary(bucket["combos"]);
-			const String player_label = sorted_combo_label(_player_comp);
-			Dictionary player_combo = Dictionary(combos.get(player_label, Dictionary()));
-			if (player_combo.is_empty()) {
-				player_combo["w"] = int64_t(0);
-				player_combo["n"] = int64_t(0);
-			}
-			player_combo["n"] = int64_t(player_combo["n"]) + 1;
-			if (player_won) {
-				player_combo["w"] = int64_t(player_combo["w"]) + 1;
-			}
-			combos[player_label] = player_combo;
-
-			const String enemy_label = sorted_combo_label(_enemy_comp);
-			Dictionary enemy_combo = Dictionary(combos.get(enemy_label, Dictionary()));
-			if (enemy_combo.is_empty()) {
-				enemy_combo["w"] = int64_t(0);
-				enemy_combo["n"] = int64_t(0);
-			}
-			enemy_combo["n"] = int64_t(enemy_combo["n"]) + 1;
-			if (enemy_won) {
-				enemy_combo["w"] = int64_t(enemy_combo["w"]) + 1;
-			}
-			combos[enemy_label] = enemy_combo;
-			bucket["combos"] = combos;
-		}
-
-		if (player_won) {
-			record_matchup_result(matchup_data, _player_comp, _enemy_comp);
-		} else if (enemy_won) {
-			record_matchup_result(matchup_data, _enemy_comp, _player_comp);
-		}
-
-		_reset_runtime_state();
-		next_progress += 1;
-		if (next_progress == 1000) {
-			benchmark_progress_add(1000);
-			next_progress = 0;
-		}
-	}
-	if (next_progress != 0) {
-		benchmark_progress_add(next_progress);
-	}
-
-	Dictionary by_size;
-	by_size[team_size] = bucket;
-	Dictionary stats_partial;
-	stats_partial["by_size"] = by_size;
-	stats_partial["match_logs"] = include_match_log ? match_logs : Array();
-	result["stats_partial"] = stats_partial;
-	result["matchup_data"] = matchup_data;
-	return result;
+Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(
+		int64_t base_seed,
+		int64_t batch_count,
+		int64_t team_size,
+		bool include_match_log,
+		double tick_rate) {
+	return sim::match::benchmark::run_generated_matches_stats_partial(
+			*this, base_seed, batch_count, team_size, include_match_log, tick_rate);
 }
 
 void TeamfightSimulationCore::begin_match(const Variant &match_input) {
@@ -2367,212 +1751,6 @@ Dictionary TeamfightSimulationCore::finish_and_summarize() {
 	return _build_summary();
 }
 
-void TeamfightSimulationCore::_viewer_fx_push(const ViewerFxEvent &p_ev) {
-	if (_viewer_fx_events.size() >= VIEWER_FX_CAP) {
-		return;
-	}
-	_viewer_fx_events.push_back(p_ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_damage_fx(const UnitState &p_source, const UnitState &p_target, double p_total_damage, const StringName &p_action_kind, const StringName &p_damage_type) {
-	ViewerFxEvent ev;
-	ev.kind = StringName("damage");
-	ev.target_id = p_target.instance_id;
-	ev.src_id = p_source.instance_id;
-	ev.pos_x = p_target.pos_x;
-	ev.pos_y = p_target.pos_y;
-	ev.val = p_total_damage;
-	ev.damage_type = p_damage_type;
-	_viewer_fx_push(ev);
-	if (p_action_kind == StringName("auto") && get_effective_attack_range(p_source) <= RANGED_THRESHOLD) {
-		ViewerFxEvent slash;
-		slash.kind = StringName("melee_slash");
-		slash.pos_x = p_target.pos_x;
-		slash.pos_y = p_target.pos_y;
-		_viewer_fx_push(slash);
-	}
-}
-
-void TeamfightSimulationCore::_viewer_record_heal_fx(const UnitState &p_target, double p_amount) {
-	ViewerFxEvent ev;
-	ev.kind = StringName("heal");
-	ev.target_id = p_target.instance_id;
-	ev.pos_x = p_target.pos_x;
-	ev.pos_y = p_target.pos_y;
-	ev.val = p_amount;
-	_viewer_fx_push(ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_shield_fx(const UnitState &p_target, double p_amount) {
-	ViewerFxEvent ev;
-	ev.kind = StringName("shield");
-	ev.target_id = p_target.instance_id;
-	ev.pos_x = p_target.pos_x;
-	ev.pos_y = p_target.pos_y;
-	ev.val = p_amount;
-	_viewer_fx_push(ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_aoe_ring_fx(const UnitState &p_source, const UnitState &p_center, double p_radius, const StringName &p_kind) {
-	if (p_radius <= 0.0) {
-		return;
-	}
-	ViewerFxEvent ev;
-	ev.kind = p_kind;
-	ev.src_id = p_source.instance_id;
-	ev.target_id = p_center.instance_id;
-	ev.pos_x = p_center.pos_x;
-	ev.pos_y = p_center.pos_y;
-	ev.val = 0.0;
-	ev.radius = p_radius;
-	_viewer_fx_push(ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_aoe_shape_fx(const UnitState &p_source, const UnitState *p_target, const AoShapeParams &params, const StringName &kind) {
-	ViewerFxEvent ev;
-	ev.kind = kind;
-	ev.src_id = p_source.instance_id;
-	ev.target_id = p_target != nullptr ? p_target->instance_id : params.target_id;
-	
-	// Resolve anchor position
-	if (params.anchor == AoAnchorKind::Self) {
-		ev.pos_x = p_source.pos_x;
-		ev.pos_y = p_source.pos_y;
-	} else if (params.anchor == AoAnchorKind::Target) {
-		const UnitState *target = p_target != nullptr ? p_target : _unit_by_id(params.target_id);
-		if (target != nullptr) {
-			ev.pos_x = target->pos_x;
-			ev.pos_y = target->pos_y;
-		} else {
-			ev.pos_x = p_source.pos_x;
-			ev.pos_y = p_source.pos_y;
-		}
-	} else if (params.anchor == AoAnchorKind::Forward) {
-		// Calculate forward position from champion center for visualization
-		Vector2 direction = _resolve_aoe_direction(p_source, params, p_target);
-		if (params.shape == AoShapeKind::Rectangle) {
-			ev.pos_x = p_source.pos_x + direction.x * params.height * 0.5;
-			ev.pos_y = p_source.pos_y + direction.y * params.height * 0.5;
-		} else if (params.shape == AoShapeKind::Cone) {
-			// Cone apex at source, no offset needed (cone extends forward from apex)
-			ev.pos_x = p_source.pos_x;
-			ev.pos_y = p_source.pos_y;
-		} else if (params.shape == AoShapeKind::Circle) {
-			ev.pos_x = p_source.pos_x + direction.x * params.radius * 0.5;
-			ev.pos_y = p_source.pos_y + direction.y * params.radius * 0.5;
-		} else {
-			ev.pos_x = p_source.pos_x;
-			ev.pos_y = p_source.pos_y;
-		}
-	} else {
-		ev.pos_x = params.anchor_x;
-		ev.pos_y = params.anchor_y;
-	}
-	
-	// Serialize shape parameters to dictionary
-	Dictionary shape_dict;
-	switch (params.shape) {
-		case AoShapeKind::Circle:
-			shape_dict["shape"] = "circle";
-			break;
-		case AoShapeKind::Cone:
-			shape_dict["shape"] = "cone";
-			break;
-		case AoShapeKind::Rectangle:
-			shape_dict["shape"] = "rectangle";
-			break;
-	}
-	
-	switch (params.anchor) {
-		case AoAnchorKind::Self:
-			shape_dict["anchor"] = "self";
-			break;
-		case AoAnchorKind::Target:
-			shape_dict["anchor"] = "target";
-			break;
-		case AoAnchorKind::Point:
-			shape_dict["anchor"] = "point";
-			break;
-		case AoAnchorKind::Forward:
-			shape_dict["anchor"] = "forward";
-			break;
-	}
-	
-	shape_dict["radius"] = params.radius;
-	shape_dict["width"] = params.width;
-	shape_dict["height"] = params.height;
-	shape_dict["rotation_radians"] = params.rotation_radians;
-	shape_dict["anchor_x"] = params.anchor_x;
-	shape_dict["anchor_y"] = params.anchor_y;
-	shape_dict["target_id"] = ev.target_id;
-	Vector2 forward = _resolve_aoe_direction(p_source, params, p_target);
-	shape_dict["forward_x"] = forward.x;
-	shape_dict["forward_y"] = forward.y;
-	
-	ev.val = 0.0;
-	ev.radius = params.radius;
-	ev.extra = shape_dict;
-	_viewer_fx_push(ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_hot_status_fx(const UnitState &p_target, double p_duration, const StringName &p_effect_type) {
-	ViewerFxEvent ev;
-	ev.kind = StringName("hot_status");
-	ev.target_id = p_target.instance_id;
-	ev.val = p_duration;
-	ev.radius = 0.0;
-	_viewer_fx_push(ev);
-}
-
-void TeamfightSimulationCore::_viewer_record_passive_aoe_fx(const UnitState &p_unit, double p_radius, const StringName &p_passive_id) {
-	ViewerFxEvent ev;
-	ev.kind = StringName("passive_aoe");
-	ev.target_id = p_unit.instance_id;
-	ev.src_id = p_unit.instance_id;
-	ev.pos_x = p_unit.pos_x;
-	ev.pos_y = p_unit.pos_y;
-	ev.val = 0.0;
-	ev.radius = p_radius;
-	Dictionary extra;
-	extra["passive_id"] = String(p_passive_id);
-	ev.extra = extra;
-	_viewer_fx_push(ev);
-}
-
-String TeamfightSimulationCore::_viewer_state_string(const UnitState &p_u) const {
-	if (!p_u.alive) {
-		return String("DEAD");
-	}
-	if (p_u.stun_remaining > 0.0) {
-		return String("STUNNED");
-	}
-	if (p_u.root_remaining > 0.0) {
-		return String("ROOTED");
-	}
-	if (p_u.silence_remaining > 0.0 && (p_u.silence_blocks_abilities || p_u.silence_blocks_ultimates)) {
-		return String("SILENCED");
-	}
-	if (!_uc(p_u).reflect_buffs.empty()) {
-		return String("REFLECTING");
-	}
-	if (p_u.disarm_remaining > 0.0) {
-		return String("DISARMED");
-	}
-	if (p_u.slow_remaining > 0.0) {
-		return String("SLOWED");
-	}
-	if (_uc(p_u).is_channeling) {
-		return String("CHANNELING");
-	}
-	if (p_u.casting_remaining > 0.0) {
-		return String("CASTING");
-	}
-	if (p_u.last_kite_timer > 0.0) {
-		return String("KITING");
-	}
-	return String("ALIVE");
-}
-
 void TeamfightSimulationCore::_print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const {
 	UtilityFunctions::print("[SCORE BREAKDOWN] " + String(attacker_archetype) + " -> " + String(enemy_archetype));
 	UtilityFunctions::print("  Distance: " + String::num_real(breakdown.distance) + " (weighted: " + String::num_real(breakdown.distance_weighted) + ")");
@@ -2586,132 +1764,19 @@ void TeamfightSimulationCore::_print_score_breakdown(const ScoreBreakdown &break
 }
 
 Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
-	Dictionary root;
-	root["tick"] = _tick;
-	root["time"] = _time;
-	root["match_duration"] = MATCH_DURATION;
-	root["time_remaining"] = Math::max(0.0, MATCH_DURATION - _time);
-	root["player_kills"] = _player_kills;
-	root["enemy_kills"] = _enemy_kills;
-	root["live_winner"] = String(_determine_winner());
-	Array units;
-	for (const UnitState &u : _units) {
-		const UnitStateCold &uc = _uc(u);
-		Dictionary d;
-		d["id"] = u.instance_id;
-		d["instance_id"] = u.instance_id;
-		d["x"] = u.pos_x;
-		d["y"] = u.pos_y;
-		d["pos_x"] = u.pos_x;
-		d["pos_y"] = u.pos_y;
-		d["team"] = String(u.team);
-		d["archetype_id"] = String(uc.archetype_id);
-		d["hp"] = u.hp;
-		d["max_hp"] = get_effective_max_hp(u);
-		d["shield"] = u.shield;
-		d["mana"] = u.mana;
-		d["max_mana"] = get_effective_max_mana(u);
-		d["target"] = u.target_id;
-		d["target_id"] = u.target_id;
-		d["stun"] = u.stun_remaining;
-		d["stun_remaining"] = u.stun_remaining;
-		d["slow_remaining"] = u.slow_remaining;
-		d["root_remaining"] = u.root_remaining;
-		d["silence_remaining"] = u.silence_remaining;
-		d["disarm_remaining"] = u.disarm_remaining;
-		d["stealth_remaining"] = u.stealth_remaining;
-		d["reflect_buff_remaining"] = _uc(u).reflect_buffs.empty() ? 0.0 : 1.0;
-		d["alive"] = u.alive;
-		d["state"] = _viewer_state_string(u);
-		d["acd"] = u.attack_cooldown;
-		d["abi"] = u.ability_cooldown;
-		d["attack_cooldown"] = u.attack_cooldown;
-		d["attack_period"] = u.attack_period;
-		d["attack_range"] = get_effective_attack_range(u);
-		d["attack_speed"] = get_effective_attack_speed(u);
-		d["ability_cd_max"] = get_effective_ability_cd(u);
-		d["attack_damage"] = get_effective_attack_damage(u);
-		d["move_speed"] = get_effective_move_speed(u);
-		d["armor"] = get_effective_armor(u);
-		d["magic_resist"] = get_effective_magic_resist(u);
-		d["tenacity"] = get_effective_tenacity(u);
-		d["life_steal"] = get_effective_life_steal(u);
-		d["casting_remaining"] = u.casting_remaining;
-		d["casting_kind"] = String(uc.casting_kind);
-		d["is_channeling"] = _uc(u).is_channeling;
-		d["channel_remaining_duration"] = _uc(u).channel_remaining_duration;
-		d["channel_action_kind"] = String(_uc(u).channel_action_kind);
-		
-		// Calculate distance to target and in-range status
-	bool in_range = false;
-	if (u.target_id > 0) {
-		const UnitState *target = _unit_by_id(u.target_id);
-		if (target != nullptr && target->alive) {
-			double distance = sim::distance_between_coords(u.pos_x, u.pos_y, target->pos_x, target->pos_y);
-			d["target_distance"] = distance;
-			// Use effective attack range for in_range determination (allows melee to attack while closing gap)
-			double effective_range = _effective_attack_range(u);
-			in_range = distance <= effective_range;
-		}
-	} else {
-		d["target_distance"] = -1.0;  // No target
-	}
-	d["in_range"] = in_range;
-		d["kills"] = uc.kills;
-		d["deaths"] = uc.deaths;
-		d["assists"] = uc.assists;
-		d["respawn_timer"] = u.respawn_timer;
-		d["taunt_remaining"] = u.taunt_remaining;
-		d["damage_dealt"] = uc.damage_dealt;
-		d["healing_done"] = uc.healing_done;
-		d["damage_mitigated"] = uc.damage_mitigated;
-		d["role"] = String(uc.role_id);
-		units.append(d);
-	}
-	root["units"] = units;
-	Array projs;
-	for (int64_t i = 0; i < int64_t(_projectiles.size()); ++i) {
-		const ProjectileState &p = _projectiles[static_cast<size_t>(i)];
-		Dictionary pd;
-		pd["id"] = i;
-		pd["pos_x"] = p.pos_x;
-		pd["pos_y"] = p.pos_y;
-		pd["radius"] = p.radius;
-		pd["source_id"] = p.source_id;
-		pd["target_id"] = p.target_id;
-		const UnitState *src = _unit_by_id(p.source_id);
-		if (src != nullptr) {
-			pd["team"] = String(src->team);
-		} else {
-			pd["team"] = String("player");
-		}
-		projs.append(pd);
-	}
-	root["projectiles"] = projs;
-	Array fx;
-	for (const ViewerFxEvent &ve : _viewer_fx_events) {
-		Dictionary e;
-		e["kind"] = String(ve.kind);
-		e["target_id"] = ve.target_id;
-		e["src_id"] = ve.src_id;
-		e["x"] = ve.pos_x;
-		e["y"] = ve.pos_y;
-		e["val"] = ve.val;
-		if (ve.radius > 0.0) {
-			const double r = ve.radius;
-			e["r"] = r;
-			e["radius"] = r;
-		}
-		if (!ve.damage_type.is_empty()) {
-			e["damage_type"] = String(ve.damage_type);
-		}
-		if (ve.extra.get_type() != Variant::NIL) {
-			e["extra"] = ve.extra;
-		}
-		fx.append(e);
-	}
-	root["tick_fx"] = fx;
-	return root;
+	sim::viewer::TickSnapshotInput input;
+	input.tick = _tick;
+	input.time = _time;
+	input.player_kills = _player_kills;
+	input.enemy_kills = _enemy_kills;
+	input.live_winner = _determine_winner();
+	input.units = &_units;
+	input.unit_cold = &_unit_cold;
+	input.projectiles = &_projectiles;
+	input.viewer_fx = &_viewer_fx;
+	sim::SimWorld w = _sim_world();
+	input.world = &w;
+	return sim::viewer::build_tick_snapshot(input);
 }
 
 Array TeamfightSimulationCore::get_trace_events() const {

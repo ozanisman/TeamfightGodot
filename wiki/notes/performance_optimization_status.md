@@ -1,5 +1,13 @@
 # Performance Optimization Status
 
+## Iteration 4 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~1895**; `sim_match_benchmark.cpp` **~580**; `sim_viewer.cpp` **~350**.
+- **Modules added:** `sim_viewer.cpp`, `sim_match_benchmark.cpp`; `sim_coordinator_host.hpp` (trampolines remain in coordinator TU); targeting coordinator helpers in `sim_targeting`.
+- **Friends:** `CoordinatorHostAccess`, `BatchRunner`, benchmark batch friends (host trampolines same TU).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~101.3 matches/sec** (`duration_sec` 19.74). Within prior structural bands; re-profile if chasing 110+ m/s.
+- **Validation:** full gate green (7 fixture cases).
+
 ## Iteration 3 exit (May 28, 2026)
 
 - **Coordinator:** `teamfight_simulation_core.cpp` **~2830**; `teamfight_simulation_core.hpp` **~394**; private methods **< 40**; `sim_host_*` friends **7**.

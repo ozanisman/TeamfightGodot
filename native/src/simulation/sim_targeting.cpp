@@ -989,5 +989,74 @@ std::vector<UnitState *> select_targets(
 	return selected;
 }
 
+UnitState *select_enemy_target_coordinator(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitStrategy &strategy,
+		SimHostCallbacks *host,
+		const CoordinatorTargetingState &state) {
+	TargetScoreContext score_ctx;
+	score_ctx.attack_range = attack_range(unit);
+	score_ctx.effective_range = effective_attack_range(unit);
+	score_ctx.use_spatial = use_spatial_broad_phase(world);
+	if (strategy.prefers_kiting) {
+		score_ctx.has_kite_bounds = true;
+		score_ctx.kite_min_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
+		score_ctx.kite_max_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
+	} else {
+		score_ctx.has_kite_bounds = false;
+	}
+
+	TargetingProfileCounters profile;
+	profile.active = state.profile_targeting_active;
+	if (profile.active) {
+		profile.retarget_keeps = state.tgt_retarget_keeps;
+		profile.enemy_scans = state.tgt_enemy_scans;
+		profile.candidates_scored = state.tgt_candidates_scored;
+		profile.ties_adjusted = state.tgt_ties_adjusted;
+		profile.ties_distance = state.tgt_ties_distance;
+		profile.ties_instance = state.tgt_ties_instance;
+	}
+
+	ScoreEnemyProfileCounters score_profile;
+	score_profile.active = state.profile_score_enemy;
+	if (score_profile.active) {
+		score_profile.se_base = state.profile_se_base;
+		score_profile.se_calls = state.profile_se_calls;
+	}
+
+	TargetingDebugHooks debug;
+	debug.enabled = state.debug_targeting_scoring;
+	if (debug.enabled) {
+		debug.user_data = state.debug_user_data;
+		debug.archetype_for_unit = state.debug_archetype_for_unit;
+		debug.print_line = state.debug_print_line;
+		debug.print_score_breakdown = state.debug_print_score_breakdown;
+	}
+
+	return select_enemy_target(
+			world,
+			unit,
+			strategy,
+			score_ctx,
+			host,
+			profile.active ? &profile : nullptr,
+			score_profile.active ? &score_profile : nullptr,
+			debug.enabled ? &debug : nullptr);
+}
+
+UnitState *select_ally_target_coordinator(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitStrategy &strategy,
+		const CoordinatorTargetingState &state) {
+	TargetingProfileCounters profile;
+	profile.active = state.profile_targeting_active;
+	if (profile.active) {
+		profile.ally_scans = state.tgt_ally_scans;
+	}
+	return select_ally_target(world, unit, strategy, profile.active ? &profile : nullptr);
+}
+
 } // namespace targeting
 } // namespace sim

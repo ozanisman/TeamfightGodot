@@ -69,15 +69,15 @@ void GeneratedMatchHost::simulate_match(TeamfightSimulationCore *core) {
 }
 
 std::vector<UnitState> &GeneratedMatchHost::units(TeamfightSimulationCore *core) {
-	return core->_units;
+	return CoordinatorHostAccess::units(core);
 }
 
 UnitStateCold &GeneratedMatchHost::unit_cold_at(TeamfightSimulationCore *core, size_t index) {
-	return core->_unit_cold[index];
+	return CoordinatorHostAccess::unit_cold_at(core, index);
 }
 
 UnitStateCold &GeneratedMatchHost::uc(TeamfightSimulationCore *core, UnitState &unit) {
-	return core->_uc(unit);
+	return CoordinatorHostAccess::uc(core, unit);
 }
 
 StringName &GeneratedMatchHost::winner_team(TeamfightSimulationCore *core) {

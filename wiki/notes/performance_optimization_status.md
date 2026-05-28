@@ -1,5 +1,17 @@
 # Performance Optimization Status
 
+## Iteration 10 exit (May 28, 2026)
+
+- **Encapsulation:** `_units` / `_unit_cold` **private**; `CoordinatorHostAccess::units` / `unit_cold_at` / `uc`; `GeneratedMatchHost` delegates.
+- **Exec status:** `sim_effects_exec_status_{heal,cc,channel,mana}.cpp` + thin dispatcher (largest **172** lines).
+- **Status:** `sim_status_{internal,cc,heal,aoe}.cpp` (largest **132** lines).
+- **Viewer:** `sim_viewer_{fx,snapshot}.cpp` (largest **187** lines).
+- **Benchmark stats:** `sim_match_benchmark_stats_internal.cpp` + orchestration TU **233** lines.
+- **Profile:** `sim::profile::unit_tick_profile()` in `sim_profile.cpp`.
+- **MatchRuntimeState hot path:** attempted 10g, **reverted** (bench regression).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~139.4 m/s** (`duration_sec` 14.35; quiet host). Confirmatory **~137.1 m/s**. Meets >= ~135 m/s gate; ~+1% vs Iter 9 **~137.6**. Earlier **~87 m/s** was host load (other processes on the machine).
+- **Validation:** full gate green (7 fixture cases).
+
 ## Iteration 9 exit (May 28, 2026)
 
 - **Coordinator:** `teamfight_simulation_core.cpp` **~296**; glue in **`sim_coordinator_{state,catalog,targeting,viewer,tick,bindings}.cpp`**.

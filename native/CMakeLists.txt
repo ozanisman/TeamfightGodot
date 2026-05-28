@@ -58,6 +58,10 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_damage_modifiers.cpp
     src/simulation/sim_damage_apply.cpp
     src/simulation/sim_status.cpp
+    src/simulation/sim_status_internal.cpp
+    src/simulation/sim_status_cc.cpp
+    src/simulation/sim_status_heal.cpp
+    src/simulation/sim_status_aoe.cpp
     src/simulation/sim_periodic_internal.cpp
     src/simulation/sim_periodic_dot_hot.cpp
     src/simulation/sim_periodic_aoe.cpp
@@ -79,6 +83,10 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_effects_exec.cpp
     src/simulation/sim_effects_exec_damage.cpp
     src/simulation/sim_effects_exec_status.cpp
+    src/simulation/sim_effects_exec_status_heal.cpp
+    src/simulation/sim_effects_exec_status_cc.cpp
+    src/simulation/sim_effects_exec_status_channel.cpp
+    src/simulation/sim_effects_exec_status_mana.cpp
     src/simulation/sim_effects_exec_spawn.cpp
     src/simulation/sim_effects_exec_aoe.cpp
     src/simulation/sim_unit_tick.cpp
@@ -97,8 +105,11 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_loop.cpp
     src/simulation/sim_match_runtime_state.cpp
     src/simulation/sim_viewer.cpp
+    src/simulation/sim_viewer_fx.cpp
+    src/simulation/sim_viewer_snapshot.cpp
     src/simulation/sim_match_benchmark.cpp
     src/simulation/sim_match_benchmark_stats.cpp
+    src/simulation/sim_match_benchmark_stats_internal.cpp
     src/simulation/sim_match_benchmark_host.cpp
     src/simulation/sim_coordinator_match.cpp
     src/simulation/sim_coordinator_state.cpp

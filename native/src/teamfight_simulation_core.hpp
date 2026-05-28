@@ -92,10 +92,6 @@ public:
 	using EffectOpcode = sim::EffectOpcode;
 	using ViewerFxEvent = sim::ViewerFxEvent;
 
-	std::vector<UnitState> _units;
-	/// Parallel to `_units` (same length and indices). Push or clear together with `_units` only.
-	/// `_uc(u)` is only valid when `u` references an element stored in `_units` (never a stack copy of `UnitState`).
-	std::vector<UnitStateCold> _unit_cold;
 	std::vector<ProjectileState> _projectiles;
 	std::vector<ProjectileState> _scratch_projectiles;
 	std::vector<ProjectileState> _active_projectiles;
@@ -250,6 +246,11 @@ public:
 		return Math::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 	}
 
+private:
+	/// Parallel to `_units` (same length and indices). Push or clear together with `_units` only.
+	/// `_uc(u)` is only valid when `u` references an element stored in `_units` (never a stack copy of `UnitState`).
+	std::vector<UnitState> _units;
+	std::vector<UnitStateCold> _unit_cold;
 
 public:
 	TeamfightSimulationCore();

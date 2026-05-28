@@ -47,6 +47,26 @@ SimWorld CoordinatorHostAccess::sim_world(TeamfightSimulationCore *core) {
 	return core->_sim_world();
 }
 
+std::vector<UnitState> &CoordinatorHostAccess::units(TeamfightSimulationCore *core) {
+	return core->_units;
+}
+
+std::vector<UnitStateCold> &CoordinatorHostAccess::unit_cold(TeamfightSimulationCore *core) {
+	return core->_unit_cold;
+}
+
+UnitStateCold &CoordinatorHostAccess::unit_cold_at(TeamfightSimulationCore *core, size_t index) {
+	return core->_unit_cold[index];
+}
+
+UnitStateCold &CoordinatorHostAccess::uc(TeamfightSimulationCore *core, UnitState &unit) {
+	return core->_uc(unit);
+}
+
+const UnitStateCold &CoordinatorHostAccess::uc(TeamfightSimulationCore *core, const UnitState &unit) {
+	return core->_uc(unit);
+}
+
 void sim_host_viewer_record_damage_fx(
 		void *user_data,
 		const UnitState &source,

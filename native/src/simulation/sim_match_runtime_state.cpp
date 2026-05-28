@@ -1,5 +1,7 @@
 #include "sim_match_runtime_state.hpp"
 
+#include "sim_coordinator_host.hpp"
+
 #include "../teamfight_simulation_core.hpp"
 
 namespace sim {
@@ -53,8 +55,8 @@ MatchLoopState MatchRuntimeState::match_loop_state() const {
 
 MatchRuntimeState runtime_from(TeamfightSimulationCore &core) {
 	return MatchRuntimeState{
-		core._units,
-		core._unit_cold,
+		CoordinatorHostAccess::units(&core),
+		CoordinatorHostAccess::unit_cold(&core),
 		core._unit_index_map,
 		core._targeting_frame,
 		core._tick_ctx,

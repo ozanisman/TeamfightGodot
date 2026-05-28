@@ -1,9 +1,7 @@
 #ifndef SIM_STATS_INL_HPP
 #define SIM_STATS_INL_HPP
 
-#include "../stat_definitions.hpp"
-
-#include <godot_cpp/core/math.hpp>
+#include "simulation_types.hpp"
 
 namespace sim {
 

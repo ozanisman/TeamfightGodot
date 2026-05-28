@@ -14,8 +14,10 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_channel` | Channel tick (interrupt/complete/tick effects) |
 | `sim_stats_modifiers` | Stat stacks, duration modifiers, consume/set stacks |
 | `sim_damage` (+ `_internal`, `_modifiers`, `_apply`) | Defense, multiplier modifiers, `apply_damage` / reflect / ally defense |
-| `sim_match_runtime_state` | `MatchRuntimeState` refs bundle; `sim_world()` / `match_loop_state()` builders |
-| `sim_status` | CC, heal, shield, AOE status, `resolve_aoe_direction` |
+| `sim_match_runtime_state` | `MatchRuntimeState` refs bundle; `runtime_from()` (coordinator hot path uses direct wiring) |
+| `sim_status` (+ `_internal`, `_cc`, `_heal`, `_aoe`) | CC, heal/shield/mana, AOE status, `resolve_aoe_direction` |
+| `sim_effects_exec_status` (+ `_heal`, `_cc`, `_channel`, `_mana`) | Status opcode execution (thin dispatcher) |
+| `sim_viewer` (+ `_fx`, `_snapshot`) | FX buffer, `build_tick_snapshot` |
 | `sim_periodic` (+ `_internal`, `_dot_hot`, `_aoe`, `_reflect`) | DoT/HoT, AOE damage/taunt, knockback, reflect |
 | `sim_combat` (+ `_internal`, `_actions`, `_projectile`) | Cast, auto-attack, projectiles, post-attack/heal |
 | `sim_movement` | Move toward target, kite, dash collision |
@@ -23,8 +25,9 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` trampoline (no coordinator hop) |
 | `sim_effect_kinds.inl.hpp` | Shared lazy `StringName` accessors for effect kinds / trace keys |
 | `sim_effects_compile` (+ `_internal`, `_damage`, `_status`, `_aoe`, `_spawn`) / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect compile + VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
-| `sim_coordinator_host.cpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer, world, benchmark batch setup) |
-| `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; `Counters` + `RuntimeFlags` |
+| `sim_coordinator_host.cpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer, world, units/cold, benchmark) |
+| `sim_match_benchmark_stats_internal` | Stat entry helpers, matchup aggregation for stats partial |
+| `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; `Counters` + `RuntimeFlags`; `unit_tick_profile()` |
 | `sim_match_benchmark_host.hpp` | `GeneratedMatchHost` alias for batch runners |
 | `sim_catalog` | Champion/minion JSON, balance patches |
 | `sim_match` | `_build_summary` / stats summary |

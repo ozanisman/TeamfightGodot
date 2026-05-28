@@ -151,6 +151,10 @@ Dictionary execute_recursive(
 
 Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
 Dictionary exec_status(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
+Dictionary exec_status_heal_shield(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, UnitState &source, UnitState *target, UnitState *target_ally);
+Dictionary exec_status_mana(const EffectRecord &effect, EffectContext &context, SimWorld &world, UnitState &source, UnitState *target);
+Dictionary exec_status_cc(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState *target);
+Dictionary exec_status_channel(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, UnitState &source, UnitState *target);
 Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
 Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
 

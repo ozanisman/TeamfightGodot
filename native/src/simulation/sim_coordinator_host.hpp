@@ -12,6 +12,8 @@
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
+#include <vector>
+
 class TeamfightSimulationCore;
 
 namespace sim {
@@ -19,6 +21,11 @@ namespace sim {
 struct CoordinatorHostAccess {
 	static viewer::ViewerFxBuffer &viewer_fx(TeamfightSimulationCore *core);
 	static SimWorld sim_world(TeamfightSimulationCore *core);
+	static std::vector<UnitState> &units(TeamfightSimulationCore *core);
+	static std::vector<UnitStateCold> &unit_cold(TeamfightSimulationCore *core);
+	static UnitStateCold &unit_cold_at(TeamfightSimulationCore *core, size_t index);
+	static UnitStateCold &uc(TeamfightSimulationCore *core, UnitState &unit);
+	static const UnitStateCold &uc(TeamfightSimulationCore *core, const UnitState &unit);
 };
 
 void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target);

@@ -54,6 +54,9 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_targeting_context.cpp
     src/simulation/sim_targeting_strategies.cpp
     src/simulation/sim_damage.cpp
+    src/simulation/sim_damage_internal.cpp
+    src/simulation/sim_damage_modifiers.cpp
+    src/simulation/sim_damage_apply.cpp
     src/simulation/sim_status.cpp
     src/simulation/sim_periodic_internal.cpp
     src/simulation/sim_periodic_dot_hot.cpp
@@ -62,6 +65,9 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_channel.cpp
     src/simulation/sim_stats_modifiers.cpp
     src/simulation/sim_combat.cpp
+    src/simulation/sim_combat_internal.cpp
+    src/simulation/sim_combat_actions.cpp
+    src/simulation/sim_combat_projectile.cpp
     src/simulation/sim_movement.cpp
     src/simulation/sim_effects_compile.cpp
     src/simulation/sim_effects_compile_internal.cpp
@@ -76,6 +82,12 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_effects_exec_spawn.cpp
     src/simulation/sim_effects_exec_aoe.cpp
     src/simulation/sim_unit_tick.cpp
+    src/simulation/sim_unit_tick_internal.cpp
+    src/simulation/sim_unit_tick_cooldowns.cpp
+    src/simulation/sim_unit_tick_regen.cpp
+    src/simulation/sim_unit_tick_cast.cpp
+    src/simulation/sim_unit_tick_combat.cpp
+    src/simulation/sim_unit_tick_movement.cpp
     src/simulation/sim_catalog.cpp
     src/simulation/sim_match.cpp
     src/simulation/sim_match_spawn.cpp
@@ -83,11 +95,18 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_roster.cpp
     src/simulation/sim_match_lifecycle.cpp
     src/simulation/sim_match_loop.cpp
+    src/simulation/sim_match_runtime_state.cpp
     src/simulation/sim_viewer.cpp
     src/simulation/sim_match_benchmark.cpp
     src/simulation/sim_match_benchmark_stats.cpp
     src/simulation/sim_match_benchmark_host.cpp
     src/simulation/sim_coordinator_match.cpp
+    src/simulation/sim_coordinator_state.cpp
+    src/simulation/sim_coordinator_catalog.cpp
+    src/simulation/sim_coordinator_targeting.cpp
+    src/simulation/sim_coordinator_viewer.cpp
+    src/simulation/sim_coordinator_bindings.cpp
+    src/simulation/sim_coordinator_tick.cpp
     src/simulation/sim_coordinator_host.cpp
     src/simulation/sim_profile.cpp
     src/teamfight_simulation_core.cpp

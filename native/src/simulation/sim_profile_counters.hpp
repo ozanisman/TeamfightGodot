@@ -5,6 +5,11 @@
 
 namespace sim::profile {
 
+struct RuntimeFlags {
+	bool sim_active = false;
+	bool targeting_active = false;
+};
+
 struct Counters {
 	uint64_t ns_projectiles = 0;
 	uint64_t ns_prepare_tick_ctx = 0;

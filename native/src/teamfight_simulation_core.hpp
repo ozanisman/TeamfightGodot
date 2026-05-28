@@ -143,8 +143,7 @@ public:
 	mutable uint32_t _spatial_generation = 1;
 
 	sim::profile::Counters _sim_profile_counters;
-	bool _sim_profile_active = false;
-	bool _sim_profile_targeting_active = false;
+	sim::profile::RuntimeFlags _sim_profile_runtime;
 	bool _match_context_hosts_cached = false;
 
 	static bool _sim_profile_env_enabled();

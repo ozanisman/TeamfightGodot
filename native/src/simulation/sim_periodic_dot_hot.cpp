@@ -381,26 +381,5 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 	}
 }
 
-void cleanse_dots(SimWorld &world, UnitState &unit, const StringName &effect_type_filter) {
-	auto &periodic_effects = uc(world, unit).periodic_effects;
-	if (effect_type_filter.is_empty()) {
-		periodic_effects.erase(
-				std::remove_if(periodic_effects.begin(), periodic_effects.end(), [](const UnitStateCold::PeriodicEffect &e) { return e.damage_total > 0.0; }),
-				periodic_effects.end());
-	} else {
-		periodic_effects.erase(
-				std::remove_if(
-						periodic_effects.begin(),
-						periodic_effects.end(),
-						[&effect_type_filter](const UnitStateCold::PeriodicEffect &e) { return e.damage_total > 0.0 && e.effect_type == effect_type_filter; }),
-				periodic_effects.end());
-	}
-}
-
-void clear_periodic_effects(SimWorld &world, UnitState &unit) {
-	uc(world, unit).periodic_effects.clear();
-}
-
-
 } // namespace periodic
 } // namespace sim

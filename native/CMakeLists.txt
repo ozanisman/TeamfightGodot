@@ -31,7 +31,13 @@ endif()
 
 set(GODOTCPP_BUILD_PROFILE "" CACHE PATH "" FORCE)
 set(GODOTCPP_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-set(GODOTCPP_TARGET "template_debug" CACHE STRING "" FORCE)
+# godot-cpp template is chosen at configure time (single library per build tree).
+# Default to template_release unless CMAKE_BUILD_TYPE is explicitly Debug.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(GODOTCPP_TARGET "template_debug" CACHE STRING "" FORCE)
+else()
+	set(GODOTCPP_TARGET "template_release" CACHE STRING "" FORCE)
+endif()
 set(GODOTCPP_GDEXTENSION_DIR "${GODOT_CPP_PATH}/gdextension" CACHE PATH "" FORCE)
 add_subdirectory("${GODOT_CPP_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/godot-cpp" EXCLUDE_FROM_ALL)
 
@@ -49,10 +55,20 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_combat.cpp
     src/simulation/sim_movement.cpp
     src/simulation/sim_effects_compile.cpp
+    src/simulation/sim_effects_host.cpp
     src/simulation/sim_effects_exec.cpp
+    src/simulation/sim_effects_exec_damage.cpp
+    src/simulation/sim_effects_exec_status.cpp
+    src/simulation/sim_effects_exec_spawn.cpp
+    src/simulation/sim_effects_exec_aoe.cpp
     src/simulation/sim_unit_tick.cpp
     src/simulation/sim_catalog.cpp
     src/simulation/sim_match.cpp
+    src/simulation/sim_match_spawn.cpp
+    src/simulation/sim_unit_builder.cpp
+    src/simulation/sim_match_roster.cpp
+    src/simulation/sim_match_lifecycle.cpp
+    src/simulation/sim_match_loop.cpp
     src/teamfight_simulation_core.cpp
 )
 

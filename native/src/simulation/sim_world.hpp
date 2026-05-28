@@ -69,11 +69,18 @@ inline const UnitStateCold &uc(const SimWorld &world, const UnitState &unit) {
 
 struct EffectContext;
 struct EffectRecord;
+struct ViewerHooks;
+
+namespace effects {
+struct EffectExecBindings;
+}
 
 struct SimHostCallbacks {
 	void *user_data = nullptr;
+	const ViewerHooks *viewer_hooks = nullptr;
+	effects::EffectExecBindings *effect_exec = nullptr;
 
-	Dictionary (*execute_effect)(void *user_data, const EffectRecord &effect, EffectContext &context) = nullptr;
+	Dictionary (*execute_effect)(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context) = nullptr;
 	void (*handle_death)(void *user_data, UnitState &killer, UnitState &target) = nullptr;
 	void (*sync_targeting_frame_unit)(void *user_data, const UnitState &unit) = nullptr;
 	void (*sync_targeting_frame_index)(void *user_data, int64_t index, const UnitState &unit) = nullptr;

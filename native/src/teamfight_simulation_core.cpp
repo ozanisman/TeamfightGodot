@@ -6,8 +6,12 @@
 #include "simulation/sim_combat.hpp"
 #include "simulation/sim_effects_compile.hpp"
 #include "simulation/sim_effects_exec.hpp"
+#include "simulation/sim_effects_host.hpp"
 #include "simulation/sim_damage.hpp"
 #include "simulation/sim_match.hpp"
+#include "simulation/sim_match_lifecycle.hpp"
+#include "simulation/sim_match_loop.hpp"
+#include "simulation/sim_match_roster.hpp"
 #include "simulation/sim_movement.hpp"
 #include "simulation/sim_periodic.hpp"
 #include "simulation/sim_spatial.hpp"
@@ -553,13 +557,20 @@ void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitSt
 	}
 }
 
-Dictionary sim_host_execute_effect(void *user_data, const EffectRecord &effect, EffectContext &context) {
-	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
-	return core->_execute_effect(effect, context);
-}
-
 void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_handle_death(killer, target);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::SimWorld w = core->_sim_world();
+	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
+	sim::match::MatchScoreState score = core->_match_score_state();
+	score.roster = &roster;
+	sim::match::handle_death(
+			w,
+			core->_sim_host_callbacks,
+			&core->_viewer_hooks,
+			score,
+			core->_spawn_slot_state(),
+			killer,
+			target);
 }
 
 void sim_host_sync_targeting_frame_unit(void *user_data, const UnitState &unit) {
@@ -588,6 +599,60 @@ void sim_host_viewer_record_hot_status_fx(void *user_data, const UnitState &targ
 	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_hot_status_fx(target, duration, effect_type);
 }
 
+void sim_host_viewer_record_heal_fx(void *user_data, const UnitState &target, double amount) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_heal_fx(target, amount);
+}
+
+void sim_host_viewer_record_shield_fx(void *user_data, const UnitState &target, double amount) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_shield_fx(target, amount);
+}
+
+void sim_host_viewer_record_aoe_shape_fx(
+		void *user_data,
+		const UnitState &source,
+		const UnitState *target,
+		const AoShapeParams &params,
+		const StringName &kind) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_aoe_shape_fx(source, target, params, kind);
+}
+
+void sim_host_viewer_record_passive_aoe_fx(
+		void *user_data,
+		const UnitState &unit,
+		double radius,
+		const StringName &passive_id) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_viewer_record_passive_aoe_fx(unit, radius, passive_id);
+}
+
+Dictionary sim_host_effective_champion_for(void *user_data, const StringName &archetype_id) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_effective_champion_for(archetype_id);
+}
+
+EffectRecord sim_host_compile_effect(void *user_data, const Dictionary &effect) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_compile_effect(effect);
+}
+
+void sim_host_finalize_reflect_passives(void *user_data, UnitState &unit, UnitStateCold &cold) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_finalize_reflect_passives(unit, cold);
+}
+
+int64_t sim_host_assign_spawn_slot(void *user_data, const StringName &team) {
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	return sim::match::assign_spawn_slot(core->_spawn_slot_state(), team);
+}
+
+Vector2 sim_host_get_random_spawn_position(void *user_data, const StringName &team, bool is_respawn) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_get_random_spawn_position(team, is_respawn);
+}
+
+Dictionary sim_host_coerce_spawn_spec(void *user_data, const Variant &value) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_coerce_match_input(value);
+}
+
+uint32_t sim_host_rand_uint32(void *user_data) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_rng.genrand_uint32();
+}
+
 double sim_host_randf(void *user_data) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_randf();
 }
@@ -609,19 +674,45 @@ void sim_host_print_score_breakdown(
 	static_cast<TeamfightSimulationCore *>(user_data)->_print_score_breakdown(breakdown, attacker_archetype, enemy_archetype);
 }
 
-double sim_host_heal_unit(
-		void *user_data,
-		UnitState &source,
-		UnitState &target,
-		double amount,
-		const StringName &action_kind,
-		bool allow_overheal) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_heal_unit(source, target, amount, action_kind, allow_overheal);
-	return target.hp;
-}
-
 UnitState *sim_host_select_ally_target(void *user_data, UnitState &unit) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_select_ally_target(unit);
+}
+
+void sim_host_match_profile_emit_json_stderr(void *user_data);
+bool sim_host_match_profile_env_enabled(void *user_data);
+bool sim_host_match_targeting_profile_enabled(void *user_data);
+void sim_host_match_log_sudden_death_draw(void *user_data);
+
+void sim_host_match_update_projectiles(void *user_data, bool /*profile_sim*/) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_update_projectiles();
+}
+
+void sim_host_match_prepare_tick_context(void *user_data, bool /*profile_sim*/) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_prepare_tick_context();
+}
+
+void sim_host_match_update_unit(void *user_data, UnitState &unit, bool profile_sim) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_update_unit(unit, profile_sim);
+}
+
+sim::match_roster::MatchRosterState sim_host_match_roster_state(void *user_data) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_match_roster_state();
+}
+
+sim::unit_builder::UnitBuilderHost sim_host_match_unit_builder_host(void *user_data) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_unit_builder_host();
+}
+
+void sim_host_match_profile_reset(void *user_data) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_sim_profile_reset();
+}
+
+void sim_host_match_profile_emit_json_stderr(void *user_data) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_sim_profile_emit_json_stderr();
+}
+
+bool sim_host_match_profile_env_enabled(void *user_data) {
+	return TeamfightSimulationCore::_sim_profile_env_enabled();
 }
 
 sim::SimWorld TeamfightSimulationCore::_sim_world() const {
@@ -641,9 +732,117 @@ sim::SimWorld TeamfightSimulationCore::_sim_world() const {
 			&self._spatial_generation);
 }
 
+sim::unit_builder::UnitBuilderHost TeamfightSimulationCore::_unit_builder_host() const {
+	sim::unit_builder::UnitBuilderHost host;
+	host.user_data = const_cast<TeamfightSimulationCore *>(this);
+	host.catalog = &_catalog;
+	host.compile_effect = &sim_host_compile_effect;
+	host.effective_champion_for = &sim_host_effective_champion_for;
+	host.finalize_reflect_passives = &sim_host_finalize_reflect_passives;
+	host.assign_spawn_slot = &sim_host_assign_spawn_slot;
+	host.get_random_spawn_position = &sim_host_get_random_spawn_position;
+	return host;
+}
+
+sim::match_roster::MatchRosterState TeamfightSimulationCore::_match_roster_state() {
+	return {
+		_max_instance_id,
+		_alive_player_indices_set,
+		_alive_enemy_indices_set,
+		_pending_spawns,
+	};
+}
+
+sim::match::MatchScoreState TeamfightSimulationCore::_match_score_state() {
+	sim::match::MatchScoreState score;
+	score.player_kills = &_player_kills;
+	score.enemy_kills = &_enemy_kills;
+	score.tick_ctx = &_tick_ctx;
+	score.time = _time;
+	return score;
+}
+
+sim::match::SpawnSlotState TeamfightSimulationCore::_spawn_slot_state() {
+	return {
+		_player_spawn_slots_used,
+		_enemy_spawn_slots_used,
+		&sim_host_rand_uint32,
+		&sim_host_get_random_spawn_position,
+		this,
+	};
+}
+
+sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
+	sim::match::MatchLoopState state{
+		_units,
+		_unit_cold,
+		_unit_index_map,
+		_targeting_frame,
+		_tick_ctx,
+		_alive_player_indices,
+		_alive_enemy_indices,
+		_spatial_buckets,
+		_spatial_stamp,
+		_spatial_generation,
+		_tick,
+		_time,
+		_tick_rate,
+		_sudden_death_ticks,
+		_player_kills,
+		_enemy_kills,
+		_winner_team,
+		_viewer_fx_events,
+	};
+	state.profile.ns_projectiles = &_sim_profile_ns_projectiles;
+	state.profile.ns_prepare_tick_ctx = &_sim_profile_ns_prepare_tick_ctx;
+	state.profile.ns_update_units = &_sim_profile_ns_update_units;
+	state.profile.tick_count = &_sim_profile_tick_count;
+	state.profile_active = &_sim_profile_active;
+	state.profile_targeting_active = &_sim_profile_targeting_active;
+	return state;
+}
+
+sim::match::MatchLoopHost TeamfightSimulationCore::_match_loop_host() const {
+	sim::match::MatchLoopHost host;
+	host.user_data = const_cast<TeamfightSimulationCore *>(this);
+	host.update_projectiles = &sim_host_match_update_projectiles;
+	host.prepare_tick_context = &sim_host_match_prepare_tick_context;
+	host.update_unit = &sim_host_match_update_unit;
+	host.match_roster_state = &sim_host_match_roster_state;
+	host.unit_builder_host = &sim_host_match_unit_builder_host;
+	host.profile_reset = &sim_host_match_profile_reset;
+	host.profile_emit_json_stderr = &sim_host_match_profile_emit_json_stderr;
+	host.profile_env_enabled = &sim_host_match_profile_env_enabled;
+	host.targeting_profile_enabled = &sim_host_match_targeting_profile_enabled;
+	host.log_sudden_death_draw = &sim_host_match_log_sudden_death_draw;
+	return host;
+}
+
+void TeamfightSimulationCore::_bind_effect_exec_bindings() {
+	_effect_exec_bindings.units = &_units;
+	_effect_exec_bindings.unit_cold = &_unit_cold;
+	_effect_exec_bindings.unit_index_map = &_unit_index_map;
+	_effect_exec_bindings.targeting_frame = &_targeting_frame;
+	_effect_exec_bindings.tick_ctx = &_tick_ctx;
+	_effect_exec_bindings.alive_player_indices = &_alive_player_indices;
+	_effect_exec_bindings.alive_enemy_indices = &_alive_enemy_indices;
+	_effect_exec_bindings.time = &_time;
+	_effect_exec_bindings.tick_rate = &_tick_rate;
+	_effect_exec_bindings.spatial_buckets = &_spatial_buckets;
+	_effect_exec_bindings.spatial_stamp = &_spatial_stamp;
+	_effect_exec_bindings.spatial_generation = &_spatial_generation;
+	_effect_exec_bindings.match_host.pending_spawns = &_pending_spawns;
+	_effect_exec_bindings.match_host.projectiles = &_projectiles;
+	_effect_exec_bindings.match_host.max_instance_id = &_max_instance_id;
+	_effect_exec_bindings.match_host.catalog = &_catalog;
+	_effect_exec_bindings.exec_callbacks = &_sim_exec_callbacks;
+}
+
 void TeamfightSimulationCore::_bind_sim_host() {
+	_bind_effect_exec_bindings();
 	_sim_host_callbacks.user_data = this;
-	_sim_host_callbacks.execute_effect = &sim_host_execute_effect;
+	_sim_host_callbacks.effect_exec = &_effect_exec_bindings;
+	_sim_host_callbacks.execute_effect = &sim::effects::host_execute_effect;
 	_sim_host_callbacks.handle_death = &sim_host_handle_death;
 	_sim_host_callbacks.sync_targeting_frame_unit = &sim_host_sync_targeting_frame_unit;
 	_sim_host_callbacks.sync_targeting_frame_index = &sim_host_sync_targeting_frame_index;
@@ -651,19 +850,38 @@ void TeamfightSimulationCore::_bind_sim_host() {
 	_sim_host_callbacks.viewer_record_damage_fx = &sim_host_viewer_record_damage_fx;
 	_sim_host_callbacks.viewer_record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
 	_sim_host_callbacks.randf = &sim_host_randf;
+	_viewer_hooks.user_data = this;
+	_viewer_hooks.record_damage_fx = &sim_host_viewer_record_damage_fx;
+	_viewer_hooks.record_heal_fx = &sim_host_viewer_record_heal_fx;
+	_viewer_hooks.record_shield_fx = &sim_host_viewer_record_shield_fx;
+	_viewer_hooks.record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
+	_viewer_hooks.record_aoe_shape_fx = &sim_host_viewer_record_aoe_shape_fx;
+	_viewer_hooks.record_passive_aoe_fx = &sim_host_viewer_record_passive_aoe_fx;
+	_viewer_hooks.sync_targeting_frame_unit = &sim_host_sync_targeting_frame_unit;
+	_sim_host_callbacks.viewer_hooks = &_viewer_hooks;
 	_bind_sim_exec_hooks();
 }
 
 sim::combat::CombatHostHooks TeamfightSimulationCore::_combat_host_hooks() const {
 	sim::combat::CombatHostHooks hooks;
 	hooks.user_data = const_cast<TeamfightSimulationCore *>(this);
-	hooks.heal_unit = &sim_host_heal_unit;
 	hooks.select_ally_target = &sim_host_select_ally_target;
 	return hooks;
 }
 
 void sim_host_unit_tick_respawn(void *user_data, UnitState &unit) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_respawn_unit(unit);
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::SimWorld w = core->_sim_world();
+	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
+	sim::match::MatchScoreState score = core->_match_score_state();
+	score.roster = &roster;
+	sim::match::respawn_unit(
+			w,
+			core->_sim_host_callbacks,
+			&core->_viewer_hooks,
+			score,
+			core->_spawn_slot_state(),
+			unit);
 }
 
 const UnitStrategy &sim_host_unit_tick_strategy(void *user_data, const UnitState &unit) {
@@ -693,23 +911,6 @@ sim::unit_tick::UnitTickHostHooks TeamfightSimulationCore::_unit_tick_host_hooks
 	return hooks;
 }
 
-// --- sim::effects::exec host hooks ---
-void sim_host_push_projectile(void *user_data, const ProjectileState &projectile) {
-	static_cast<TeamfightSimulationCore *>(user_data)->_projectiles.push_back(projectile);
-}
-
-std::vector<UnitState *> sim_host_select_targets(void *user_data, UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_select_targets(source, target, target_count, strategy, include_source, excess_handling, team_filter);
-}
-
-Vector2 sim_host_find_random_spawn_position_near_excluding_with_expansion(void *user_data, double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_find_random_spawn_position_near_excluding_with_expansion(center_x, center_y, initial_radius, max_radius, exclude_instance_id, pending_positions);
-}
-
-Dictionary sim_host_get_minion_data(void *user_data, const StringName &minion_id) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_catalog.minion_catalog.get(String(minion_id), Dictionary());
-}
-
 bool sim_host_debug_combat_trace(void *user_data) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_debug_combat_trace;
 }
@@ -721,20 +922,7 @@ sim::channel::ChannelHostHooks TeamfightSimulationCore::_channel_host_hooks() co
 	return hooks;
 }
 
-sim::effects::SimMatchHost TeamfightSimulationCore::_sim_match_host() const {
-	sim::effects::SimMatchHost match_host;
-	match_host.user_data = const_cast<TeamfightSimulationCore *>(this);
-	match_host.pending_spawns = const_cast<std::vector<PendingSpawn> *>(&_pending_spawns);
-	match_host.max_instance_id = const_cast<int64_t *>(&_max_instance_id);
-	match_host.get_minion_data = &sim_host_get_minion_data;
-	match_host.find_random_spawn_position_near_excluding_with_expansion = &sim_host_find_random_spawn_position_near_excluding_with_expansion;
-	return match_host;
-}
-
 void TeamfightSimulationCore::_bind_sim_exec_hooks() {
-	_sim_exec_callbacks.user_data = this;
-	_sim_exec_callbacks.push_projectile = &sim_host_push_projectile;
-	_sim_exec_callbacks.select_targets = &sim_host_select_targets;
 	_sim_exec_callbacks.debug_combat_trace = &sim_host_debug_combat_trace;
 }
 
@@ -950,37 +1138,6 @@ Dictionary TeamfightSimulationCore::_champion_for(const StringName &archetype_id
 	return sim::catalog::champion_for(_catalog, archetype_id);
 }
 
-void TeamfightSimulationCore::_append_team_units(const Array &spawn_specs, const StringName &team, int64_t &next_instance_id, Array &team_comp) {
-	for (int64_t index = 0; index < spawn_specs.size(); ++index) {
-		Dictionary spawn_spec = _coerce_match_input(spawn_specs[index]);
-		std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, team, next_instance_id);
-		if (built.first.instance_id == 0) {
-			continue;
-		}
-		int64_t unit_index = int64_t(_units.size());
-		_units.push_back(std::move(built.first));
-		_unit_cold.push_back(std::move(built.second));
-		_unit_index_map[next_instance_id] = unit_index;
-		_add_alive_index(team, unit_index);
-		_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
-		team_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-
-		// Update max instance ID for efficient minion spawning
-		if (next_instance_id > _max_instance_id) {
-			_max_instance_id = next_instance_id;
-		}
-
-		// Emit passive AOE events for visualization at initial spawn
-		UnitState &unit = _units[static_cast<size_t>(unit_index)];
-		UnitStateCold &cold = _unit_cold[static_cast<size_t>(unit_index)];
-		for (const UnitStateCold::PassiveAoeInfo &aoe_info : cold.passive_aoe_info) {
-			_viewer_record_passive_aoe_fx(unit, aoe_info.radius, aoe_info.passive_id);
-		}
-
-		++next_instance_id;
-	}
-}
-
 TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targeting_frame_entry(const UnitState &unit) const {
 	return sim::targeting::make_targeting_frame_entry(unit);
 }
@@ -995,307 +1152,6 @@ void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const U
 
 void TeamfightSimulationCore::_sync_targeting_frame_unit(const UnitState &unit) {
 	_sync_targeting_frame_index(_unit_index_by_id(unit.instance_id), unit);
-}
-
-std::pair<UnitState, UnitStateCold> TeamfightSimulationCore::_build_unit_state(const Dictionary &spawn_spec, const StringName &team, int64_t instance_id) {
-	UnitState unit;
-	UnitStateCold cold;
-	StringName archetype_id = StringName(String(spawn_spec.get("archetype_id", "")));
-	
-	// Check if this is a minion (in minion_catalog) or a champion (in champion catalog)
-	Dictionary minion_data = Dictionary(_catalog.minion_catalog.get(String(archetype_id), Dictionary()));
-	Dictionary champion;
-	
-	if (!minion_data.is_empty()) {
-		// This is a minion, use minion data directly
-		champion = minion_data;
-	} else {
-		// This is a champion, use effective champion cache
-		champion = _effective_champion_for(archetype_id);
-		if (champion.is_empty()) {
-			UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(archetype_id)));
-			return { unit, cold };
-		}
-	}
-
-	// Stats, kits, and balance overlays are resolved in _rebuild_effective_champion_cache().
-	Dictionary stats = Dictionary(champion["stats"]).duplicate(true);
-	StringName role_name = StringName(stats.get("role", StringName()));
-	Dictionary role_config = Dictionary(_catalog.role_configs.get(role_name, Dictionary()));
-
-	// Minions skip passive/ability/ultimate compilation
-	bool is_minion = (role_name == StringName("minion"));
-	
-	if (!is_minion) {
-		auto passive_bucket_index = [](const StringName &kind) -> int {
-			if (kind == sn_on_attack()) {
-				return 0;
-			}
-			if (kind == sn_on_defense()) {
-				return 1;
-			}
-			if (kind == sn_on_ally_defense()) {
-				return 2;
-			}
-			if (kind == sn_on_tick()) {
-				return 3;
-			}
-			if (kind == sn_post_attack()) {
-				return 4;
-			}
-			if (kind == sn_post_take_damage()) {
-				return 5;
-			}
-			if (kind == sn_on_ability()) {
-				return 6;
-			}
-			if (kind == sn_on_ultimate()) {
-				return 7;
-			}
-			if (kind == sn_post_heal()) {
-				return 8;
-			}
-			if (kind == sn_on_takedown()) {
-				return 9;
-			}
-			// DEBUG: Log unrecognized trigger kinds
-			UtilityFunctions::push_error(vformat("[DEBUG] passive_bucket_index: unrecognized trigger kind '%s', falling through to bucket 5 (post_take_damage)", String(kind)));
-			return 5;
-		};
-
-		Array passive_ids = Array(champion.get("passive_ids", Array()));
-		for (int64_t index = 0; index < passive_ids.size(); ++index) {
-			StringName passive_id = StringName(String(passive_ids[index]));
-			Dictionary entry = Dictionary(_catalog.passive_registry.get(passive_id, Dictionary()));
-			if (entry.is_empty()) {
-				continue;
-			}
-			Array effect_kinds;
-			effect_kinds.append(StringName("on_attack"));
-			effect_kinds.append(StringName("on_defense"));
-			effect_kinds.append(StringName("on_ally_defense"));
-			effect_kinds.append(StringName("on_tick"));
-			effect_kinds.append(StringName("post_attack"));
-			effect_kinds.append(StringName("post_take_damage"));
-			effect_kinds.append(StringName("on_ability"));
-			effect_kinds.append(StringName("on_ultimate"));
-			effect_kinds.append(StringName("post_heal"));
-			effect_kinds.append(StringName("on_takedown"));
-			if (entry.has("on_ally_defense")) {
-				// Extract and store radius from passive definition
-				double radius = double(entry.get("radius", 0.0));
-				// Take the maximum radius if multiple passives have on_ally_defense
-				if (radius > cold.on_ally_defense_radius) {
-					cold.on_ally_defense_radius = radius;
-				}
-			}
-			// Store passive AOE radius information for visualization (all passives with radius)
-			if (entry.has("radius")) {
-				double radius = double(entry.get("radius", 0.0));
-				if (radius > 0.0) {
-					UnitStateCold::PassiveAoeInfo aoe_info;
-					aoe_info.passive_id = passive_id;
-					aoe_info.radius = radius;
-					cold.passive_aoe_info.push_back(aoe_info);
-				}
-			}
-			for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
-				Variant kind_value = effect_kinds[kind_index];
-				Array effects = Array(entry.get(kind_value, Array()));
-				std::vector<EffectRecord> compiled_effects = _compile_effect_array(effects);
-				std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
-				bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
-			}
-		}
-		Variant role_tick = role_config.get("passive_on_tick", Variant());
-		if (role_tick.get_type() != Variant::NIL) {
-			cold.passive_effects[3].push_back(_compile_effect(Dictionary(role_tick)));
-		}
-		Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
-		if (role_take_damage.get_type() != Variant::NIL) {
-			cold.passive_effects[5].push_back(_compile_effect(Dictionary(role_take_damage)));
-		}
-		cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
-	}
-
-	double max_hp = double(stats.get("max_hp", 0.0));
-	double max_mana = double(stats.get("max_mana", 0.0));
-	double x, y;
-
-	// Minions skip spawn slot assignment and use provided coordinates
-	if (!is_minion) {
-		// Generate random spawn position with slot assignment
-		int64_t spawn_slot = _assign_spawn_slot(team);
-		Vector2 spawn_pos = _get_random_spawn_position(team, false);
-
-		// Override Y coordinate with assigned slot position
-		static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
-		if (spawn_slot >= 0 && spawn_slot < int(spawn_points.size())) {
-			double x_base = (team == sn_player()) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
-			
-			// Adjust melee champions to spawn 0.5 tiles closer to center
-			double attack_range = double(stats.get("attack_range", 0.0));
-			if (attack_range <= 1.0) {  // Melee threshold
-				if (team == sn_player()) {
-					x_base += 0.5;
-				} else {
-					x_base -= 0.5;
-				}
-			}
-			
-			x = x_base;
-			y = spawn_points[spawn_slot];
-			cold.respawn_slot_index = spawn_slot;
-		} else {
-			x = spawn_pos.x;
-			y = spawn_pos.y;
-		}
-	} else {
-		// Minions use x/y from spawn_spec (provided by summoner)
-		x = double(spawn_spec.get("x", 0.0));
-		y = double(spawn_spec.get("y", 0.0));
-		cold.respawn_slot_index = -1;
-	}
-
-	unit.instance_id = instance_id;
-	cold.archetype_id = archetype_id;
-	unit.team = team;
-	cold.role_id = role_name;
-	
-	// Assign pseudo-role based on attack range for minions
-	StringName effective_role_name = role_name;
-	if (is_minion) {
-		// Melee minions (attack_range <= 0.5) get fighter pseudo-role
-		// Ranged minions (attack_range > 0.5) get marksman pseudo-role
-		double attack_range = double(stats.get("attack_range", 0.0));
-		effective_role_name = (attack_range <= 0.5) ? sn_fighter() : sn_marksman();
-	}
-
-	// Assign role slot and flags using effective role
-	unit.role_slot = sim::targeting::role_slot_for_name(effective_role_name);
-	unit.is_tank_role = effective_role_name == sn_tank();
-	unit.is_fighter_role = effective_role_name == sn_fighter();
-	unit.is_assassin_role = effective_role_name == sn_assassin();
-	unit.is_marksman_role = effective_role_name == sn_marksman();
-	unit.is_mage_role = effective_role_name == sn_mage();
-	unit.is_support_role = effective_role_name == sn_support();
-	cold.stats = stats;
-	// Initialize combat stats from dictionary - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	unit.combat.name = double(stats.get(#name, def));
-	STAT_LIST
-#undef X
-	
-	// Minions don't have abilities or ultimates
-	if (!is_minion) {
-		Variant ability_effect = champion.get("ability", Variant());
-		Variant ultimate_effect = champion.get("ultimate", Variant());
-		unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
-		unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
-		unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
-		unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
-		if (unit.has_ability_effect) {
-			cold.ability_effect = _compile_effect(Dictionary(ability_effect));
-		}
-		if (unit.has_ultimate_effect) {
-			cold.ultimate_effect = _compile_effect(Dictionary(ultimate_effect));
-		}
-	} else {
-		unit.has_ability_effect = false;
-		unit.has_ultimate_effect = false;
-		unit.ability_requires_target_in_range = false;
-		unit.ultimate_requires_target_in_range = false;
-	}
-	cold.spawn_pos_x = x;
-	cold.spawn_pos_y = y;
-	unit.pos_x = x;
-	unit.pos_y = y;
-	cold.respawn_slot_index = -1; // Initialize with no assigned respawn slot
-	unit.hp = max_hp;
-	unit.shield = 0.0;
-	unit.mana = 0.0;
-	unit.attack_cooldown = 0.0;
-	unit.attack_period = 0.0;
-	unit.ability_cooldown = get_effective_ability_cd(unit);
-	unit.casting_remaining = 0.0;
-	cold.casting_kind = StringName();
-	cold.casting_effect = EffectRecord();
-	unit.casting_target_id = 0;
-	unit.casting_ally_target_id = 0;
-	unit.cast_resolved_this_tick = false;
-	unit.target_id = 0;
-	unit.target_index = -1;
-	unit.current_ally_target_id = 0;
-	unit.retarget_timer = 0.0;
-	unit.target_switch_lock_timer = 0.0;
-	unit.last_kite_timer = 0.0;
-	unit.current_target_score = 0.0;
-	unit.stun_remaining = 0.0;
-	unit.hard_cc_seconds = 0.0;
-	unit.slow_remaining = 0.0;
-	unit.slow_move_mult = 1.0;
-	unit.root_remaining = 0.0;
-	unit.silence_remaining = 0.0;
-	unit.silence_ability_remaining = 0.0;
-	unit.silence_ultimate_remaining = 0.0;
-	unit.silence_blocks_abilities = false;
-	unit.silence_blocks_ultimates = false;
-	unit.disarm_remaining = 0.0;
-	unit.stealth_remaining = 0.0;
-	unit.stealth_break_on_attack = false;
-	unit.stealth_break_on_ability = false;
-	unit.stealth_break_on_damage_taken = false;
-	unit.respawn_timer = 0.0;
-	unit.respawned_this_tick = false;
-	unit.alive = true;
-	unit.incoming_target_count = 0;
-	unit.perceived_threat = 0.0;
-	unit.attack_count = 0;
-	
-	// Initialize stat modifier fields - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	unit.stat_additive_##name = 0.0; \
-	unit.stat_multiplicative_##name = 1.0; \
-	unit.stat_temp_##name = 0.0; \
-	unit.stat_perm_##name = 0.0;
-	STAT_LIST
-#undef X
-	cold.damage_dealt = 0.0;
-	cold.damage_dealt_auto = 0.0;
-	cold.damage_dealt_ability = 0.0;
-	cold.damage_dealt_ultimate = 0.0;
-	cold.damage_dealt_passive = 0.0;
-	cold.damage_received = 0.0;
-	cold.damage_mitigated = 0.0;
-	cold.healing_done = 0.0;
-	cold.healing_done_auto = 0.0;
-	cold.healing_done_ability = 0.0;
-	cold.healing_done_ultimate = 0.0;
-	cold.healing_done_passive = 0.0;
-	cold.shielding_done = 0.0;
-	cold.shielding_done_auto = 0.0;
-	cold.shielding_done_ability = 0.0;
-	cold.shielding_done_ultimate = 0.0;
-	cold.shielding_done_passive = 0.0;
-	cold.auto_attacks = 0;
-	cold.abilities = 0;
-	cold.ultimates = 0;
-	cold.stuns = 0;
-	cold.kills = 0;
-	cold.deaths = 0;
-	cold.assists = 0;
-	unit.taunt_target_id = 0;
-	unit.taunt_remaining = 0.0;
-	unit.forced_target_id = 0;
-	unit.forced_target_remaining = 0.0;
-	cold.forced_target_kind = StringName();
-	cold.damage_sources.clear();
-	cold.recent_benefactors.clear();
-	cold.last_hit_time = 0.0;
-	std::fill(cold.on_tick_effect_accumulators.begin(), cold.on_tick_effect_accumulators.end(), 0.0);
-	unit.regen_accumulator = 0.0;
-	_finalize_reflect_passives(unit, cold);
-	return { unit, std::move(cold) };
 }
 
 void TeamfightSimulationCore::_build_role_strategy_cache() {
@@ -1327,157 +1183,6 @@ void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id
 	_trace_buffer.push_back(ev);
 }
 
-void TeamfightSimulationCore::_spatial_ensure_stamp_size() const {
-	sim::SimWorld w = _sim_world();
-	sim::ensure_stamp_size(w);
-}
-
-void TeamfightSimulationCore::_spatial_clear_buckets() const {
-	sim::SimWorld w = _sim_world();
-	sim::clear_buckets(w);
-}
-
-double TeamfightSimulationCore::_spatial_cell_size() const {
-	return sim::cell_size();
-}
-
-int TeamfightSimulationCore::_spatial_flat_index(double x, double y) const {
-	return sim::flat_index(x, y);
-}
-
-void TeamfightSimulationCore::_spatial_add_alive_team(const StringName &team) const {
-	sim::SimWorld w = _sim_world();
-	sim::add_alive_team(w, team);
-}
-
-void TeamfightSimulationCore::_spatial_next_generation() const {
-	sim::SimWorld w = _sim_world();
-	sim::next_generation(w);
-}
-
-bool TeamfightSimulationCore::_spatial_stamp_has(int64_t unit_index) const {
-	sim::SimWorld w = _sim_world();
-	return sim::stamp_has(w, unit_index);
-}
-
-void TeamfightSimulationCore::_spatial_stamp_circle(double cx, double cy, double radius, const StringName &team) const {
-	sim::SimWorld w = _sim_world();
-	sim::stamp_circle(w, cx, cy, radius, team);
-}
-
-void TeamfightSimulationCore::_spatial_stamp_separation_candidates(double cx, double cy, double radius, const StringName &team, int64_t self_instance_id) const {
-	sim::SimWorld w = _sim_world();
-	sim::stamp_separation_candidates(w, cx, cy, radius, team, self_instance_id);
-}
-
-void TeamfightSimulationCore::_spatial_stamp_kite_threat(double cx, double cy, double danger_radius) const {
-	sim::SimWorld w = _sim_world();
-	sim::stamp_kite_threat(w, cx, cy, danger_radius);
-}
-
-void TeamfightSimulationCore::_spatial_fill_buckets_for_indices(const std::vector<int64_t> &indices) const {
-	sim::SimWorld w = _sim_world();
-	sim::fill_buckets_for_indices(w, indices);
-}
-
-int TeamfightSimulationCore::_spatial_count_neighbors_in_grid(int64_t self_index, double cx, double cy, double radius) const {
-	sim::SimWorld w = _sim_world();
-	return sim::count_neighbors_in_grid(w, self_index, cx, cy, radius);
-}
-
-bool TeamfightSimulationCore::_use_spatial_broad_phase() const {
-	sim::SimWorld w = _sim_world();
-	return sim::use_spatial_broad_phase(w);
-}
-
-double TeamfightSimulationCore::_score_ally_target(const UnitState &unit, const TargetingFrameEntry &ally, const UnitStrategy &strategy, double unit_ally_distance) const {
-	return sim::targeting::score_ally_target(unit, ally, strategy, unit_ally_distance);
-}
-
-double TeamfightSimulationCore::_score_enemy_target(const UnitState &attacker, const TargetingFrameEntry &enemy, const TargetingFrameEntry *ally_for_peel, const UnitStrategy &strategy, const TickContext &ctx, const TargetScoreContext &score_ctx, double attacker_enemy_distance, bool profile_score, int64_t enemy_index, ScoreBreakdown *breakdown) {
-	sim::SimWorld w = _sim_world();
-	sim::targeting::ScoreEnemyProfileCounters score_profile;
-	score_profile.active = profile_score;
-	if (profile_score) {
-		score_profile.se_base = &_sim_profile_se_base;
-		score_profile.se_calls = &_sim_profile_se_calls;
-	}
-	return sim::targeting::score_enemy_target(
-			w,
-			attacker,
-			enemy,
-			ally_for_peel,
-			strategy,
-			ctx,
-			score_ctx,
-			attacker_enemy_distance,
-			profile_score ? &score_profile : nullptr,
-			enemy_index,
-			breakdown);
-}
-
-bool TeamfightSimulationCore::_should_switch(const UnitState &unit, double current_score, double new_score, const TeamfightSimulationCore::UnitStrategy &strategy, double current_target_distance) const {
-	sim::SimWorld w = _sim_world();
-	return sim::targeting::should_switch(w, unit, current_score, new_score, strategy, current_target_distance);
-}
-
-void TeamfightSimulationCore::_set_current_target(UnitState &unit, const UnitState &target) {
-	sim::SimWorld w = _sim_world();
-	sim::targeting::set_current_target(w, unit, target, &_sim_host_callbacks);
-}
-
-std::vector<int64_t> &TeamfightSimulationCore::_alive_indices_for_team(const StringName &team) {
-	if (team == sn_player()) {
-		return _alive_player_indices;
-	}
-	return _alive_enemy_indices;
-}
-
-const std::vector<int64_t> &TeamfightSimulationCore::_alive_indices_for_team(const StringName &team) const {
-	if (team == sn_player()) {
-		return _alive_player_indices;
-	}
-	return _alive_enemy_indices;
-}
-
-void TeamfightSimulationCore::_add_alive_index(const StringName &team, int64_t index) {
-	std::vector<int64_t> &alive_indices = _alive_indices_for_team(team);
-	std::unordered_set<int64_t> &alive_indices_set = team == sn_player() ? _alive_player_indices_set : _alive_enemy_indices_set;
-	
-	// O(1) duplicate check using set
-	if (alive_indices_set.count(index)) {
-		return;
-	}
-	
-	alive_indices.push_back(index);
-	alive_indices_set.insert(index);
-}
-
-void TeamfightSimulationCore::_remove_alive_index(const StringName &team, int64_t index) {
-	std::vector<int64_t> &alive_indices = _alive_indices_for_team(team);
-	std::unordered_set<int64_t> &alive_indices_set = team == sn_player() ? _alive_player_indices_set : _alive_enemy_indices_set;
-	
-	// Remove from set (O(1))
-	alive_indices_set.erase(index);
-	
-	// Swap-and-pop from vector (O(1))
-	for (size_t i = 0; i < alive_indices.size(); ++i) {
-		if (alive_indices[i] == index) {
-			// Swap with last element and pop
-			if (i != alive_indices.size() - 1) {
-				alive_indices[i] = alive_indices.back();
-			}
-			alive_indices.pop_back();
-			break;
-		}
-	}
-}
-
-void TeamfightSimulationCore::_adjust_target_pressure(int64_t old_target_id, int64_t new_target_id) {
-	sim::SimWorld w = _sim_world();
-	sim::targeting::adjust_target_pressure(w, old_target_id, new_target_id, &_sim_host_callbacks);
-}
-
 bool TeamfightSimulationCore::is_ready() const {
 	return true;
 }
@@ -1499,532 +1204,36 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	_rng.seed_int64(_seed);
 
 	int64_t next_instance_id = 1;
-	_append_team_units(Array(match_input.get("player_units", Array())), StringName("player"), next_instance_id, _player_comp);
-	_append_team_units(Array(match_input.get("enemy_units", Array())), StringName("enemy"), next_instance_id, _enemy_comp);
+	sim::SimWorld w = _sim_world();
+	sim::match_roster::append_team_units(
+			w,
+			&_viewer_hooks,
+			_match_roster_state(),
+			_unit_builder_host(),
+			Array(match_input.get("player_units", Array())),
+			StringName("player"),
+			next_instance_id,
+			_player_comp,
+			&sim_host_coerce_spawn_spec,
+			this);
+	sim::match_roster::append_team_units(
+			w,
+			&_viewer_hooks,
+			_match_roster_state(),
+			_unit_builder_host(),
+			Array(match_input.get("enemy_units", Array())),
+			StringName("enemy"),
+			next_instance_id,
+			_enemy_comp,
+			&sim_host_coerce_spawn_spec,
+			this);
 	_build_role_strategy_cache();
 	_prepare_tick_context();
-}
-
-TeamfightSimulationCore::EffectContext TeamfightSimulationCore::_build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind) {
-	return sim::combat::build_context(source, target, target_ally, damage, action_kind);
-}
-
-int TeamfightSimulationCore::_effect_bucket_index(const StringName &kind) const {
-	return sim::combat::effect_bucket_index(kind);
-}
-
-const std::vector<EffectRecord> &TeamfightSimulationCore::_collect_effects(const UnitState &unit, const StringName &kind) {
-	sim::SimWorld w = _sim_world();
-	return sim::combat::collect_effects(w, unit, kind);
-}
-
-bool TeamfightSimulationCore::_target_has_status(const UnitState &target, const StringName &status_kind) const {
-	sim::SimWorld w = _sim_world();
-	return sim::status::target_has_status(w, target, status_kind);
-}
-
-double TeamfightSimulationCore::_evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::evaluate_multiplier_effect(w, _sim_host_callbacks, effect, context, current_value);
-}
-
-double TeamfightSimulationCore::_defense_multiplier(UnitState &target, UnitState &source, double damage, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::defense_multiplier(w, _sim_host_callbacks, target, source, damage, action_kind);
-}
-
-double TeamfightSimulationCore::_auto_dodge_multiplier(UnitState &target, UnitState &source, double damage) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::auto_dodge_multiplier(w, _sim_host_callbacks, target, source, damage);
-}
-
-double TeamfightSimulationCore::_apply_attack_modifiers(UnitState &unit, UnitState &target, double distance, double damage) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::apply_attack_modifiers(w, _sim_host_callbacks, unit, target, distance, damage);
-}
-
-double TeamfightSimulationCore::_apply_ability_modifiers(UnitState &unit, UnitState *target, double damage) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::apply_ability_modifiers(w, _sim_host_callbacks, unit, target, damage);
-}
-
-double TeamfightSimulationCore::_apply_ultimate_modifiers(UnitState &unit, UnitState *target, double damage) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::apply_ultimate_modifiers(w, _sim_host_callbacks, unit, target, damage);
-}
-
-double TeamfightSimulationCore::_apply_damage(UnitState &source, UnitState &target, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::apply_damage(w, _sim_host_callbacks, source, target, damage, damage_type, action_kind, context);
-}
-
-void TeamfightSimulationCore::_maybe_apply_reflect_damage(UnitState &attacker, UnitState &defender, double total_damage_applied, const StringName &damage_type, const EffectContext &context) {
-	sim::SimWorld w = _sim_world();
-	sim::damage::maybe_apply_reflect_damage(w, _sim_host_callbacks, attacker, defender, total_damage_applied, damage_type, context);
-}
-
-void TeamfightSimulationCore::_touch_damage_source(UnitState &target, int64_t source_id, double incoming_damage) {
-	sim::SimWorld w = _sim_world();
-	sim::damage::touch_damage_source(w, target, source_id, incoming_damage);
-}
-
-double TeamfightSimulationCore::_trigger_ally_defense_effects(UnitState &target, UnitState &source, double damage, const StringName &damage_type, const StringName &action_kind, const EffectContext &context) {
-	sim::SimWorld w = _sim_world();
-	return sim::damage::trigger_ally_defense_effects(w, _sim_host_callbacks, target, source, damage, damage_type, action_kind, context);
-}
-
-void TeamfightSimulationCore::_apply_stun(UnitState &source, UnitState &target, double duration) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_stun(w, source, target, duration);
-}
-
-void TeamfightSimulationCore::_apply_slow(UnitState &source, UnitState &target, double slow_percentage, double duration) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_slow(w, source, target, slow_percentage, duration);
-}
-
-void TeamfightSimulationCore::_apply_root(UnitState &source, UnitState &target, double duration) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_root(w, source, target, duration);
-}
-
-void TeamfightSimulationCore::_apply_silence(UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_silence(w, source, target, duration, block_abilities, block_ultimate);
-}
-
-void TeamfightSimulationCore::_apply_disarm(UnitState &source, UnitState &target, double duration) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_disarm(w, source, target, duration);
-}
-
-void TeamfightSimulationCore::_apply_stealth(UnitState &source, UnitState &target, double duration, bool break_on_attack, bool break_on_ability, bool break_on_damage_taken) {
-	sim::SimWorld w = _sim_world();
-	sim::status::apply_stealth(w, source, target, duration, break_on_attack, break_on_ability, break_on_damage_taken);
-}
-
-void TeamfightSimulationCore::_apply_aoe_slow(UnitState &source, double radius, double slow_percentage, double duration) {
-	EffectRecord effect;
-	effect.aoe_shape_params.shape = AoShapeKind::Circle;
-	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
-	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_slow_shape(source, nullptr, effect, slow_percentage, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_root(UnitState &source, double radius, double duration) {
-	EffectRecord effect;
-	effect.aoe_shape_params.shape = AoShapeKind::Circle;
-	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
-	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_root_shape(source, nullptr, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_silence(UnitState &source, double radius, double duration, bool block_abilities, bool block_ultimate) {
-	EffectRecord effect;
-	effect.aoe_shape_params.shape = AoShapeKind::Circle;
-	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
-	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_silence_shape(source, nullptr, effect, duration, block_abilities, block_ultimate);
-}
-
-void TeamfightSimulationCore::_apply_aoe_disarm(UnitState &source, double radius, double duration) {
-	EffectRecord effect;
-	effect.aoe_shape_params.shape = AoShapeKind::Circle;
-	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
-	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_disarm_shape(source, nullptr, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_stun(UnitState &source, double radius, double duration) {
-	EffectRecord effect;
-	effect.aoe_shape_params.shape = AoShapeKind::Circle;
-	effect.aoe_shape_params.anchor = AoAnchorKind::Self;
-	effect.aoe_shape_params.radius = radius;
-	_apply_aoe_stun_shape(source, nullptr, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_reflect_buff(UnitState &source, UnitState &target, double pct, double duration, const StringName &action_kind, const StringName &damage_type, const String &reason) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_reflect_buff(w, source, target, pct, duration, action_kind, damage_type, reason);
-}
-
-void TeamfightSimulationCore::_apply_aoe_reflect(UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_aoe_reflect(w, _sim_host_callbacks, source, radius, pct, duration, all_damage_types);
-}
-
-bool TeamfightSimulationCore::_apply_knockback(UnitState &source, UnitState &target, double distance, bool away_from_source) {
-	sim::SimWorld w = _sim_world();
-	return sim::periodic::apply_knockback(w, _sim_host_callbacks, source, target, distance, away_from_source);
-}
-
-bool TeamfightSimulationCore::_apply_aoe_knockback(UnitState &source, double radius, double distance, bool away_from_source) {
-	sim::SimWorld w = _sim_world();
-	return sim::periodic::apply_aoe_knockback(w, _sim_host_callbacks, source, radius, distance, away_from_source);
-}
-
-double TeamfightSimulationCore::_movement_speed_multiplier(const UnitState &unit) const {
-	return sim::movement_speed_multiplier(unit);
-}
-
-void TeamfightSimulationCore::_add_shield(UnitState &source, UnitState &target, double amount, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	sim::status::add_shield(w, source, target, amount, action_kind);
-	if (amount > 1e-9) {
-		_viewer_record_shield_fx(target, amount);
-	}
-}
-
-void TeamfightSimulationCore::_heal_unit(UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal) {
-	sim::SimWorld w = _sim_world();
-	double gained = sim::status::heal_unit(w, source, target, amount, action_kind, allow_overheal);
-	if (gained > 1e-9) {
-		_viewer_record_heal_fx(target, gained);
-		_sync_targeting_frame_unit(target);
-	}
-}
-
-void TeamfightSimulationCore::_restore_mana(UnitState &source, UnitState &target, double amount) {
-	sim::SimWorld w = _sim_world();
-	sim::status::restore_mana(w, source, target, amount);
-}
-
-void TeamfightSimulationCore::_run_post_attack_effects(UnitState &source, UnitState &target, double damage, const EffectContext &context) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::run_post_attack_effects(w, _sim_host_callbacks, source, target, damage, context);
-}
-
-void TeamfightSimulationCore::_run_post_heal_effects(UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &base_context) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::run_post_heal_effects(w, _sim_host_callbacks, source, target, heal_amount, heal_gained, base_context);
-}
-
-void TeamfightSimulationCore::_run_on_takedown_effects(UnitState &participant, UnitState &victim, double damage_dealt, bool is_kill, const EffectContext &base_context) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::run_on_takedown_effects(w, _sim_host_callbacks, participant, victim, damage_dealt, is_kill, base_context);
-}
-
-void TeamfightSimulationCore::_apply_dot(UnitState &source, UnitState &target, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_dot(w, _sim_host_callbacks, source, target, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, reason, action_kind, is_dynamic);
-}
-
-void TeamfightSimulationCore::_apply_hot(UnitState &source, UnitState &target, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_hot(w, _sim_host_callbacks, source, target, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, reason, action_kind, is_dynamic);
-}
-
-void TeamfightSimulationCore::_tick_periodic_effects(UnitState &unit, double delta) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::tick_periodic_effects(w, _sim_host_callbacks, unit, delta);
-}
-
-void TeamfightSimulationCore::_cleanse_dots(UnitState &unit, const StringName &effect_type_filter) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::cleanse_dots(w, unit, effect_type_filter);
-}
-
-void TeamfightSimulationCore::_clear_periodic_effects(UnitState &unit) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::clear_periodic_effects(w, unit);
-}
-
-void TeamfightSimulationCore::_apply_aoe_dot(UnitState &source, double radius, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_aoe_dot(w, _sim_host_callbacks, source, radius, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, reason, target_self, action_kind, is_dynamic);
-}
-
-void TeamfightSimulationCore::_apply_aoe_hot(UnitState &source, double radius, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_aoe_hot(w, _sim_host_callbacks, source, radius, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, reason, target_self, action_kind, is_dynamic);
-}
-
-void TeamfightSimulationCore::_apply_aoe_taunt(UnitState &source, double radius, double duration) {
-	sim::SimWorld w = _sim_world();
-	sim::periodic::apply_aoe_taunt(w, source, radius, duration);
-}
-
-double TeamfightSimulationCore::_apply_aoe_damage(UnitState &source, UnitState &center_source, double damage, double radius, const StringName &damage_type, const StringName &reason, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	return sim::periodic::apply_aoe_damage(w, _sim_host_callbacks, source, center_source, damage, radius, damage_type, reason, action_kind);
 }
 
 Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override) const {
 	sim::SimWorld w = _sim_world();
 	return sim::status::resolve_aoe_direction(w, source, params, target_override);
-}
-
-void TeamfightSimulationCore::_apply_aoe_taunt_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_taunt"));
-	sim::periodic::apply_aoe_taunt_shape(w, source, target, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_dot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double attack_damage_ratio, double max_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &damage_type, const StringName &stacking_mode, int max_stacks, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_dot"));
-	sim::periodic::apply_aoe_dot_shape(w, _sim_host_callbacks, source, target, effect, attack_damage_ratio, max_hp_ratio, flat_amount, duration, tick_interval, damage_type, stacking_mode, max_stacks, effect_type, reason, target_self, action_kind, is_dynamic);
-}
-
-void TeamfightSimulationCore::_apply_aoe_hot_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double max_hp_ratio, double current_hp_ratio, double missing_hp_ratio, double flat_amount, double duration, double tick_interval, const StringName &stacking_mode, int max_stacks, bool allow_overheal, const StringName &effect_type, const String &reason, bool target_self, const StringName &action_kind, bool is_dynamic) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_hot"));
-	sim::periodic::apply_aoe_hot_shape(w, _sim_host_callbacks, source, target, effect, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount, duration, tick_interval, stacking_mode, max_stacks, allow_overheal, effect_type, reason, target_self, action_kind, is_dynamic);
-}
-
-double TeamfightSimulationCore::_apply_aoe_damage_shape_per_target(UnitState &source, UnitState *target, const EffectRecord &effect, double damage_ratio, double flat_amount, double max_hp_ratio, double splash_ratio, const StringName &damage_type, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_damage"));
-	return sim::periodic::apply_aoe_damage_shape_per_target(w, _sim_host_callbacks, source, target, effect, damage_ratio, flat_amount, max_hp_ratio, splash_ratio, damage_type, action_kind);
-}
-
-double TeamfightSimulationCore::_apply_aoe_damage_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double damage, const StringName &damage_type, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_damage"));
-	return sim::periodic::apply_aoe_damage_shape(w, _sim_host_callbacks, source, target, effect, damage, damage_type, action_kind);
-}
-
-
-void TeamfightSimulationCore::_apply_aoe_slow_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_slow"));
-	sim::status::apply_aoe_slow_shape(w, source, target, effect, slow_percentage, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_stun_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_stun"));
-	sim::status::apply_aoe_stun_shape(w, source, target, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_root_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_root"));
-	sim::status::apply_aoe_root_shape(w, source, target, effect, duration);
-}
-
-void TeamfightSimulationCore::_apply_aoe_silence_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration, bool block_abilities, bool block_ultimate) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_silence"));
-	sim::status::apply_aoe_silence_shape(w, source, target, effect, duration, block_abilities, block_ultimate);
-}
-
-void TeamfightSimulationCore::_apply_aoe_disarm_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double duration) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_disarm"));
-	sim::status::apply_aoe_disarm_shape(w, source, target, effect, duration);
-}
-
-
-
-
-bool TeamfightSimulationCore::_apply_aoe_knockback_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double distance, bool away_from_source) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_knockback"));
-	return sim::periodic::apply_aoe_knockback_shape(w, _sim_host_callbacks, source, target, effect, distance, away_from_source);
-}
-
-void TeamfightSimulationCore::_apply_aoe_reflect_shape(UnitState &source, UnitState *target, const EffectRecord &effect, double pct, double duration, bool all_damage_types, const StringName &action_kind, const String &reason) {
-	sim::SimWorld w = _sim_world();
-	UnitState *shape_target = target;
-	if (shape_target == nullptr && effect.aoe_shape_params.target_id != 0) {
-		shape_target = sim::targeting::unit_by_id(w, effect.aoe_shape_params.target_id);
-	}
-	_viewer_record_aoe_shape_fx(source, shape_target, effect.aoe_shape_params, StringName("aoe_reflect"));
-	sim::periodic::apply_aoe_reflect_shape(w, _sim_host_callbacks, source, target, effect, pct, duration, all_damage_types, action_kind, reason);
-}
-
-std::vector<UnitState*> TeamfightSimulationCore::_select_targets(UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter) {
-	std::vector<UnitState*> selected;
-	
-	// Get the team to filter by
-	StringName target_team = team_filter;
-	if (target_team.is_empty()) {
-		// Default to enemies if not specified
-		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
-	} else if (target_team == sn_enemy()) {
-		// "enemy" means the opposite team from the source (semantically: the enemy of the caster)
-		target_team = (source.team == sn_player()) ? sn_enemy() : sn_player();
-	} else if (target_team == sn_ally()) {
-		// "ally" means the same team as the source (semantically: the allies of the caster)
-		target_team = source.team;
-	} else {
-		UtilityFunctions::push_error(vformat("Invalid team_filter '%s', must be 'ally' or 'enemy'", String(target_team)));
-		return selected;
-	}
-	
-	// Get alive indices for the target team
-	const std::vector<int64_t> &alive_indices = _alive_indices_for_team(target_team);
-	
-	if (alive_indices.empty()) {
-		return selected;
-	}
-	
-	// Collect potential targets
-	std::vector<UnitState*> candidates;
-	for (int64_t idx : alive_indices) {
-		if (idx < 0 || idx >= int64_t(_units.size())) {
-			continue;
-		}
-		UnitState *unit = &_units[static_cast<size_t>(idx)];
-		if (unit == nullptr || !unit->alive) {
-			continue;
-		}
-		
-		// Exclude source if not including source
-		if (!include_source && unit->instance_id == source.instance_id) {
-			continue;
-		}
-		
-		candidates.push_back(unit);
-	}
-	
-	// If no candidates, return empty
-	if (candidates.empty()) {
-		return selected;
-	}
-	
-	// Sort/select based on strategy
-	switch (strategy) {
-		case TARGET_SELECTION_CLOSEST: {
-			// Sort by distance to source
-			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-				double dist_a = _distance_between(source, *a);
-				double dist_b = _distance_between(source, *b);
-				return dist_a < dist_b;
-			});
-			break;
-		}
-		case TARGET_SELECTION_RANDOM: {
-			// Simple random shuffle using _rng.random_random()
-			for (size_t i = candidates.size(); i > 1; --i) {
-				double rand_val = _rng.random_random();
-				size_t j = static_cast<size_t>(rand_val * i);
-				std::swap(candidates[i - 1], candidates[j]);
-			}
-			break;
-		}
-		case TARGET_SELECTION_LOWEST_HP: {
-			// Sort by HP ascending
-			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-				return a->hp < b->hp;
-			});
-			break;
-		}
-		case TARGET_SELECTION_HIGHEST_HP: {
-			// Sort by HP descending
-			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-				return a->hp > b->hp;
-			});
-			break;
-		}
-		case TARGET_SELECTION_LOWEST_PERCENT_HP: {
-			// Sort by HP percentage ascending
-			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-				double pct_a = (get_effective_max_hp(*a) > EPSILON) ? (a->hp / get_effective_max_hp(*a)) : 0.0;
-				double pct_b = (get_effective_max_hp(*b) > EPSILON) ? (b->hp / get_effective_max_hp(*b)) : 0.0;
-				return pct_a < pct_b;
-			});
-			break;
-		}
-		case TARGET_SELECTION_HIGHEST_PERCENT_HP: {
-			// Sort by HP percentage descending
-			std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-				double pct_a = (get_effective_max_hp(*a) > EPSILON) ? (a->hp / get_effective_max_hp(*a)) : 0.0;
-				double pct_b = (get_effective_max_hp(*b) > EPSILON) ? (b->hp / get_effective_max_hp(*b)) : 0.0;
-				return pct_a > pct_b;
-			});
-			break;
-		}
-		case TARGET_SELECTION_CLOSEST_TO_TARGET: {
-			// Sort by distance to target
-			if (target != nullptr) {
-				std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-					double dist_a = _distance_between(*target, *a);
-					double dist_b = _distance_between(*target, *b);
-					return dist_a < dist_b;
-				});
-			} else {
-				// Fall back to closest to source if no target
-				std::sort(candidates.begin(), candidates.end(), [&](UnitState *a, UnitState *b) {
-					double dist_a = _distance_between(source, *a);
-					double dist_b = _distance_between(source, *b);
-					return dist_a < dist_b;
-				});
-			}
-			break;
-		}
-	}
-	
-	// Determine how many targets to select
-	int64_t num_to_select = target_count;
-	if (target_count == -1) {
-		// Select all candidates
-		num_to_select = candidates.size();
-	} else if (target_count > int64_t(candidates.size())) {
-		// Handle excess targets
-		if (excess_handling == EXCESS_TARGET_DROP) {
-			num_to_select = candidates.size();
-		} else {
-			// STACK: cycle through candidates to reach target_count, then effect_count applies to each position in cycled list
-			// Example: 2 enemies, request 3 targets with STACK → [A, B, A], effect_count=2 → A gets 4 instances, B gets 2
-			for (int64_t i = 0; i < target_count; ++i) {
-				selected.push_back(candidates[i % candidates.size()]);
-			}
-			return selected;
-		}
-	}
-	
-	// Select the first N candidates
-	for (int64_t i = 0; i < num_to_select && i < int64_t(candidates.size()); ++i) {
-		selected.push_back(candidates[i]);
-	}
-	
-	return selected;
 }
 
 UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
@@ -2213,44 +1422,6 @@ Vector2 TeamfightSimulationCore::_find_random_spawn_position_near_excluding_with
 	return Vector2(-1.0, -1.0);
 }
 
-int64_t TeamfightSimulationCore::_assign_spawn_slot(const StringName &team) {
-	// Initialize slot tracking if needed
-	std::vector<bool> &slots = (team == StringName("player")) ? _player_spawn_slots_used : _enemy_spawn_slots_used;
-	if (slots.empty()) {
-		slots.resize(9, false); // 9 spawn slots: 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0
-	}
-	
-	// Find available slot and randomly select one
-	std::vector<int64_t> available_slots;
-	for (int64_t i = 0; i < 9; ++i) {
-		if (!slots[i]) {
-			available_slots.push_back(i);
-		}
-	}
-	
-	if (available_slots.empty()) {
-		// Fallback to random slot if none available
-		return (_rng.genrand_uint32() % 9);
-	}
-	
-	// Randomly select from available slots
-	int64_t random_index = _rng.genrand_uint32() % available_slots.size();
-	int64_t selected_slot = available_slots[random_index];
-	slots[selected_slot] = true;
-	return selected_slot;
-}
-
-void TeamfightSimulationCore::_release_spawn_slot(const StringName &team, int64_t slot_index) {
-	std::vector<bool> &slots = (team == StringName("player")) ? _player_spawn_slots_used : _enemy_spawn_slots_used;
-	if (slot_index >= 0 && slot_index < int(slots.size())) {
-		slots[slot_index] = false;
-	}
-}
-
-double TeamfightSimulationCore::_attack_range(const UnitState &unit) const {
-	return sim::targeting::attack_range(unit);
-}
-
 double TeamfightSimulationCore::_effective_attack_range(const UnitState &unit) const {
 	return sim::targeting::effective_attack_range(unit);
 }
@@ -2270,253 +1441,8 @@ int64_t TeamfightSimulationCore::_unit_index_by_id(int64_t instance_id) const {
 	return sim::targeting::unit_index_by_id(w, instance_id);
 }
 
-int64_t TeamfightSimulationCore::_target_index_for_unit(UnitState &unit) {
-	sim::SimWorld w = _sim_world();
-	return sim::targeting::target_index_for_unit(w, unit);
-}
-
-void TeamfightSimulationCore::_handle_death(UnitState &killer, UnitState &target) {
-	if (!target.alive) {
-		return;
-	}
-	int64_t target_id = target.instance_id;
-	int64_t target_index = _unit_index_by_id(target_id);
-	if (target_index >= 0) {
-		_remove_alive_index(target.team, target_index);
-	}
-	if (target.is_marksman_role || target.is_mage_role || target.is_support_role) {
-		if (target.team == sn_player()) {
-			_tick_ctx.player_backliner_alive_count = Math::max(0, _tick_ctx.player_backliner_alive_count - 1);
-		} else if (target.team == sn_enemy()) {
-			_tick_ctx.enemy_backliner_alive_count = Math::max(0, _tick_ctx.enemy_backliner_alive_count - 1);
-		}
-	}
-	target.alive = false;
-	target.respawn_timer = get_effective_respawn_time(target);
-	_uc(target).deaths += 1;
-	_sync_targeting_frame_index(target_index, target);
-
-	// Check if target is a minion (role_id="minion") - skip scoring for minions
-	bool is_minion = (_uc(target).role_id == StringName("minion"));
-
-	if (is_minion) {
-		// Minions don't respawn - set respawn timer to 0
-		target.respawn_timer = 0.0;
-		// Skip scoring logic for minions
-		return;
-	}
-	
-	// Clear periodic effects on death
-	_clear_periodic_effects(target);
-
-	const std::unordered_map<int64_t, UnitStateCold::DamageSourceEntry> &damage_sources = _uc(target).damage_sources;
-	// Killer = source with max accumulated damage in window; ties resolve to lower instance_id.
-	int64_t killer_id = 0;
-	double killer_damage = -1.0;
-	for (const auto &entry : damage_sources) {
-		int64_t source_id = entry.first;
-		double dealt = entry.second.damage;
-		double hit_time = entry.second.last_time;
-		if (_time - hit_time > ASSIST_WINDOW) {
-			continue;
-		}
-		bool better = false;
-		if (killer_id == 0) {
-			better = true;
-		} else if (dealt > killer_damage + EPSILON) {
-			better = true;
-		} else if (Math::abs(dealt - killer_damage) <= EPSILON && source_id < killer_id) {
-			better = true;
-		}
-		if (better) {
-			killer_id = source_id;
-			killer_damage = dealt;
-		}
-	}
-
-	_emit_trace(StringName("death"), killer_id, target.instance_id, 0.0);
-	
-	// Emit passive AOE cleanup events (radius=0) to clear visualization
-	UnitStateCold &target_cold = _uc(target);
-	for (const UnitStateCold::PassiveAoeInfo &aoe_info : target_cold.passive_aoe_info) {
-		_viewer_record_passive_aoe_fx(target, 0.0, aoe_info.passive_id);
-	}
-
-	UnitState *killer_unit = _unit_by_id(killer_id);
-	if (killer_unit != nullptr) {
-		_uc(*killer_unit).kills += 1;
-		if (killer_unit->team == StringName("player")) {
-			_player_kills += 1;
-		} else if (killer_unit->team == StringName("enemy")) {
-			_enemy_kills += 1;
-		}
-		// Run on_takedown effects for killer (runs before assists - killer gets first credit)
-		EffectContext takedown_context = _build_context(*killer_unit, &target, nullptr, killer_damage, StringName("takedown"));
-		_run_on_takedown_effects(*killer_unit, target, killer_damage, true, takedown_context);
-	}
-
-	// Collect assist IDs and award assists (both damage sources and benefactors)
-	// Deduplicate to prevent double-dipping if a unit is both a damage source and benefactor
-	std::set<int64_t> assist_ids;
-	std::unordered_map<int64_t, double> assist_damage_map;  // Track damage for each assist (0.0 for benefactors)
-
-	for (const auto &entry : damage_sources) {
-		int64_t source_id = entry.first;
-		if (source_id == killer_id) {
-			continue;
-		}
-		double hit_time = entry.second.last_time;
-		if (_time - hit_time <= ASSIST_WINDOW) {
-			UnitState *assist_unit = _unit_by_id(source_id);
-			if (assist_unit != nullptr) {
-				_uc(*assist_unit).assists += 1;
-				assist_ids.insert(source_id);
-				assist_damage_map[source_id] = entry.second.damage;
-			}
-		}
-	}
-
-	const std::unordered_map<int64_t, double> empty_benefactors;
-	const std::unordered_map<int64_t, double> &recent_benefactors = killer_unit != nullptr ? _uc(*killer_unit).recent_benefactors : empty_benefactors;
-	for (const auto &entry : recent_benefactors) {
-		int64_t benefactor_id = entry.first;
-		double benefactor_time = entry.second;
-		if (_time - benefactor_time > ASSIST_WINDOW) {
-			continue;
-		}
-		UnitState *assist_unit = _unit_by_id(benefactor_id);
-		if (assist_unit != nullptr) {
-			_uc(*assist_unit).assists += 1;
-			assist_ids.insert(benefactor_id);
-			// Benefactors don't track damage, use 0.0 if not already in damage map
-			if (assist_damage_map.find(benefactor_id) == assist_damage_map.end()) {
-				assist_damage_map[benefactor_id] = 0.0;
-			}
-		}
-	}
-
-	// Run on_takedown effects once per unique assist
-	for (int64_t assist_id : assist_ids) {
-		UnitState *assist_unit = _unit_by_id(assist_id);
-		if (assist_unit != nullptr) {
-			double damage = assist_damage_map[assist_id];
-			EffectContext takedown_context = _build_context(*assist_unit, &target, nullptr, damage, StringName("takedown"));
-			_run_on_takedown_effects(*assist_unit, target, damage, false, takedown_context);
-		}
-	}
-
-	// Release previous spawn slot if this unit had one and died again
-	UnitStateCold &tcd = _uc(target);
-	if (tcd.respawn_slot_index != -1) {
-		_release_spawn_slot(target.team, tcd.respawn_slot_index);
-	}
-
-	// Assign new spawn slot for this unit
-	tcd.respawn_slot_index = _assign_spawn_slot(target.team);
-}
-
 StringName TeamfightSimulationCore::_determine_winner() const {
-	if (_player_kills > _enemy_kills) {
-		return StringName("player");
-	}
-	if (_enemy_kills > _player_kills) {
-		return StringName("enemy");
-	}
-	return StringName("draw");
-}
-
-void TeamfightSimulationCore::_respawn_unit(UnitState &unit) {
-	if (unit.alive) {
-		return;
-	}
-	int64_t unit_index = _unit_index_by_id(unit.instance_id);
-	UnitStateCold &c = _uc(unit);
-	unit.alive = true;
-	unit.hp = get_effective_max_hp(unit);
-	unit.mana = 0.0;
-	unit.shield = 0.0;
-	unit.perceived_threat = 0.0;
-	unit.ability_cooldown = get_effective_ability_cd(unit);
-	// Python parity: ultimate_timer is NOT reset on respawn (preserved across death like attack_cooldown).
-	unit.stun_remaining = 0.0;
-	unit.slow_remaining = 0.0;
-	unit.slow_move_mult = 1.0;
-	unit.root_remaining = 0.0;
-	unit.silence_remaining = 0.0;
-	unit.silence_ability_remaining = 0.0;
-	unit.silence_ultimate_remaining = 0.0;
-	unit.silence_blocks_abilities = false;
-	unit.silence_blocks_ultimates = false;
-	unit.disarm_remaining = 0.0;
-	unit.stealth_remaining = 0.0;
-	unit.stealth_break_on_attack = false;
-	unit.stealth_break_on_ability = false;
-	unit.stealth_break_on_damage_taken = false;
-	_uc(unit).reflect_buffs.clear();
-	unit.taunt_remaining = 0.0;
-	unit.forced_target_remaining = 0.0;
-	unit.last_kite_timer = 0.0;
-	unit.target_switch_lock_timer = 0.0;
-	unit.respawn_timer = 0.0;
-	
-	// Clear respawn-duration stat modifiers
-	sim::stats_modifiers::clear_all_stat_modifiers(unit);
-		
-	c.damage_sources.clear();
-	c.recent_benefactors.clear();
-	c.last_hit_time = 0.0;
-	std::fill(c.on_tick_effect_accumulators.begin(), c.on_tick_effect_accumulators.end(), 0.0);
-	unit.respawned_this_tick = true;
-	unit.cast_resolved_this_tick = false;
-	// Clear casting state on respawn
-	unit.casting_remaining = 0.0;
-	c.casting_kind = StringName();
-	c.casting_effect = EffectRecord();
-	
-	// Emit passive AOE events for visualization
-	for (const UnitStateCold::PassiveAoeInfo &aoe_info : c.passive_aoe_info) {
-		_viewer_record_passive_aoe_fx(unit, aoe_info.radius, aoe_info.passive_id);
-	}
-	unit.casting_target_id = 0;
-	unit.casting_ally_target_id = 0;
-	unit.has_casting_effect = false;
-	unit.taunt_target_id = 0;
-	unit.forced_target_id = 0;
-	c.forced_target_kind = StringName();
-
-	// Use assigned spawn slot if available, otherwise assign one
-	if (c.respawn_slot_index == -1) {
-		c.respawn_slot_index = _assign_spawn_slot(unit.team);
-	}
-
-	// Generate respawn position from assigned slot
-	static const std::vector<double> spawn_points = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0};
-	double x_base = (unit.team == StringName("player")) ? PLAYER_SPAWN_X_BASE : ENEMY_SPAWN_X_BASE;
-	
-	// Adjust melee champions to spawn 0.5 tiles closer to center
-	Dictionary stats = Dictionary(c.stats);
-	double attack_range = double(stats.get("attack_range", 0.0));
-	if (attack_range <= 1.0) {  // Melee threshold
-		if (unit.team == StringName("player")) {
-			x_base += 0.5;
-		} else {
-			x_base -= 0.5;
-		}
-	}
-	
-	if (c.respawn_slot_index >= 0 && c.respawn_slot_index < int(spawn_points.size())) {
-		unit.pos_x = x_base;
-		unit.pos_y = spawn_points[static_cast<size_t>(c.respawn_slot_index)];
-	} else {
-		// Fallback to random position if slot is invalid
-		Vector2 respawn_pos = _get_random_spawn_position(unit.team, true);
-		unit.pos_x = respawn_pos.x;
-		unit.pos_y = respawn_pos.y;
-	}
-	if (unit_index >= 0) {
-		_add_alive_index(unit.team, unit_index);
-	}
-	_sync_targeting_frame_index(unit_index, unit);
+	return sim::match::determine_winner(_player_kills, _enemy_kills);
 }
 
 bool TeamfightSimulationCore::_sim_profile_env_enabled() {
@@ -2542,6 +1468,14 @@ bool targeting_profile_enabled() {
 	return !(v[0] == '0' && v[1] == '\0');
 }
 } // namespace
+
+bool sim_host_match_targeting_profile_enabled(void * /*user_data*/) {
+	return targeting_profile_enabled();
+}
+
+void sim_host_match_log_sudden_death_draw(void *user_data) {
+	static_cast<TeamfightSimulationCore *>(user_data)->_log_sudden_death_draw();
+}
 
 void TeamfightSimulationCore::_sim_profile_reset() {
 	_sim_profile_ns_projectiles = 0;
@@ -2679,96 +1613,6 @@ void TeamfightSimulationCore::_sim_profile_emit_json_stderr() const {
 	UtilityFunctions::print(json);
 }
 
-void TeamfightSimulationCore::_step_tick(bool profile_sim) {
-	// Python World.step(): tick++ then time = tick * tick_rate
-	_tick += 1;
-	_time = double(_tick) * _tick_rate;
-	_viewer_fx_events.clear();
-	if (profile_sim) {
-		_sim_profile_tick_count += 1;
-	}
-	for (UnitState &unit : _units) {
-		unit.respawned_this_tick = false;
-		unit.cast_resolved_this_tick = false;
-		unit.incoming_target_count = 0;
-	}
-	// Python: projectiles resolve before unit updates.
-	if (profile_sim) {
-		auto t0 = std::chrono::steady_clock::now();
-		_update_projectiles();
-		_sim_profile_ns_projectiles += sim_profile_elapsed_ns(t0);
-	} else {
-		_update_projectiles();
-	}
-	// Process pending spawns before tick context is prepared so minions are included in role indices
-	_process_pending_spawns();
-	if (profile_sim) {
-		auto t0 = std::chrono::steady_clock::now();
-		_prepare_tick_context();
-		_sim_profile_ns_prepare_tick_ctx += sim_profile_elapsed_ns(t0);
-	} else {
-		_prepare_tick_context();
-	}
-	if (profile_sim) {
-		auto t0 = std::chrono::steady_clock::now();
-		for (UnitState &unit : _units) {
-			_update_unit(unit, true);
-		}
-		_sim_profile_ns_update_units += sim_profile_elapsed_ns(t0);
-	} else {
-		for (UnitState &unit : _units) {
-			_update_unit(unit, false);
-		}
-	}
-}
-
-// Simulation hot path: dominates wall-time once FFI/batching is amortized.
-// Profile with TEAMFIGHT_SIM_PROFILE=1 (benchmark: --sim-profile) before altering targeting tick order/_step_tick hot paths.
-void TeamfightSimulationCore::_simulate() {
-	const bool profile = _sim_profile_env_enabled();
-	_sim_profile_active = profile;
-	_sim_profile_targeting_active = profile && targeting_profile_enabled();
-	if (profile) {
-		_sim_profile_reset();
-	}
-	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
-	int64_t max_ticks = int64_t(Math::ceil(MATCH_DURATION / effective_tick_rate));
-	for (int64_t tick_index = 0; tick_index < max_ticks; ++tick_index) {
-		_step_tick(profile);
-	}
-	
-	_sudden_death_ticks = 0;
-	
-	// Sudden death: continue simulation until kills are unequal
-	if (_player_kills == _enemy_kills) {
-		while (_player_kills == _enemy_kills && _sudden_death_ticks < SUDDEN_DEATH_MAX_TICKS) {
-			_step_tick(profile);
-			_sudden_death_ticks++;
-		}
-		
-		// Log only when safety limit is reached (indicating a draw)
-		if (_sudden_death_ticks >= SUDDEN_DEATH_MAX_TICKS) {
-			String player_team = _join_team_names(_player_comp);
-			String enemy_team = _join_team_names(_enemy_comp);
-			UtilityFunctions::push_error("==============================================");
-			UtilityFunctions::push_error("!!! SUDDEN DEATH SAFETY LIMIT REACHED !!!");
-			UtilityFunctions::push_error("!!! MATCH ENDED IN DRAW AFTER MAX TICKS !!!");
-			UtilityFunctions::push_error(vformat("!!! PLAYER TEAM: %s !!!", player_team));
-			UtilityFunctions::push_error(vformat("!!! ENEMY TEAM: %s !!!", enemy_team));
-			UtilityFunctions::push_error("!!! THIS MATCHUP CREATED A STALEMATE !!!");
-			UtilityFunctions::push_error("==============================================");
-		}
-	}
-	
-	_winner_team = _determine_winner();
-	
-	if (profile) {
-		_sim_profile_emit_json_stderr();
-	}
-	_sim_profile_active = false;
-	_sim_profile_targeting_active = false;
-}
-
 void TeamfightSimulationCore::_prune_assist_window(UnitState &unit) {
 	// Python unit.py: cutoff = world.time - ASSIST_WINDOW; drop stale entries each tick.
 	const double cutoff = _time - ASSIST_WINDOW;
@@ -2852,57 +1696,6 @@ void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
 			_projectiles);
 }
 
-bool TeamfightSimulationCore::_try_cast_ability(UnitState &unit, UnitState &target, double distance) {
-	sim::SimWorld w = _sim_world();
-	return sim::combat::try_cast_ability(w, _sim_host_callbacks, _combat_host_hooks(), unit, target, distance);
-}
-
-bool TeamfightSimulationCore::_try_cast_ultimate(UnitState &unit, UnitState &target, double distance) {
-	sim::SimWorld w = _sim_world();
-	return sim::combat::try_cast_ultimate(w, _sim_host_callbacks, _combat_host_hooks(), unit, target, distance);
-}
-
-bool TeamfightSimulationCore::_start_cast(UnitState &unit, UnitState &target, double distance, const StringName &action_kind) {
-	sim::SimWorld w = _sim_world();
-	return sim::combat::start_cast(w, _sim_host_callbacks, _combat_host_hooks(), unit, target, distance, action_kind);
-}
-
-void TeamfightSimulationCore::_resolve_cast(UnitState &unit) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::resolve_cast(w, _sim_host_callbacks, _combat_host_hooks(), unit);
-}
-
-void TeamfightSimulationCore::_perform_auto_attack(UnitState &unit, UnitState &target, double distance) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::perform_auto_attack(w, _sim_host_callbacks, _combat_host_hooks(), unit, target, distance, _projectiles);
-}
-
-void TeamfightSimulationCore::_move_toward_target(UnitState &unit, UnitState &target) {
-	sim::SimWorld w = _sim_world();
-	sim::movement::move_toward_target(w, unit, target);
-}
-
-void TeamfightSimulationCore::_move_toward_target_with_range(UnitState &unit, UnitState &target, double target_range) {
-	sim::SimWorld w = _sim_world();
-	sim::movement::move_toward_target_with_range(w, unit, target, target_range);
-}
-
-bool TeamfightSimulationCore::_kite_from_enemies(UnitState &unit, bool profile_sim) {
-	sim::SimWorld w = _sim_world();
-	sim::movement::KiteProfileCounters profile{};
-	if (profile_sim) {
-		profile.active = true;
-		profile.kiting_spatial = &_sim_profile_um_kiting_spatial;
-		profile.kiting_brute = &_sim_profile_um_kiting_brute;
-	}
-	return sim::movement::kite_from_enemies(w, _sim_host_callbacks, unit, profile.active ? &profile : nullptr);
-}
-
-void TeamfightSimulationCore::_resolve_projectile(const ProjectileState &projectile) {
-	sim::SimWorld w = _sim_world();
-	sim::combat::resolve_projectile(w, _sim_host_callbacks, _combat_host_hooks(), projectile);
-}
-
 void TeamfightSimulationCore::_update_projectiles() {
 	sim::SimWorld w = _sim_world();
 	sim::combat::ProjectileBuffers buffers{ _projectiles, _active_projectiles, _scratch_projectiles };
@@ -2910,11 +1703,6 @@ void TeamfightSimulationCore::_update_projectiles() {
 	sim::combat::update_projectiles(w, _sim_host_callbacks, _combat_host_hooks(), buffers, match);
 }
 
-
-Dictionary TeamfightSimulationCore::_execute_effect(const EffectRecord &effect, EffectContext &context) {
-	sim::SimWorld world = _sim_world();
-	return sim::effects::execution::execute(effect, context, world, _sim_host_callbacks, _sim_exec_callbacks, _sim_match_host());
-}
 
 sim::match::MatchSnapshot TeamfightSimulationCore::_match_snapshot() const {
 	sim::match::MatchSnapshot snap;
@@ -2946,7 +1734,7 @@ Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	_simulate();
+	sim::match::simulate(_match_loop_state(), _match_loop_host());
 	return _build_summary();
 }
 
@@ -2959,7 +1747,7 @@ Dictionary TeamfightSimulationCore::run_match_stats(const Variant &match_input) 
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	_simulate();
+	sim::match::simulate(_match_loop_state(), _match_loop_host());
 	return _build_stats_summary();
 }
 
@@ -2972,7 +1760,7 @@ void TeamfightSimulationCore::run_match_simulation_only(const Variant &match_inp
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	_simulate();
+	sim::match::simulate(_match_loop_state(), _match_loop_host());
 }
 
 void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inputs) {
@@ -3053,16 +1841,14 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 			
 			spawn_spec.clear();
 			spawn_spec["archetype_id"] = selected_archetype;
-			std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, sn_player(), next_instance_id);
-			if (built.first.instance_id == 0) {
+			sim::SimWorld w = _sim_world();
+			std::pair<UnitState, UnitStateCold> built =
+					sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, sn_player(), next_instance_id);
+			const int64_t unit_index = sim::match_roster::register_built_unit(
+					w, _match_roster_state(), std::move(built), sn_player(), next_instance_id);
+			if (unit_index < 0) {
 				continue;
 			}
-			const int64_t unit_index = int64_t(_units.size());
-			_units.push_back(std::move(built.first));
-			_unit_cold.push_back(std::move(built.second));
-			_unit_index_map[next_instance_id] = unit_index;
-			_add_alive_index(sn_player(), unit_index);
-			_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 			_player_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
 			next_instance_id += 1;
 		}
@@ -3080,16 +1866,14 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 			
 			spawn_spec.clear();
 			spawn_spec["archetype_id"] = selected_archetype;
-			std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, sn_enemy(), next_instance_id);
-			if (built.first.instance_id == 0) {
+			sim::SimWorld w = _sim_world();
+			std::pair<UnitState, UnitStateCold> built =
+					sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, sn_enemy(), next_instance_id);
+			const int64_t unit_index = sim::match_roster::register_built_unit(
+					w, _match_roster_state(), std::move(built), sn_enemy(), next_instance_id);
+			if (unit_index < 0) {
 				continue;
 			}
-			const int64_t unit_index = int64_t(_units.size());
-			_units.push_back(std::move(built.first));
-			_unit_cold.push_back(std::move(built.second));
-			_unit_index_map[next_instance_id] = unit_index;
-			_add_alive_index(sn_enemy(), unit_index);
-			_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 			_enemy_comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
 			next_instance_id += 1;
 		}
@@ -3099,7 +1883,7 @@ void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base
 			ns_match_setup_total += sim_profile_elapsed_ns(t_match0);
 		}
 		auto t_sim0 = std::chrono::steady_clock::now();
-		_simulate();
+		sim::match::simulate(_match_loop_state(), _match_loop_host());
 		if (bench_phases) {
 			ns_simulate_total += sim_profile_elapsed_ns(t_sim0);
 		}
@@ -3295,23 +2079,13 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 	auto append_generated_unit = [this](Dictionary &spawn_spec, const StringName &team, const StringName &archetype, int64_t &next_instance_id, Array &comp) {
 		spawn_spec.clear();
 		spawn_spec["archetype_id"] = archetype;
-		std::pair<UnitState, UnitStateCold> built = _build_unit_state(spawn_spec, team, next_instance_id);
-		if (built.first.instance_id == 0) {
+		sim::SimWorld w = _sim_world();
+		std::pair<UnitState, UnitStateCold> built = sim::unit_builder::build_unit(_unit_builder_host(), spawn_spec, team, next_instance_id);
+		const int64_t unit_index = sim::match_roster::register_built_unit(w, _match_roster_state(), std::move(built), team, next_instance_id);
+		if (unit_index < 0) {
 			return;
 		}
-		const int64_t unit_index = int64_t(_units.size());
-		_units.push_back(std::move(built.first));
-		_unit_cold.push_back(std::move(built.second));
-		_unit_index_map[next_instance_id] = unit_index;
-		_add_alive_index(team, unit_index);
-		_targeting_frame.push_back(_make_targeting_frame_entry(_units[static_cast<size_t>(unit_index)]));
 		comp.append(_unit_cold[static_cast<size_t>(unit_index)].archetype_id);
-
-		// Update max instance ID for efficient minion spawning
-		if (next_instance_id > _max_instance_id) {
-			_max_instance_id = next_instance_id;
-		}
-
 		next_instance_id += 1;
 	};
 	auto pick_index = [](const Ref<RandomNumberGenerator> &rng, int64_t upper_inclusive) -> int64_t {
@@ -3374,7 +2148,7 @@ Dictionary TeamfightSimulationCore::run_generated_matches_stats_partial(int64_t 
 		}
 		_build_role_strategy_cache();
 		_prepare_tick_context();
-		_simulate();
+		sim::match::simulate(_match_loop_state(), _match_loop_host());
 
 		// Aggregate minion stats to summoners
 		std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
@@ -3548,7 +2322,7 @@ void TeamfightSimulationCore::advance_one_tick() {
 	if (match_ticks_exhausted()) {
 		return;
 	}
-	_step_tick(false);
+	sim::match::step_tick(_match_loop_state(), _match_loop_host(), false);
 	
 	// Track sudden death ticks after regulation
 	double effective_tick_rate = Math::max(_tick_rate, EPSILON);
@@ -3982,7 +2756,7 @@ Array TeamfightSimulationCore::run_matches_stats(const Array &match_inputs) {
 		}
 		_reset_runtime_state();
 		_populate_runtime_state(input);
-		_simulate();
+		sim::match::simulate(_match_loop_state(), _match_loop_host());
 		summaries[index] = _build_stats_summary();
 		clear();
 	}
@@ -4011,52 +2785,16 @@ String TeamfightSimulationCore::_join_team_names(const Array &team) const {
 	return result;
 }
 
-void TeamfightSimulationCore::_process_pending_spawns() {
-	if (_pending_spawns.empty()) {
-		return;
-	}
-	
-	// Use tracked max instance ID for efficient ID generation
-	int64_t next_instance_id = _max_instance_id + 1;
-	
-	for (const PendingSpawn &pending : _pending_spawns) {
-		// Build unit state
-		std::pair<UnitState, UnitStateCold> built = _build_unit_state(pending.spawn_spec, pending.team, next_instance_id);
-		if (built.first.instance_id == 0) {
-			UtilityFunctions::push_error(vformat("Pending spawn failed: _build_unit_state returned instance_id=0"));
-			continue;
-		}
-		
-		// Add to units array
-		int64_t unit_index = int64_t(_units.size());
-		_units.push_back(std::move(built.first));
-		_unit_cold.push_back(std::move(built.second));
-		_unit_index_map[next_instance_id] = unit_index;
-		
-		// Set summoner relationship for minions
-		_units[unit_index].summoner_instance_id = pending.summoner_instance_id;
-		
-		// Add to targeting frame so minions are immediately targetable
-		// NOTE: Must use push_back instead of _sync_targeting_frame_unit because
-		// minions are spawned mid-game and don't have existing frame entries.
-		// The targeting frame arrays (_units, _unit_cold, _targeting_frame) grow
-		// monotonically - units are never removed on death to maintain index stability.
-		// This means dead units (including minions) accumulate in the arrays over time,
-		// but memory overhead is negligible for typical match sizes.
-		_targeting_frame.push_back(_make_targeting_frame_entry(_units[unit_index]));
-		
-		// Add to alive indices
-		_add_alive_index(pending.team, unit_index);
-		
-		// Update max instance ID
-		if (next_instance_id > _max_instance_id) {
-			_max_instance_id = next_instance_id;
-		}
-		
-		next_instance_id++;
-	}
-	
-	_pending_spawns.clear();
+void TeamfightSimulationCore::_log_sudden_death_draw() {
+	String player_team = _join_team_names(_player_comp);
+	String enemy_team = _join_team_names(_enemy_comp);
+	UtilityFunctions::push_error("==============================================");
+	UtilityFunctions::push_error("!!! SUDDEN DEATH SAFETY LIMIT REACHED !!!");
+	UtilityFunctions::push_error("!!! MATCH ENDED IN DRAW AFTER MAX TICKS !!!");
+	UtilityFunctions::push_error(vformat("!!! PLAYER TEAM: %s !!!", player_team));
+	UtilityFunctions::push_error(vformat("!!! ENEMY TEAM: %s !!!", enemy_team));
+	UtilityFunctions::push_error("!!! THIS MATCHUP CREATED A STALEMATE !!!");
+	UtilityFunctions::push_error("==============================================");
 }
 
 // Stack debugging implementations

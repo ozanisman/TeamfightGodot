@@ -8,7 +8,8 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_stats` / `sim_stats.inl.hpp` | Effective stats, movement speed multiplier |
 | `sim_spatial` | Grid buckets, stamp generation |
 | `sim_aoe.hpp` | `for_each_unit_in_circle` / `for_each_unit_in_shape` |
-| `sim_targeting` | Scoring, selection, `prepare_tick_context` |
+| `sim_targeting` | Scoring, selection, `select_targets`, `prepare_tick_context` |
+| `sim_match_spawn` | Random summon spawn positions with expansion |
 | `sim_targeting_strategies` | Role strategy tables, `build_role_strategy_cache` |
 | `sim_channel` | Channel tick (interrupt/complete/tick effects) |
 | `sim_stats_modifiers` | Stat stacks, duration modifiers, consume/set stacks |
@@ -18,9 +19,15 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_combat` | Cast, auto-attack, projectiles, post-attack/heal |
 | `sim_movement` | Move toward target, kite, dash collision |
 | `sim_unit_tick` | Per-unit tick phases (`_update_unit` sequencer) |
-| `sim_effects_compile` / `sim_effects_exec` | Effect VM (`SimMatchHost` for spawn/minion catalog) |
+| `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` trampoline (no coordinator hop) |
+| `sim_effects_compile` / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
 | `sim_catalog` | Champion/minion JSON, balance patches |
 | `sim_match` | `_build_summary` / stats summary |
+| `sim_match_loop` | `step_tick`, `simulate`, sudden-death driver (`MatchLoopHost` callbacks for coordinator hot paths) |
+| `sim_match_lifecycle` | Death scoring/assists/takedowns, respawn reset, spawn slot assign/release |
+| `sim_match_roster` | Unit registration, pending spawn drain, team append |
+| `sim_unit_builder` | Champion/minion unit construction |
+| `sim_viewer` | `ViewerHooks` for heal/shield/AOE-shape FX (optional, via `SimHostCallbacks::viewer_hooks`) |
 
 ## Adding features
 
@@ -29,4 +36,4 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 - **New AoE shape:** `sim_aoe.hpp` `shape_contains` + compile metadata; see `wiki/concepts/aoe_shapes.md`.
 - **New DoT/HoT:** `sim_periodic.cpp` + exec opcode.
 
-Recursion for nested effects stays on `SimHostCallbacks::execute_effect` → coordinator `_execute_effect` → `sim::effects::execution::execute`.
+Nested effects: `SimHostCallbacks::execute_effect` → `sim::effects::host_execute_effect` → `sim::effects::execution::execute`.

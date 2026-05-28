@@ -103,17 +103,13 @@ UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 
 void heal_with_hooks(
 		SimWorld &world,
-		const CombatHostHooks &hooks,
+		SimHostCallbacks &host,
 		UnitState &source,
 		UnitState &target,
 		double amount,
 		const StringName &action_kind,
 		bool allow_overheal) {
-	if (hooks.heal_unit != nullptr) {
-		hooks.heal_unit(hooks.user_data, source, target, amount, action_kind, allow_overheal);
-		return;
-	}
-	status::heal_unit(world, source, target, amount, action_kind, allow_overheal);
+	status::heal_unit(world, source, target, amount, action_kind, allow_overheal, host.viewer_hooks, &host);
 }
 
 void emit_trace(SimHostCallbacks &host, const StringName &kind, int64_t src_id, int64_t tgt_id, double val) {
@@ -231,7 +227,7 @@ void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState 
 	effect_context.action_kind = sn_passive();
 	for (const EffectRecord &effect : post_attack_effects) {
 		if (host.execute_effect != nullptr) {
-			host.execute_effect(host.user_data, effect, effect_context);
+			host.execute_effect(host, effect, effect_context);
 		}
 	}
 }
@@ -256,7 +252,7 @@ void run_post_heal_effects(
 	effect_context.target = &target;
 	for (const EffectRecord &effect : post_heal_effects) {
 		if (host.execute_effect != nullptr) {
-			host.execute_effect(host.user_data, effect, effect_context);
+			host.execute_effect(host, effect, effect_context);
 		}
 	}
 }
@@ -283,7 +279,7 @@ void run_on_takedown_effects(
 	effect_context.target = &victim;
 	for (const EffectRecord &effect : takedown_effects) {
 		if (host.execute_effect != nullptr) {
-			host.execute_effect(host.user_data, effect, effect_context);
+			host.execute_effect(host, effect, effect_context);
 		}
 	}
 }
@@ -397,7 +393,7 @@ void resolve_cast(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks
 	}
 	EffectContext context = build_context(unit, target, target_ally, 0.0, action_kind);
 	if (host.execute_effect != nullptr) {
-		host.execute_effect(host.user_data, effect, context);
+		host.execute_effect(host, effect, context);
 	}
 }
 
@@ -443,7 +439,7 @@ void perform_auto_attack(
 		if (life_steal > 0.0) {
 			const double old_hp = unit.hp;
 			const double heal_amount = dealt * life_steal;
-			heal_with_hooks(world, hooks, unit, unit, heal_amount, sn_auto(), false);
+			heal_with_hooks(world, host, unit, unit, heal_amount, sn_auto(), false);
 			const double heal_gained = unit.hp - old_hp;
 			run_post_heal_effects(world, host, unit, unit, heal_amount, heal_gained, context);
 		}
@@ -475,7 +471,7 @@ void resolve_projectile(SimWorld &world, SimHostCallbacks &host, const CombatHos
 		if (life_steal > 0.0) {
 			const double old_hp = source->hp;
 			const double heal_amount = dealt * life_steal;
-			heal_with_hooks(world, hooks, *source, *source, heal_amount, sn_auto(), false);
+			heal_with_hooks(world, host, *source, *source, heal_amount, sn_auto(), false);
 			const double heal_gained = source->hp - old_hp;
 			run_post_heal_effects(world, host, *source, *source, heal_amount, heal_gained, context);
 		}

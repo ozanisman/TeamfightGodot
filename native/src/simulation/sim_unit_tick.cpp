@@ -68,7 +68,7 @@ void sync_targeting_frame_unit(SimHostCallbacks &host, const UnitState &unit) {
 
 void execute_effect(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context) {
 	if (host.execute_effect != nullptr) {
-		host.execute_effect(host.user_data, effect, context);
+		host.execute_effect(host, effect, context);
 	}
 }
 

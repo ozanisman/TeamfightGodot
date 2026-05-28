@@ -151,7 +151,7 @@ void run_post_take_damage_passives(
 		return;
 	}
 	for (const EffectRecord &effect : post_take_damage_effects) {
-		host.execute_effect(host.user_data, effect, post_context);
+		host.execute_effect(host, effect, post_context);
 	}
 }
 
@@ -220,7 +220,7 @@ double defense_multiplier(
 			stat_context.source = &target;
 			stat_context.target = &target;
 			if (host.execute_effect != nullptr) {
-				host.execute_effect(host.user_data, effect, stat_context);
+				host.execute_effect(host, effect, stat_context);
 			}
 			continue;
 		}
@@ -555,7 +555,7 @@ double trigger_ally_defense_effects(
 					apply_damage(world, host, source, ally, mitigated_damage, damage_type, redirect_context.action_kind, redirect_context);
 				}
 			} else if (host.execute_effect != nullptr) {
-				host.execute_effect(host.user_data, effect, ally_context);
+				host.execute_effect(host, effect, ally_context);
 			}
 		}
 	}

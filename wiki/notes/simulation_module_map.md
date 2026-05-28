@@ -1,6 +1,6 @@
 # Simulation module map (native)
 
-Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` is Godot glue, match lifecycle, and thin delegators.
+Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` is Godot glue, match lifecycle, and thin delegators (header uses `sim::*` types directly; no public type-alias mirror of `simulation_types.hpp`).
 
 | Module | Responsibility |
 |--------|----------------|
@@ -24,7 +24,7 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_unit_tick` (+ `_internal`, `_cooldowns`, `_regen`, `_cast`, `_combat`, `_movement`) | Per-unit tick phases (`update_unit` sequencer) |
 | `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` trampoline (no coordinator hop) |
 | `sim_effect_kinds.inl.hpp` | Shared lazy `StringName` accessors for effect kinds / trace keys |
-| `sim_effects_compile` (+ `_internal`, `_damage`, `_status`, `_aoe`, `_spawn`) / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect compile + VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
+| `sim_effects_compile` (+ `_opcodes`, `_internal`, `_damage`, `_status`, `_aoe`, `_spawn`) / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect compile + VM (`opcode_for_kind` / `kind_for_opcode` in `_opcodes`; hub in `sim_effects_compile.cpp`) |
 | `sim_coordinator_host.cpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer, world, units/cold, benchmark) |
 | `sim_match_benchmark_stats_internal` | Stat entry helpers, matchup aggregation for stats partial |
 | `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; `Counters` + `RuntimeFlags`; `unit_tick_profile()` |

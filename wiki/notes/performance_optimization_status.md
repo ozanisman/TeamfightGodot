@@ -1,5 +1,14 @@
 # Performance Optimization Status
 
+## Iteration 11 exit (May 28, 2026) — structural refactor complete
+
+- **Compile:** `opcode_for_kind` / `kind_for_opcode` → **`sim_effects_compile_opcodes.cpp`** (279 lines); hub **`sim_effects_compile.cpp`** **184** lines.
+- **Coordinator header:** removed public `using X = sim::X` aliases; coordinator TUs use **`sim::*`**; header **272** lines (down from ~304).
+- **11d deferred:** `sim_periodic_dot_hot.cpp` 385, `sim_catalog.cpp` 398 → Iter 12.
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~140.8 m/s** (`duration_sec` 14.21; quiet host). Meets >= ~135 m/s gate.
+- **Validation:** full gate green (7 fixture cases).
+- **Release:** merge `core-refactor` → `main` is a separate manual step.
+
 ## Iteration 10 exit (May 28, 2026)
 
 - **Encapsulation:** `_units` / `_unit_cold` **private**; `CoordinatorHostAccess::units` / `unit_cold_at` / `uc`; `GeneratedMatchHost` delegates.

@@ -9,11 +9,11 @@
 
 using namespace sim;
 
-TeamfightSimulationCore::TargetingFrameEntry TeamfightSimulationCore::_make_targeting_frame_entry(const UnitState &unit) const {
+sim::TargetingFrameEntry TeamfightSimulationCore::_make_targeting_frame_entry(const sim::UnitState &unit) const {
 	return sim::targeting::make_targeting_frame_entry(unit);
 }
 
-void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const UnitState &unit) {
+void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const sim::UnitState &unit) {
 	if (_sim_profile_runtime.targeting_active) {
 		_sim_profile_counters.tgt_frame_syncs += 1;
 	}
@@ -21,7 +21,7 @@ void TeamfightSimulationCore::_sync_targeting_frame_index(int64_t index, const U
 	sim::targeting::sync_targeting_frame_index(w, index, unit);
 }
 
-void TeamfightSimulationCore::_sync_targeting_frame_unit(const UnitState &unit) {
+void TeamfightSimulationCore::_sync_targeting_frame_unit(const sim::UnitState &unit) {
 	sim::SimWorld w = _sim_world();
 	_sync_targeting_frame_index(sim::targeting::unit_index_by_id(w, unit.instance_id), unit);
 }
@@ -30,7 +30,7 @@ void TeamfightSimulationCore::_build_role_strategy_cache() {
 	sim::targeting::build_role_strategy_cache(_role_strategy_cache_by_slot, _default_strategy);
 }
 
-const TeamfightSimulationCore::UnitStrategy &TeamfightSimulationCore::_strategy_for_unit(const UnitState &unit) const {
+const sim::UnitStrategy &TeamfightSimulationCore::_strategy_for_unit(const sim::UnitState &unit) const {
 	return sim::targeting::strategy_for_unit(unit, _role_strategy_cache_by_slot, _default_strategy);
 }
 
@@ -60,7 +60,7 @@ sim::targeting::CoordinatorTargetingState TeamfightSimulationCore::_targeting_co
 	return state;
 }
 
-TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_target(UnitState &unit, bool profile_sim) {
+sim::UnitState *TeamfightSimulationCore::_select_enemy_target(sim::UnitState &unit, bool profile_sim) {
 	sim::SimWorld w = _sim_world();
 	return sim::targeting::select_enemy_target_coordinator(
 			w,
@@ -70,15 +70,15 @@ TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_enemy_targe
 			_targeting_coordinator_state(profile_sim));
 }
 
-TeamfightSimulationCore::UnitState *TeamfightSimulationCore::_select_ally_target(UnitState &unit) {
+sim::UnitState *TeamfightSimulationCore::_select_ally_target(sim::UnitState &unit) {
 	sim::SimWorld w = _sim_world();
 	return sim::targeting::select_ally_target_coordinator(
 			w, unit, _strategy_for_unit(unit), _targeting_coordinator_state(false));
 }
 
-void TeamfightSimulationCore::_prune_assist_window(UnitState &unit) {
+void TeamfightSimulationCore::_prune_assist_window(sim::UnitState &unit) {
 	const double cutoff = _time - sim::ASSIST_WINDOW;
-	UnitStateCold &c = _uc(unit);
+	sim::UnitStateCold &c = _uc(unit);
 	std::vector<int64_t> remove_ids;
 	remove_ids.reserve(c.damage_sources.size());
 	for (const auto &entry : c.damage_sources) {

@@ -6,22 +6,22 @@
 #include "sim_constants.hpp"
 #include "sim_effects_compile.hpp"
 
-TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
+sim::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {
 	return sim::effects::compile::compile_effect(effect);
 }
 
-std::vector<TeamfightSimulationCore::EffectRecord> TeamfightSimulationCore::_compile_effect_array(const Array &effects) const {
+std::vector<sim::EffectRecord> TeamfightSimulationCore::_compile_effect_array(const Array &effects) const {
 	return sim::effects::compile::compile_effect_array(effects);
 }
 
 bool TeamfightSimulationCore::_effect_record_contains_opcode(
-		const TeamfightSimulationCore::EffectRecord &effect,
-		TeamfightSimulationCore::EffectOpcode opcode) const {
+		const sim::EffectRecord &effect,
+		sim::EffectOpcode opcode) const {
 	const int64_t want = static_cast<int64_t>(opcode);
 	if (effect.opcode == want) {
 		return true;
 	}
-	for (const EffectRecord &child : effect.children) {
+	for (const sim::EffectRecord &child : effect.children) {
 		if (_effect_record_contains_opcode(child, opcode)) {
 			return true;
 		}
@@ -29,11 +29,11 @@ bool TeamfightSimulationCore::_effect_record_contains_opcode(
 	return false;
 }
 
-void TeamfightSimulationCore::_finalize_reflect_passives(UnitState &unit, UnitStateCold &cold) {
+void TeamfightSimulationCore::_finalize_reflect_passives(sim::UnitState &unit, sim::UnitStateCold &cold) {
 	cold.passive_reflect_entries.clear();
-	for (const TeamfightSimulationCore::EffectRecord &eff : cold.passive_effects[1]) {
+	for (const sim::EffectRecord &eff : cold.passive_effects[1]) {
 		if (eff.opcode == sim::EFFECT_OPCODE_REFLECT_DAMAGE) {
-			PassiveReflectEntry entry;
+			sim::PassiveReflectEntry entry;
 			entry.percentage = eff.scalar0;
 			entry.damage_type = eff.int0 == 1 ? StringName("all") : StringName("physical");
 			entry.action_kind = StringName("passive");
@@ -53,7 +53,7 @@ sim::catalog::CatalogHooks TeamfightSimulationCore::_catalog_hooks() const {
 	return hooks;
 }
 
-TeamfightSimulationCore::EffectRecord TeamfightSimulationCore::_catalog_compile_effect(void *user_data, const Dictionary &effect) {
+sim::EffectRecord TeamfightSimulationCore::_catalog_compile_effect(void *user_data, const Dictionary &effect) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_compile_effect(effect);
 }
 

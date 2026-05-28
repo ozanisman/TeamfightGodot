@@ -78,11 +78,11 @@ sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
 	return state;
 }
 
-TeamfightSimulationCore::UnitStateCold &TeamfightSimulationCore::_uc(TeamfightSimulationCore::UnitState &u) {
+sim::UnitStateCold &TeamfightSimulationCore::_uc(sim::UnitState &u) {
 	return _unit_cold[static_cast<size_t>(&u - _units.data())];
 }
 
-const TeamfightSimulationCore::UnitStateCold &TeamfightSimulationCore::_uc(const TeamfightSimulationCore::UnitState &u) const {
+const sim::UnitStateCold &TeamfightSimulationCore::_uc(const sim::UnitState &u) const {
 	return _unit_cold[static_cast<size_t>(&u - _units.data())];
 }
 
@@ -168,7 +168,7 @@ void TeamfightSimulationCore::clear() {
 	_reset_runtime_state();
 }
 
-Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override) const {
+Vector2 TeamfightSimulationCore::_resolve_aoe_direction(const sim::UnitState &source, const sim::AoShapeParams &params, const sim::UnitState *target_override) const {
 	sim::SimWorld w = _sim_world();
 	return sim::status::resolve_aoe_direction(w, source, params, target_override);
 }
@@ -266,7 +266,7 @@ void TeamfightSimulationCore::_log_sudden_death_draw() {
 	UtilityFunctions::push_error("==============================================");
 }
 
-void TeamfightSimulationCore::_debug_print_stack_state(const UnitState &unit) const {
+void TeamfightSimulationCore::_debug_print_stack_state(const sim::UnitState &unit) const {
 	if (!_debug_combat_trace) {
 		return;
 	}

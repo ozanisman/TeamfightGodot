@@ -15,7 +15,7 @@ void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id
 	if (_trace_buffer.size() >= TRACE_BUFFER_CAP) {
 		return;
 	}
-	TraceEvent ev;
+	sim::TraceEvent ev;
 	ev.t = _time;
 	ev.kind = kind;
 	ev.src = src_id;
@@ -24,7 +24,7 @@ void TeamfightSimulationCore::_emit_trace(const StringName &kind, int64_t src_id
 	_trace_buffer.push_back(ev);
 }
 
-void TeamfightSimulationCore::_print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const {
+void TeamfightSimulationCore::_print_score_breakdown(const sim::ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const {
 	UtilityFunctions::print("[SCORE BREAKDOWN] " + String(attacker_archetype) + " -> " + String(enemy_archetype));
 	UtilityFunctions::print("  Distance: " + String::num_real(breakdown.distance) + " (weighted: " + String::num_real(breakdown.distance_weighted) + ")");
 	UtilityFunctions::print("  HP Ratio: " + String::num_real(breakdown.hp_ratio) + " (weighted: " + String::num_real(breakdown.hp_weighted) + ")");
@@ -56,7 +56,7 @@ Array TeamfightSimulationCore::get_trace_events() const {
 	Array out;
 	out.resize(int64_t(_trace_buffer.size()));
 	for (int64_t i = 0; i < int64_t(_trace_buffer.size()); ++i) {
-		const TraceEvent &e = _trace_buffer[static_cast<size_t>(i)];
+		const sim::TraceEvent &e = _trace_buffer[static_cast<size_t>(i)];
 		Dictionary d;
 		d["t"] = e.t;
 		d["kind"] = e.kind;

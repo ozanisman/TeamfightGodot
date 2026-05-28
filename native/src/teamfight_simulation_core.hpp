@@ -23,6 +23,7 @@
 #include "simulation/sim_match.hpp"
 #include "simulation/sim_match_lifecycle.hpp"
 #include "simulation/sim_match_loop.hpp"
+#include "simulation/sim_profile_counters.hpp"
 #include "simulation/sim_match_roster.hpp"
 #include "simulation/sim_movement.hpp"
 #include "simulation/sim_unit_builder.hpp"
@@ -50,19 +51,6 @@ class TeamfightSimulationCore : public RefCounted {
 	GDCLASS(TeamfightSimulationCore, RefCounted);
 
 	friend struct sim::CoordinatorHostAccess;
-	friend struct sim::match::benchmark::BatchRunner;
-	friend void sim::match::benchmark::run_generated_matches_simulation_only(
-			TeamfightSimulationCore &core,
-			int64_t base_seed,
-			int64_t batch_count,
-			int64_t team_size);
-	friend godot::Dictionary sim::match::benchmark::run_generated_matches_stats_partial(
-			TeamfightSimulationCore &core,
-			int64_t base_seed,
-			int64_t batch_count,
-			int64_t team_size,
-			bool include_match_log,
-			double tick_rate);
 
 protected:
 	static void _bind_methods();
@@ -154,78 +142,10 @@ public:
 	mutable std::vector<uint32_t> _spatial_stamp;
 	mutable uint32_t _spatial_generation = 1;
 
-	/// TEAMFIGHT_SIM_PROFILE env: per-_simulate() wall time (nanoseconds) by _step_tick section.
-	uint64_t _sim_profile_ns_projectiles = 0;
-	uint64_t _sim_profile_ns_prepare_tick_ctx = 0;
-	uint64_t _sim_profile_ns_refresh_pressure_pre = 0;
-	uint64_t _sim_profile_ns_update_units = 0;
-	uint64_t _sim_profile_ns_refresh_pressure_post = 0;
-	int64_t _sim_profile_tick_count = 0;
-	/// Sub-timers for _update_unit (summed over all units each tick; same divisor as tick_count).
-	uint64_t _sim_profile_uu_dead_respawn = 0;
-	uint64_t _sim_profile_uu_cooldowns_cc = 0;
-	uint64_t _sim_profile_uu_separation = 0;
-	uint64_t _sim_profile_uu_threat_and_assist = 0;
-	uint64_t _sim_profile_uu_regen_on_tick = 0;
-	uint64_t _sim_profile_uu_casting = 0;
-	uint64_t _sim_profile_uu_targeting = 0;
-	uint64_t _sim_profile_uu_combat = 0;
-	uint64_t _sim_profile_uu_movement = 0;
-	/// Sub-timers inside `_score_enemy_target` (summed over calls); use with `_sim_profile_se_calls` for per-call avg.
-	uint64_t _sim_profile_se_base = 0;
-	int64_t _sim_profile_se_calls = 0;
-	/// Sub-timers for uu_combat
-	uint64_t _sim_profile_uc_attack_cooldown = 0;
-	uint64_t _sim_profile_uc_distance_calc = 0;
-	uint64_t _sim_profile_uc_hit_validation = 0;
-	uint64_t _sim_profile_uc_damage_apply = 0;
-	uint64_t _sim_profile_uc_auto_attack = 0;
-	uint64_t _sim_profile_uc_ability = 0;
-	/// Sub-timers for uu_cooldowns_cc
-	uint64_t _sim_profile_ucc_attack_cd = 0;
-	uint64_t _sim_profile_ucc_ability_cd = 0;
-	uint64_t _sim_profile_ucc_retarget = 0;
-	uint64_t _sim_profile_ucc_target_switch = 0;
-	uint64_t _sim_profile_ucc_stun = 0;
-	uint64_t _sim_profile_ucc_slow = 0;
-	uint64_t _sim_profile_ucc_root = 0;
-	uint64_t _sim_profile_ucc_silence = 0;
-	uint64_t _sim_profile_ucc_disarm = 0;
-	uint64_t _sim_profile_ucc_stealth = 0;
-	uint64_t _sim_profile_ucc_shield = 0;
-	uint64_t _sim_profile_ucc_reflect = 0;
-	uint64_t _sim_profile_ucc_taunt = 0;
-	uint64_t _sim_profile_ucc_forced_target = 0;
-	/// Sub-timers for ns_prepare_tick_ctx
-	uint64_t _sim_profile_ctx_team_centers = 0;
-	uint64_t _sim_profile_ctx_role_classification = 0;
-	uint64_t _sim_profile_ctx_targeting_sync = 0;
-	uint64_t _sim_profile_ctx_spatial_grid = 0;
-	uint64_t _sim_profile_ctx_density = 0;
-	/// Sub-timers for uu_movement
-	uint64_t _sim_profile_um_kiting = 0;
-	uint64_t _sim_profile_um_kiting_spatial = 0;
-	uint64_t _sim_profile_um_kiting_brute = 0;
-	uint64_t _sim_profile_um_toward = 0;
-	uint64_t _sim_profile_um_boundary = 0;
-	uint64_t _sim_profile_um_nudge = 0;
-	/// Sub-timers for uu_regen_on_tick
-	uint64_t _sim_profile_ur_hp_mana = 0;
-	uint64_t _sim_profile_ur_effects = 0;
-	uint64_t _sim_profile_ur_periodic = 0;
-	uint64_t _sim_profile_ur_channel = 0;
+	sim::profile::Counters _sim_profile_counters;
 	bool _sim_profile_active = false;
 	bool _sim_profile_targeting_active = false;
-	int64_t _sim_profile_tgt_retarget_keeps = 0;
-	int64_t _sim_profile_tgt_enemy_scans = 0;
-	int64_t _sim_profile_tgt_candidates_scored = 0;
-	int64_t _sim_profile_tgt_candidates_prefix_pruned = 0;
-	int64_t _sim_profile_tgt_ally_scans = 0;
-	int64_t _sim_profile_tgt_frame_syncs = 0;
-	int64_t _sim_profile_tgt_ties_adjusted = 0;
-	int64_t _sim_profile_tgt_ties_raw = 0;
-	int64_t _sim_profile_tgt_ties_distance = 0;
-	int64_t _sim_profile_tgt_ties_instance = 0;
+	bool _match_context_hosts_cached = false;
 
 	static bool _sim_profile_env_enabled();
 	static bool targeting_profile_env_enabled();
@@ -234,9 +154,6 @@ public:
 
 	void _reset_runtime_state();
 	double _randf();
-	Dictionary _load_json_file(const String &path) const;
-	Dictionary _load_json_file_if_exists(const String &path) const;
-	Dictionary _effect_to_dict(const Variant &effect) const;
 	void _ensure_catalog_loaded();
 	sim::catalog::CatalogHooks _catalog_hooks() const;
 	static EffectRecord _catalog_compile_effect(void *user_data, const Dictionary &effect);
@@ -276,9 +193,6 @@ public:
 	sim::channel::ChannelHostHooks _channel_host_hooks() const;
 	sim::unit_tick::UnitTickHostHooks _unit_tick_host_hooks() const;
 
-	UnitState *_unit_by_id(int64_t instance_id);
-	const UnitState *_unit_by_id(int64_t instance_id) const;
-	int64_t _unit_index_by_id(int64_t instance_id) const;
 	void _prepare_tick_context();
 	void _build_role_strategy_cache();
 	const UnitStrategy &_strategy_for_unit(const UnitState &unit) const;
@@ -292,16 +206,11 @@ public:
 	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
-	double _distance_between(const UnitState &unit1, const UnitState &unit2) const;
-	double _effective_attack_range(const UnitState &unit) const;
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
-	bool _position_collides_with_pending(double x, double y, const std::vector<Vector2> &pending_positions) const;
-	Vector2 _find_valid_dash_position(double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id) const;
 	sim::targeting::CoordinatorTargetingState _targeting_coordinator_state(bool profile_score_enemy);
 	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
 	UnitState *_select_ally_target(UnitState &unit);
 	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const;
-	StringName _determine_winner() const;
 	Dictionary _build_summary();
 	Dictionary _build_stats_summary();
 	sim::match::MatchSnapshot _match_snapshot() const;

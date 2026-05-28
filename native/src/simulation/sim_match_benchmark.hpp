@@ -12,8 +12,6 @@ namespace sim {
 namespace match {
 namespace benchmark {
 
-struct BatchRunner;
-
 void run_generated_matches_simulation_only(
 		TeamfightSimulationCore &core,
 		int64_t base_seed,

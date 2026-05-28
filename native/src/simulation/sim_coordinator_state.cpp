@@ -47,7 +47,7 @@ sim::match::MatchLoopHost TeamfightSimulationCore::_match_loop_host() const {
 }
 
 void TeamfightSimulationCore::_reset_runtime_state() {
-	for (UnitState &unit : _units) {
+	for (sim::UnitState &unit : _units) {
 		sim::stats_modifiers::clear_all_stat_modifiers(unit);
 	}
 

@@ -6,7 +6,7 @@
 #include "sim_profile.hpp"
 #include "sim_unit_tick.hpp"
 
-void TeamfightSimulationCore::_update_unit(UnitState &unit, bool profile_sim) {
+void TeamfightSimulationCore::_update_unit(sim::UnitState &unit, bool profile_sim) {
 	sim::SimWorld w = _sim_world();
 
 	sim::unit_tick::UnitTickProfileCounters tick_profile = sim::profile::unit_tick_profile(_sim_profile_counters, profile_sim);

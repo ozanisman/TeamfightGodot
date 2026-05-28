@@ -74,6 +74,7 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_combat_projectile.cpp
     src/simulation/sim_movement.cpp
     src/simulation/sim_effects_compile.cpp
+    src/simulation/sim_effects_compile_opcodes.cpp
     src/simulation/sim_effects_compile_internal.cpp
     src/simulation/sim_effects_compile_damage.cpp
     src/simulation/sim_effects_compile_status.cpp

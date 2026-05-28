@@ -66,35 +66,9 @@ public:
 		ROLE_SLOT_COUNT = sim::ROLE_SLOT_COUNT,
 	};
 
-	using AoShapeKind = sim::AoShapeKind;
-	using AoAnchorKind = sim::AoAnchorKind;
-	using AoShapeParams = sim::AoShapeParams;
-	using EffectRecord = sim::EffectRecord;
-	using EffectContext = sim::EffectContext;
-	using StackBehavior = sim::StackBehavior;
-	using PendingSpawn = sim::PendingSpawn;
-	using PassiveReflectEntry = sim::PassiveReflectEntry;
-	using UnitStateCold = sim::UnitStateCold;
-	using UnitState = sim::UnitState;
-	using RolePriorityConfig = sim::RolePriorityConfig;
-	using StrategyRolePriorities = sim::StrategyRolePriorities;
-	using ScoreBreakdown = sim::ScoreBreakdown;
-	using UnitStrategy = sim::UnitStrategy;
-	using StrategyConfig = sim::StrategyConfig;
-	using TickContext = sim::TickContext;
-	using TargetingFrameEntry = sim::TargetingFrameEntry;
-	using TargetScoreContext = sim::TargetScoreContext;
-	using TraceEvent = sim::TraceEvent;
-	using BalancePatch = sim::BalancePatch;
-	using ProjectileState = sim::ProjectileState;
-	using TargetSelectionStrategy = sim::TargetSelectionStrategy;
-	using ExcessTargetHandling = sim::ExcessTargetHandling;
-	using EffectOpcode = sim::EffectOpcode;
-	using ViewerFxEvent = sim::ViewerFxEvent;
-
-	std::vector<ProjectileState> _projectiles;
-	std::vector<ProjectileState> _scratch_projectiles;
-	std::vector<ProjectileState> _active_projectiles;
+	std::vector<sim::ProjectileState> _projectiles;
+	std::vector<sim::ProjectileState> _scratch_projectiles;
+	std::vector<sim::ProjectileState> _active_projectiles;
 	std::vector<int64_t> _scratch_critical_allies;
 	Array _summary_unit_stats;
 	Dictionary _summary_cache;
@@ -121,18 +95,18 @@ public:
 	std::vector<int64_t> _alive_enemy_indices;
 	std::unordered_set<int64_t> _alive_player_indices_set;
 	std::unordered_set<int64_t> _alive_enemy_indices_set;
-	std::vector<TargetingFrameEntry> _targeting_frame;
-	std::array<UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};
-	UnitStrategy _default_strategy;
-	TickContext _tick_ctx;
-	std::vector<TraceEvent> _trace_buffer;
+	std::vector<sim::TargetingFrameEntry> _targeting_frame;
+	std::array<sim::UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};
+	sim::UnitStrategy _default_strategy;
+	sim::TickContext _tick_ctx;
+	std::vector<sim::TraceEvent> _trace_buffer;
 	static constexpr size_t TRACE_BUFFER_CAP = 4096;
 	bool _debug_combat_trace = false;
 	bool _debug_targeting_scoring = false;
 
 	sim::viewer::ViewerFxBuffer _viewer_fx;
 
-	void _print_score_breakdown(const ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const;
+	void _print_score_breakdown(const sim::ScoreBreakdown &breakdown, const StringName &attacker_archetype, const StringName &enemy_archetype) const;
 
 	mutable std::array<std::vector<int64_t>, sim::SPATIAL_GRID_DIM * sim::SPATIAL_GRID_DIM> _spatial_buckets;
 	mutable std::vector<uint32_t> _spatial_stamp;
@@ -151,19 +125,18 @@ public:
 	double _randf();
 	void _ensure_catalog_loaded();
 	sim::catalog::CatalogHooks _catalog_hooks() const;
-	static EffectRecord _catalog_compile_effect(void *user_data, const Dictionary &effect);
+	static sim::EffectRecord _catalog_compile_effect(void *user_data, const Dictionary &effect);
 	Dictionary _effective_champion_for(const StringName &archetype_id) const;
-	using ParamTracker = sim::effects::compile::ParamTracker;
-	
-	EffectRecord _compile_effect(const Dictionary &effect) const;
-	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
+
+	sim::EffectRecord _compile_effect(const Dictionary &effect) const;
+	std::vector<sim::EffectRecord> _compile_effect_array(const Array &effects) const;
 	Dictionary _coerce_match_input(const Variant &match_input) const;
 	void _populate_runtime_state(const Dictionary &match_input);
-	TargetingFrameEntry _make_targeting_frame_entry(const UnitState &unit) const;
-	void _sync_targeting_frame_index(int64_t index, const UnitState &unit);
-	void _sync_targeting_frame_unit(const UnitState &unit);
-	UnitStateCold &_uc(UnitState &u);
-	const UnitStateCold &_uc(const UnitState &u) const;
+	sim::TargetingFrameEntry _make_targeting_frame_entry(const sim::UnitState &unit) const;
+	void _sync_targeting_frame_index(int64_t index, const sim::UnitState &unit);
+	void _sync_targeting_frame_unit(const sim::UnitState &unit);
+	sim::UnitStateCold &_uc(sim::UnitState &u);
+	const sim::UnitStateCold &_uc(const sim::UnitState &u) const;
 
 	sim::SimWorld _sim_world() const;
 	struct CoordinatorMatchContext {
@@ -190,54 +163,50 @@ public:
 
 	void _prepare_tick_context();
 	void _build_role_strategy_cache();
-	const UnitStrategy &_strategy_for_unit(const UnitState &unit) const;
+	const sim::UnitStrategy &_strategy_for_unit(const sim::UnitState &unit) const;
 	void _emit_trace(const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
 	sim::match::MatchLoopState _match_loop_state();
 	sim::match::MatchLoopHost _match_loop_host() const;
-	void _update_unit(UnitState &unit, bool profile_sim);
-	void _prune_assist_window(UnitState &unit);
+	void _update_unit(sim::UnitState &unit, bool profile_sim);
+	void _prune_assist_window(sim::UnitState &unit);
 	void _update_projectiles();
 	/// When `unit_ally_distance` is >= 0, used as the unit–ally distance (avoids a duplicate sqrt vs `_distance_between`).
 	/// When `current_target_distance` is >= 0, used instead of recomputing distance to `unit.target_id` for commit-window logic.
-	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
-	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
+	bool _effect_record_contains_opcode(const sim::EffectRecord &effect, sim::EffectOpcode opcode) const;
+	void _finalize_reflect_passives(sim::UnitState &unit, sim::UnitStateCold &cold);
 	Vector2 _get_random_spawn_position(const StringName &team, bool is_respawn);
 	sim::targeting::CoordinatorTargetingState _targeting_coordinator_state(bool profile_score_enemy);
-	UnitState *_select_enemy_target(UnitState &unit, bool profile_sim);
-	UnitState *_select_ally_target(UnitState &unit);
+	sim::UnitState *_select_enemy_target(sim::UnitState &unit, bool profile_sim);
+	sim::UnitState *_select_ally_target(sim::UnitState &unit);
 	bool _position_collides_with_unit(double x, double y, int64_t exclude_instance_id) const;
 	Dictionary _build_summary();
 	Dictionary _build_stats_summary();
 	sim::match::MatchSnapshot _match_snapshot() const;
 	
 	// Pending spawns queue for mid-tick unit creation
-	std::vector<PendingSpawn> _pending_spawns;
+	std::vector<sim::PendingSpawn> _pending_spawns;
 
 	// Stack debugging functions
-	void _debug_print_stack_state(const UnitState &unit) const;
+	void _debug_print_stack_state(const sim::UnitState &unit) const;
 	void _log_sudden_death_draw();
 	String _join_team_names(const Array &team) const;
 
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
-	Vector2 _resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override = nullptr) const;
+	Vector2 _resolve_aoe_direction(const sim::UnitState &source, const sim::AoShapeParams &params, const sim::UnitState *target_override = nullptr) const;
 
 	/// Parameters for circular AoE iteration over an alive-team index list (`_alive_*_indices`).
 	/// `spatial_team` must match `UnitState::team` for units referenced by `indices` (used by broad-phase stamp).
-	using AoCircleIterationParams = sim::AoCircleIterationParams;
-	using AoShapeIterationParams = sim::AoShapeIterationParams;
-
-
 	template<typename Fn>
-	void _for_each_unit_in_circle(const AoCircleIterationParams &p, Fn &&fn) {
+	void _for_each_unit_in_circle(const sim::AoCircleIterationParams &p, Fn &&fn) {
 		sim::SimWorld w = _sim_world();
 		sim::for_each_unit_in_circle(w, p, std::forward<Fn>(fn));
 	}
 
 	template<typename Fn>
-	void _for_each_unit_in_shape(const AoShapeIterationParams &p, Fn &&fn) {
+	void _for_each_unit_in_shape(const sim::AoShapeIterationParams &p, Fn &&fn) {
 		sim::SimWorld w = _sim_world();
-		sim::for_each_unit_in_shape(w, p, std::forward<Fn>(fn), [&](const UnitState &source, const AoShapeParams &params, const UnitState *target_override) {
+		sim::for_each_unit_in_shape(w, p, std::forward<Fn>(fn), [&](const sim::UnitState &source, const sim::AoShapeParams &params, const sim::UnitState *target_override) {
 			return sim::status::resolve_aoe_direction(w, source, params, target_override);
 		});
 	}
@@ -249,8 +218,8 @@ public:
 private:
 	/// Parallel to `_units` (same length and indices). Push or clear together with `_units` only.
 	/// `_uc(u)` is only valid when `u` references an element stored in `_units` (never a stack copy of `UnitState`).
-	std::vector<UnitState> _units;
-	std::vector<UnitStateCold> _unit_cold;
+	std::vector<sim::UnitState> _units;
+	std::vector<sim::UnitStateCold> _unit_cold;
 
 public:
 	TeamfightSimulationCore();

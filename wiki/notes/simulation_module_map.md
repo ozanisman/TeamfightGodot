@@ -8,19 +8,23 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_stats` / `sim_stats.inl.hpp` | Effective stats, movement speed multiplier |
 | `sim_spatial` | Grid buckets, stamp generation |
 | `sim_aoe.hpp` | `for_each_unit_in_circle` / `for_each_unit_in_shape` |
-| `sim_targeting` | Scoring, selection, `select_targets`, `prepare_tick_context` |
+| `sim_targeting` (+ `_internal`, `_score`, `_select_enemy`, `_select_ally`, `_select_effect`, `_context`) | Scoring, selection, `select_targets`, `prepare_tick_context` |
 | `sim_match_spawn` | Random summon spawn positions with expansion |
 | `sim_targeting_strategies` | Role strategy tables, `build_role_strategy_cache` |
 | `sim_channel` | Channel tick (interrupt/complete/tick effects) |
 | `sim_stats_modifiers` | Stat stacks, duration modifiers, consume/set stacks |
 | `sim_damage` | Defense, modifiers, `apply_damage` hub |
 | `sim_status` | CC, heal, shield, AOE status, `resolve_aoe_direction` |
-| `sim_periodic` | DoT/HoT, AOE damage/taunt, knockback, reflect |
+| `sim_periodic` (+ `_internal`, `_dot_hot`, `_aoe`, `_reflect`) | DoT/HoT, AOE damage/taunt, knockback, reflect |
 | `sim_combat` | Cast, auto-attack, projectiles, post-attack/heal |
 | `sim_movement` | Move toward target, kite, dash collision |
 | `sim_unit_tick` | Per-unit tick phases (`_update_unit` sequencer) |
 | `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` trampoline (no coordinator hop) |
-| `sim_effects_compile` / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
+| `sim_effect_kinds.inl.hpp` | Shared lazy `StringName` accessors for effect kinds / trace keys |
+| `sim_effects_compile` (+ `_internal`, `_damage`, `_status`, `_aoe`, `_spawn`) / `sim_effects_exec` (+ `_damage`, `_status`, `_spawn`, `_aoe`) | Effect compile + VM (`SimMatchHost`: spawns, projectiles, catalog, instance id) |
+| `sim_coordinator_host.cpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer, world, benchmark batch setup) |
+| `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE` reset + stderr JSON; counter storage struct |
+| `sim_match_benchmark_host.hpp` | `GeneratedMatchHost` alias for batch runners |
 | `sim_catalog` | Champion/minion JSON, balance patches |
 | `sim_match` | `_build_summary` / stats summary |
 | `sim_match_loop` | `step_tick`, `simulate`, sudden-death driver (`MatchLoopHost` callbacks for coordinator hot paths) |
@@ -28,12 +32,14 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 | `sim_match_roster` | Unit registration, pending spawn drain, team append |
 | `sim_unit_builder` | Champion/minion unit construction |
 | `sim_viewer` | `ViewerFxBuffer`, FX record helpers, `build_tick_snapshot`; `ViewerHooks` callbacks |
-| `sim_match_benchmark` | `run_generated_matches_simulation_only` / `run_generated_matches_stats_partial` batch runners |
-| `sim_coordinator_host.hpp` | Declarations for `sim_host_*` trampolines; `CoordinatorHostAccess` viewer bridge |
+| `sim_match_benchmark` / `sim_match_benchmark_stats` | Generated batch sim-only + stats partial aggregation |
+| `sim_match_benchmark_host` | `GeneratedMatchHost` accessors for benchmark setup |
+| `sim_coordinator_match.cpp` | Godot match/batch API implementations |
+| `sim_coordinator_host.hpp` | `sim_host_*` trampolines; `CoordinatorHostAccess` (viewer/world) |
 
 ## Adding features
 
-- **New opcode:** `sim_effects_compile.cpp` + handler in `sim_effects_exec.cpp`; delegate damage/status/periodic as needed.
+- **New opcode:** `sim_effects_compile_*.cpp` (pick category TU) + handler in `sim_effects_exec.cpp`; delegate damage/status/periodic as needed.
 - **New CC or heal:** `sim_status.cpp` + exec opcode.
 - **New AoE shape:** `sim_aoe.hpp` `shape_contains` + compile metadata; see `wiki/concepts/aoe_shapes.md`.
 - **New DoT/HoT:** `sim_periodic.cpp` + exec opcode.

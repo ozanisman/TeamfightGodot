@@ -1,5 +1,33 @@
 # Performance Optimization Status
 
+## Iteration 7 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~839**; match API in **`sim_coordinator_match.cpp`** (~235).
+- **Targeting select:** split into **`sim_targeting_select_{enemy,ally,effect}.cpp`** (largest **344** lines).
+- **Periodic:** split into **`sim_periodic_{internal,dot_hot,aoe,reflect}.cpp`** (largest **406** lines).
+- **Benchmark:** `sim_match_benchmark.cpp` **~180** + **`sim_match_benchmark_stats.cpp`**; **`GeneratedMatchHost`** in dedicated TU.
+- **Host:** `sim_coordinator_host.cpp` **~227** (benchmark accessors moved out).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~138.9 matches/sec** (`duration_sec` 14.40).
+- **Validation:** full gate green (7 fixture cases).
+
+## Iteration 6 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~1079**; dead `_load_json_*` / `_effect_to_dict` removed.
+- **Targeting:** `sim_targeting.cpp` **114** + `sim_targeting_{score,select,context}.cpp` + `sim_targeting_internal`.
+- **Profile:** `sim::profile::Counters` in **`sim_profile_counters.hpp`**; flags remain on coordinator.
+- **Benchmark:** `GeneratedMatchHost` (`CoordinatorHostAccess`); **0** `core._*` in `sim_match_benchmark.cpp`.
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~118.3 matches/sec** (`duration_sec` 16.91). 6L: skip `_refresh_match_context` when hosts cached across `_reset_runtime_state`.
+- **Bench phases (`TEAMFIGHT_BENCH_PHASES=1`):** setup ~0.82 ms/match, simulate ~7.56 ms/match.
+- **Validation:** full gate green (7 fixture cases); compile structure check in `--check-only`.
+
+## Iteration 5 exit (May 28, 2026)
+
+- **Coordinator:** `teamfight_simulation_core.cpp` **~1120**; `sim_coordinator_host.cpp` **~230**; `sim_profile.cpp` **~150**.
+- **Compile:** `sim_effects_compile.cpp` **~465** + `sim_effects_compile_{damage,status,aoe,spawn}.cpp` + `sim_effects_compile_internal.cpp`; shared **`sim_effect_kinds.inl.hpp`**.
+- **Friends:** **1** (`CoordinatorHostAccess` only; benchmark used public coordinator fields).
+- **Bench (Release, workers=1, 5v5, 2000 batch):** **~103.4 matches/sec** (`duration_sec` 19.35). Slight uptick vs Iter 4 ~101.3; still below Iter 3 110.71.
+- **Validation:** full gate green (7 fixture cases).
+
 ## Iteration 4 exit (May 28, 2026)
 
 - **Coordinator:** `teamfight_simulation_core.cpp` **~1895**; `sim_match_benchmark.cpp` **~580**; `sim_viewer.cpp` **~350**.

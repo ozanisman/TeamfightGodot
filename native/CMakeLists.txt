@@ -46,15 +46,29 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_stats.cpp
     src/simulation/sim_spatial.cpp
     src/simulation/sim_targeting.cpp
+    src/simulation/sim_targeting_internal.cpp
+    src/simulation/sim_targeting_score.cpp
+    src/simulation/sim_targeting_select_enemy.cpp
+    src/simulation/sim_targeting_select_ally.cpp
+    src/simulation/sim_targeting_select_effect.cpp
+    src/simulation/sim_targeting_context.cpp
     src/simulation/sim_targeting_strategies.cpp
     src/simulation/sim_damage.cpp
     src/simulation/sim_status.cpp
-    src/simulation/sim_periodic.cpp
+    src/simulation/sim_periodic_internal.cpp
+    src/simulation/sim_periodic_dot_hot.cpp
+    src/simulation/sim_periodic_aoe.cpp
+    src/simulation/sim_periodic_reflect.cpp
     src/simulation/sim_channel.cpp
     src/simulation/sim_stats_modifiers.cpp
     src/simulation/sim_combat.cpp
     src/simulation/sim_movement.cpp
     src/simulation/sim_effects_compile.cpp
+    src/simulation/sim_effects_compile_internal.cpp
+    src/simulation/sim_effects_compile_damage.cpp
+    src/simulation/sim_effects_compile_status.cpp
+    src/simulation/sim_effects_compile_aoe.cpp
+    src/simulation/sim_effects_compile_spawn.cpp
     src/simulation/sim_effects_host.cpp
     src/simulation/sim_effects_exec.cpp
     src/simulation/sim_effects_exec_damage.cpp
@@ -71,6 +85,11 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_loop.cpp
     src/simulation/sim_viewer.cpp
     src/simulation/sim_match_benchmark.cpp
+    src/simulation/sim_match_benchmark_stats.cpp
+    src/simulation/sim_match_benchmark_host.cpp
+    src/simulation/sim_coordinator_match.cpp
+    src/simulation/sim_coordinator_host.cpp
+    src/simulation/sim_profile.cpp
     src/teamfight_simulation_core.cpp
 )
 

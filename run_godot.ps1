@@ -101,6 +101,13 @@ if ($isSimulationViewer) {
 	$godotArgs += @("--maximized")
 }
 if ($checkOnly) {
+	$compileStructScript = Join-Path $projectRoot "scripts\tools\check_sim_effects_compile_structure.py"
+	if (Test-Path $compileStructScript) {
+		& python $compileStructScript
+		if ($LASTEXITCODE -ne 0) {
+			exit $LASTEXITCODE
+		}
+	}
 	$godotArgs += @("--script", "res://scripts/tools/check_gdscript_preload.gd")
 }
 elseif ($checkNativeLoad) {

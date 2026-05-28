@@ -35,10 +35,41 @@ set(GODOTCPP_TARGET "template_debug" CACHE STRING "" FORCE)
 set(GODOTCPP_GDEXTENSION_DIR "${GODOT_CPP_PATH}/gdextension" CACHE PATH "" FORCE)
 add_subdirectory("${GODOT_CPP_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/godot-cpp" EXCLUDE_FROM_ALL)
 
-add_library(teamfight_simulation_core SHARED
+set(TEAMFIGHT_SIMULATION_SOURCES
     src/register_types.cpp
+    src/simulation/sim_stats.cpp
+    src/simulation/sim_spatial.cpp
+    src/simulation/sim_targeting.cpp
+    src/simulation/sim_damage.cpp
+    src/simulation/sim_status.cpp
+    src/simulation/sim_periodic.cpp
+    src/simulation/sim_combat.cpp
+    src/simulation/sim_movement.cpp
+    src/simulation/sim_effects_compile.cpp
+    src/simulation/sim_effects_exec.cpp
+    src/simulation/sim_unit_tick.cpp
+    src/simulation/sim_catalog.cpp
+    src/simulation/sim_match.cpp
     src/teamfight_simulation_core.cpp
 )
+
+add_library(teamfight_simulation_core SHARED ${TEAMFIGHT_SIMULATION_SOURCES})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(teamfight_simulation_core PRIVATE
+        $<$<CONFIG:Release>:-flto>
+    )
+    target_link_options(teamfight_simulation_core PRIVATE
+        $<$<CONFIG:Release>:-flto>
+    )
+elseif(MSVC)
+    target_compile_options(teamfight_simulation_core PRIVATE
+        $<$<CONFIG:Release>:/GL>
+    )
+    target_link_options(teamfight_simulation_core PRIVATE
+        $<$<CONFIG:Release>:/LTCG>
+    )
+endif()
 
 # Generate champion schema JSON from GDScript before building
 set(CHAMPION_SCHEMA_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/goldens/champion_schema.json")

@@ -12,6 +12,19 @@
 #include "python_random.hpp"
 #include "stat_definitions.hpp"
 
+#include "simulation/sim_aoe.hpp"
+#include "simulation/sim_catalog.hpp"
+#include "simulation/sim_combat.hpp"
+#include "simulation/sim_constants.hpp"
+#include "simulation/sim_effects_compile.hpp"
+#include "simulation/sim_effects_exec.hpp"
+#include "simulation/sim_match.hpp"
+#include "simulation/sim_movement.hpp"
+#include "simulation/simulation_types.hpp"
+#include "simulation/sim_status.hpp"
+#include "simulation/sim_unit_tick.hpp"
+#include "simulation/sim_world.hpp"
+
 #include <array>
 #include <cstdint>
 #include <unordered_map>
@@ -21,696 +34,50 @@
 
 using namespace godot;
 
+// Simulation logic lives under native/src/simulation/; methods here are Godot glue and thin
+// delegators unless marked as catalog/match cold path.
 class TeamfightSimulationCore : public RefCounted {
 	GDCLASS(TeamfightSimulationCore, RefCounted);
-
-public:
-	enum RoleSlot : int64_t {
-		ROLE_SLOT_TANK = 0,
-		ROLE_SLOT_FIGHTER = 1,
-		ROLE_SLOT_ASSASSIN = 2,
-		ROLE_SLOT_MARKSMAN = 3,
-		ROLE_SLOT_MAGE = 4,
-		ROLE_SLOT_SUPPORT = 5,
-		ROLE_SLOT_COUNT = 6,
-	};
-
-	/// AOE shape kinds for expandable shape system.
-	enum class AoShapeKind : int {
-		Circle = 0,
-		Cone = 1,
-		Rectangle = 2,
-	};
-
-	/// AOE anchor kinds for expandable anchor system.
-	enum class AoAnchorKind : int64_t {
-		Self = 0,
-		Target = 1,
-		Point = 2,
-		Forward = 3,
-	};
-
-	/// Parameters for AOE shape iteration.
-	struct AoShapeParams {
-		AoShapeKind shape = AoShapeKind::Circle;
-		AoAnchorKind anchor = AoAnchorKind::Self;
-		double radius = 0.0;
-		double width = 0.0;
-		double height = 0.0;
-		double rotation_radians = 0.0;
-		double anchor_x = 0.0;
-		double anchor_y = 0.0;
-		int64_t target_id = 0;
-	};
 
 protected:
 	static void _bind_methods();
 
-private:
-	struct UnitState;
-
-	struct EffectRecord {
-		int64_t opcode = 0;
-		double scalar0 = 0.0;
-		double scalar1 = 0.0;
-		double scalar2 = 0.0;
-		double scalar3 = 0.0;
-		double scalar4 = 0.0;
-		double scalar5 = 0.0;
-		// Casting windup override; -1.0 means use global CASTING_WINDUP. NOTE: Compiling for all effect kinds adds memory overhead (~8 bytes per effect). Revisit if this becomes an issue.
-		double windup = -1.0;
-		int64_t int0 = 0;
-		int64_t int1 = 0;
-		int64_t int2 = 0;
-		int64_t int3 = 0;
-		int64_t int4 = 0;
-		StringName damage_type;
-		StringName stat_name;  // For consume_stacks effects
-		String string0;  // General purpose string (stacking_mode for consume_stacks)
-		String string1;  // General purpose string (stack_reason for consume_stacks)
-		String reason;
-		std::vector<EffectRecord> children;
-		StringName requires_result_from;  // Which previous effect to check
-		StringName requires_field;        // Which field to check
-		Variant requires_value;           // What value to require
-		StringName requires_target_status;  // Status to check on unit (e.g., "disarm")
-		StringName status_target;         // "source" or "target", default "target"
-		
-		// on_tick_interval timing support for on_tick effects
-		double on_tick_interval = 1.0;  // Custom interval (seconds), default 1.0
-		double accumulator = 0.0;       // Per-effect timing accumulator
-		
-		// DoT/HoT support
-		StringName stacking_mode;       // "refresh", "extend", "separate"
-		StringName effect_type;         // e.g., "burn", "poison", "regen"
-		
-		// AOE shape parameters (replaces scalar0-scalar5 for AOE effects)
-		AoShapeParams aoe_shape_params;
-		
-		// Multi-target effect parameters
-		StringName team_filter;         // "ally", "enemy", or empty for auto-detect
-		std::vector<EffectRecord> sub_effects;  // Sub-effects to apply to each target
+public:
+	enum RoleSlot : int64_t {
+		ROLE_SLOT_TANK = sim::ROLE_SLOT_TANK,
+		ROLE_SLOT_FIGHTER = sim::ROLE_SLOT_FIGHTER,
+		ROLE_SLOT_ASSASSIN = sim::ROLE_SLOT_ASSASSIN,
+		ROLE_SLOT_MARKSMAN = sim::ROLE_SLOT_MARKSMAN,
+		ROLE_SLOT_MAGE = sim::ROLE_SLOT_MAGE,
+		ROLE_SLOT_SUPPORT = sim::ROLE_SLOT_SUPPORT,
+		ROLE_SLOT_COUNT = sim::ROLE_SLOT_COUNT,
 	};
 
-	struct EffectContext {
-		UnitState *source = nullptr;
-		UnitState *target = nullptr;
-		UnitState *target_ally = nullptr;
-		double damage = 0.0;
-		StringName action_kind;
-		double distance = 0.0;
-		double heal_amount = 0.0;
-		double heal_gained = 0.0;
-		bool use_heal_gained = false;
-		struct EffectExecResult {
-			bool present = false;
-			bool success_set = false;
-			bool success = false;
-			bool condition_failed_set = false;
-			bool condition_failed = false;
-			bool target_killed_set = false;
-			bool target_killed = false;
-			bool projectile_created_set = false;
-			bool projectile_created = false;
-			bool stun_applied_set = false;
-			bool stun_applied = false;
-			bool shield_applied_set = false;
-			bool shield_applied = false;
-			bool heal_applied_set = false;
-			bool heal_applied = false;
-			bool taunt_applied_set = false;
-			bool taunt_applied = false;
-			bool splash_applied_set = false;
-			bool splash_applied = false;
-			bool splash_triggered_set = false;
-			bool splash_triggered = false;
-			bool knockback_applied_set = false;
-			bool knockback_applied = false;
-			bool stealth_applied_set = false;
-			bool stealth_applied = false;
-			bool stealth_broken_set = false;
-			bool stealth_broken = false;
-			bool reached_target_set = false;
-			bool reached_target = false;
-			bool damage_dealt_set = false;
-			double damage_dealt = 0.0;
-			bool damage_set = false;
-			double damage = 0.0;
-			bool amount_set = false;
-			double amount = 0.0;
-			bool duration_set = false;
-			double duration = 0.0;
-			bool radius_set = false;
-			double radius = 0.0;
-			bool mana_restored_set = false;
-			double mana_restored = 0.0;
-			bool mana_drained_set = false;
-			double mana_drained = 0.0;
-			bool distance_traveled_set = false;
-			double distance_traveled = 0.0;
-
-			void clear() {
-				*this = EffectExecResult();
-			}
-		};
-
-		struct EffectExecStore {
-			static constexpr size_t SLOT_COUNT = 64;
-			std::array<EffectExecResult, SLOT_COUNT> by_opcode{};
-			std::array<bool, SLOT_COUNT> present{};
-
-			static inline bool opcode_to_slot(int64_t opcode, size_t &slot) {
-				if (opcode <= 0 || opcode >= int64_t(SLOT_COUNT)) {
-					return false;
-				}
-				slot = static_cast<size_t>(opcode);
-				return true;
-			}
-
-			void clear() {
-				present.fill(false);
-				for (EffectExecResult &result : by_opcode) {
-					result.clear();
-				}
-			}
-
-			EffectExecResult *ensure(int64_t opcode) {
-				size_t slot = 0;
-				if (!opcode_to_slot(opcode, slot)) {
-					return nullptr;
-				}
-				present[slot] = true;
-				by_opcode[slot].present = true;
-				return &by_opcode[slot];
-			}
-
-			const EffectExecResult *get(int64_t opcode) const {
-				size_t slot = 0;
-				if (!opcode_to_slot(opcode, slot) || !present[slot]) {
-					return nullptr;
-				}
-				return &by_opcode[slot];
-			}
-
-			EffectExecResult *get(int64_t opcode) {
-				size_t slot = 0;
-				if (!opcode_to_slot(opcode, slot) || !present[slot]) {
-					return nullptr;
-				}
-				return &by_opcode[slot];
-			}
-		};
-
-		Dictionary accumulated_results;
-		/// Prevents reflected damage from chaining into further reflects.
-		bool suppress_reflect_chain = false;
-
-		// Takedown-specific context
-		int64_t takedown_target_id = 0;  // Unit that was killed
-		double takedown_damage_dealt = 0.0;  // Damage contributed by participant
-		bool is_takedown_kill = false;  // True for killer, false for assists
-
-		// Channel-specific context
-		double channel_remaining_duration = 0.0;
-		int64_t channel_tick_count = 0;
-		double channel_accumulated_damage = 0.0;
-		bool channel_completed = false;
-	};
-
-	/// Stack behavior types for stat modifier stacking
-	enum class StackBehavior : int8_t {
-		Refresh = 0,    // Reset duration to max (current behavior)
-		Accumulate = 1, // Add duration to current
-		Reset = 2       // Reset stacks to 1, refresh duration
-	};
-
-	/// Pending spawn entry for mid-tick unit creation
-	struct PendingSpawn {
-		Dictionary spawn_spec;
-		StringName team;
-		int64_t summoner_instance_id;
-	};
-
-	/// Passive reflect entry for tracking reflect damage sources
-	struct PassiveReflectEntry {
-		double percentage = 0.0;
-		StringName damage_type;  // "all" or "physical"
-		StringName action_kind;  // "passive", "ability", "ultimate"
-	};
-
-	/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
-	struct UnitStateCold {
-		struct DamageSourceEntry {
-			double damage = 0.0;
-			double last_time = 0.0;
-		};
-		StringName archetype_id;
-		StringName role_id;
-		Dictionary stats;
-		std::array<std::vector<EffectRecord>, 10> passive_effects;
-		double on_ally_defense_radius = 0.0;  // Radius for on_ally_defense triggers
-		// Passive AOE radius information for visualization
-		struct PassiveAoeInfo {
-			StringName passive_id;
-			double radius;
-		};
-		std::vector<PassiveAoeInfo> passive_aoe_info;
-		std::vector<PassiveReflectEntry> passive_reflect_entries;
-		EffectRecord ability_effect;
-		EffectRecord ultimate_effect;
-		double spawn_pos_x = 0.0;
-		double spawn_pos_y = 0.0;
-		StringName casting_kind;
-		EffectRecord casting_effect;
-		double damage_dealt = 0.0;
-		double damage_dealt_auto = 0.0;
-		double damage_dealt_ability = 0.0;
-		double damage_dealt_ultimate = 0.0;
-		double damage_dealt_passive = 0.0;
-		double damage_received = 0.0;
-		double damage_mitigated = 0.0;
-		double healing_done = 0.0;
-		double healing_done_auto = 0.0;
-		double healing_done_ability = 0.0;
-		double healing_done_ultimate = 0.0;
-		double healing_done_passive = 0.0;
-		double shielding_done = 0.0;
-		double shielding_done_auto = 0.0;
-		double shielding_done_ability = 0.0;
-		double shielding_done_ultimate = 0.0;
-		double shielding_done_passive = 0.0;
-		int64_t auto_attacks = 0;
-		int64_t abilities = 0;
-		int64_t ultimates = 0;
-		int64_t stuns = 0;
-		int64_t kills = 0;
-		int64_t deaths = 0;
-		int64_t assists = 0;
-		std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
-		
-		// Minion stats aggregated to this summoner
-		double minion_damage_dealt = 0.0;
-		double minion_damage_received = 0.0;
-		std::unordered_map<int64_t, double> recent_benefactors;
-		double last_hit_time = 0.0;
-		int64_t respawn_slot_index = -1; // -1 = no assigned slot
-		StringName forced_target_kind;
-		
-		std::vector<double> on_tick_effect_accumulators;
-
-		// Periodic effects (DoT/HoT)
-		struct PeriodicEffect {
-			StringName effect_type;  // e.g., "burn", "poison", "regen"
-			double damage_total = 0.0;  // Total damage over full duration
-			double heal_total = 0.0;  // Total heal over full duration
-			double remaining_duration = 0.0;
-			double tick_interval = 0.0;
-			double tick_accumulator = 0.0;
-			double original_tick_count = 0.0;  // Total ticks over original duration (duration / tick_interval)
-			int64_t source_instance_id = 0;
-			StringName damage_type;  // "physical", "magical", "true"
-			StringName stacking_mode;  // "refresh", "extend", "separate"
-			String reason;
-			bool allow_overheal = false;
-			int stack_count = 0;
-			int max_stacks = 1;
-			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
-			
-			// Total ratio parameters for dynamic calculation mode
-			double total_attack_damage_ratio = 0.0;
-			double total_max_hp_ratio = 0.0;
-			double total_current_hp_ratio = 0.0;
-			double total_missing_hp_ratio = 0.0;
-			double total_flat_amount = 0.0;
-			StringName calculation_mode = StringName("fixed");  // "fixed" or "dynamic"
-		};
-		std::vector<PeriodicEffect> periodic_effects;
-
-		// Reflect buff effects (active reflect from abilities/ultimates)
-		struct ReflectBuff {
-			double percentage = 0.0;
-			double remaining_duration = 0.0;
-			StringName action_kind;  // "auto", "ability", "ultimate", "passive"
-			int64_t source_instance_id = 0;  // Who granted this buff (for AOE reflect attribution)
-			StringName damage_type;  // "all" or "physical"
-			String reason;
-		};
-		std::vector<ReflectBuff> reflect_buffs;
-
-		// Channel effect state
-		bool is_channeling = false;
-		double channel_remaining_duration = 0.0;
-		double channel_tick_interval = 0.0;
-		double channel_tick_accumulator = 0.0;
-		double channel_accumulated_damage = 0.0;
-		int64_t channel_target_instance_id = 0;
-		int64_t channel_source_instance_id = 0;
-		StringName channel_reason;
-		StringName channel_action_kind;
-		bool channel_allow_movement = false;
-		StringName channel_target_mode;  // "fixed" or "dynamic"
-		EffectRecord channel_sub_effect;
-		EffectRecord channel_post_complete_effect;
-		EffectRecord channel_post_interrupt_effect;
-	};
-
-	/// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.
-	struct UnitState {
-		int64_t instance_id = 0;
-		StringName team;
-		int64_t role_slot = -1;
-		int64_t summoner_instance_id = 0;  // Tracks which unit summoned this minion (0 if not a minion)
-		/// Numeric combat fields copied from `stats` at spawn; use in hot paths instead of Dictionary::get.
-		struct CombatStats {
-#define X(name, def, min_val, max_val) double name = def;
-			STAT_LIST
-#undef X
-		} combat;
-		bool has_ability_effect = false;
-		bool has_ultimate_effect = false;
-		bool ability_requires_target_in_range = true;
-		bool ultimate_requires_target_in_range = true;
-		double pos_x = 0.0;
-		double pos_y = 0.0;
-		double hp = 0.0;
-		double shield = 0.0;
-		double mana = 0.0;
-		double attack_cooldown = 0.0;
-		double attack_period = 0.0;
-		double ability_cooldown = 0.0;
-		double casting_remaining = 0.0;
-		bool has_casting_effect = false;
-		int64_t casting_target_id = 0;
-		int64_t casting_ally_target_id = 0;
-		bool cast_resolved_this_tick = false;
-		int64_t target_id = 0;
-		int64_t target_index = -1;
-		int64_t current_ally_target_id = 0;
-		double retarget_timer = 0.0;
-		double target_switch_lock_timer = 0.0;
-		double last_kite_timer = 0.0;
-		double current_target_score = 0.0;
-		double stun_remaining = 0.0;
-		/// Seconds alive during hard CC (stun_remaining > 0); incremented per tick by min(remaining, tick_rate).
-		double hard_cc_seconds = 0.0;
-		/// Movement slow: remaining duration and multiplier on base move speed (1.0 = no slow).
-		double slow_remaining = 0.0;
-		double slow_move_mult = 1.0;
-		/// Cannot move (separation / kite / chase) while > 0; can still cast and auto if in range.
-		double root_remaining = 0.0;
-		double silence_remaining = 0.0;
-		double silence_ability_remaining = 0.0;
-		double silence_ultimate_remaining = 0.0;
-		bool silence_blocks_abilities = false;
-		bool silence_blocks_ultimates = false;
-		double disarm_remaining = 0.0;
-		/// Stealth: remaining duration. Cannot be targeted by enemies while > 0.
-		double stealth_remaining = 0.0;
-		/// Stealth break conditions: when to break stealth (on_attack, on_ability, on_damage_taken).
-		bool stealth_break_on_attack = false;
-		bool stealth_break_on_ability = false;
-		bool stealth_break_on_damage_taken = false;
-		double respawn_timer = 0.0;
-		bool respawned_this_tick = false;
-		bool alive = true;
-		int64_t incoming_target_count = 0;
-		double perceived_threat = 0.0;
-		int64_t attack_count = 0;
-		int64_t taunt_target_id = 0;
-		double taunt_remaining = 0.0;
-		int64_t forced_target_id = 0;
-		double forced_target_remaining = 0.0;
-		double regen_accumulator = 0.0;
-		bool is_tank_role = false;
-		bool is_fighter_role = false;
-		bool is_assassin_role = false;
-		bool is_marksman_role = false;
-		bool is_mage_role = false;
-		bool is_support_role = false;
-		bool is_backliner = false;  // Cached backliner status for O(1) lookup
-		
-		// Stat modifier system - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-		double stat_additive_##name = 0.0; \
-		double stat_multiplicative_##name = 1.0; \
-		double stat_temp_##name = 0.0; \
-		double stat_perm_##name = 0.0;
-		STAT_LIST
-#undef X
-
-		// Per-source stack tracking for stat modifiers
-		Dictionary stat_stacks;  // key: "stat_name|reason", value: StackInfo
-		Dictionary stat_modifiers;  // key: "stat_name|reason", value: simple modifier info
-	};
-
-	// Data-driven role priority configuration
-	struct RolePriorityConfig {
-		StringName role;
-		double priority;
-	};
-
-	struct StrategyRolePriorities {
-		std::array<RolePriorityConfig, 8> enemy_priorities;
-		std::array<RolePriorityConfig, 8> ally_priorities;
-	};
-
-	// Debug: scoring breakdown for targeting decisions
-	// TODO: Consider changing to compile-time flag (#ifdef) for zero overhead in production
-	struct ScoreBreakdown {
-		double distance = 0.0;
-		double distance_weighted = 0.0;
-		double hp_ratio = 0.0;
-		double hp_weighted = 0.0;
-		double role_priority = 0.0;
-		double threat = 0.0;
-		double threat_weighted = 0.0;
-		double in_range_bonus = 0.0;
-		double execute_bonus = 0.0;
-		double support_peel = 0.0;
-		double spacing = 0.0;
-		double kiting_tempo = 0.0;
-		double total = 0.0;
-	};
-
-	struct UnitStrategy {
-		String display_name;
-		double distance_weight = 1.0;
-		double hp_weight = 0.0;
-		double ally_distance_weight = 1.0;
-		double ally_hp_weight = 0.0;
-		double ally_threat_weight = 0.0;
-		std::array<double, ROLE_SLOT_COUNT> ally_role_priorities{};
-		bool prefers_kiting = false;
-		double switch_margin = 2.0;
-		double in_range_bonus = 0.6;
-		double threat_response_weight = 0.0;
-		double execute_bonus_weight = 0.0;
-		double spacing_weight = 0.0;
-		double threat_decay_rate = 2.0;
-		bool uses_ally_targeting = false;
-		std::array<double, ROLE_SLOT_COUNT> role_priorities{};
-	};
-
-	// Comprehensive strategy configuration for data-driven role behavior
-	struct StrategyConfig {
-		// Identity
-		String display_name;
-		StringName role_name;
-
-		// Targeting weights
-		double distance_weight;
-		double hp_weight;
-		double ally_distance_weight;
-		double ally_hp_weight;
-		double ally_threat_weight;
-
-		// Behavior modifiers
-		double in_range_bonus;
-		double threat_response_weight;
-		double execute_bonus_weight;
-
-		// Positioning weights
-		double spacing_weight;
-
-		// Timing
-		double threat_decay_rate;
-
-		// Switching
-		double switch_margin;
-
-		// Flags
-		bool prefers_kiting;
-		bool uses_ally_targeting;
-
-		// Role priorities
-		StrategyRolePriorities role_priorities;
-	};
-
-	struct TickContext {
-		std::vector<int64_t> density_by_unit_index;
-		Vector2 player_team_center;
-		Vector2 enemy_team_center;
-		bool has_player_center = false;
-		bool has_enemy_center = false;
-		std::vector<int64_t> player_backliner_indices;
-		std::vector<int64_t> enemy_backliner_indices;
-		/// Alive backliner count for team; reset in _prepare_tick_context, decremented in _handle_death (matches `other.alive` scans over backliner lists).
-		int player_backliner_alive_count = 0;
-		int enemy_backliner_alive_count = 0;
-		/// Alive tank+fighter per team (spatial grid insert).
-		std::vector<int64_t> player_frontline_indices;
-		std::vector<int64_t> enemy_frontline_indices;
-	};
-
-	struct TargetingFrameEntry {
-		int64_t instance_id = 0;
-		bool is_player_team = true;
-		int64_t role_slot = -1;
-		bool is_tank_role = false;
-		bool is_fighter_role = false;
-		bool is_assassin_role = false;
-		bool is_marksman_role = false;
-		bool is_mage_role = false;
-		bool is_support_role = false;
-		double pos_x = 0.0;
-		double pos_y = 0.0;
-		double hp = 0.0;
-		double max_hp = 0.0;
-		bool alive = true;
-		int64_t target_id = 0;
-		int64_t incoming_target_count = 0;
-		double perceived_threat = 0.0;
-		double stealth_remaining = 0.0;
-	};
-
-	struct TargetScoreContext {
-		double attack_range = 0.0;
-		double effective_range = 0.0;
-		bool use_spatial = false;
-		bool has_kite_bounds = false;
-		double kite_min_w = 0.0;
-		double kite_max_w = 0.0;
-	};
-
-	struct TraceEvent {
-		double t = 0.0;
-		StringName kind;
-		int64_t src = 0;
-		int64_t tgt = 0;
-		double val = 0.0;
-	};
-
-	struct BalancePatch {
-		std::vector<StringName> targets; // empty = applies to all archetypes
-		std::vector<StringName> roles;   // empty = applies to all roles
-		Dictionary stat_multipliers;
-		Dictionary stat_additions;
-		StringName kit_id; // empty = none; resolved against _ability_kits
-		// Optional subtree overrides (Variant::NIL means not specified in patch JSON).
-		Variant ability_override;
-		Variant ultimate_override;
-		Variant passive_ids_override;
-	};
-
-	struct ProjectileState {
-		int64_t source_id = 0;
-		int64_t target_id = 0;
-		double pos_x = 0.0;
-		double pos_y = 0.0;
-		double speed = 0.0;
-		double damage = 0.0;
-		StringName damage_type;
-		double stun_duration = 0.0;
-		double radius = 0.0;
-		StringName action_kind;
-		String reason;
-	};
-
-	// Inline getter functions (hot path) - generated by X-Macro
-#define X(name, def, min_val, max_val) \
-	static inline double get_effective_##name(const UnitState& unit) { \
-		double base = (unit.combat.name + unit.stat_additive_##name) * unit.stat_multiplicative_##name; \
-		if (min_val != NO_BOUND) { \
-			base = Math::max(min_val, base); \
-		} \
-		if (max_val != NO_BOUND) { \
-			base = Math::min(max_val, base); \
-		} \
-		return base; \
-	}
-	STAT_LIST
-#undef X
-
-	enum TargetSelectionStrategy : int64_t {
-		TARGET_SELECTION_CLOSEST = 0,
-		TARGET_SELECTION_RANDOM = 1,
-		TARGET_SELECTION_LOWEST_HP = 2,
-		TARGET_SELECTION_HIGHEST_HP = 3,
-		TARGET_SELECTION_CLOSEST_TO_TARGET = 4,
-		TARGET_SELECTION_LOWEST_PERCENT_HP = 5,
-		TARGET_SELECTION_HIGHEST_PERCENT_HP = 6,
-	};
-
-	enum ExcessTargetHandling : int64_t {
-		EXCESS_TARGET_DROP = 0,
-		EXCESS_TARGET_STACK = 1,
-	};
-
-	enum EffectOpcode : int64_t {
-		EFFECT_OPCODE_UNKNOWN = 0,
-		EFFECT_OPCODE_MULTI_EFFECT = 1,
-		EFFECT_OPCODE_DAMAGE = 2,
-		EFFECT_OPCODE_PROJECTILE = 3,
-		EFFECT_OPCODE_STUN = 4,
-		EFFECT_OPCODE_SHIELD = 5,
-		EFFECT_OPCODE_HEAL = 6,
-		EFFECT_OPCODE_AOE_TAUNT = 9,
-		EFFECT_OPCODE_AOE_DAMAGE = 10,
-		EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER = 11,
-		EFFECT_OPCODE_MANA_REGEN = 13,
-		EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN = 14,
-		EFFECT_OPCODE_DAMAGE_BASED_HEAL = 15,
-		EFFECT_OPCODE_MANA_RESTORE_ON_HIT = 16,
-		EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT = 17,
-		EFFECT_OPCODE_EVERY_N_ATTACKS_STUN = 18,
-		EFFECT_OPCODE_SELF_DASH = 19,
-		EFFECT_OPCODE_AUTO_DODGE = 20,
-		EFFECT_OPCODE_CONSTANT_MULTIPLIER = 21,
-		EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER = 22,
-		EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER = 23,
-		// New effect opcodes
-		EFFECT_OPCODE_SLOW = 25,
-		EFFECT_OPCODE_ROOT = 26,
-		EFFECT_OPCODE_SILENCE = 27,
-		EFFECT_OPCODE_DISARM = 28,
-		EFFECT_OPCODE_KNOCKBACK = 29,
-		EFFECT_OPCODE_REFLECT = 30,
-		EFFECT_OPCODE_AOE_SLOW = 31,
-		EFFECT_OPCODE_AOE_ROOT = 32,
-		EFFECT_OPCODE_AOE_SILENCE = 33,
-		EFFECT_OPCODE_AOE_DISARM = 34,
-		EFFECT_OPCODE_AOE_KNOCKBACK = 35,
-		EFFECT_OPCODE_AOE_REFLECT = 36,
-		EFFECT_OPCODE_AOE_STUN = 37,
-		EFFECT_OPCODE_REFLECT_DAMAGE = 38,
-		EFFECT_OPCODE_KNOCKBACK_SHIELD = 39,
-		EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER = 40,
-		EFFECT_OPCODE_STAT_MODIFIER = 41,
-		EFFECT_OPCODE_STEALTH = 42,
-		EFFECT_OPCODE_DAMAGE_OVER_TIME = 43,
-		EFFECT_OPCODE_HEAL_OVER_TIME = 44,
-		EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME = 45,
-		EFFECT_OPCODE_AOE_HEAL_OVER_TIME = 46,
-		EFFECT_OPCODE_MULTI_TARGET = 47,
-		EFFECT_OPCODE_DAMAGE_BASED_SHIELD = 48,
-		EFFECT_OPCODE_CONSUME_STACKS_DAMAGE = 49,
-		EFFECT_OPCODE_CONSUME_STACKS_HEAL = 50,
-		EFFECT_OPCODE_CONSUME_STACKS_SHIELD = 51,
-		EFFECT_OPCODE_SET_STACKS = 52,
-		EFFECT_OPCODE_CHANNEL = 53,
-		EFFECT_OPCODE_REDIRECT_DAMAGE = 54,
-		EFFECT_OPCODE_SUMMON_ALLY = 55,
-	};
+	using AoShapeKind = sim::AoShapeKind;
+	using AoAnchorKind = sim::AoAnchorKind;
+	using AoShapeParams = sim::AoShapeParams;
+	using EffectRecord = sim::EffectRecord;
+	using EffectContext = sim::EffectContext;
+	using StackBehavior = sim::StackBehavior;
+	using PendingSpawn = sim::PendingSpawn;
+	using PassiveReflectEntry = sim::PassiveReflectEntry;
+	using UnitStateCold = sim::UnitStateCold;
+	using UnitState = sim::UnitState;
+	using RolePriorityConfig = sim::RolePriorityConfig;
+	using StrategyRolePriorities = sim::StrategyRolePriorities;
+	using ScoreBreakdown = sim::ScoreBreakdown;
+	using UnitStrategy = sim::UnitStrategy;
+	using StrategyConfig = sim::StrategyConfig;
+	using TickContext = sim::TickContext;
+	using TargetingFrameEntry = sim::TargetingFrameEntry;
+	using TargetScoreContext = sim::TargetScoreContext;
+	using TraceEvent = sim::TraceEvent;
+	using BalancePatch = sim::BalancePatch;
+	using ProjectileState = sim::ProjectileState;
+	using TargetSelectionStrategy = sim::TargetSelectionStrategy;
+	using ExcessTargetHandling = sim::ExcessTargetHandling;
+	using EffectOpcode = sim::EffectOpcode;
+	using ViewerFxEvent = sim::ViewerFxEvent;
 
 	static constexpr double MATCH_DURATION = 60.0;
 	static constexpr double DEFAULT_TICK_RATE = 0.1;
@@ -1011,20 +378,13 @@ private:
 	// Spawn slot tracking per team (indices into spawn_points array)
 	std::vector<bool> _player_spawn_slots_used;
 	std::vector<bool> _enemy_spawn_slots_used;
-	Dictionary _champion_catalog;
-	Dictionary _minion_catalog;
-	Dictionary _role_configs;
-	std::vector<BalancePatch> _balance_patches;
-	Dictionary _ability_kits; // "kit_id" -> kit Dictionary (ability, ultimate, passive_ids) - loaded from champion_kits.json
-	Dictionary _effective_champion_by_archetype; // key: String archetype_id, value: effective champion Dictionary
-	Dictionary _passive_registry;
+	sim::catalog::CatalogState _catalog;
 	std::unordered_map<int64_t, int64_t> _unit_index_map;
 	std::vector<int64_t> _alive_player_indices;
 	std::vector<int64_t> _alive_enemy_indices;
 	std::unordered_set<int64_t> _alive_player_indices_set;
 	std::unordered_set<int64_t> _alive_enemy_indices_set;
 	std::vector<TargetingFrameEntry> _targeting_frame;
-	bool _catalog_loaded = false;
 	std::array<UnitStrategy, ROLE_SLOT_COUNT> _role_strategy_cache_by_slot{};
 	UnitStrategy _default_strategy;
 	TickContext _tick_ctx;
@@ -1033,21 +393,6 @@ private:
 	bool _debug_combat_trace = false;
 	bool _debug_targeting_scoring = false;
 
-	/// Compact HUD/floating labels for the Godot simulation viewer (cleared each tick, filled during sim).
-	struct ViewerFxEvent {
-		StringName kind;
-		int64_t target_id = 0;
-		int64_t src_id = 0;
-		double pos_x = 0.0;
-		double pos_y = 0.0;
-		double val = 0.0;
-		/// World-space radius (aoe_ring / aoe_taunt / aoe_splash); 0 if unused.
-		double radius = 0.0;
-		/// Damage type for coloring (physical/magic/true); empty if unused.
-		StringName damage_type;
-		/// Extra parameters for complex effects (e.g., AOE shape parameters).
-		Variant extra;
-	};
 	static constexpr size_t VIEWER_FX_CAP = 256;
 	std::vector<ViewerFxEvent> _viewer_fx_events;
 
@@ -1149,37 +494,10 @@ private:
 	Dictionary _load_json_file_if_exists(const String &path) const;
 	Dictionary _effect_to_dict(const Variant &effect) const;
 	void _ensure_catalog_loaded();
-	void _build_role_configs();
-	void _build_passive_registry();
-	bool _patch_applies_to(const BalancePatch &patch, const StringName &archetype_id, const StringName &role) const;
-	void _apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) const;
-	void _merge_kit_into_champion(Dictionary &champion, const Dictionary &kit) const;
-	void _rebuild_effective_champion_cache();
-	bool _validate_effective_champion(const StringName &archetype_id, const Dictionary &champion) const;
+	sim::catalog::CatalogHooks _catalog_hooks() const;
+	static EffectRecord _catalog_compile_effect(void *user_data, const Dictionary &effect);
 	Dictionary _effective_champion_for(const StringName &archetype_id) const;
-	static void _parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
-	static int64_t _opcode_for_kind(const StringName &kind);
-	static const StringName &_kind_for_opcode(int64_t opcode);
-	
-	// Parameter validation helper
-	struct ParamTracker {
-		Dictionary params;
-		mutable std::vector<String> accessed;
-		String reason;
-		
-		ParamTracker(const Dictionary &p) : params(p) {}
-		
-		Variant get(const String &key, const Variant &default_value) {
-			accessed.push_back(key);
-			return params.get(key, default_value);
-		}
-		
-		void mark_accessed(const String &key) {
-			accessed.push_back(key);
-		}
-		
-		void report_unused(const String &effect_kind) const;
-	};
+	using ParamTracker = sim::effects::compile::ParamTracker;
 	
 	EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<EffectRecord> _compile_effect_array(const Array &effects) const;
@@ -1192,6 +510,53 @@ private:
 	void _sync_targeting_frame_unit(const UnitState &unit);
 	UnitStateCold &_uc(UnitState &u);
 	const UnitStateCold &_uc(const UnitState &u) const;
+
+	sim::SimWorld _sim_world() const;
+	void _bind_sim_host();
+	void _bind_sim_exec_hooks();
+	sim::SimHostCallbacks _sim_host_callbacks{};
+	sim::effects::execution::SimExecCallbacks _sim_exec_callbacks{};
+	sim::combat::CombatHostHooks _combat_host_hooks() const;
+	sim::unit_tick::UnitTickHostHooks _unit_tick_host_hooks() const;
+
+	friend Dictionary sim_host_execute_effect(void *user_data, const EffectRecord &effect, EffectContext &context);
+	friend void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target);
+	friend void sim_host_sync_targeting_frame_unit(void *user_data, const UnitState &unit);
+	friend void sim_host_sync_targeting_frame_index(void *user_data, int64_t index, const UnitState &unit);
+	friend void sim_host_emit_trace(void *user_data, const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
+	friend void sim_host_viewer_record_damage_fx(
+			void *user_data,
+			const UnitState &source,
+			const UnitState &target,
+			double total_damage,
+			const StringName &action_kind,
+			const StringName &damage_type);
+	friend double sim_host_heal_unit(
+			void *user_data,
+			UnitState &source,
+			UnitState &target,
+			double amount,
+			const StringName &action_kind,
+			bool allow_overheal);
+	friend UnitState *sim_host_select_ally_target(void *user_data, UnitState &unit);
+	friend void sim_host_run_post_attack_effects(void *user_data, UnitState &source, UnitState &target, double damage, const EffectContext &context);
+	friend void sim_host_run_post_heal_effects(void *user_data, UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &context);
+	friend void sim_host_push_projectile(void *user_data, const ProjectileState &projectile);
+	friend int sim_host_consume_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason);
+	friend void sim_host_set_stat_stacks(void *user_data, UnitState &unit, StringName stat_name, const String &reason, int stack_count, double duration, bool to_max, int fallback_max_stacks, double fallback_additive_per_stack, double fallback_multiplicative_per_stack);
+	friend String sim_host_get_stack_key(void *user_data, StringName stat_name, const String &reason);
+	friend void sim_host_process_channel_tick(void *user_data, UnitState &unit, double delta);
+	friend std::vector<UnitState *> sim_host_select_targets(void *user_data, UnitState &source, UnitState *target, int64_t target_count, TargetSelectionStrategy strategy, bool include_source, ExcessTargetHandling excess_handling, const StringName &team_filter);
+	friend Vector2 sim_host_find_random_spawn_position_near_excluding_with_expansion(void *user_data, double center_x, double center_y, double initial_radius, double max_radius, int64_t exclude_instance_id, const std::vector<Vector2> &pending_positions);
+	friend void sim_host_queue_pending_spawn(void *user_data, const PendingSpawn &pending);
+	friend int64_t sim_host_get_max_instance_id(void *user_data);
+	friend void sim_host_set_max_instance_id(void *user_data, int64_t value);
+	friend Dictionary sim_host_get_minion_data(void *user_data, const StringName &minion_id);
+	friend Vector2 sim_host_find_valid_dash_position(void *user_data, double tx, double ty, double new_x, double new_y, double effective_distance, int64_t target_instance_id);
+	friend void sim_host_apply_stacked_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
+	friend void sim_host_apply_simple_stat_modifier(void *user_data, UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason);
+	friend bool sim_host_debug_combat_trace(void *user_data);
+
 	UnitState *_unit_by_id(int64_t instance_id);
 	const UnitState *_unit_by_id(int64_t instance_id) const;
 	int64_t _unit_index_by_id(int64_t instance_id) const;
@@ -1201,7 +566,6 @@ private:
 	const std::vector<int64_t> &_alive_indices_for_team(const StringName &team) const;
 	void _add_alive_index(const StringName &team, int64_t index);
 	void _remove_alive_index(const StringName &team, int64_t index);
-	void _refresh_target_pressure();
 	void _prepare_tick_context();
 	void _build_role_strategy_cache();
 	const UnitStrategy &_strategy_for_unit(const UnitState &unit) const;
@@ -1238,11 +602,6 @@ private:
 	double _damage_type_multiplier(const UnitState &target, const StringName &damage_type);
 	double _evaluate_multiplier_effect(const EffectRecord &effect, const EffectContext &context, double current_value);
 	Dictionary _execute_effect(const EffectRecord &effect, EffectContext &context);
-	void _merge_accumulated_results(Dictionary &target, const Dictionary &source);
-	bool _check_condition(const EffectRecord &effect, const Dictionary &results);
-	bool _check_target_status_condition(const EffectRecord &effect, const EffectContext &context);
-	bool _check_all_conditions(const EffectRecord &effect, const Dictionary &results, const EffectContext &context);
-	void _merge_result(Dictionary &target_result, const Dictionary &source_result);
 	bool _target_has_status(const UnitState &target, const StringName &status_kind) const;
 	bool _effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode) const;
 	void _finalize_reflect_passives(UnitState &unit, UnitStateCold &cold);
@@ -1309,6 +668,7 @@ private:
 	void _respawn_unit(UnitState &unit);
 	Dictionary _build_summary();
 	Dictionary _build_stats_summary();
+	sim::match::MatchSnapshot _match_snapshot() const;
 	
 	// Pending spawns queue for mid-tick unit creation
 	std::vector<PendingSpawn> _pending_spawns;
@@ -1352,195 +712,25 @@ private:
 	Dictionary _champion_for(const StringName &archetype_id) const;
 
 	Vector2 _resolve_aoe_direction(const UnitState &source, const AoShapeParams &params, const UnitState *target_override = nullptr) const;
-	AoShapeParams _parse_aoe_shape_metadata(const Dictionary &params, ParamTracker &tracker) const;
 
 	/// Parameters for circular AoE iteration over an alive-team index list (`_alive_*_indices`).
 	/// `spatial_team` must match `UnitState::team` for units referenced by `indices` (used by broad-phase stamp).
-	struct AoCircleIterationParams {
-		double center_x = 0.0;
-		double center_y = 0.0;
-		double radius = 0.0;
-		const std::vector<int64_t> *indices = nullptr;
-		StringName spatial_team;
-		int64_t exclude_instance_id = 0;
-	};
+	using AoCircleIterationParams = sim::AoCircleIterationParams;
+	using AoShapeIterationParams = sim::AoShapeIterationParams;
 
-	/// Parameters for universal AoE shape iteration over an alive-team index list.
-	struct AoShapeIterationParams {
-		AoShapeParams shape_params;
-		const std::vector<int64_t> *indices = nullptr;
-		StringName spatial_team;
-		int64_t exclude_instance_id = 0;
-		const UnitState *source = nullptr;
-		const UnitState *target_override = nullptr;
-	};
 
-	/// Inclusive disk: `dist_sq <= radius²`. Uses spatial broad-phase when enabled (threshold on alive counts).
 	template<typename Fn>
 	void _for_each_unit_in_circle(const AoCircleIterationParams &p, Fn &&fn) {
-		if (p.radius <= 0.0 || p.indices == nullptr) {
-			return;
-		}
-		const double r2 = p.radius * p.radius;
-		const std::vector<int64_t> indices = *p.indices;
-		auto visit = [&](int64_t idx) {
-			if (idx < 0 || idx >= int64_t(_units.size())) {
-				return;
-			}
-			UnitState &u = _units[static_cast<size_t>(idx)];
-			if (!u.alive) {
-				return;
-			}
-			if (p.exclude_instance_id != 0 && u.instance_id == p.exclude_instance_id) {
-				return;
-			}
-			const double dx = u.pos_x - p.center_x;
-			const double dy = u.pos_y - p.center_y;
-			if (dx * dx + dy * dy <= r2) {
-				fn(u);
-			}
-		};
-		if (!_use_spatial_broad_phase()) {
-			for (int64_t idx : indices) {
-				visit(idx);
-			}
-			return;
-		}
-		_spatial_fill_buckets_for_indices(indices);
-		_spatial_stamp_circle(p.center_x, p.center_y, p.radius, p.spatial_team);
-		for (int64_t idx : indices) {
-			if (!_spatial_stamp_has(idx)) {
-				continue;
-			}
-			visit(idx);
-		}
+		sim::SimWorld w = _sim_world();
+		sim::for_each_unit_in_circle(w, p, std::forward<Fn>(fn));
 	}
 
-	/// Universal AoE shape iteration: supports circle, cone, rectangle, line.
-	/// Uses spatial broad-phase when enabled (threshold on alive counts).
 	template<typename Fn>
 	void _for_each_unit_in_shape(const AoShapeIterationParams &p, Fn &&fn) {
-		if (p.indices == nullptr) {
-			return;
-		}
-		const std::vector<int64_t> indices = *p.indices;
-		
-		// Resolve anchor position
-		double center_x = 0.0;
-		double center_y = 0.0;
-		if (p.shape_params.anchor == AoAnchorKind::Self && p.source != nullptr) {
-			center_x = p.source->pos_x;
-			center_y = p.source->pos_y;
-		} else if (p.shape_params.anchor == AoAnchorKind::Target && p.target_override != nullptr) {
-			center_x = p.target_override->pos_x;
-			center_y = p.target_override->pos_y;
-		} else if (p.shape_params.anchor == AoAnchorKind::Point) {
-			center_x = p.shape_params.anchor_x;
-			center_y = p.shape_params.anchor_y;
-		} else if (p.shape_params.anchor == AoAnchorKind::Forward && p.source != nullptr) {
-			// Calculate forward position from champion center
-			Vector2 direction = _resolve_aoe_direction(*p.source, p.shape_params, p.target_override);
-			if (p.shape_params.shape == AoShapeKind::Rectangle) {
-				center_x = p.source->pos_x + direction.x * p.shape_params.height * 0.5;
-				center_y = p.source->pos_y + direction.y * p.shape_params.height * 0.5;
-			} else if (p.shape_params.shape == AoShapeKind::Cone) {
-				// Cone apex at source, no offset needed (cone extends forward from apex)
-				center_x = p.source->pos_x;
-				center_y = p.source->pos_y;
-			} else if (p.shape_params.shape == AoShapeKind::Circle) {
-				center_x = p.source->pos_x + direction.x * p.shape_params.radius * 0.5;
-				center_y = p.source->pos_y + direction.y * p.shape_params.radius * 0.5;
-			} else {
-				center_x = p.source->pos_x;
-				center_y = p.source->pos_y;
-			}
-		} else if (p.source != nullptr) {
-			center_x = p.source->pos_x;
-			center_y = p.source->pos_y;
-		}
-		
-		// Resolve direction
-		Vector2 forward(1.0, 0.0);
-		if (p.source != nullptr) {
-			forward = _resolve_aoe_direction(*p.source, p.shape_params, p.target_override);
-		}
-		
-		// Shape-specific filtering
-		auto shape_contains = [&](const UnitState &u) -> bool {
-			const double dx = u.pos_x - center_x;
-			const double dy = u.pos_y - center_y;
-			
-			switch (p.shape_params.shape) {
-				case AoShapeKind::Circle: {
-					const double r2 = p.shape_params.radius * p.shape_params.radius;
-					return dx * dx + dy * dy <= r2;
-				}
-				case AoShapeKind::Cone: {
-					const double r2 = p.shape_params.radius * p.shape_params.radius;
-					if (dx * dx + dy * dy > r2) {
-						return false;
-					}
-					const double half_angle = p.shape_params.width * 0.5;
-					Vector2 to_unit(dx, dy);
-					if (to_unit.length_squared() < EPSILON * EPSILON) {
-						return true;
-					}
-					to_unit = to_unit.normalized();
-					const double dot = to_unit.dot(forward);
-					const double angle_cos = Math::cos(half_angle);
-					return dot >= angle_cos;
-				}
-				case AoShapeKind::Rectangle: {
-					const double half_w = p.shape_params.width * 0.5;
-					const double half_h = p.shape_params.height * 0.5;
-					Vector2 to_unit(dx, dy);
-					Vector2 right = Vector2(-forward.y, forward.x);
-					const double forward_dist = to_unit.dot(forward);
-					const double right_dist = to_unit.dot(right);
-					return Math::abs(forward_dist) <= half_h && Math::abs(right_dist) <= half_w;
-				}
-				default:
-					return false;
-			}
-		};
-		
-		auto visit = [&](int64_t idx) {
-			if (idx < 0 || idx >= int64_t(_units.size())) {
-				return;
-			}
-			UnitState &u = _units[static_cast<size_t>(idx)];
-			if (!u.alive) {
-				return;
-			}
-			if (p.exclude_instance_id != 0 && u.instance_id == p.exclude_instance_id) {
-				return;
-			}
-			if (shape_contains(u)) {
-				fn(u);
-			}
-		};
-		
-		if (!_use_spatial_broad_phase()) {
-			for (int64_t idx : indices) {
-				visit(idx);
-			}
-			return;
-		}
-		
-		// For spatial broad-phase, use circle bounds as approximation
-		double bounds_radius = p.shape_params.radius;
-		if (p.shape_params.shape == AoShapeKind::Rectangle) {
-			bounds_radius = Math::sqrt(p.shape_params.width * p.shape_params.width + p.shape_params.height * p.shape_params.height) * 0.5;
-		}
-		
-		_spatial_fill_buckets_for_indices(indices);
-		_spatial_stamp_circle(center_x, center_y, bounds_radius, p.spatial_team);
-		for (int64_t idx : indices) {
-			if (!_spatial_stamp_has(idx)) {
-				continue;
-			}
-			visit(idx);
-		}
+		sim::SimWorld w = _sim_world();
+		sim::for_each_unit_in_shape(w, p, std::forward<Fn>(fn), [&](const UnitState &source, const AoShapeParams &params, const UnitState *target_override) {
+			return sim::status::resolve_aoe_direction(w, source, params, target_override);
+		});
 	}
 
 	static inline double _distance_between_coords(double x1, double y1, double x2, double y2) {

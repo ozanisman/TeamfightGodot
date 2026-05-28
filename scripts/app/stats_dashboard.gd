@@ -747,7 +747,7 @@ func _sync_chart_table_headers(label_width: float, is_synergy: bool) -> void:
 	if not show_pct_axis:
 		_hdr_bar_pri.text = "Metric bar"
 	_hdr_games_pri.text = "Games"
-	_hdr_val_pri.text = "Value"
+	_hdr_val_pri.text = "Win %"
 
 
 func _hide_chart_chrome() -> void:

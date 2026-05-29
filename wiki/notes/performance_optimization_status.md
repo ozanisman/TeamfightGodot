@@ -25,6 +25,14 @@
 - Can be enabled by adding `SIM_TRACK_ALLOC` calls to specific hot paths
 - Useful for validating optimization impact on allocation patterns
 
+## Targeting optimization (2026-05-29)
+
+Dual-path distance pruning (20% threshold) was tested but broke fixture parity; reverted to maintain baseline.
+
+## Targeting frame sync optimization (2026-05-29)
+
+Attempted to eliminate bulk targeting frame sync pass by integrating sync into unit tick loop (end-of-tick sync per unit). Testing showed no meaningful performance improvement
+
 ## Benchmark (canonical gate)
 
 Release build, **2000 matches**, **5v5**, **`--bench-skip-summaries`**, **workers=1**:

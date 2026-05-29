@@ -1,5 +1,7 @@
 # Simulation Refactor — Iteration 3 Plan
 
+> **Historical.** Module names and line counts here reflect the plan at Iter 3 start. Current layout: [simulation_module_map.md](../../notes/simulation_module_map.md).
+
 Continuation of the native coordinator slim-down after Iteration 2 exit closure (May 2026). Goal: keep `TeamfightSimulationCore` as Godot glue and match orchestration only; move remaining gameplay logic into `native/src/simulation/`.
 
 **Baseline (start of Iteration 3):**
@@ -430,7 +432,7 @@ src/simulation/sim_match_loop.cpp        # 3e
 
 - [ ] `wiki/notes/simulation_module_map.md` — all new modules
 - [ ] `wiki/notes/performance_optimization_status.md` — bench after each phase
-- [ ] `wiki/projects/simulation_refactor_iteration_3.md` — mark phases complete
+- [ ] `wiki/projects/core-refactor-2026-05/simulation_refactor_iteration_3.md` — mark phases complete
 - [ ] Optional `wiki/notes/simulation_refactor_tick_exit.md` — friend/callback inventory
 
 ---

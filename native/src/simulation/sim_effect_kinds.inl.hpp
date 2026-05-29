@@ -3,6 +3,8 @@
 
 #include <godot_cpp/variant/string_name.hpp>
 
+using namespace godot;
+
 namespace sim {
 namespace effect_kinds {
 inline const StringName &sn_player() {

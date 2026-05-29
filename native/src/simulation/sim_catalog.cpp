@@ -1,7 +1,6 @@
 #include "sim_catalog.hpp"
 
 #include "sim_constants.hpp"
-#include "sim_effects_compile.hpp"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>

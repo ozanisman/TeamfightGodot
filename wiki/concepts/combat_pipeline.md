@@ -1,5 +1,7 @@
 # Combat Pipeline
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_match_loop`, `sim_unit_tick*`, `sim_combat*`, `sim_coordinator_tick.cpp`.
+
 Tick-based simulation loop with fixed time step (default 0.1s DEFAULT_TICK_RATE).
 
 Each tick runs `_step_tick()` which:

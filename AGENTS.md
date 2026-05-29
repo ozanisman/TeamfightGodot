@@ -12,6 +12,8 @@ The wiki contains evolving understanding of the project:
 
 Use the wiki to understand existing ideas before working on the codebase.
 
+**Native C++ simulation (refactored layout):** read [`wiki/notes/native_agent_guide.md`](wiki/notes/native_agent_guide.md) first, then [`wiki/notes/simulation_module_map.md`](wiki/notes/simulation_module_map.md). Do not use `wiki/projects/core-refactor-2026-05/` for current file paths.
+
 Prefer:
 - reusing existing concepts
 - extending existing ideas

@@ -1,0 +1,17 @@
+﻿{
+    "note":  "Quiet host baseline; update after each accepted optimization step.",
+    "captured":  "2026-05-28T00:00:00Z",
+    "git_sha":  "",
+    "w1":  {
+               "median_matches_per_sec":  146.16748133112387,
+               "min":  140.09201663928917,
+               "step":  "step4",
+               "max":  147.28196653827362
+           },
+    "w8":  {
+               "median_matches_per_sec":  628.6738125923365,
+               "min":  620.60918998088516,
+               "step":  "step4",
+               "max":  632.79284387228722
+           }
+}

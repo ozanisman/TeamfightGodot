@@ -1,0 +1,188 @@
+#include "sim_combat.hpp"
+#include "sim_combat_internal.hpp"
+
+#include "sim_constants.hpp"
+#include "sim_damage.hpp"
+#include "sim_stats.hpp"
+
+#include <godot_cpp/core/math.hpp>
+#include <godot_cpp/variant/string.hpp>
+
+namespace sim {
+namespace combat {
+
+using namespace internal;
+
+bool try_cast_ability(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks &hooks, UnitState &unit, UnitState &target, double distance) {
+	(void)distance;
+	if (unit.silence_remaining > 0.0 && unit.silence_blocks_abilities) {
+		return false;
+	}
+	if (unit.root_remaining > 0.0 && unit.has_ability_effect && effect_record_contains_opcode(uc(world, unit).ability_effect, EFFECT_OPCODE_SELF_DASH)) {
+		return false;
+	}
+	if (unit.ability_cooldown > 0.0) {
+		return false;
+	}
+	if (uc(world, unit).is_channeling) {
+		return false;
+	}
+	return start_cast(world, host, hooks, unit, target, distance, sn_ability());
+}
+
+bool try_cast_ultimate(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks &hooks, UnitState &unit, UnitState &target, double distance) {
+	(void)distance;
+	if (unit.silence_remaining > 0.0 && unit.silence_blocks_ultimates) {
+		return false;
+	}
+	if (unit.root_remaining > 0.0 && unit.has_ultimate_effect && effect_record_contains_opcode(uc(world, unit).ultimate_effect, EFFECT_OPCODE_SELF_DASH)) {
+		return false;
+	}
+	if (uc(world, unit).is_channeling) {
+		return false;
+	}
+	const double max_mana = get_effective_max_mana(unit);
+	if (max_mana <= 0.0 || unit.mana < max_mana) {
+		return false;
+	}
+	return start_cast(world, host, hooks, unit, target, distance, sn_ultimate());
+}
+
+bool start_cast(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		const CombatHostHooks &hooks,
+		UnitState &unit,
+		UnitState &target,
+		double distance,
+		const StringName &action_kind) {
+	(void)distance;
+	const bool has_effect = action_kind == sn_ability() ? unit.has_ability_effect : unit.has_ultimate_effect;
+	if (!has_effect) {
+		return false;
+	}
+	UnitState *target_ally = nullptr;
+	if (hooks.select_ally_target != nullptr) {
+		target_ally = hooks.select_ally_target(hooks.user_data, unit);
+	}
+	if (action_kind == sn_ability()) {
+		uc(world, unit).abilities += 1;
+	} else {
+		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
+	}
+	UnitStateCold &ucast = uc(world, unit);
+	ucast.casting_kind = action_kind;
+	ucast.casting_effect = action_kind == sn_ability() ? ucast.ability_effect : ucast.ultimate_effect;
+	double windup = CASTING_WINDUP;
+	if (ucast.casting_effect.windup >= 0.0) {
+		windup = ucast.casting_effect.windup;
+	}
+	unit.casting_remaining = windup;
+	unit.has_casting_effect = true;
+	unit.casting_target_id = unit.target_id != 0 ? unit.target_id : target.instance_id;
+	unit.casting_ally_target_id = unit.current_ally_target_id != 0 ? unit.current_ally_target_id : (target_ally == nullptr ? 0 : target_ally->instance_id);
+	emit_trace(host, sn_cast_start(), unit.instance_id, target.instance_id, action_kind == sn_ultimate() ? 1.0 : 0.0);
+	return true;
+}
+
+void resolve_cast(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks &hooks, UnitState &unit) {
+	(void)hooks;
+	if (unit.stealth_remaining > 0.0 && unit.stealth_break_on_ability) {
+		unit.stealth_remaining = 0.0;
+		unit.stealth_break_on_attack = false;
+		unit.stealth_break_on_ability = false;
+		unit.stealth_break_on_damage_taken = false;
+	}
+	UnitStateCold &c = uc(world, unit);
+	const EffectRecord effect = c.casting_effect;
+	const StringName action_kind = c.casting_kind;
+	UnitState *target = unit_by_id(world, unit.casting_target_id);
+	UnitState *target_ally = unit_by_id(world, unit.casting_ally_target_id);
+	const bool had_effect = unit.has_casting_effect;
+	unit.casting_remaining = 0.0;
+	c.casting_kind = StringName();
+	c.casting_effect = EffectRecord();
+	unit.has_casting_effect = false;
+	unit.casting_target_id = 0;
+	unit.casting_ally_target_id = 0;
+	if (!had_effect) {
+		return;
+	}
+	if (action_kind == sn_ability()) {
+		unit.ability_cooldown = get_effective_ability_cd(unit);
+	}
+	if (effect_uses_projectile(effect) && (target == nullptr || !target->alive || target->stealth_remaining > 0.0)) {
+		if (action_kind == sn_ability()) {
+			unit.ability_cooldown = 0.0;
+		} else if (action_kind == sn_ultimate()) {
+			const double effective_max_mana = get_effective_max_mana(unit);
+			unit.mana = Math::min(effective_max_mana, unit.mana + effective_max_mana);
+		}
+		return;
+	}
+	EffectContext context = build_context(unit, target, target_ally, 0.0, action_kind);
+	if (host.execute_effect != nullptr) {
+		host.execute_effect(host, effect, context);
+	}
+}
+
+void perform_auto_attack(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		const CombatHostHooks &hooks,
+		UnitState &unit,
+		UnitState &target,
+		double distance,
+		std::vector<ProjectileState> &projectiles) {
+	(void)hooks;
+	if (unit.disarm_remaining > 0.0) {
+		return;
+	}
+	if (target.stealth_remaining > 0.0) {
+		return;
+	}
+	uc(world, unit).auto_attacks += 1;
+	unit.attack_count += 1;
+	double damage = get_effective_attack_damage(unit);
+	damage = damage::apply_attack_modifiers(world, host, unit, target, distance, damage);
+	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
+		ProjectileState projectile;
+		projectile.source_id = unit.instance_id;
+		projectile.target_id = target.instance_id;
+		projectile.damage = damage;
+		projectile.damage_type = sn_physical();
+		projectile.stun_duration = DEFAULT_PROJECTILE_STUN_DURATION;
+		projectile.radius = get_effective_projectile_radius(unit);
+		projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
+		projectile.pos_x = unit.pos_x;
+		projectile.pos_y = unit.pos_y;
+		projectile.action_kind = sn_auto();
+		projectile.reason = String("Auto Attack");
+		projectiles.push_back(projectile);
+		emit_trace(host, StringName("projectile"), unit.instance_id, target.instance_id, damage);
+	} else {
+		EffectContext context = build_context(unit, &target, nullptr, damage, sn_auto());
+		const double dealt = damage::apply_damage(world, host, unit, target, damage, sn_physical(), sn_auto(), context);
+		emit_trace(host, StringName("auto_melee"), unit.instance_id, target.instance_id, dealt);
+		run_post_attack_effects(world, host, unit, target, dealt, context);
+		const double life_steal = get_effective_life_steal(unit);
+		if (life_steal > 0.0) {
+			const double old_hp = unit.hp;
+			const double heal_amount = dealt * life_steal;
+			heal_with_hooks(world, host, unit, unit, heal_amount, sn_auto(), false);
+			const double heal_gained = unit.hp - old_hp;
+			run_post_heal_effects(world, host, unit, unit, heal_amount, heal_gained, context);
+		}
+	}
+	const double mana_gain = get_effective_mana_per_attack(unit);
+	if (mana_gain > 0.0) {
+		const double max_mana = get_effective_max_mana(unit);
+		unit.mana = Math::min(max_mana, unit.mana + mana_gain);
+	}
+	const double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
+	unit.attack_cooldown = 1.0 / attack_speed;
+	unit.attack_period = unit.attack_cooldown;
+}
+
+} // namespace combat
+} // namespace sim

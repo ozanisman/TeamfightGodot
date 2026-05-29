@@ -1,49 +1,38 @@
-# Performance Optimization Status
+# Performance status
 
-## Current Baseline (May 24, 2026)
-- **Baseline**: 106.68 matches/sec (workers=1, 5v5)
-- **Previous Baseline**: 75.4 matches/sec
-- **Improvement**: 41.4% (stacked micro-optimizations)
-- **Goal**: 226 matches/sec (3x improvement from original baseline)
-- **Remaining Gap**: ~112% improvement needed
+> **Agents:** validation commands and benchmark numbers only. Code layout → [native_agent_guide.md](native_agent_guide.md).
 
-## Successful Optimizations
-1. **Threat Decay Threshold** (May 24, 2026)
-   - Skip `_sync_targeting_frame_unit` when threat decay < 0.001
-   - Reduced `tgt_frame_syncs` by 25-30%
-   - Maintained exact parity
+**Last updated:** 2026-05-28
 
-2. **Stacked Micro-Optimizations** (May 24, 2026) - Threshold lowered to 1%
-   - **Timer Decrement**: Replace `Math::max` with simple subtraction (3.4%)
-   - **Distance Cache**: Only compute for alive units, leverage symmetry (3.7%)
-   - **Collision Checks**: Use squared distance instead of sqrt (3.9%)
-   - **Frame Sync Threshold**: Skip when no meaningful changes (3.3%)
-   - **Cumulative**: 41.4% improvement (75.4 → 106.68 matches/sec)
-   - All maintained exact parity
+## Benchmark (canonical gate)
 
-## Path to 3x Improvement
-Need additional ~112% improvement. Fundamental algorithmic changes required:
+Release build, **2000 matches**, **5v5**, **`--bench-skip-summaries`**, **workers=1**:
 
-### Targeting System (Largest Hot Spot)
-- **Current**: O(n*m) per tick (n attackers, m enemies)
-- **Opportunity**: Spatial partitioning already exists but underutilized
-- **Idea**: Precompute enemy buckets by role/distance to reduce candidate set
-- **Risk**: High - targeting is core gameplay logic
+| Metric | Value |
+|--------|-------|
+| Matches/sec | **142.4** |
+| `duration_sec` | 14.04 |
+| Fixtures | **7/7** |
 
-### Distance Cache
-- **Current**: O(n²) rebuild every tick
-- **Opportunity**: Incremental updates for moved units only
-- **Risk**: Medium - parity concerns with stale distances
+Recorded after native refactor + hygiene pass on a quiet host. Re-run the gate before merge or when claiming a perf change; numbers vary with background load.
 
-### Effect System
-- **Current**: Linear scan through effects
-- **Opportunity**: Effect type indexing
-- **Risk**: Medium - effect order matters for some interactions
+**Regression compare (optional):** [`scripts/tools/run_perf_iteration_gate.ps1`](../../scripts/tools/run_perf_iteration_gate.ps1) vs [`scripts/tools/perf_gate_baseline.json`](../../scripts/tools/perf_gate_baseline.json) (2026-05-28 capture: w=1 median **146.2** m/s, w=8 median **628.7** m/s).
 
-### Projectile System
-- **Current**: Linear scan for collision detection
-- **Opportunity**: Spatial grid for projectile-unit collision
-- **Risk**: Low - projectiles are independent
+## Profiling snapshot (2026-05-28)
 
-## Recommendation
-Focus on projectile spatial indexing as the lowest-risk high-impact optimization. Targeting changes require careful parity validation and may need gameplay specification changes.
+50 matches with `--sim-profile --targeting-profile`: `ns_update_units` dominates; within unit tick — `uu_targeting`, `uu_cooldowns_cc`, `uu_separation`; enemy scoring (`se_calls`); many ticks skip full retarget (`tgt_retarget_keeps` high).
+
+Further ideas (not scheduled): [algorithmic_optimization_analysis.md](algorithmic_optimization_analysis.md).
+
+## Validation gate
+
+```text
+cmake --build native/build --config Release
+.\run_godot.ps1 -- --check-only
+.\run_godot.ps1 -- --check-native-load
+.\run_godot.ps1 -- --check-match-telemetry
+.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
+.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
+```
+
+Confirm no lingering Godot processes after runs.

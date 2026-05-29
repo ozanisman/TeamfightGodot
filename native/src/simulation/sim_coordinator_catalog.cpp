@@ -1,9 +1,6 @@
-#include "sim_coordinator_catalog.hpp"
-
 #include "../teamfight_simulation_core.hpp"
 
 #include "sim_catalog.hpp"
-#include "sim_constants.hpp"
 #include "sim_effects_compile.hpp"
 
 sim::EffectRecord TeamfightSimulationCore::_compile_effect(const Dictionary &effect) const {

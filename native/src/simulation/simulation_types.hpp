@@ -579,7 +579,6 @@ struct TargetingFrameEntry {
 struct TargetScoreContext {
 	double attack_range = 0.0;
 	double effective_range = 0.0;
-	bool use_spatial = false;
 	bool has_kite_bounds = false;
 	double kite_min_w = 0.0;
 	double kite_max_w = 0.0;

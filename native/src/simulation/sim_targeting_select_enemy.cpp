@@ -297,7 +297,6 @@ UnitState *select_enemy_target_coordinator(
 	TargetScoreContext score_ctx;
 	score_ctx.attack_range = attack_range(unit);
 	score_ctx.effective_range = effective_attack_range(unit);
-	score_ctx.use_spatial = use_spatial_broad_phase(world);
 	if (strategy.prefers_kiting) {
 		score_ctx.has_kite_bounds = true;
 		score_ctx.kite_min_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;

@@ -10,14 +10,12 @@
 #include <godot_cpp/variant/variant.hpp>
 
 #include "python_random.hpp"
-#include "stat_definitions.hpp"
 
 #include "simulation/sim_aoe.hpp"
 #include "simulation/sim_catalog.hpp"
 #include "simulation/sim_channel.hpp"
 #include "simulation/sim_combat.hpp"
 #include "simulation/sim_constants.hpp"
-#include "simulation/sim_effects_compile.hpp"
 #include "simulation/sim_effects_exec.hpp"
 #include "simulation/sim_effects_host.hpp"
 #include "simulation/sim_match.hpp"
@@ -25,7 +23,6 @@
 #include "simulation/sim_match_loop.hpp"
 #include "simulation/sim_profile_counters.hpp"
 #include "simulation/sim_match_roster.hpp"
-#include "simulation/sim_movement.hpp"
 #include "simulation/sim_unit_builder.hpp"
 #include "simulation/simulation_types.hpp"
 #include "simulation/sim_status.hpp"

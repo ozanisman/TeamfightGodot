@@ -53,11 +53,9 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_targeting_select_effect.cpp
     src/simulation/sim_targeting_context.cpp
     src/simulation/sim_targeting_strategies.cpp
-    src/simulation/sim_damage.cpp
     src/simulation/sim_damage_internal.cpp
     src/simulation/sim_damage_modifiers.cpp
     src/simulation/sim_damage_apply.cpp
-    src/simulation/sim_status.cpp
     src/simulation/sim_status_internal.cpp
     src/simulation/sim_status_cc.cpp
     src/simulation/sim_status_heal.cpp
@@ -105,7 +103,6 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_lifecycle.cpp
     src/simulation/sim_match_loop.cpp
     src/simulation/sim_match_runtime_state.cpp
-    src/simulation/sim_viewer.cpp
     src/simulation/sim_viewer_fx.cpp
     src/simulation/sim_viewer_snapshot.cpp
     src/simulation/sim_match_benchmark.cpp

@@ -50,8 +50,8 @@ Hot-path logic lives under `native/src/simulation/`. `TeamfightSimulationCore` i
 ## Adding features
 
 - **New opcode:** `sim_effects_compile_*.cpp` (pick category TU) + handler in `sim_effects_exec.cpp`; delegate damage/status/periodic as needed.
-- **New CC or heal:** `sim_status.cpp` + exec opcode.
+- **New CC or heal:** `sim_status_{cc,heal,aoe}.cpp` (or `sim_status_internal.cpp`) + exec opcode.
 - **New AoE shape:** `sim_aoe.hpp` `shape_contains` + compile metadata; see `wiki/concepts/aoe_shapes.md`.
-- **New DoT/HoT:** `sim_periodic.cpp` + exec opcode.
+- **New DoT/HoT:** `sim_periodic_dot_hot.cpp` (or `sim_periodic_internal.cpp`) + exec opcode.
 
 Nested effects: `SimHostCallbacks::execute_effect` → `sim::effects::host_execute_effect` → `sim::effects::execution::execute`.

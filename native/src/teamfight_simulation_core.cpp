@@ -1,14 +1,9 @@
 #include "teamfight_simulation_core.hpp"
 
-#include "simulation/sim_stats.hpp"
+#include "stat_definitions.hpp"
+#include "simulation/sim_stats.inl.hpp"
 
 #include "simulation/sim_constants.hpp"
-#include "simulation/sim_coordinator_bindings.hpp"
-#include "simulation/sim_coordinator_catalog.hpp"
-#include "simulation/sim_coordinator_state.hpp"
-#include "simulation/sim_coordinator_targeting.hpp"
-#include "simulation/sim_coordinator_tick.hpp"
-#include "simulation/sim_coordinator_viewer.hpp"
 #include "simulation/sim_match.hpp"
 #include "simulation/sim_match_benchmark.hpp"
 #include "simulation/sim_movement.hpp"

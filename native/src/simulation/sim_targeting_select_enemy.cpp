@@ -310,6 +310,7 @@ UnitState *select_enemy_target_coordinator(
 		profile.retarget_keeps = state.tgt_retarget_keeps;
 		profile.enemy_scans = state.tgt_enemy_scans;
 		profile.candidates_scored = state.tgt_candidates_scored;
+		profile.candidates_prefix_pruned = state.tgt_candidates_prefix_pruned;
 		profile.ties_adjusted = state.tgt_ties_adjusted;
 		profile.ties_distance = state.tgt_ties_distance;
 		profile.ties_instance = state.tgt_ties_instance;

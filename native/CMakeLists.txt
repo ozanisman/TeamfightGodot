@@ -43,6 +43,7 @@ add_subdirectory("${GODOT_CPP_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/godot-cpp" EXC
 
 set(TEAMFIGHT_SIMULATION_SOURCES
     src/register_types.cpp
+    src/simulation/sim_allocation_tracker.cpp
     src/simulation/sim_stats.cpp
     src/simulation/sim_spatial.cpp
     src/simulation/sim_targeting.cpp
@@ -185,6 +186,7 @@ target_include_directories(teamfight_simulation_core PRIVATE
 
 target_compile_definitions(teamfight_simulation_core PRIVATE
     GD_EXTENSION_BUILD
+    $<$<CONFIG:Debug>:DEBUG_BUILD>
 )
 
 target_link_libraries(teamfight_simulation_core PRIVATE godot-cpp)

@@ -3,6 +3,7 @@
 #include "../teamfight_simulation_core.hpp"
 #include "sim_match.hpp"
 #include "sim_match_roster.hpp"
+#include "sim_profile.hpp"
 #include "sim_viewer.hpp"
 
 #include <godot_cpp/variant/utility_functions.hpp>

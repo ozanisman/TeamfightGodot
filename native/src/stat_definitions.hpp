@@ -1,10 +1,10 @@
 #ifndef STAT_DEFINITIONS_HPP
 #define STAT_DEFINITIONS_HPP
 
-#include <limits>
+#include <cstddef>
 
 // Sentinel value for unbounded stats (no min/max clamping)
-#define NO_BOUND -std::numeric_limits<double>::infinity()
+#define NO_BOUND -1e308
 
 // Format: X(stat_name, default_value, min_value, max_value)
 #define STAT_LIST \
@@ -32,5 +32,10 @@ enum class StatIndex : int {
 #undef X
     Count
 };
+
+// Generate array index helper
+inline constexpr size_t stat_index(StatIndex idx) {
+    return static_cast<size_t>(idx);
+}
 
 #endif // STAT_DEFINITIONS_HPP

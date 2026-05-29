@@ -2,7 +2,28 @@
 
 > **Agents:** validation commands and benchmark numbers only. Code layout → [native_agent_guide.md](native_agent_guide.md).
 
-**Last updated:** 2026-05-28
+**Last updated:** 2026-05-29
+
+## Allocation tracking infrastructure (Slice 1 - 2026-05-29)
+
+**Status:** Infrastructure added, currently unused.
+
+**Components:**
+- `sim_allocation_tracker.hpp/cpp` - Type-based allocation tracking with atomic counters
+- `SIM_TRACK_ALLOC` macro - No-op in Release mode, active in Debug builds
+- `sim_profile_counters.hpp` - Allocation counter fields (currently all zeros)
+- `sim_profile.hpp/cpp` - Integration functions for enabling/disabling tracking
+- `stat_definitions.hpp` - `stat_index` helper for stat lookups
+
+**Why unused:**
+- Requires manual instrumentation at every allocation site
+- Debug build measurement showed zero allocations (no instrumentation in hot paths)
+- External audit already identified high-severity issues via profiling
+
+**Future use:**
+- Infrastructure remains available for targeted allocation measurement
+- Can be enabled by adding `SIM_TRACK_ALLOC` calls to specific hot paths
+- Useful for validating optimization impact on allocation patterns
 
 ## Benchmark (canonical gate)
 

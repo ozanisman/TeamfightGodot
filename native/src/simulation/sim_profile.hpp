@@ -15,6 +15,11 @@ void reset(TeamfightSimulationCore &core);
 void emit_json_stderr(const TeamfightSimulationCore &core);
 unit_tick::UnitTickProfileCounters unit_tick_profile(Counters &counters, bool profile_sim);
 
+// Allocation tracking integration
+void enable_allocation_tracking(bool enable);
+void snapshot_allocation_stats(Counters &counters);
+void report_allocation_stats();
+
 } // namespace sim::profile
 
 #endif // SIM_PROFILE_HPP

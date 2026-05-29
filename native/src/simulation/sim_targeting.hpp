@@ -23,6 +23,7 @@ struct TargetingProfileCounters {
 	int64_t *retarget_keeps = nullptr;
 	int64_t *enemy_scans = nullptr;
 	int64_t *candidates_scored = nullptr;
+	int64_t *candidates_prefix_pruned = nullptr;
 	int64_t *ties_adjusted = nullptr;
 	int64_t *ties_distance = nullptr;
 	int64_t *ties_instance = nullptr;
@@ -110,6 +111,7 @@ struct CoordinatorTargetingState {
 	int64_t *tgt_retarget_keeps = nullptr;
 	int64_t *tgt_enemy_scans = nullptr;
 	int64_t *tgt_candidates_scored = nullptr;
+	int64_t *tgt_candidates_prefix_pruned = nullptr;
 	int64_t *tgt_ties_adjusted = nullptr;
 	int64_t *tgt_ties_distance = nullptr;
 	int64_t *tgt_ties_instance = nullptr;

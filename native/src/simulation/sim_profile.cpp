@@ -2,6 +2,7 @@
 
 #include "sim_profile_counters.hpp"
 #include "sim_unit_tick.hpp"
+#include "sim_allocation_tracker.hpp"
 
 #include "../teamfight_simulation_core.hpp"
 
@@ -11,6 +12,20 @@
 using namespace godot;
 
 namespace sim::profile {
+
+void enable_allocation_tracking(bool enable) {
+	allocation::Tracker::instance().set_enabled(enable);
+}
+
+void snapshot_allocation_stats(Counters &counters) {
+	// For now, we'll just track global totals
+	// In a full implementation, we'd aggregate type-specific stats
+	allocation::Tracker::instance().report_to_stderr();
+}
+
+void report_allocation_stats() {
+	allocation::Tracker::instance().report_to_stderr();
+}
 
 void reset(TeamfightSimulationCore &core) {
 	core._sim_profile_counters = Counters{};
@@ -24,6 +39,12 @@ void emit_json_stderr(const TeamfightSimulationCore &core) {
 	profile["ns_update_units"] = core._sim_profile_counters.ns_update_units;
 	profile["ns_refresh_pressure_post"] = core._sim_profile_counters.ns_refresh_pressure_post;
 	profile["tick_count"] = core._sim_profile_counters.tick_count;
+	
+	// Allocation tracking stats
+	profile["alloc_total_count"] = core._sim_profile_counters.alloc_total_count;
+	profile["alloc_total_bytes"] = core._sim_profile_counters.alloc_total_bytes;
+	profile["alloc_peak_bytes"] = core._sim_profile_counters.alloc_peak_bytes;
+	profile["alloc_current_bytes"] = core._sim_profile_counters.alloc_current_bytes;
 	profile["uu_dead_respawn"] = core._sim_profile_counters.uu_dead_respawn;
 	profile["uu_cooldowns_cc"] = core._sim_profile_counters.uu_cooldowns_cc;
 	profile["uu_separation"] = core._sim_profile_counters.uu_separation;

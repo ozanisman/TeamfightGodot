@@ -49,6 +49,7 @@ sim::targeting::CoordinatorTargetingState TeamfightSimulationCore::_targeting_co
 	state.tgt_retarget_keeps = &_sim_profile_counters.tgt_retarget_keeps;
 	state.tgt_enemy_scans = &_sim_profile_counters.tgt_enemy_scans;
 	state.tgt_candidates_scored = &_sim_profile_counters.tgt_candidates_scored;
+	state.tgt_candidates_prefix_pruned = &_sim_profile_counters.tgt_candidates_prefix_pruned;
 	state.tgt_ties_adjusted = &_sim_profile_counters.tgt_ties_adjusted;
 	state.tgt_ties_distance = &_sim_profile_counters.tgt_ties_distance;
 	state.tgt_ties_instance = &_sim_profile_counters.tgt_ties_instance;

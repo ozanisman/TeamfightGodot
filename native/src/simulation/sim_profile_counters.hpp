@@ -17,6 +17,12 @@ struct Counters {
 	uint64_t ns_update_units = 0;
 	uint64_t ns_refresh_pressure_post = 0;
 	int64_t tick_count = 0;
+	
+	// Allocation tracking counters
+	uint64_t alloc_total_count = 0;
+	uint64_t alloc_total_bytes = 0;
+	uint64_t alloc_peak_bytes = 0;
+	uint64_t alloc_current_bytes = 0;
 	uint64_t uu_dead_respawn = 0;
 	uint64_t uu_cooldowns_cc = 0;
 	uint64_t uu_separation = 0;

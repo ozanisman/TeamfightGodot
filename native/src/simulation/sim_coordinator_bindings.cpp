@@ -1,5 +1,3 @@
-#include "sim_coordinator_bindings.hpp"
-
 #include "../teamfight_simulation_core.hpp"
 
 #include "sim_channel.hpp"

@@ -1,23 +1,14 @@
-#include "sim_coordinator_match.hpp"
-
 #include "../teamfight_simulation_core.hpp"
 
-#include "sim_catalog.hpp"
 #include "sim_constants.hpp"
-
-using namespace sim;
-#include "sim_match.hpp"
+#include "sim_coordinator_host.hpp"
 #include "sim_match_loop.hpp"
 #include "sim_match_roster.hpp"
-#include "sim_coordinator_host.hpp"
-#include "sim_targeting.hpp"
-#include "sim_targeting_strategies.hpp"
-#include "sim_unit_builder.hpp"
-#include "sim_viewer.hpp"
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
+using namespace sim;
 
 Dictionary TeamfightSimulationCore::_coerce_match_input(const Variant &match_input) const {
 	if (match_input.get_type() == Variant::DICTIONARY) {
@@ -49,10 +40,11 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 
 	int64_t next_instance_id = 1;
 	sim::SimWorld w = _sim_world();
+	sim::match_roster::MatchRosterState roster = _match_roster_state();
 	sim::match_roster::append_team_units(
 			w,
 			&_viewer_hooks,
-			_match_roster_state(),
+			roster,
 			_unit_builder_host(),
 			Array(match_input.get("player_units", Array())),
 			StringName("player"),
@@ -63,7 +55,7 @@ void TeamfightSimulationCore::_populate_runtime_state(const Dictionary &match_in
 	sim::match_roster::append_team_units(
 			w,
 			&_viewer_hooks,
-			_match_roster_state(),
+			roster,
 			_unit_builder_host(),
 			Array(match_input.get("enemy_units", Array())),
 			StringName("enemy"),
@@ -95,7 +87,9 @@ Dictionary TeamfightSimulationCore::run_match(const Variant &match_input) {
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	sim::match::simulate(_match_loop_state(), _match_loop_host());
+	match::MatchLoopState loop = _match_loop_state();
+	match::MatchLoopHost host = _match_loop_host();
+	match::simulate(loop, host);
 	return _build_summary();
 }
 
@@ -108,7 +102,9 @@ Dictionary TeamfightSimulationCore::run_match_stats(const Variant &match_input) 
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	sim::match::simulate(_match_loop_state(), _match_loop_host());
+	match::MatchLoopState loop = _match_loop_state();
+	match::MatchLoopHost host = _match_loop_host();
+	match::simulate(loop, host);
 	return _build_stats_summary();
 }
 
@@ -121,7 +117,9 @@ void TeamfightSimulationCore::run_match_simulation_only(const Variant &match_inp
 	}
 	_reset_runtime_state();
 	_populate_runtime_state(input);
-	sim::match::simulate(_match_loop_state(), _match_loop_host());
+	match::MatchLoopState loop = _match_loop_state();
+	match::MatchLoopHost host = _match_loop_host();
+	match::simulate(loop, host);
 }
 
 void TeamfightSimulationCore::run_matches_simulation_only(const Array &match_inputs) {
@@ -166,7 +164,9 @@ Array TeamfightSimulationCore::run_matches_stats(const Array &match_inputs) {
 		}
 		_reset_runtime_state();
 		_populate_runtime_state(input);
-		sim::match::simulate(_match_loop_state(), _match_loop_host());
+		match::MatchLoopState loop = _match_loop_state();
+		match::MatchLoopHost host = _match_loop_host();
+		match::simulate(loop, host);
 		summaries[index] = _build_stats_summary();
 		clear();
 	}
@@ -188,7 +188,9 @@ void TeamfightSimulationCore::advance_one_tick() {
 	if (match_ticks_exhausted()) {
 		return;
 	}
-	sim::match::step_tick(_match_loop_state(), _match_loop_host(), false);
+	match::MatchLoopState loop = _match_loop_state();
+	match::MatchLoopHost host = _match_loop_host();
+	match::step_tick(loop, host, false);
 	
 	// Track sudden death ticks after regulation
 	double effective_tick_rate = Math::max(_tick_rate, EPSILON);

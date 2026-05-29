@@ -5,7 +5,6 @@
 #include "sim_targeting_internal.hpp"
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <algorithm>
 #include <limits>
 #include <vector>
 

@@ -53,7 +53,7 @@
 ## Invariants (do not break)
 
 - `_units` and `_unit_cold` stay in lockstep; use `CoordinatorHostAccess::uc()` for elements inside `_units`, never a local `UnitState` copy.
-- `MatchLoopState` / `MatchLoopHost` / `MatchRosterState`: returned by value (reference aggregates). **Store in locals** before passing to `simulate`, `step_tick`, or `append_team_units` — never pass `_match_loop_state()` temporaries to non-const references.
+- `MatchLoopState` / `MatchLoopHost` / `MatchRosterState` / `SpawnSlotState`: returned by value (reference aggregates). **Store in locals** before passing to any `T &` parameter (`simulate`, `step_tick`, `process_pending_spawns`, `register_built_unit`, `handle_death`, `assign_spawn_slot`, etc.) — never pass `_match_*_state()` / callback return temporaries to non-const references. `const UnitBuilderHost &` may bind to `_unit_builder_host()` temporaries.
 - Effect path: `SimHostCallbacks::execute_effect` → `sim::effects::host_execute_effect` → `sim::effects::execution::execute` (avoid new coordinator hops on hot path).
 - After batch matches: call `clear()` on engines so unit refs do not leak across runs.
 - Native hot/cold: keep `_unit_cold` aligned with `_units` (same push/clear pairs).

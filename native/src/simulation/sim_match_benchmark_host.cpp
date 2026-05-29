@@ -65,7 +65,9 @@ match::MatchLoopHost GeneratedMatchHost::match_loop_host(TeamfightSimulationCore
 }
 
 void GeneratedMatchHost::simulate_match(TeamfightSimulationCore *core) {
-	sim::match::simulate(core->_match_loop_state(), core->_match_loop_host());
+	match::MatchLoopState loop = core->_match_loop_state();
+	match::MatchLoopHost host = core->_match_loop_host();
+	match::simulate(loop, host);
 }
 
 std::vector<UnitState> &GeneratedMatchHost::units(TeamfightSimulationCore *core) {

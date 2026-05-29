@@ -81,6 +81,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 		auto t_match0 = std::chrono::steady_clock::now();
 		const int64_t seed = base_seed + match_index;
 		GeneratedMatchHost::seed_generated_match(&core, seed, DEFAULT_TICK_RATE);
+		match_roster::MatchRosterState roster = GeneratedMatchHost::match_roster_state(&core);
 		CPythonRandom draft_rng;
 		draft_rng.seed_int64(seed);
 		int64_t next_instance_id = 1;
@@ -105,7 +106,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			std::pair<UnitState, UnitStateCold> built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_player(), next_instance_id);
 			const int64_t unit_index = sim::match_roster::register_built_unit(
-					w, GeneratedMatchHost::match_roster_state(&core), std::move(built), sn_player(), next_instance_id);
+					w, roster, std::move(built), sn_player(), next_instance_id);
 			if (unit_index < 0) {
 				continue;
 			}
@@ -130,7 +131,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			std::pair<UnitState, UnitStateCold> built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_enemy(), next_instance_id);
 			const int64_t unit_index = sim::match_roster::register_built_unit(
-					w, GeneratedMatchHost::match_roster_state(&core), std::move(built), sn_enemy(), next_instance_id);
+					w, roster, std::move(built), sn_enemy(), next_instance_id);
 			if (unit_index < 0) {
 				continue;
 			}

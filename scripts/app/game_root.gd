@@ -65,7 +65,7 @@ func _open_main_menu() -> void:
 	
 	# Title
 	var title := Label.new()
-	title.text = "Teamfight Tactics"
+	title.text = "Teamfight"
 	title.add_theme_color_override("font_color", Color.WHITE)
 	title.add_theme_font_size_override("font_size", 48)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -50,12 +50,18 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 	const int64_t units_per_team = Math::max(int64_t(1), team_size);
 	const std::vector<StringName> archetypes = load_archetypes(champion_keys);
 
-	auto append_generated_unit = [&core](Dictionary &spawn_spec, const StringName &team, const StringName &archetype, int64_t &next_instance_id, Array &comp) {
+	auto append_generated_unit = [&core](
+			match_roster::MatchRosterState &roster,
+			Dictionary &spawn_spec,
+			const StringName &team,
+			const StringName &archetype,
+			int64_t &next_instance_id,
+			Array &comp) {
 		spawn_spec.clear();
 		spawn_spec["archetype_id"] = archetype;
 		sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
 		std::pair<UnitState, UnitStateCold> built = sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, team, next_instance_id);
-		const int64_t unit_index = sim::match_roster::register_built_unit(w, GeneratedMatchHost::match_roster_state(&core), std::move(built), team, next_instance_id);
+		const int64_t unit_index = sim::match_roster::register_built_unit(w, roster, std::move(built), team, next_instance_id);
 		if (unit_index < 0) {
 			return;
 		}
@@ -79,6 +85,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
 		const int64_t seed = base_seed + match_index;
 		GeneratedMatchHost::seed_generated_match(&core, seed, tick_rate);
+		match_roster::MatchRosterState roster = GeneratedMatchHost::match_roster_state(&core);
 
 		Ref<RandomNumberGenerator> draft_rng;
 		draft_rng.instantiate();
@@ -87,11 +94,11 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 		if (champion_count < units_per_team * 2) {
 			for (int64_t slot = 0; slot < units_per_team; ++slot) {
 				const int64_t archetype_index = pick_index(draft_rng, champion_count - 1);
-				append_generated_unit(spawn_spec, sn_player(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, GeneratedMatchHost::player_comp(&core));
+				append_generated_unit(roster, spawn_spec, sn_player(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, GeneratedMatchHost::player_comp(&core));
 			}
 			for (int64_t slot = 0; slot < units_per_team; ++slot) {
 				const int64_t archetype_index = pick_index(draft_rng, champion_count - 1);
-				append_generated_unit(spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, GeneratedMatchHost::enemy_comp(&core));
+				append_generated_unit(roster, spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(archetype_index)], next_instance_id, GeneratedMatchHost::enemy_comp(&core));
 			}
 		} else {
 			std::vector<int64_t> indices;
@@ -104,11 +111,11 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 				std::swap(indices[static_cast<size_t>(i)], indices[static_cast<size_t>(j)]);
 			}
 			for (int64_t slot = 0; slot < units_per_team; ++slot) {
-				append_generated_unit(spawn_spec, sn_player(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(slot)])], next_instance_id, GeneratedMatchHost::player_comp(&core));
+				append_generated_unit(roster, spawn_spec, sn_player(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(slot)])], next_instance_id, GeneratedMatchHost::player_comp(&core));
 			}
 			for (int64_t slot = 0; slot < units_per_team; ++slot) {
 				const int64_t source_index = slot + units_per_team;
-				append_generated_unit(spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(source_index)])], next_instance_id, GeneratedMatchHost::enemy_comp(&core));
+				append_generated_unit(roster, spawn_spec, sn_enemy(), archetypes[static_cast<size_t>(indices[static_cast<size_t>(source_index)])], next_instance_id, GeneratedMatchHost::enemy_comp(&core));
 			}
 		}
 		GeneratedMatchHost::build_role_strategy_cache(&core);

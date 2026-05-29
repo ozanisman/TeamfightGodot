@@ -17,12 +17,13 @@ void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target
 	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
 	sim::match::MatchScoreState score = core->_match_score_state();
 	score.roster = &roster;
+	sim::match::SpawnSlotState slots = core->_spawn_slot_state();
 	sim::match::handle_death(
 			w,
 			core->_sim_host_callbacks,
 			&core->_viewer_hooks,
 			score,
-			core->_spawn_slot_state(),
+			slots,
 			killer,
 			target);
 }
@@ -127,7 +128,8 @@ void sim_host_finalize_reflect_passives(void *user_data, UnitState &unit, UnitSt
 
 int64_t sim_host_assign_spawn_slot(void *user_data, const StringName &team) {
 	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
-	return sim::match::assign_spawn_slot(core->_spawn_slot_state(), team);
+	sim::match::SpawnSlotState slots = core->_spawn_slot_state();
+	return sim::match::assign_spawn_slot(slots, team);
 }
 
 Vector2 sim_host_get_random_spawn_position(void *user_data, const StringName &team, bool is_respawn) {
@@ -206,12 +208,13 @@ void sim_host_unit_tick_respawn(void *user_data, UnitState &unit) {
 	sim::match_roster::MatchRosterState roster = core->_match_roster_state();
 	sim::match::MatchScoreState score = core->_match_score_state();
 	score.roster = &roster;
+	sim::match::SpawnSlotState slots = core->_spawn_slot_state();
 	sim::match::respawn_unit(
 			w,
 			core->_sim_host_callbacks,
 			&core->_viewer_hooks,
 			score,
-			core->_spawn_slot_state(),
+			slots,
 			unit);
 }
 

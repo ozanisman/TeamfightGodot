@@ -65,10 +65,9 @@ void step_tick(MatchLoopState &state, MatchLoopHost &host, bool profile_sim) {
 		host.update_projectiles(host.user_data, profile_sim);
 	}
 	SimWorld world = make_world(state);
-	match_roster::process_pending_spawns(
-			world,
-			host.match_roster_state(host.user_data),
-			host.unit_builder_host(host.user_data));
+	match_roster::MatchRosterState roster = host.match_roster_state(host.user_data);
+	const unit_builder::UnitBuilderHost builder = host.unit_builder_host(host.user_data);
+	match_roster::process_pending_spawns(world, roster, builder);
 	invalidate_spatial_bucket_fill(world);
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();

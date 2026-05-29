@@ -1,5 +1,7 @@
 # Targeting AI
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_targeting*`, `sim_targeting_strategies`.
+
 Scoring-based enemy and ally selection with role-specific strategies.
 
 Each unit maintains a `current_target_id` and retargets periodically (default 0.5s interval). Target selection scores enemies on: distance (weighted by role), HP (lower HP preferred by assassins/mages), threat (recent damage dealers with falloff), obscurance (frontline blocking), flanking (positioning relative to team center), bodyguard (protecting carries), and execute threshold (low HP bonus).

@@ -2,7 +2,7 @@
 
 Continuation after [simulation_refactor_iteration_10.md](simulation_refactor_iteration_10.md).
 
-**Merge `core-refactor` → `main`:** out of scope (manual release step).
+**Merge `core-refactor` → `main`:** manual; run canonical gate on branch (see [performance_optimization_status.md](../../notes/performance_optimization_status.md)).
 
 ## Baseline (start)
 
@@ -21,7 +21,7 @@ Continuation after [simulation_refactor_iteration_10.md](simulation_refactor_ite
 |--------|-------|--------|
 | `sim_effects_compile.cpp` | **184** | < ~350 |
 | `sim_effects_compile_opcodes.cpp` | **279** (new) | — |
-| `teamfight_simulation_core.hpp` | **272** | < ~220 (stretch; aliases removed) |
+| `teamfight_simulation_core.hpp` | **~270** | < ~220 (stretch; aliases removed) |
 | Coordinator TUs | `sim::*` at call sites | no `TeamfightSimulationCore::Type` aliases |
 | Friends | **1** | 1 |
 | Fixtures | **7/7** | 7/7 |
@@ -44,6 +44,14 @@ Continuation after [simulation_refactor_iteration_10.md](simulation_refactor_ite
 ## Validation gate
 
 All green (May 28, 2026): cmake Release, `--check-only`, `--check-native-load`, `--check-match-telemetry`, fixtures 7/7, benchmark workers=1.
+
+**Pre-merge re-check:** **~142.4 m/s** (2000×5v5, workers=1, `duration_sec` 14.04); fixtures 7/7.
+
+## Post–Iter 11 hygiene (native)
+
+- Removed stub TUs and empty coordinator `.hpp` shells; deleted one-off refactor backups/scripts.
+- `sim_coordinator_match.cpp`: `MatchLoopState` / `MatchLoopHost` locals for `simulate` / `step_tick`.
+- IWYU/clangd: `export` on `sim_stats.inl.hpp`; `using namespace godot` in `sim_effect_kinds.inl.hpp`.
 
 ## Deferred (Iter 12+)
 

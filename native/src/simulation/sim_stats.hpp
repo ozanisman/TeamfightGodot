@@ -2,7 +2,7 @@
 #define SIM_STATS_HPP
 
 #include "simulation_types.hpp"
-#include "sim_stats.inl.hpp"
+#include "sim_stats.inl.hpp" // IWYU pragma: export
 
 namespace sim {
 

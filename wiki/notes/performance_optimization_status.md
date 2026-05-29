@@ -15,7 +15,8 @@ Harness: [`scripts/tools/run_perf_iteration_gate.ps1`](../../scripts/tools/run_p
 | step3 | `prepare_tick_context` single sync pass | 7/7 | 97.20 vs step2 | — | **stopped** (median drop; code kept) |
 | baseline_v3 | fresh session baseline (steps 1–3 code) | 7/7 | **117.63** | **619.28** | — |
 | step4 | per-op spatial bucket fill cache (kite/separation) | 7/7 | **145.22** | **630.04** | **pass** |
-| step5–6 | enemy broad-phase / score precompute | — | — | — | not run |
+| step5 | enemy select spatial broad-phase | — | — | — | **reverted** (5v5 focus) |
+| step6 | validated enemy score precompute | — | — | — | **reverted** (5v5 focus; keep step4) |
 
 **Note:** Compare gates only within the same session/baseline file. `baseline_v3` → `step4` on this host: w=1 **+23%**, w=8 **+2%**.
 
@@ -44,7 +45,7 @@ Harness: [`scripts/tools/run_perf_iteration_gate.ps1`](../../scripts/tools/run_p
 
 - **Coordinator:** `teamfight_simulation_core.cpp` **~296**; glue in **`sim_coordinator_{state,catalog,targeting,viewer,tick,bindings}.cpp`**.
 - **Runtime:** **`sim_match_runtime_state.{hpp,cpp}`** — `MatchRuntimeState`, `runtime_from()`; tick hot path keeps direct `SimWorld` / `MatchLoopState` field wiring on coordinator.
-- **Damage:** split into **`sim_damage_internal`**, **`sim_damage_modifiers`** (~153), **`sim_damage_apply`** (~285); stub **`sim_damage.cpp`**.
+- **Damage:** split into **`sim_damage_internal`**, **`sim_damage_modifiers`** (~153), **`sim_damage_apply`** (~285); API in **`sim_damage.hpp`**.
 - **Periodic hygiene:** `cleanse_dots` / `clear_periodic_effects` moved to **`sim_periodic_internal.cpp`**; **`sim_periodic_dot_hot.cpp`** **385** lines.
 - **Bench (Release, workers=1, 5v5, 2000 batch):** **~137.6 matches/sec** (`duration_sec` 14.54; clean re-run). Within ~6% of Iter 8 **~146.8 m/s**; prior ~90–96 m/s runs were interference (background Godot).
 - **Validation:** full gate green (7 fixture cases); **0** `core._*` in `sim_match_benchmark.cpp`.

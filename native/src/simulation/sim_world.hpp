@@ -15,6 +15,12 @@
 
 namespace sim {
 
+/// Per-tick reuse of spatial bucket fills for the same alive-team index list (kite/separation).
+struct SpatialBucketFillCache {
+	const std::vector<int64_t> *indices = nullptr;
+	bool valid = false;
+};
+
 struct SimWorld {
 	std::vector<UnitState> &units;
 	std::vector<UnitStateCold> &unit_cold;
@@ -29,6 +35,7 @@ struct SimWorld {
 	mutable std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> *spatial_buckets = nullptr;
 	mutable std::vector<uint32_t> *spatial_stamp = nullptr;
 	mutable uint32_t *spatial_generation = nullptr;
+	SpatialBucketFillCache *spatial_fill_cache = nullptr;
 
 	SimWorld(
 			std::vector<UnitState> &p_units,
@@ -42,7 +49,8 @@ struct SimWorld {
 			double &p_tick_rate,
 			std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> *p_spatial_buckets,
 			std::vector<uint32_t> *p_spatial_stamp,
-			uint32_t *p_spatial_generation) :
+			uint32_t *p_spatial_generation,
+			SpatialBucketFillCache *p_spatial_fill_cache = nullptr) :
 			units(p_units),
 			unit_cold(p_unit_cold),
 			unit_index_map(p_unit_index_map),
@@ -54,7 +62,8 @@ struct SimWorld {
 			tick_rate(p_tick_rate),
 			spatial_buckets(p_spatial_buckets),
 			spatial_stamp(p_spatial_stamp),
-			spatial_generation(p_spatial_generation) {}
+			spatial_generation(p_spatial_generation),
+			spatial_fill_cache(p_spatial_fill_cache) {}
 };
 
 inline UnitStateCold &uc(SimWorld &world, UnitState &unit) {

@@ -36,6 +36,7 @@ struct MatchLoopState {
 	std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> &spatial_buckets;
 	std::vector<uint32_t> &spatial_stamp;
 	uint32_t &spatial_generation;
+	SpatialBucketFillCache &spatial_fill_cache;
 
 	int64_t &tick;
 	double &time;

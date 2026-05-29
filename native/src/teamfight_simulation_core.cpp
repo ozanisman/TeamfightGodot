@@ -45,7 +45,8 @@ sim::SimWorld TeamfightSimulationCore::_sim_world() const {
 			self._tick_rate,
 			&self._spatial_buckets,
 			&self._spatial_stamp,
-			&self._spatial_generation);
+			&self._spatial_generation,
+			&self._spatial_fill_cache);
 }
 
 sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
@@ -60,6 +61,7 @@ sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
 		_spatial_buckets,
 		_spatial_stamp,
 		_spatial_generation,
+		_spatial_fill_cache,
 		_tick,
 		_time,
 		_tick_rate,

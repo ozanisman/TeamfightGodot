@@ -6,8 +6,86 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <array>
+#include <cstdint>
+
 namespace sim::effects::execution {
 namespace internal {
+
+namespace {
+
+constexpr size_t kExecRouteTableSize = 56;
+
+const std::array<ExecRoute, kExecRouteTableSize> &exec_route_table() {
+	static const std::array<ExecRoute, kExecRouteTableSize> table = {
+			ExecRoute::DefaultOk, // 0 UNKNOWN
+			ExecRoute::MultiEffect,
+			ExecRoute::Damage,
+			ExecRoute::Spawn,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::DefaultOk,
+			ExecRoute::DefaultOk,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Damage,
+			ExecRoute::DefaultOk,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Damage,
+			ExecRoute::Damage,
+			ExecRoute::Damage,
+			ExecRoute::Damage,
+			ExecRoute::DefaultOk,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Damage,
+			ExecRoute::Status,
+			ExecRoute::Damage,
+			ExecRoute::Damage,
+			ExecRoute::Status,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::Aoe,
+			ExecRoute::MultiTarget,
+			ExecRoute::Status,
+			ExecRoute::Damage,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Status,
+			ExecRoute::Damage,
+			ExecRoute::Spawn,
+	};
+	return table;
+}
+
+} // namespace
+
+ExecRoute exec_route_for_opcode(int64_t opcode) {
+	if (opcode < 0 || static_cast<size_t>(opcode) >= kExecRouteTableSize) {
+		return ExecRoute::DefaultOk;
+	}
+	return exec_route_table()[static_cast<size_t>(opcode)];
+}
 
 Dictionary execute_recursive(
 		const EffectRecord &effect,
@@ -42,60 +120,16 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 		return failed_result;
 	}
 	
-	switch (effect.opcode) {
-		case EFFECT_OPCODE_DAMAGE:
-		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER:
-		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE:
-		case EFFECT_OPCODE_REFLECT_DAMAGE:
-		case EFFECT_OPCODE_REDIRECT_DAMAGE:
-		case EFFECT_OPCODE_AUTO_DODGE:
-		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
-		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
-		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
-		case EFFECT_OPCODE_STAT_MODIFIER:
+	switch (exec_route_for_opcode(effect.opcode)) {
+		case ExecRoute::Damage:
 			return exec_damage(effect, context, world, host, hooks, match_host, source, target, target_ally);
-		case EFFECT_OPCODE_STUN:
-		case EFFECT_OPCODE_SHIELD:
-		case EFFECT_OPCODE_HEAL:
-		case EFFECT_OPCODE_MANA_REGEN:
-		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
-		case EFFECT_OPCODE_DAMAGE_BASED_HEAL:
-		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD:
-		case EFFECT_OPCODE_CONSUME_STACKS_HEAL:
-		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD:
-		case EFFECT_OPCODE_SET_STACKS:
-		case EFFECT_OPCODE_CHANNEL:
-		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
-		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT:
-		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
-		case EFFECT_OPCODE_SLOW:
-		case EFFECT_OPCODE_ROOT:
-		case EFFECT_OPCODE_SILENCE:
-		case EFFECT_OPCODE_DISARM:
-		case EFFECT_OPCODE_STEALTH:
-		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
-		case EFFECT_OPCODE_KNOCKBACK:
-		case EFFECT_OPCODE_REFLECT:
-		case EFFECT_OPCODE_SELF_DASH:
+		case ExecRoute::Status:
 			return exec_status(effect, context, world, host, hooks, match_host, source, target, target_ally);
-		case EFFECT_OPCODE_PROJECTILE:
-		case EFFECT_OPCODE_SUMMON_ALLY:
+		case ExecRoute::Spawn:
 			return exec_spawn(effect, context, world, host, hooks, match_host, source, target, target_ally);
-		case EFFECT_OPCODE_AOE_TAUNT:
-		case EFFECT_OPCODE_AOE_DAMAGE:
-		case EFFECT_OPCODE_DAMAGE_OVER_TIME:
-		case EFFECT_OPCODE_HEAL_OVER_TIME:
-		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME:
-		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME:
-		case EFFECT_OPCODE_AOE_SLOW:
-		case EFFECT_OPCODE_AOE_ROOT:
-		case EFFECT_OPCODE_AOE_SILENCE:
-		case EFFECT_OPCODE_AOE_DISARM:
-		case EFFECT_OPCODE_AOE_KNOCKBACK:
-		case EFFECT_OPCODE_AOE_REFLECT:
-		case EFFECT_OPCODE_AOE_STUN:
+		case ExecRoute::Aoe:
 			return exec_aoe(effect, context, world, host, hooks, match_host, source, target, target_ally);
-		case EFFECT_OPCODE_MULTI_EFFECT: {
+		case ExecRoute::MultiEffect: {
 			Dictionary combined_results;
 			for (const EffectRecord &child : effect.children) {
 				// Update context with accumulated results before executing child
@@ -111,7 +145,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			}
 			return combined_results;
 		}
-		case EFFECT_OPCODE_MULTI_TARGET: {
+		case ExecRoute::MultiTarget: {
 			Dictionary multi_result;
 			multi_result["success"] = true;
 			
@@ -295,20 +329,13 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			multi_result["success"] = true;
 			return multi_result;
 		}
+		case ExecRoute::DefaultOk:
 		default: {
-			// Opcodes without runtime execution resolve here (unknown kinds compile to UNKNOWN).
 			Dictionary default_result;
 			default_result["success"] = true;
 			return default_result;
 		}
 	}
-
-	// Should never reach here - all cases should return
-	UtilityFunctions::push_error(vformat("_execute_effect: fell through switch for opcode %d", effect.opcode));
-	Dictionary fallback_result;
-	fallback_result["success"] = false;
-	fallback_result["error"] = "Unhandled opcode in _execute_effect";
-	return fallback_result;
 }
 
 } // namespace internal

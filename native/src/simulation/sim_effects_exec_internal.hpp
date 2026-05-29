@@ -115,6 +115,18 @@ inline bool check_all_conditions(const EffectRecord &effect, const Dictionary &r
 	return true;
 }
 
+enum class ExecRoute : uint8_t {
+	Damage = 0,
+	Status = 1,
+	Spawn = 2,
+	Aoe = 3,
+	MultiEffect = 4,
+	MultiTarget = 5,
+	DefaultOk = 6,
+};
+
+ExecRoute exec_route_for_opcode(int64_t opcode);
+
 inline void merge_result(Dictionary &target_result, const Dictionary &source_result) {
 	Array keys = source_result.keys();
 	for (int64_t i = 0; i < keys.size(); ++i) {

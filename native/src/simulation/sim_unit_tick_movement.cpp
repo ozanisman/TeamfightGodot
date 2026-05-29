@@ -53,7 +53,7 @@ void separation(SimWorld &world, UnitState &unit, UnitTickProfileCounters &profi
 				sep_y += (dy / d) * force;
 			};
 			if (int64_t(ally_indices.size()) >= SPATIAL_SEPARATION_TEAM_THRESHOLD) {
-				fill_buckets_for_indices(world, ally_indices);
+				fill_buckets_for_indices_cached(world, ally_indices);
 				stamp_separation_candidates(world, ux, uy, radius, unit.team, unit.instance_id);
 				for (int64_t idx : ally_indices) {
 					if (!stamp_has(world, idx)) {
@@ -72,6 +72,7 @@ void separation(SimWorld &world, UnitState &unit, UnitTickProfileCounters &profi
 				const double ny = sep_y * nudge_speed;
 				unit.pos_x = Math::clamp(ux + nx, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 				unit.pos_y = Math::clamp(uy + ny, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+				on_unit_position_changed(world, unit);
 			}
 		}
 	}

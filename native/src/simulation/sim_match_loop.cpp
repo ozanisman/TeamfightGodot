@@ -29,7 +29,8 @@ SimWorld make_world(MatchLoopState &state) {
 			state.tick_rate,
 			&state.spatial_buckets,
 			&state.spatial_stamp,
-			&state.spatial_generation);
+			&state.spatial_generation,
+			&state.spatial_fill_cache);
 }
 
 StringName determine_winner(int64_t player_kills, int64_t enemy_kills) {
@@ -68,6 +69,7 @@ void step_tick(MatchLoopState &state, MatchLoopHost &host, bool profile_sim) {
 			world,
 			host.match_roster_state(host.user_data),
 			host.unit_builder_host(host.user_data));
+	invalidate_spatial_bucket_fill(world);
 	if (profile_sim) {
 		auto t0 = std::chrono::steady_clock::now();
 		host.prepare_tick_context(host.user_data, profile_sim);

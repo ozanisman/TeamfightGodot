@@ -7,6 +7,7 @@
 #include "sim_constants.hpp"
 #include "sim_damage.hpp"
 #include "sim_movement.hpp"
+#include "sim_spatial.hpp"
 #include "sim_stats.hpp"
 #include "sim_status.hpp"
 #include "sim_targeting.hpp"
@@ -318,6 +319,7 @@ bool apply_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source,
 	const Vector2 valid = movement::find_valid_dash_position(world, tx, ty, new_x, new_y, effective_distance, target.instance_id);
 	target.pos_x = Math::clamp(static_cast<double>(valid.x), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	target.pos_y = Math::clamp(static_cast<double>(valid.y), WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	on_unit_position_changed(world, target);
 	if (host.sync_targeting_frame_unit != nullptr) {
 		host.sync_targeting_frame_unit(host.user_data, target);
 	}

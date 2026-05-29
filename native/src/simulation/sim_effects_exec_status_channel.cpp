@@ -6,6 +6,7 @@
 #include "sim_channel.hpp"
 #include "sim_constants.hpp"
 #include "sim_movement.hpp"
+#include "sim_spatial.hpp"
 #include "sim_stats.hpp"
 
 #include <godot_cpp/core/math.hpp>
@@ -153,6 +154,7 @@ Dictionary exec_status_channel(
 
 			source.pos_x = new_x;
 			source.pos_y = new_y;
+			on_unit_position_changed(world, source);
 			host.sync_targeting_frame_unit(host.user_data, source);
 
 			double actual_distance = sim::distance_between_coords(current_x, current_y, new_x, new_y);

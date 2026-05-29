@@ -111,6 +111,7 @@ public:
 	mutable std::array<std::vector<int64_t>, sim::SPATIAL_GRID_DIM * sim::SPATIAL_GRID_DIM> _spatial_buckets;
 	mutable std::vector<uint32_t> _spatial_stamp;
 	mutable uint32_t _spatial_generation = 1;
+	mutable sim::SpatialBucketFillCache _spatial_fill_cache;
 
 	sim::profile::Counters _sim_profile_counters;
 	sim::profile::RuntimeFlags _sim_profile_runtime;

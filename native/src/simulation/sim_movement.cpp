@@ -145,8 +145,9 @@ void move_toward_target_with_range(SimWorld &world, UnitState &unit, const UnitS
 	}
 	const double nx = dx / distance;
 	const double ny = dy / distance;
-	unit.pos_x = Math::clamp(unit.pos_x + nx * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
-	unit.pos_y = Math::clamp(unit.pos_y + ny * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+		unit.pos_x = Math::clamp(unit.pos_x + nx * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+		unit.pos_y = Math::clamp(unit.pos_y + ny * max_step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+		on_unit_position_changed(world, unit);
 }
 
 bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit, const KiteProfileCounters *profile) {
@@ -169,7 +170,7 @@ bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit,
 	const bool profile_active = profile != nullptr && profile->active;
 	if (use_spatial_broad_phase(world)) {
 		ProfileAccScope scope(profile_active, profile != nullptr ? profile->kiting_spatial : nullptr);
-		fill_buckets_for_indices(world, enemy_indices);
+		fill_buckets_for_indices_cached(world, enemy_indices);
 		stamp_kite_threat(world, ux, uy, danger_radius);
 		for (const int64_t idx : enemy_indices) {
 			if (!stamp_has(world, idx)) {
@@ -254,6 +255,7 @@ bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit,
 	if (dx * dx + dy * dy > EPSILON) {
 		unit.pos_x = new_x;
 		unit.pos_y = new_y;
+		on_unit_position_changed(world, unit);
 		sync_frame_unit(world, unit, &host);
 	}
 	return true;

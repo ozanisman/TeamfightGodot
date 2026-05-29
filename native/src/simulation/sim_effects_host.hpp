@@ -35,6 +35,7 @@ struct EffectExecBindings {
 	std::array<std::vector<int64_t>, SPATIAL_GRID_DIM * SPATIAL_GRID_DIM> *spatial_buckets = nullptr;
 	std::vector<uint32_t> *spatial_stamp = nullptr;
 	uint32_t *spatial_generation = nullptr;
+	SpatialBucketFillCache *spatial_fill_cache = nullptr;
 	SimMatchHost match_host;
 	const execution::SimExecCallbacks *exec_callbacks = nullptr;
 

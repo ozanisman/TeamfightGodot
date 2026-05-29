@@ -174,7 +174,56 @@ void stamp_kite_threat(SimWorld &world, double cx, double cy, double danger_radi
 	}
 }
 
+namespace {
+
+bool unit_index_in_cached_indices(const SpatialBucketFillCache &cache, int64_t unit_index) {
+	if (!cache.valid || cache.indices == nullptr) {
+		return false;
+	}
+	for (int64_t idx : *cache.indices) {
+		if (idx == unit_index) {
+			return true;
+		}
+	}
+	return false;
+}
+
+} // namespace
+
+void invalidate_spatial_bucket_fill(SimWorld &world) {
+	if (world.spatial_fill_cache == nullptr) {
+		return;
+	}
+	world.spatial_fill_cache->valid = false;
+	world.spatial_fill_cache->indices = nullptr;
+}
+
+void on_unit_position_changed(SimWorld &world, const UnitState &unit) {
+	if (world.spatial_fill_cache == nullptr) {
+		return;
+	}
+	const int64_t unit_index = static_cast<int64_t>(&unit - world.units.data());
+	if (unit_index_in_cached_indices(*world.spatial_fill_cache, unit_index)) {
+		invalidate_spatial_bucket_fill(world);
+	}
+}
+
+void fill_buckets_for_indices_cached(SimWorld &world, const std::vector<int64_t> &indices) {
+	if (world.spatial_fill_cache != nullptr) {
+		SpatialBucketFillCache &cache = *world.spatial_fill_cache;
+		if (cache.valid && cache.indices == &indices) {
+			return;
+		}
+		fill_buckets_for_indices(world, indices);
+		cache.indices = &indices;
+		cache.valid = true;
+		return;
+	}
+	fill_buckets_for_indices(world, indices);
+}
+
 void fill_buckets_for_indices(SimWorld &world, const std::vector<int64_t> &indices) {
+	invalidate_spatial_bucket_fill(world);
 	clear_buckets(world);
 	for (int64_t idx : indices) {
 		const UnitState &u = world.units[idx];

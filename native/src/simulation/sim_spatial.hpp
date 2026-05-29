@@ -10,6 +10,10 @@ namespace sim {
 
 const std::vector<int64_t> &alive_indices_for_team(const SimWorld &world, const StringName &team);
 
+void invalidate_spatial_bucket_fill(SimWorld &world);
+void on_unit_position_changed(SimWorld &world, const UnitState &unit);
+void fill_buckets_for_indices_cached(SimWorld &world, const std::vector<int64_t> &indices);
+
 void ensure_stamp_size(SimWorld &world);
 void clear_buckets(SimWorld &world);
 double cell_size();

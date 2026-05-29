@@ -74,6 +74,7 @@ void TeamfightSimulationCore::_bind_effect_exec_bindings() {
 	_effect_exec_bindings.spatial_buckets = &_spatial_buckets;
 	_effect_exec_bindings.spatial_stamp = &_spatial_stamp;
 	_effect_exec_bindings.spatial_generation = &_spatial_generation;
+	_effect_exec_bindings.spatial_fill_cache = &_spatial_fill_cache;
 	_effect_exec_bindings.match_host.pending_spawns = &_pending_spawns;
 	_effect_exec_bindings.match_host.projectiles = &_projectiles;
 	_effect_exec_bindings.match_host.max_instance_id = &_max_instance_id;

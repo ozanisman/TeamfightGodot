@@ -20,7 +20,8 @@ SimWorld EffectExecBindings::make_world() const {
 			*tick_rate,
 			spatial_buckets,
 			spatial_stamp,
-			spatial_generation);
+			spatial_generation,
+			spatial_fill_cache);
 }
 
 Dictionary host_execute_effect(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context) {

@@ -23,7 +23,6 @@ void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host) {
 		if (!u.alive) {
 			continue;
 		}
-		sync_targeting_frame_index(world, idx, u);
 		pcx += u.pos_x;
 		pcy += u.pos_y;
 		pc += 1;
@@ -50,7 +49,6 @@ void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host) {
 		if (!u.alive) {
 			continue;
 		}
-		sync_targeting_frame_index(world, idx, u);
 		ecx += u.pos_x;
 		ecy += u.pos_y;
 		ec += 1;
@@ -86,7 +84,6 @@ void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host) {
 			continue;
 		}
 		target.incoming_target_count += 1;
-		sync_targeting_frame_index(world, target_index, target);
 	}
 	for (int64_t idx : world.alive_enemy_indices) {
 		const UnitState &u = world.units[idx];
@@ -103,7 +100,19 @@ void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host) {
 			continue;
 		}
 		target.incoming_target_count += 1;
-		sync_targeting_frame_index(world, target_index, target);
+	}
+
+	for (int64_t idx : world.alive_player_indices) {
+		const UnitState &u = world.units[static_cast<size_t>(idx)];
+		if (u.alive) {
+			sync_targeting_frame_index(world, idx, u);
+		}
+	}
+	for (int64_t idx : world.alive_enemy_indices) {
+		const UnitState &u = world.units[static_cast<size_t>(idx)];
+		if (u.alive) {
+			sync_targeting_frame_index(world, idx, u);
+		}
 	}
 	(void)host;
 }

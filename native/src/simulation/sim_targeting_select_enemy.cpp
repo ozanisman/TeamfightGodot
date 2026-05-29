@@ -102,7 +102,11 @@ UnitState *select_enemy_target(
 	double best_raw = std::numeric_limits<double>::infinity();
 	double best_dist = std::numeric_limits<double>::infinity();
 
+	const bool debug_scoring = debug != nullptr && debug->enabled;
 	std::vector<std::pair<int64_t, double>> candidate_scores;
+	if (debug_scoring) {
+		candidate_scores.reserve(enemy_indices.size());
+	}
 
 	if (profile_active && profile->enemy_scans != nullptr) {
 		*profile->enemy_scans += 1;
@@ -120,7 +124,6 @@ UnitState *select_enemy_target(
 		double dist = Math::sqrt(dx * dx + dy * dy);
 
 		ScoreBreakdown local_breakdown;
-		const bool debug_scoring = debug != nullptr && debug->enabled;
 		ScoreBreakdown *breakdown_ptr = debug_scoring ? &local_breakdown : nullptr;
 
 		double raw = score_enemy_target(
@@ -136,7 +139,9 @@ UnitState *select_enemy_target(
 				enemy_index,
 				breakdown_ptr);
 
-		candidate_scores.push_back({candidate.instance_id, raw});
+		if (debug_scoring) {
+			candidate_scores.push_back({candidate.instance_id, raw});
+		}
 
 		if (current_target_index >= 0 && enemy_index == current_target_index) {
 			current_target_raw = raw;
@@ -182,7 +187,7 @@ UnitState *select_enemy_target(
 
 	const TargetingFrameEntry *best_frame = &world.targeting_frame[static_cast<size_t>(best_index)];
 
-	if (debug != nullptr && debug->enabled && debug->print_line != nullptr && debug->archetype_for_unit != nullptr) {
+	if (debug_scoring && debug->print_line != nullptr && debug->archetype_for_unit != nullptr) {
 		String attacker_archetype = String(debug->archetype_for_unit(debug->user_data, unit));
 		String msg = "[TARGET EVAL] Unit " + String::num_int64(unit.instance_id) + " (" + attacker_archetype + ") current target " + String::num_int64(unit.target_id) + " best " + String::num_int64(best_live->instance_id) + " (score " + String::num_real(best_raw) + "). All candidates:";
 		debug->print_line(debug->user_data, msg);

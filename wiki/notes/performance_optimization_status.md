@@ -1,5 +1,24 @@
 # Performance Optimization Status
 
+## Perf iteration gate (May 28, 2026)
+
+Harness: [`scripts/tools/run_perf_iteration_gate.ps1`](../../scripts/tools/run_perf_iteration_gate.ps1), [`scripts/tools/run_perf_full_gate.ps1`](../../scripts/tools/run_perf_full_gate.ps1). Baseline: [`scripts/tools/perf_gate_baseline.json`](../../scripts/tools/perf_gate_baseline.json). Logs: `logs/perf_gate/`.
+
+**Profile (50 matches, `--sim-profile --targeting-profile`):** `ns_update_units` dominates; within unit tick: `uu_targeting` + `uu_cooldowns_cc` + `uu_separation` lead; `se_calls` tracks enemy candidate scoring; `tgt_retarget_keeps` high (many ticks skip full rescans).
+
+| Step | Change | Fixtures | w=1 median (5 runs) | w=8 median | Gate |
+|------|--------|----------|---------------------|------------|------|
+| phase0 | baseline capture | 7/7 | 101.17 (host outlier) | 475.90 | — |
+| baseline_v2 | rebaseline (step1 code) | — | **93.44** | **539.69** | — |
+| step1 | debug-only `candidate_scores` alloc | 7/7 | 92.84 vs phase0 | — | stopped (rebaseline) |
+| step2 | effect `ExecRoute` dispatch table | 7/7 | **104.41** | **556.26** | **pass** |
+| step3 | `prepare_tick_context` single sync pass | 7/7 | 97.20 vs step2 | — | **stopped** (median drop; code kept) |
+| baseline_v3 | fresh session baseline (steps 1–3 code) | 7/7 | **117.63** | **619.28** | — |
+| step4 | per-op spatial bucket fill cache (kite/separation) | 7/7 | **145.22** | **630.04** | **pass** |
+| step5–6 | enemy broad-phase / score precompute | — | — | — | not run |
+
+**Note:** Compare gates only within the same session/baseline file. `baseline_v3` → `step4` on this host: w=1 **+23%**, w=8 **+2%**.
+
 ## Iteration 11 exit (May 28, 2026) — structural refactor complete
 
 - **Compile:** `opcode_for_kind` / `kind_for_opcode` → **`sim_effects_compile_opcodes.cpp`** (279 lines); hub **`sim_effects_compile.cpp`** **184** lines.

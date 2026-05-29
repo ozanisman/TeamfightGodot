@@ -20,7 +20,8 @@ SimWorld MatchRuntimeState::sim_world() const {
 			tick_rate,
 			&spatial_buckets,
 			&spatial_stamp,
-			&spatial_generation);
+			&spatial_generation,
+			&spatial_fill_cache);
 }
 
 MatchLoopState MatchRuntimeState::match_loop_state() const {
@@ -35,6 +36,7 @@ MatchLoopState MatchRuntimeState::match_loop_state() const {
 		spatial_buckets,
 		spatial_stamp,
 		spatial_generation,
+		spatial_fill_cache,
 		tick,
 		time,
 		tick_rate,
@@ -65,6 +67,7 @@ MatchRuntimeState runtime_from(TeamfightSimulationCore &core) {
 		core._spatial_buckets,
 		core._spatial_stamp,
 		core._spatial_generation,
+		core._spatial_fill_cache,
 		core._time,
 		core._tick_rate,
 		core._tick,

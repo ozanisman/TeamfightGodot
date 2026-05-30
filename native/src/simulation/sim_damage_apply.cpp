@@ -56,15 +56,15 @@ double apply_damage(
 		const double mr = get_effective_magic_resist(target);
 		final_damage *= (1.0 - mr);
 	}
-	const double incoming = Math::max(0.0, final_damage);
 
-	if (incoming <= 0.0) {
+	if (final_damage <= 0.0) {
 		return 0.0;
 	}
+	
 	const double shield_before = target.shield;
-	const double absorbed = Math::min(shield_before, incoming);
+	const double absorbed = Math::min(shield_before, final_damage);
 	target.shield = Math::max(0.0, shield_before - absorbed);
-	const double hp_loss = Math::max(0.0, incoming - absorbed);
+	const double hp_loss = Math::max(0.0, final_damage - absorbed);
 	target.hp = Math::max(0.0, target.hp - hp_loss);
 	uc(world, target).damage_received += hp_loss;
 	uc(world, target).damage_mitigated += Math::max(0.0, pre_res - final_damage);

@@ -118,7 +118,7 @@ void maybe_apply_reflect_damage(
 	if (context.suppress_reflect_chain) {
 		return;
 	}
-	if (!attacker.alive || !defender.alive || attacker.instance_id == defender.instance_id) {
+	if (!attacker.alive || attacker.instance_id == defender.instance_id) {
 		return;
 	}
 	if (total_damage_applied <= 1e-9) {

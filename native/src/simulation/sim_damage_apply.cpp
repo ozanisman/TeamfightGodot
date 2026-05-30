@@ -60,15 +60,16 @@ double apply_damage(
 	if (final_damage <= 0.0) {
 		return 0.0;
 	}
-	
+
 	const double shield_before = target.shield;
 	const double absorbed = Math::min(shield_before, final_damage);
 	target.shield = Math::max(0.0, shield_before - absorbed);
 	const double hp_loss = Math::max(0.0, final_damage - absorbed);
-	target.hp = Math::max(0.0, target.hp - hp_loss);
-	uc(world, target).damage_received += hp_loss;
+	
+	uc(world, target).damage_received += final_damage;
 	uc(world, target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
-	const double total_damage = absorbed + hp_loss;
+	target.hp = Math::max(0.0, target.hp - hp_loss);
+	
 	const double max_hp = get_effective_max_hp(target);
 	if (max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD) {
 		target.perceived_threat += (hp_loss / max_hp) * THREAT_BURST_MULTIPLIER;
@@ -77,34 +78,34 @@ double apply_damage(
 		host.sync_targeting_frame_unit(host.user_data, target);
 	}
 	if (source.instance_id != target.instance_id) {
-		uc(world, source).damage_dealt += total_damage;
+		uc(world, source).damage_dealt += final_damage;
 		if (action_is_auto) {
-			uc(world, source).damage_dealt_auto += total_damage;
+			uc(world, source).damage_dealt_auto += final_damage;
 		} else if (action_is_ability) {
-			uc(world, source).damage_dealt_ability += total_damage;
+			uc(world, source).damage_dealt_ability += final_damage;
 		} else if (action_is_ultimate) {
-			uc(world, source).damage_dealt_ultimate += total_damage;
+			uc(world, source).damage_dealt_ultimate += final_damage;
 		} else if (action_is_passive) {
-			uc(world, source).damage_dealt_passive += total_damage;
+			uc(world, source).damage_dealt_passive += final_damage;
 		}
 	}
 	if (hp_loss > 0.0 || absorbed > 0.0) {
-		touch_damage_source(world, target, source.instance_id, total_damage);
+		touch_damage_source(world, target, source.instance_id, final_damage);
 		uc(world, target).last_hit_time = world.time;
 	}
-	if (total_damage > 1e-9 && host.viewer_record_damage_fx != nullptr) {
-		host.viewer_record_damage_fx(host.user_data, source, target, total_damage, action_kind, damage_type);
+	if (final_damage > 1e-9 && host.viewer_record_damage_fx != nullptr) {
+		host.viewer_record_damage_fx(host.user_data, source, target, final_damage, action_kind, damage_type);
 	}
-	maybe_apply_reflect_damage(world, host, source, target, total_damage, damage_type, context);
+	maybe_apply_reflect_damage(world, host, source, target, final_damage, damage_type, context);
 	if (target.hp <= 0.0) {
-		run_post_take_damage_passives(world, host, target, total_damage, context);
+		run_post_take_damage_passives(world, host, target, final_damage, context);
 		if (host.handle_death != nullptr) {
 			host.handle_death(host.user_data, source, target);
 		}
-		return total_damage;
+		return final_damage;
 	}
-	run_post_take_damage_passives(world, host, target, total_damage, context);
-	return total_damage;
+	run_post_take_damage_passives(world, host, target, final_damage, context);
+	return final_damage;
 }
 
 void maybe_apply_reflect_damage(

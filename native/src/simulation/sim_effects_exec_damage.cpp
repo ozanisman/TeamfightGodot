@@ -46,6 +46,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 				damage = context.channel_accumulated_damage * effect.scalar1;
 			} else {
 				damage = get_effective_max_hp(*damage_target) * effect.scalar0;  // max_hp_ratio
+				damage += damage_target->hp * effect.scalar4;  // current_hp_ratio
 				damage += get_effective_attack_damage(source) * effect.scalar1;  // damage_ratio
 				damage += effect.scalar2;  // flat_amount
 			}

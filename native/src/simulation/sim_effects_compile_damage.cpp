@@ -36,6 +36,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.scalar1 = double(tracker.get("damage_ratio", 0.0));
 		compiled.scalar2 = double(tracker.get("flat_amount", 0.0));
 		compiled.scalar3 = bool(tracker.get("trigger_on_hit", false)) ? 1.0 : 0.0;
+		compiled.scalar4 = double(tracker.get("current_hp_ratio", 0.0));
 		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
 		compiled.int1 = tracker.get("use_accumulated_damage", false) ? 1 : 0;
 		String damage_type_str = String(tracker.get("damage_type", "physical"));

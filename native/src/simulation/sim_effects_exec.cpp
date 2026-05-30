@@ -6,7 +6,6 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <array>
 #include <cstdint>
 
 namespace sim::effects::execution {
@@ -14,77 +13,121 @@ namespace internal {
 
 namespace {
 
-constexpr size_t kExecRouteTableSize = 56;
-
-const std::array<ExecRoute, kExecRouteTableSize> &exec_route_table() {
-	static const std::array<ExecRoute, kExecRouteTableSize> table = {
-			ExecRoute::DefaultOk, // 0 UNKNOWN
-			ExecRoute::MultiEffect,
-			ExecRoute::Damage,
-			ExecRoute::Spawn,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::DefaultOk,
-			ExecRoute::DefaultOk,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Damage,
-			ExecRoute::DefaultOk,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Damage,
-			ExecRoute::Damage,
-			ExecRoute::Damage,
-			ExecRoute::Damage,
-			ExecRoute::DefaultOk,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Damage,
-			ExecRoute::Status,
-			ExecRoute::Damage,
-			ExecRoute::Damage,
-			ExecRoute::Status,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::Aoe,
-			ExecRoute::MultiTarget,
-			ExecRoute::Status,
-			ExecRoute::Damage,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Status,
-			ExecRoute::Damage,
-			ExecRoute::Spawn,
-	};
-	return table;
-}
-
 } // namespace
 
 ExecRoute exec_route_for_opcode(int64_t opcode) {
-	if (opcode < 0 || static_cast<size_t>(opcode) >= kExecRouteTableSize) {
-		return ExecRoute::DefaultOk;
+	switch (opcode) {
+		// Core effects (1-99)
+		case EFFECT_OPCODE_MULTI_EFFECT: // 1
+			return ExecRoute::MultiEffect;
+		case EFFECT_OPCODE_DAMAGE: // 2
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_PROJECTILE: // 3
+			return ExecRoute::Spawn;
+		case EFFECT_OPCODE_MULTI_TARGET: // 4
+			return ExecRoute::MultiTarget;
+		case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: // 5
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_AUTO_DODGE: // 6
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_CONSTANT_MULTIPLIER: // 7
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER: // 8
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER: // 9
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_REFLECT_DAMAGE: // 10
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER: // 11
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_STAT_MODIFIER: // 12
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_DAMAGE_OVER_TIME: // 13
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE: // 14
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_REDIRECT_DAMAGE: // 15
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_SUMMON_ALLY: // 16
+			return ExecRoute::Spawn;
+
+		// Status effects (100-199)
+		case EFFECT_OPCODE_STUN: // 100
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_SHIELD: // 101
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_HEAL: // 102
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_MANA_REGEN: // 103
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN: // 104
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_DAMAGE_BASED_HEAL: // 105
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT: // 106
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_DRAIN_TARGET_MANA_ON_HIT: // 107
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN: // 108
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_SELF_DASH: // 109
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_SLOW: // 110
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_ROOT: // 111
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_SILENCE: // 112
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_DISARM: // 113
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_KNOCKBACK: // 114
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_REFLECT: // 115
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_KNOCKBACK_SHIELD: // 116
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_STEALTH: // 117
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_HEAL_OVER_TIME: // 118
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: // 119
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_CONSUME_STACKS_HEAL: // 120
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD: // 121
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_SET_STACKS: // 122
+			return ExecRoute::Status;
+		case EFFECT_OPCODE_CHANNEL: // 123
+			return ExecRoute::Status;
+
+		// AOE effects (200-299)
+		case EFFECT_OPCODE_AOE_TAUNT: // 200
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_DAMAGE: // 201
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_SLOW: // 202
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_ROOT: // 203
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_SILENCE: // 204
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_DISARM: // 205
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_KNOCKBACK: // 206
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_REFLECT: // 207
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_STUN: // 208
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME: // 209
+			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME: // 210
+			return ExecRoute::Aoe;
+
+		default:
+			return ExecRoute::DefaultOk;
 	}
-	return exec_route_table()[static_cast<size_t>(opcode)];
 }
 
 Dictionary execute_recursive(

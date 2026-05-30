@@ -52,21 +52,6 @@ void apply_reflect_buff(
 	uc(world, target).reflect_buffs.push_back(new_buff);
 }
 
-void apply_aoe_reflect(SimWorld &world, SimHostCallbacks &host, UnitState &source, double radius, double pct, double duration, bool all_damage_types) {
-	(void)host;
-	apply_aoe_reflect_shape(
-			world,
-			host,
-			source,
-			nullptr,
-			make_circle_self_aoe(radius),
-			pct,
-			duration,
-			all_damage_types,
-			StringName("ability"),
-			String("aoe_reflect"));
-}
-
 void apply_aoe_reflect_shape(
 		SimWorld &world,
 		SimHostCallbacks &host,

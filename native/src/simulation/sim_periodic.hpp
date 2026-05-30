@@ -186,7 +186,6 @@ void apply_reflect_buff(
 		const StringName &damage_type,
 		const String &reason);
 
-void apply_aoe_reflect(SimWorld &world, SimHostCallbacks &host, UnitState &source, double radius, double pct, double duration, bool all_damage_types);
 void apply_aoe_reflect_shape(
 		SimWorld &world,
 		SimHostCallbacks &host,

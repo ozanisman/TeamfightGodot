@@ -204,6 +204,9 @@ double trigger_ally_defense_effects(
 	if (context.suppress_reflect_chain) {
 		return 0.0;
 	}
+	if (source.instance_id == target.instance_id) {
+		return 0.0;
+	}
 
 	double total_redirected = 0.0;
 	const StringName target_team = target.team;

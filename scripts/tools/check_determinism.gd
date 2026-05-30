@@ -29,21 +29,12 @@ func _load_fixture_inputs() -> Array:
 		return []
 	var fixture_doc: Dictionary = Dictionary(parsed)
 	var fixtures: Array = Array(fixture_doc.get("fixtures", []))
-	var selected_names: Array[String] = [
-		"duel_swordsman_vs_guardian",
-		"duel_archer_vs_guardian",
-		"support_clash",
-		"backline_skirmish",
-		"mixed_5v5",
-	]
 	var selected: Array = []
 	for fixture_entry in fixtures:
 		if not (fixture_entry is Dictionary):
 			continue
 		var fixture: Dictionary = Dictionary(fixture_entry)
-		var fixture_name: String = String(fixture.get("name", ""))
-		if selected_names.has(fixture_name):
-			selected.append(fixture.get("input", {}))
+		selected.append(fixture.get("input", {}))
 	return selected
 
 func _probe_determinism() -> void:

@@ -6,6 +6,7 @@
 #include "sim_stats.hpp"
 
 #include <godot_cpp/core/math.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace sim {
 namespace damage {
@@ -168,7 +169,15 @@ void maybe_apply_reflect_damage(
 		}
 
 		UnitState *damage_source = unit_by_id(world, buff.source_instance_id);
-		if (damage_source == nullptr || !damage_source->alive) {
+		if (damage_source == nullptr) {
+			UtilityFunctions::push_error(vformat(
+					"[REFLECT ERROR] Missing reflect source; falling back to defender. stored_source_id=%d defender_id=%d attacker_id=%d action_kind=%s damage_type=%s reflected=%.3f",
+					buff.source_instance_id,
+					defender.instance_id,
+					attacker.instance_id,
+					String(buff.action_kind),
+					String(damage_type),
+					reflected));
 			damage_source = &defender;
 		}
 

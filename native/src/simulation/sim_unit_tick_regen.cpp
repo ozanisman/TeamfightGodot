@@ -41,12 +41,16 @@ void apply_sudden_death_overtime(SimWorld &world, const UnitTickMatchState &matc
 
 		if (overtime_unit.hp <= 0.0 && overtime_unit.alive) {
 			overtime_unit.alive = false;
-			if (overtime_unit.team == sn_player()) {
+			// Minion deaths do not count for team score
+			static const StringName sn_minion("minion");
+			if (overtime_unit.team == sn_player() && uc(world, overtime_unit).role_id != sn_minion) {
 				if (match.enemy_kills != nullptr) {
 					++(*match.enemy_kills);
 				}
-			} else if (match.player_kills != nullptr) {
-				++(*match.player_kills);
+			} else if (overtime_unit.team == internal::sn_enemy() && uc(world, overtime_unit).role_id != sn_minion) {
+				if (match.player_kills != nullptr) {
+					++(*match.player_kills);
+				}
 			}
 		}
 	}

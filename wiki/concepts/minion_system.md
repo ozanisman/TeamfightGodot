@@ -74,6 +74,10 @@ The simulation uses index-based arrays (`_units`, `_unit_cold`, `_targeting_fram
 
 This is a deliberate trade-off: simpler, more performant code at the cost of minor memory growth. If memory ever becomes a concern, a slot-reuse system (free list) would be preferable to removal-with-shifting.
 
+### Performance Consideration
+
+If minion count grows significantly (e.g., hundreds of minions per match), consider separating minions into their own array. This would eliminate dead-minion processing overhead entirely (respawn checks, targeting updates, etc.) since dead minions could be removed from the minion array without affecting champion indexing. This is a larger architectural change affecting targeting/indexing systems.
+
 ## Implementation Details
 
 ### GDScript

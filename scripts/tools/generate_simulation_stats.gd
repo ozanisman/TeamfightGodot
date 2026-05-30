@@ -37,6 +37,7 @@ func _run() -> void:
 	ChampionCatalogScript.build_catalog()
 	ChampionCatalogScript.build_role_configs()
 	ChampionCatalogScript.build_passive_registry()
+	ChampionCatalogScript.build_minion_catalog()
 	ChampionCatalogScript.freeze_built_specs_for_worker_reuse()
 	
 	var out_dir := _extract_argument("--out-dir=", "res://stats_output")

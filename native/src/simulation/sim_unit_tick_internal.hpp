@@ -1,7 +1,6 @@
 #ifndef SIM_UNIT_TICK_INTERNAL_HPP
 #define SIM_UNIT_TICK_INTERNAL_HPP
 
-#include "sim_unit_tick.hpp"
 #include "sim_world.hpp"
 
 #include <chrono>
@@ -24,6 +23,7 @@ struct SimProfileAccScope {
 };
 
 const StringName &sn_player();
+const StringName &sn_enemy();
 const StringName &sn_on_tick();
 const StringName &sn_passive();
 

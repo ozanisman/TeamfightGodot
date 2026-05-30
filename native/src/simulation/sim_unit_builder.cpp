@@ -167,58 +167,56 @@ std::pair<UnitState, UnitStateCold> build_unit(
 
 	bool is_minion = (role_name == StringName("minion"));
 
-	if (!is_minion) {
-		Array passive_ids = Array(champion.get("passive_ids", Array()));
-		for (int64_t index = 0; index < passive_ids.size(); ++index) {
-			StringName passive_id = StringName(String(passive_ids[index]));
-			Dictionary entry = Dictionary(catalog.passive_registry.get(passive_id, Dictionary()));
-			if (entry.is_empty()) {
-				continue;
-			}
-			Array effect_kinds;
-			effect_kinds.append(StringName("on_attack"));
-			effect_kinds.append(StringName("on_defense"));
-			effect_kinds.append(StringName("on_ally_defense"));
-			effect_kinds.append(StringName("on_tick"));
-			effect_kinds.append(StringName("post_attack"));
-			effect_kinds.append(StringName("post_take_damage"));
-			effect_kinds.append(StringName("on_ability"));
-			effect_kinds.append(StringName("on_ultimate"));
-			effect_kinds.append(StringName("post_heal"));
-			effect_kinds.append(StringName("on_takedown"));
-			if (entry.has("on_ally_defense")) {
-				double radius = double(entry.get("radius", 0.0));
-				if (radius > cold.on_ally_defense_radius) {
-					cold.on_ally_defense_radius = radius;
-				}
-			}
-			if (entry.has("radius")) {
-				double radius = double(entry.get("radius", 0.0));
-				if (radius > 0.0) {
-					UnitStateCold::PassiveAoeInfo aoe_info;
-					aoe_info.passive_id = passive_id;
-					aoe_info.radius = radius;
-					cold.passive_aoe_info.push_back(aoe_info);
-				}
-			}
-			for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
-				Variant kind_value = effect_kinds[kind_index];
-				Array effects = Array(entry.get(kind_value, Array()));
-				std::vector<EffectRecord> compiled_effects = compile_effect_array(host, effects);
-				std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
-				bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
+	Array passive_ids = Array(champion.get("passive_ids", Array()));
+	for (int64_t index = 0; index < passive_ids.size(); ++index) {
+		StringName passive_id = StringName(String(passive_ids[index]));
+		Dictionary entry = Dictionary(catalog.passive_registry.get(passive_id, Dictionary()));
+		if (entry.is_empty()) {
+			continue;
+		}
+		Array effect_kinds;
+		effect_kinds.append(StringName("on_attack"));
+		effect_kinds.append(StringName("on_defense"));
+		effect_kinds.append(StringName("on_ally_defense"));
+		effect_kinds.append(StringName("on_tick"));
+		effect_kinds.append(StringName("post_attack"));
+		effect_kinds.append(StringName("post_take_damage"));
+		effect_kinds.append(StringName("on_ability"));
+		effect_kinds.append(StringName("on_ultimate"));
+		effect_kinds.append(StringName("post_heal"));
+		effect_kinds.append(StringName("on_takedown"));
+		if (entry.has("on_ally_defense")) {
+			double radius = double(entry.get("radius", 0.0));
+			if (radius > cold.on_ally_defense_radius) {
+				cold.on_ally_defense_radius = radius;
 			}
 		}
-		Variant role_tick = role_config.get("passive_on_tick", Variant());
-		if (role_tick.get_type() != Variant::NIL) {
-			cold.passive_effects[3].push_back(compile_effect(host, Dictionary(role_tick)));
+		if (entry.has("radius")) {
+			double radius = double(entry.get("radius", 0.0));
+			if (radius > 0.0) {
+				UnitStateCold::PassiveAoeInfo aoe_info;
+				aoe_info.passive_id = passive_id;
+				aoe_info.radius = radius;
+				cold.passive_aoe_info.push_back(aoe_info);
+			}
 		}
-		Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
-		if (role_take_damage.get_type() != Variant::NIL) {
-			cold.passive_effects[5].push_back(compile_effect(host, Dictionary(role_take_damage)));
+		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
+			Variant kind_value = effect_kinds[kind_index];
+			Array effects = Array(entry.get(kind_value, Array()));
+			std::vector<EffectRecord> compiled_effects = compile_effect_array(host, effects);
+			std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
+			bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
 		}
-		cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 	}
+	Variant role_tick = role_config.get("passive_on_tick", Variant());
+	if (role_tick.get_type() != Variant::NIL) {
+		cold.passive_effects[3].push_back(compile_effect(host, Dictionary(role_tick)));
+	}
+	Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
+	if (role_take_damage.get_type() != Variant::NIL) {
+		cold.passive_effects[5].push_back(compile_effect(host, Dictionary(role_take_damage)));
+	}
+	cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 
 	double max_hp = double(stats.get("max_hp", 0.0));
 	double max_mana = double(stats.get("max_mana", 0.0));
@@ -279,25 +277,19 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	STAT_LIST
 #undef X
 
-	if (!is_minion) {
-		Variant ability_effect = champion.get("ability", Variant());
-		Variant ultimate_effect = champion.get("ultimate", Variant());
-		unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
-		unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
-		unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
-		unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
-		if (unit.has_ability_effect) {
-			cold.ability_effect = compile_effect(host, Dictionary(ability_effect));
-		}
-		if (unit.has_ultimate_effect) {
-			cold.ultimate_effect = compile_effect(host, Dictionary(ultimate_effect));
-		}
-	} else {
-		unit.has_ability_effect = false;
-		unit.has_ultimate_effect = false;
-		unit.ability_requires_target_in_range = false;
-		unit.ultimate_requires_target_in_range = false;
+	Variant ability_effect = champion.get("ability", Variant());
+	Variant ultimate_effect = champion.get("ultimate", Variant());
+	unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
+	unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
+	unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
+	unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
+	if (unit.has_ability_effect) {
+		cold.ability_effect = compile_effect(host, Dictionary(ability_effect));
 	}
+	if (unit.has_ultimate_effect) {
+		cold.ultimate_effect = compile_effect(host, Dictionary(ultimate_effect));
+	}
+
 	cold.spawn_pos_x = x;
 	cold.spawn_pos_y = y;
 	unit.pos_x = x;

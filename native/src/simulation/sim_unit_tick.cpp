@@ -24,7 +24,11 @@ void update_unit(
 		SimProfileAccScope _uu_dead(profile_sim, profile.uu_dead_respawn);
 		unit.respawn_timer = Math::max(0.0, unit.respawn_timer - world.tick_rate);
 		if (unit.respawn_timer <= 0.0 && tick_hooks.respawn_unit != nullptr) {
-			tick_hooks.respawn_unit(tick_hooks.user_data, unit);
+			// Minions do not respawn
+			static const StringName sn_minion("minion");
+			if (uc(world, unit).role_id != sn_minion) {
+				tick_hooks.respawn_unit(tick_hooks.user_data, unit);
+			}
 		}
 		return;
 	}

@@ -29,6 +29,11 @@ const StringName &sn_player() {
 	return s;
 }
 
+const StringName &sn_enemy() {
+	static const StringName s("enemy");
+	return s;
+}
+
 const StringName &sn_on_tick() {
 	static const StringName s("on_tick");
 	return s;

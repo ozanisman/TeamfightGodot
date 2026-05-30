@@ -168,11 +168,6 @@ void handle_death(
 	uc(world, target).deaths += 1;
 	sync_targeting_frame_index(host, target_index, target);
 
-	if (uc(world, target).role_id == sn_minion()) {
-		target.respawn_timer = 0.0;
-		return;
-	}
-
 	periodic::clear_periodic_effects(world, target);
 
 	const std::unordered_map<int64_t, UnitStateCold::DamageSourceEntry> &damage_sources = uc(world, target).damage_sources;
@@ -209,9 +204,11 @@ void handle_death(
 	UnitState *killer_unit = targeting::unit_by_id(world, killer_id);
 	if (killer_unit != nullptr) {
 		uc(world, *killer_unit).kills += 1;
-		if (score.player_kills != nullptr && killer_unit->team == sn_player()) {
+		// Minion deaths do not count for team score
+		static const StringName sn_minion("minion");
+		if (score.player_kills != nullptr && killer_unit->team == sn_player() && uc(world, target).role_id != sn_minion) {
 			*score.player_kills += 1;
-		} else if (score.enemy_kills != nullptr && killer_unit->team == sn_enemy()) {
+		} else if (score.enemy_kills != nullptr && killer_unit->team == sn_enemy() && uc(world, target).role_id != sn_minion) {
 			*score.enemy_kills += 1;
 		}
 		const EffectContext takedown_context =

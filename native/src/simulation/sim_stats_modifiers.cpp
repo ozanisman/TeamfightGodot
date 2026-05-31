@@ -116,7 +116,9 @@ void set_stat_modifier_duration(UnitState &unit, StringName stat_name, double du
 
 void clear_all_stat_modifiers(UnitState &unit) {
 #define X(name, def, min_val, max_val) \
-	unit.stat_temp_##name = 0.0;
+	unit.stat_temp_##name = 0.0; \
+	unit.stat_additive_##name = 0.0; \
+	unit.stat_multiplicative_##name = 1.0;
 	STAT_LIST
 #undef X
 

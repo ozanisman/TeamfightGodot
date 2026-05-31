@@ -339,34 +339,6 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 				}
 			}
 			
-			String summary = vformat("multi_target summary source=%d targets=%d", source.instance_id, targets.size());
-			Array effect_keys = nested_results.keys();
-			for (int64_t effect_index = 0; effect_index < effect_keys.size(); ++effect_index) {
-				String effect_key = String(effect_keys[effect_index]);
-				Dictionary effect_dict = nested_results[effect_key];
-				Dictionary by_target = effect_dict["by_target"];
-				Dictionary summary_by_target = summary_applications[effect_key];
-				summary += vformat("\n%s:", effect_key);
-				Array target_keys = by_target.keys();
-				for (int64_t target_index = 0; target_index < target_keys.size(); ++target_index) {
-					Variant target_key = target_keys[target_index];
-					Array applications = summary_by_target[target_key];
-					String values = "[";
-					for (int64_t application_index = 0; application_index < applications.size(); ++application_index) {
-						if (application_index > 0) {
-							values += ", ";
-						}
-						values += vformat("%.3f", double(applications[application_index]));
-					}
-					values += "]";
-					summary += vformat("\n  target %s: %s total=%.3f", String(target_key), values, double(by_target[target_key]));
-				}
-				summary += vformat("\n  total: %.3f", double(effect_dict["total"]));
-			}
-			if (hooks.debug_combat_trace != nullptr && hooks.debug_combat_trace(host.user_data)) {
-				UtilityFunctions::print(summary);
-			}
-			
 			multi_result["targets_affected"] = targets.size();
 			multi_result["results"] = nested_results;
 			multi_result["success"] = true;

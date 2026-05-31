@@ -1595,22 +1595,22 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			float(wr[0]) * 100.0,
 			float(wr[1]) * 100.0,
 		])
-		lines.append("Average damage: %.0f [%.0f, %.0f]" % [
+		lines.append("Average damage: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_dealt", 0.0)),
 			float(dd[0]),
 			float(dd[1]),
 		])
-		lines.append("Average received: %.0f [%.0f, %.0f]" % [
+		lines.append("Average received: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_received", 0.0)),
 			float(dr[0]),
 			float(dr[1]),
 		])
-		lines.append("Average mitigated: %.0f [%.0f, %.0f]" % [
+		lines.append("Average mitigated: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_mitigated", 0.0)),
 			float(dm[0]),
 			float(dm[1]),
 		])
-		lines.append("Average healing: %.0f [%.0f, %.0f]" % [
+		lines.append("Average healing: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("healing_done", 0.0)),
 			float(hd[0]),
 			float(hd[1]),
@@ -1635,7 +1635,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			% [kills / cf, deaths / cf, assists / cf, float(u_data.get("kda", 0.0))]
 		)
 		lines.append(
-			"Average damage: %.0f (Received: %.0f)"
+			"Average damage: %.1f (Received: %.1f)"
 			% [
 				float(u_data.get("damage_dealt", 0.0)) / cf,
 				float(u_data.get("damage_received", 0.0)) / cf,
@@ -1645,16 +1645,16 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		var minion_dmg_received: float = float(u_data.get("minion_damage_received", 0.0))
 		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0:
 			lines.append(
-				"Minion Damage: %.0f (Received: %.0f)"
+				"Minion Damage: %.1f (Received: %.1f)"
 				% [minion_dmg_dealt / cf, minion_dmg_received / cf]
 			)
-		lines.append("Average mitigated: %.0f" % (float(u_data.get("damage_mitigated", 0.0)) / cf))
+		lines.append("Average mitigated: %.1f" % (float(u_data.get("damage_mitigated", 0.0)) / cf))
 		lines.append(
-			"Average healing: %.0f"
+			"Average healing: %.1f"
 			% (float(u_data.get("healing_done", 0.0)) / cf)
 		)
 		lines.append(
-			"Average shielding: %.0f"
+			"Average shielding: %.1f"
 			% (float(u_data.get("shielding_done", 0.0)) / cf)
 		)
 		lines.append("Stuns: %.1f" % (float(u_data.get("stuns", 0.0)) / cf))
@@ -1663,7 +1663,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			lines.append("")
 			lines.append("Damage Dealt Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
+				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
 				% [
 					float(b.get("auto", 0.0)) / cf,
 					float(b.get("ability", 0.0)) / cf,
@@ -1674,7 +1674,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			lines.append("")
 			lines.append("Healing Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
+				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
 				% [
 					float(b.get("heal_auto", 0.0)) / cf,
 					float(b.get("heal_ability", 0.0)) / cf,
@@ -1685,7 +1685,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			lines.append("")
 			lines.append("Shielding Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.0f | Abilities: %.0f | Ultimates: %.0f | Passive: %.0f"
+				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
 				% [
 					float(b.get("shield_auto", 0.0)) / cf,
 					float(b.get("shield_ability", 0.0)) / cf,

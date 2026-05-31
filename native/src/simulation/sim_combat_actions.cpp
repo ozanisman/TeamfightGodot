@@ -13,6 +13,31 @@ namespace combat {
 
 using namespace internal;
 
+namespace {
+
+ProjectileState make_auto_projectile(UnitState &unit, UnitState &target, double damage) {
+	ProjectileState projectile;
+	projectile.source_id = unit.instance_id;
+	projectile.target_id = target.instance_id;
+	projectile.impact_effect.opcode = EFFECT_OPCODE_DAMAGE;
+	projectile.impact_effect.scalar2 = damage;
+	projectile.impact_effect.scalar3 = 1.0;
+	projectile.impact_effect.damage_type = sn_physical();
+	projectile.impact_effect.reason = String("Auto Attack");
+	projectile.radius = get_effective_projectile_radius(unit);
+	projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
+	projectile.pos_x = unit.pos_x;
+	projectile.pos_y = unit.pos_y;
+	projectile.motion = sn_homing();
+	projectile.collision = sn_target_only();
+	projectile.on_target_lost = sn_drop();
+	projectile.action_kind = sn_auto();
+	projectile.reason = String("Auto Attack");
+	return projectile;
+}
+
+} // namespace
+
 bool try_cast_ability(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks &hooks, UnitState &unit, UnitState &target, double distance) {
 	(void)distance;
 	if (unit.silence_remaining > 0.0 && unit.silence_blocks_abilities) {
@@ -146,19 +171,7 @@ void perform_auto_attack(
 	double damage = get_effective_attack_damage(unit);
 	damage = damage::apply_attack_modifiers(world, host, unit, target, distance, damage);
 	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
-		ProjectileState projectile;
-		projectile.source_id = unit.instance_id;
-		projectile.target_id = target.instance_id;
-		projectile.damage = damage;
-		projectile.damage_type = sn_physical();
-		projectile.stun_duration = DEFAULT_PROJECTILE_STUN_DURATION;
-		projectile.radius = get_effective_projectile_radius(unit);
-		projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
-		projectile.pos_x = unit.pos_x;
-		projectile.pos_y = unit.pos_y;
-		projectile.action_kind = sn_auto();
-		projectile.reason = String("Auto Attack");
-		projectiles.push_back(projectile);
+		projectiles.push_back(make_auto_projectile(unit, target, damage));
 		emit_trace(host, StringName("projectile"), unit.instance_id, target.instance_id, damage);
 	} else {
 		EffectContext context = build_context(unit, &target, nullptr, damage, sn_auto());

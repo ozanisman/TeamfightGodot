@@ -147,6 +147,11 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		pd["radius"] = p.radius;
 		pd["source_id"] = p.source_id;
 		pd["target_id"] = p.target_id;
+		pd["reason"] = p.reason;
+		pd["action_kind"] = String(p.action_kind);
+		pd["visual_id"] = String(p.visual_id);
+		pd["motion"] = String(p.motion);
+		pd["collision"] = String(p.collision);
 		const UnitState *src = targeting::unit_by_id(world, p.source_id);
 		if (src != nullptr) {
 			pd["team"] = String(src->team);

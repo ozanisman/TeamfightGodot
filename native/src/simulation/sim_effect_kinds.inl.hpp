@@ -347,6 +347,18 @@ inline const StringName &sn_projectile_created() {
 	static const StringName s("projectile_created");
 	return s;
 }
+inline const StringName &sn_homing() {
+	static const StringName s("homing");
+	return s;
+}
+inline const StringName &sn_target_only() {
+	static const StringName s("target_only");
+	return s;
+}
+inline const StringName &sn_drop() {
+	static const StringName s("drop");
+	return s;
+}
 inline const StringName &sn_stun_applied() {
 	static const StringName s("stun_applied");
 	return s;

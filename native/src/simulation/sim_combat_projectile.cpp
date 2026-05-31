@@ -2,9 +2,7 @@
 #include "sim_combat_internal.hpp"
 
 #include "sim_constants.hpp"
-#include "sim_damage.hpp"
 #include "sim_stats.hpp"
-#include "sim_status.hpp"
 
 #include <godot_cpp/core/math.hpp>
 
@@ -20,24 +18,9 @@ void resolve_projectile(SimWorld &world, SimHostCallbacks &host, const CombatHos
 	if (source == nullptr || target == nullptr || !target->alive) {
 		return;
 	}
-	const double damage = projectile.damage;
-	const StringName damage_type = projectile.damage_type;
-	const StringName action_kind = projectile.action_kind;
-	EffectContext context = build_context(*source, target, nullptr, damage, action_kind);
-	const double dealt = damage::apply_damage(world, host, *source, *target, damage, damage_type, action_kind, context);
-	run_post_attack_effects(world, host, *source, *target, dealt, context);
-	if (projectile.action_kind == sn_auto()) {
-		const double life_steal = get_effective_life_steal(*source);
-		if (life_steal > 0.0) {
-			const double old_hp = source->hp;
-			const double heal_amount = dealt * life_steal;
-			heal_with_hooks(world, host, *source, *source, heal_amount, sn_auto(), false);
-			const double heal_gained = source->hp - old_hp;
-			run_post_heal_effects(world, host, *source, *source, heal_amount, heal_gained, context);
-		}
-	}
-	if (projectile.stun_duration > 0.0 && target->alive) {
-		status::apply_stun(world, *source, *target, projectile.stun_duration);
+	EffectContext context = build_context(*source, target, nullptr, 0.0, projectile.action_kind);
+	if (host.execute_effect != nullptr) {
+		host.execute_effect(host, projectile.impact_effect, context);
 	}
 }
 
@@ -54,6 +37,9 @@ void update_projectiles(
 	for (const ProjectileState &data : buffers.active_projectiles) {
 		UnitState *target = unit_by_id(world, data.target_id);
 		if (target == nullptr || !target->alive) {
+			continue;
+		}
+		if (data.motion != sn_homing() || data.collision != sn_target_only() || data.on_target_lost != sn_drop()) {
 			continue;
 		}
 		const double dist = distance_between_coords(data.pos_x, data.pos_y, target->pos_x, target->pos_y);

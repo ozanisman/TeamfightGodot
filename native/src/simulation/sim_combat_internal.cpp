@@ -79,6 +79,18 @@ const StringName &sn_on_takedown() {
 	static const StringName s("on_takedown");
 	return s;
 }
+const StringName &sn_homing() {
+	static const StringName s("homing");
+	return s;
+}
+const StringName &sn_target_only() {
+	static const StringName s("target_only");
+	return s;
+}
+const StringName &sn_drop() {
+	static const StringName s("drop");
+	return s;
+}
 
 UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 	return targeting::unit_by_id(world, instance_id);

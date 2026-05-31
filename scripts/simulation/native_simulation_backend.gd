@@ -291,6 +291,11 @@ func _validate_snapshot_projectile(projectile_data: Dictionary, index: int) -> b
 		"source_id",
 		"target_id",
 		"team",
+		"reason",
+		"action_kind",
+		"visual_id",
+		"motion",
+		"collision",
 	]
 	for field in required_fields:
 		if not projectile_data.has(field):

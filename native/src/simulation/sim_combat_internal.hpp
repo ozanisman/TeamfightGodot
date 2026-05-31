@@ -38,6 +38,9 @@ const StringName &sn_on_ability();
 const StringName &sn_on_ultimate();
 const StringName &sn_post_heal();
 const StringName &sn_on_takedown();
+const StringName &sn_homing();
+const StringName &sn_target_only();
+const StringName &sn_drop();
 
 UnitState *unit_by_id(SimWorld &world, int64_t instance_id);
 void heal_with_hooks(

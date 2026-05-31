@@ -609,10 +609,12 @@ struct ProjectileState {
 	double pos_x = 0.0;
 	double pos_y = 0.0;
 	double speed = 0.0;
-	double damage = 0.0;
-	StringName damage_type;
-	double stun_duration = 0.0;
 	double radius = 0.0;
+	EffectRecord impact_effect;
+	StringName motion;
+	StringName collision;
+	StringName on_target_lost;
+	StringName visual_id;
 	StringName action_kind;
 	String reason;
 };

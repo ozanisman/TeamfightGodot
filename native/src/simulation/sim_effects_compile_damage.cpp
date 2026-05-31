@@ -12,6 +12,27 @@ namespace sim::effects::compile::internal {
 
 using namespace sim::effect_kinds;
 
+namespace {
+
+StringName validated_projectile_policy(
+		ParamTracker &tracker,
+		const String &param_name,
+		const StringName &default_value,
+		const StringName &supported_value) {
+	const StringName value = StringName(String(tracker.get(param_name, String(default_value))));
+	if (value != supported_value) {
+		UtilityFunctions::push_error(vformat(
+				"Unsupported projectile %s '%s'. Only '%s' is currently supported.",
+				param_name,
+				String(value),
+				String(supported_value)));
+		return supported_value;
+	}
+	return value;
+}
+
+} // namespace
+
 bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracker &tracker, const Dictionary &params) {
 	if (kind == sn_constant_multiplier()) {
 		compiled.scalar0 = double(tracker.get("multiplier", 1.0));
@@ -59,17 +80,17 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.scalar0 = (speed_v.get_type() == Variant::NIL) ? -1.0 : double(speed_v);
 		Variant radius_v = tracker.get("radius_override", Variant());
 		compiled.scalar1 = (radius_v.get_type() == Variant::NIL) ? -1.0 : double(radius_v);
-		compiled.scalar2 = double(tracker.get("damage_ratio", 0.0));
-		compiled.scalar3 = double(tracker.get("stun_duration", 0.0));
-		String damage_type_str = String(tracker.get("damage_type", "physical"));
-		if (damage_type_str == "physical") {
-			compiled.damage_type = sn_physical();
-		} else if (damage_type_str == "magic") {
-			compiled.damage_type = sn_magic();
-		} else if (damage_type_str == "true") {
-			compiled.damage_type = sn_true();
+		compiled.damage_type = validated_projectile_policy(tracker, "motion", sn_homing(), sn_homing());
+		compiled.stat_name = validated_projectile_policy(tracker, "collision", sn_target_only(), sn_target_only());
+		compiled.stacking_mode = validated_projectile_policy(tracker, "on_target_lost", sn_drop(), sn_drop());
+		compiled.effect_type = StringName(String(tracker.get("visual_id", "")));
+		Variant on_hit = params.get("on_hit", Variant());
+		tracker.mark_accessed("on_hit");
+		if (on_hit.get_type() != Variant::DICTIONARY) {
+			UtilityFunctions::push_error("Projectile effect requires params.on_hit as an effect Dictionary.");
+			compiled.children.clear();
 		} else {
-			compiled.damage_type = StringName(damage_type_str);
+			compiled.children.push_back(compile_effect(Dictionary(on_hit)));
 		}
 		compiled.reason = String(tracker.get("reason", ""));
 		return true;

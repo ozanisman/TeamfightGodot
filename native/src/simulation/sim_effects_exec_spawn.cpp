@@ -9,7 +9,6 @@
 #include "sim_match_spawn.hpp"
 #include "sim_stats_modifiers.hpp"
 #include "sim_targeting.hpp"
-#include "sim_damage.hpp"
 #include "sim_periodic.hpp"
 #include "sim_stats.hpp"
 #include "sim_status.hpp"
@@ -35,21 +34,18 @@ Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWor
 			if (target == nullptr) {
 				return projectile_result;
 			}
+			if (effect.children.empty()) {
+				UtilityFunctions::push_error("Projectile spawn failed: missing compiled on_hit payload.");
+				return projectile_result;
+			}
 			ProjectileState projectile_state;
 			projectile_state.source_id = source.instance_id;
 			projectile_state.target_id = target->instance_id;
-			double damage = get_effective_attack_damage(source) * effect.scalar2;
-			
-			// Apply ability/ultimate modifiers if applicable
-			if (context.action_kind == sn_ability()) {
-				damage = sim::damage::apply_ability_modifiers(world, host, source, target, damage);
-			} else if (context.action_kind == sn_ultimate()) {
-				damage = sim::damage::apply_ultimate_modifiers(world, host, source, target, damage);
-			}
-			
-			projectile_state.damage = damage;
-			projectile_state.damage_type = effect.damage_type.is_empty() ? sn_physical() : effect.damage_type;
-			projectile_state.stun_duration = effect.scalar3;
+			projectile_state.impact_effect = effect.children[0];
+			projectile_state.motion = effect.damage_type.is_empty() ? sn_homing() : effect.damage_type;
+			projectile_state.collision = effect.stat_name.is_empty() ? sn_target_only() : effect.stat_name;
+			projectile_state.on_target_lost = effect.stacking_mode.is_empty() ? sn_drop() : effect.stacking_mode;
+			projectile_state.visual_id = effect.effect_type;
 			// Python parity: null speed/radius override â†’ fall back to unit's projectile stats.
 			double projectile_speed = (effect.scalar0 < 0.0)
 				? Math::max(0.0001, get_effective_projectile_speed(source))

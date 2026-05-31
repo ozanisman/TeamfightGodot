@@ -1017,7 +1017,9 @@ func _update_projectiles(projectiles: Array) -> void:
 		var pos_x: float = float(proj_dict.get("pos_x", 0.0))
 		var pos_y: float = float(proj_dict.get("pos_y", 0.0))
 		var team_s: StringName = StringName(proj_dict.get("team", "player"))
-		var proj_node := _create_projectile_node(proj_id, pos_x, pos_y, team_s)
+		var visual_id: StringName = StringName(proj_dict.get("visual_id", ""))
+		var action_kind: StringName = StringName(proj_dict.get("action_kind", ""))
+		var proj_node := _create_projectile_node(proj_id, pos_x, pos_y, team_s, visual_id, action_kind)
 		_projectile_nodes[proj_id] = proj_node
 		_world_layer.add_child(proj_node)
 
@@ -1031,10 +1033,12 @@ func _projectile_screen_radius_px() -> float:
 	)
 
 
-func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: StringName) -> Node2D:
+func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: StringName, visual_id: StringName, action_kind: StringName) -> Node2D:
 	var proj_node := Node2D.new()
 	proj_node.name = "Projectile_%d" % proj_id
 	proj_node.position = world_to_battle_local(pos_x, pos_y)
+	proj_node.set_meta("visual_id", visual_id)
+	proj_node.set_meta("action_kind", action_kind)
 	var col: Color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
 	var r: float = _projectile_screen_radius_px()
 	var disc := Polygon2D.new()

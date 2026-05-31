@@ -47,6 +47,8 @@ struct ViewerHooks {
 			double radius,
 			const StringName &passive_id) = nullptr;
 
+	void (*record_unit_death_fx)(void *user_data, const UnitState &target) = nullptr;
+
 	void (*sync_targeting_frame_unit)(void *user_data, const UnitState &unit) = nullptr;
 };
 
@@ -84,6 +86,8 @@ void record_aoe_shape_fx(
 void record_hot_status_fx(ViewerFxBuffer &buffer, const UnitState &target, double duration, const StringName &effect_type);
 
 void record_passive_aoe_fx(ViewerFxBuffer &buffer, const UnitState &unit, double radius, const StringName &passive_id);
+
+void record_unit_death_fx(ViewerFxBuffer &buffer, const UnitState &target);
 
 String viewer_state_string(const UnitState &unit, const UnitStateCold &cold);
 
@@ -126,6 +130,13 @@ inline void record_aoe_shape_fx(
 	}
 	const UnitState *shape_target = resolve_shape_target(world, target, effect);
 	viewer->record_aoe_shape_fx(viewer->user_data, source, shape_target, effect.aoe_shape_params, kind);
+}
+
+inline void record_unit_death_fx(const ViewerHooks *viewer, const UnitState &target) {
+	if (viewer == nullptr || viewer->record_unit_death_fx == nullptr) {
+		return;
+	}
+	viewer->record_unit_death_fx(viewer->user_data, target);
 }
 
 } // namespace sim

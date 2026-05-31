@@ -177,5 +177,14 @@ void record_passive_aoe_fx(ViewerFxBuffer &buffer, const UnitState &unit, double
 	buffer.push(ev);
 }
 
+void record_unit_death_fx(ViewerFxBuffer &buffer, const UnitState &target) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("unit_death");
+	ev.target_id = target.instance_id;
+	ev.pos_x = target.pos_x;
+	ev.pos_y = target.pos_y;
+	buffer.push(ev);
+}
+
 } // namespace viewer
 } // namespace sim

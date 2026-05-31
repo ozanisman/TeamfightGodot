@@ -101,6 +101,7 @@ void TeamfightSimulationCore::_bind_sim_host() {
 	_viewer_hooks.record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
 	_viewer_hooks.record_aoe_shape_fx = &sim_host_viewer_record_aoe_shape_fx;
 	_viewer_hooks.record_passive_aoe_fx = &sim_host_viewer_record_passive_aoe_fx;
+	_viewer_hooks.record_unit_death_fx = &sim_host_viewer_record_unit_death_fx;
 	_viewer_hooks.sync_targeting_frame_unit = &sim_host_sync_targeting_frame_unit;
 	_sim_host_callbacks.viewer_hooks = &_viewer_hooks;
 	_bind_sim_exec_hooks();

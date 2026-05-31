@@ -1270,6 +1270,9 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 			var target_id: int = int(d.get("target_id", 0))
 			var duration: float = float(d.get("val", 0.0))
 			_spawn_hot_status_ring(target_id, duration, snapshot)
+		elif k == "unit_death":
+			var target_id: int = int(d.get("target_id", 0))
+			_cleanup_unit_fx(target_id)
 		elif k == "passive_aoe":
 			var target_id: int = int(d.get("target_id", 0))
 			var radius: float = float(d.get("radius", 0.0))
@@ -1534,6 +1537,21 @@ func _cleanup_hot_status_ring(target_id: int) -> void:
 		ring.queue_free()
 		_hot_status_rings.erase(target_id)
 
+## Centralized cleanup for all unit-specific visual effects
+func _cleanup_unit_fx(target_id: int) -> void:
+	if target_id == 0:
+		return
+
+	# Cleanup HoT status ring
+	_cleanup_hot_status_ring(target_id)
+
+	# Cleanup passive AOE rings
+	var rings: Array = _passive_aoe_rings.get(target_id, [])
+	for ring in rings:
+		if ring != null and is_instance_valid(ring):
+			ring.queue_free()
+	_passive_aoe_rings.erase(target_id)
+
 ## Creates or updates a persistent AOE ring for passive effects
 func _update_passive_aoe_ring(target_id: int, radius: float, kind: String, snapshot: Dictionary) -> void:
 	if target_id == 0:
@@ -1544,13 +1562,9 @@ func _update_passive_aoe_ring(target_id: int, radius: float, kind: String, snaps
 	if unit_node == null or not is_instance_valid(unit_node):
 		return
 	
-	# If radius is 0, cleanup all rings for this unit (death signal)
+	# If radius is 0, cleanup all FX for this unit (death signal)
 	if radius <= 0.0:
-		var rings: Array = _passive_aoe_rings.get(target_id, [])
-		for ring in rings:
-			if ring != null and is_instance_valid(ring):
-				ring.queue_free()
-		_passive_aoe_rings.erase(target_id)
+		_cleanup_unit_fx(target_id)
 		return
 	
 	# Get unit team for color
@@ -2458,6 +2472,11 @@ func _clear_units() -> void:
 		for c in _aoe_fx_layer.get_children():
 			if is_instance_valid(c):
 				c.queue_free()
+
+	# Cleanup all unit-specific FX using centralized function
+	for unit_id in _unit_nodes:
+		_cleanup_unit_fx(unit_id)
+
 	for unit_id in _unit_nodes:
 		var unit_node: Node2D = _unit_nodes[unit_id]
 		if unit_node != null and is_instance_valid(unit_node):
@@ -2474,16 +2493,3 @@ func _clear_units() -> void:
 		if is_instance_valid(floating_text):
 			floating_text.queue_free()
 	_floating_texts.clear()
-
-	for unit_id in _hot_status_rings:
-		var ring: Node2D = _hot_status_rings[unit_id]
-		if ring != null and is_instance_valid(ring):
-			ring.queue_free()
-	_hot_status_rings.clear()
-
-	for unit_id in _passive_aoe_rings:
-		var rings: Array = _passive_aoe_rings[unit_id]
-		for ring in rings:
-			if ring != null and is_instance_valid(ring):
-				ring.queue_free()
-	_passive_aoe_rings.clear()

@@ -53,6 +53,7 @@ void sim_host_viewer_record_passive_aoe_fx(
 		const UnitState &unit,
 		double radius,
 		const StringName &passive_id);
+void sim_host_viewer_record_unit_death_fx(void *user_data, const UnitState &target);
 Dictionary sim_host_effective_champion_for(void *user_data, const StringName &archetype_id);
 EffectRecord sim_host_compile_effect(void *user_data, const Dictionary &effect);
 void sim_host_finalize_reflect_passives(void *user_data, UnitState &unit, UnitStateCold &cold);

@@ -197,9 +197,8 @@ void handle_death(
 	emit_trace(host, sn_death(), killer_id, target.instance_id, 0.0);
 
 	UnitStateCold &target_cold = uc(world, target);
-	for (const UnitStateCold::PassiveAoeInfo &aoe_info : target_cold.passive_aoe_info) {
-		record_passive_aoe_fx(viewer, target, 0.0, aoe_info.passive_id);
-	}
+
+	record_unit_death_fx(viewer, target);
 
 	UnitState *killer_unit = targeting::unit_by_id(world, killer_id);
 	if (killer_unit != nullptr) {

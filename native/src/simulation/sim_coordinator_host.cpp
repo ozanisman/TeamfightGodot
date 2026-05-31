@@ -115,6 +115,11 @@ void sim_host_viewer_record_passive_aoe_fx(
 	sim::viewer::record_passive_aoe_fx(CoordinatorHostAccess::viewer_fx(core), unit, radius, passive_id);
 }
 
+void sim_host_viewer_record_unit_death_fx(void *user_data, const UnitState &target) {
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_unit_death_fx(CoordinatorHostAccess::viewer_fx(core), target);
+}
+
 Dictionary sim_host_effective_champion_for(void *user_data, const StringName &archetype_id) {
 	return static_cast<TeamfightSimulationCore *>(user_data)->_effective_champion_for(archetype_id);
 }

@@ -2,8 +2,6 @@
 #include "sim_status_internal.hpp"
 
 #include "sim_stats.hpp"
-#include "sim_viewer.hpp"
-
 #include <godot_cpp/core/math.hpp>
 
 namespace sim {
@@ -11,20 +9,19 @@ namespace status {
 
 using namespace internal;
 
-void add_shield(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, const ViewerHooks *viewer, SimHostCallbacks *host) {
-	(void)host;
+void add_shield(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, SimHostCallbacks *host) {
 	if (amount <= 0.0) {
 		return;
 	}
 	target.shield += amount;
 	record_shielding_by_action_kind(uc(world, source), amount, action_kind);
 	record_benefactor(world, source, target);
-	if (amount > 1e-9 && viewer != nullptr && viewer->record_shield_fx != nullptr) {
-		viewer->record_shield_fx(viewer->user_data, target, amount);
+	if (amount > 1e-9 && host != nullptr && host->viewer_record_shield_fx != nullptr) {
+		host->viewer_record_shield_fx(host->user_data, target, amount);
 	}
 }
 
-double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal, const ViewerHooks *viewer, SimHostCallbacks *host) {
+double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double amount, const StringName &action_kind, bool allow_overheal, SimHostCallbacks *host) {
 	if (amount <= 0.0) {
 		return 0.0;
 	}
@@ -39,8 +36,8 @@ double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double a
 	if (gained > 1e-9) {
 		record_healing_by_action_kind(uc(world, source), gained, action_kind);
 		record_benefactor(world, source, target);
-		if (viewer != nullptr && viewer->record_heal_fx != nullptr) {
-			viewer->record_heal_fx(viewer->user_data, target, gained);
+		if (host != nullptr && host->viewer_record_heal_fx != nullptr) {
+			host->viewer_record_heal_fx(host->user_data, target, gained);
 		}
 		if (host != nullptr && host->sync_targeting_frame_unit != nullptr) {
 			host->sync_targeting_frame_unit(host->user_data, target);

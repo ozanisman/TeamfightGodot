@@ -46,7 +46,7 @@ Dictionary exec_status_heal_shield(
 				shield_result["amount"] = 0.0;
 				return shield_result;
 			}
-			sim::status::add_shield(world, source, shield_target, amount, context.action_kind);
+			sim::status::add_shield(world, source, shield_target, amount, context.action_kind, &host);
 			shield_result["shield_applied"] = true;
 			shield_result["amount"] = amount;
 			return shield_result;
@@ -59,7 +59,7 @@ Dictionary exec_status_heal_shield(
 			double missing_hp = get_effective_max_hp(heal_target) - heal_target.hp;
 			heal_amount += missing_hp * effect.scalar3;
 			double old_hp = heal_target.hp;
-			sim::status::heal_unit(world, source, heal_target, heal_amount, context.action_kind);
+			sim::status::heal_unit(world, source, heal_target, heal_amount, context.action_kind, false, &host);
 			double heal_gained = heal_target.hp - old_hp;
 			sim::combat::run_post_heal_effects(world, host, source, heal_target, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
@@ -75,7 +75,7 @@ Dictionary exec_status_heal_shield(
 			}
 			double old_hp = source.hp;
 			double heal_amount = damage_to_use * effect.scalar0;
-			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
+			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind, false, &host);
 			double heal_gained = source.hp - old_hp;
 			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
@@ -85,7 +85,7 @@ Dictionary exec_status_heal_shield(
 		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: {
 			Dictionary shield_result;
 			shield_result["success"] = true;
-			sim::status::add_shield(world, source, source, context.damage * effect.scalar0, context.action_kind);
+			sim::status::add_shield(world, source, source, context.damage * effect.scalar0, context.action_kind, &host);
 			shield_result["shield_applied"] = true;
 			shield_result["amount"] = context.damage * effect.scalar0;
 			return shield_result;
@@ -106,7 +106,7 @@ Dictionary exec_status_heal_shield(
 			}
 			double heal_amount = max_hp * final_ratio;
 			double old_hp = source.hp;
-			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
+			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind, false, &host);
 			double heal_gained = source.hp - old_hp;
 			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			result["heal_applied"] = true;
@@ -129,7 +129,7 @@ Dictionary exec_status_heal_shield(
 				final_ratio = base_ratio + (double(stacks) * stack_bonus);
 			}
 			double shield_amount = max_hp * final_ratio;
-			sim::status::add_shield(world, source, source, shield_amount, context.action_kind);
+			sim::status::add_shield(world, source, source, shield_amount, context.action_kind, &host);
 			result["shield_applied"] = true;
 			result["amount"] = shield_amount;
 			result["stacks_consumed"] = stacks;

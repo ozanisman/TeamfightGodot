@@ -44,12 +44,6 @@ EffectRecord make_circle_self_aoe(double radius) {
 	return effect;
 }
 
-void sync_targeting_if_healed(SimHostCallbacks &host, UnitState &target, double gained) {
-	if (gained > 1e-9 && host.sync_targeting_frame_unit != nullptr) {
-		host.sync_targeting_frame_unit(host.user_data, target);
-	}
-}
-
 void apply_hot_tick_heal(
 		SimWorld &world,
 		SimHostCallbacks &host,
@@ -59,8 +53,7 @@ void apply_hot_tick_heal(
 		const StringName &action_kind,
 		bool allow_overheal) {
 	EffectContext context = combat::build_context(source, &target, nullptr, 0.0, action_kind);
-	const double gained = status::heal_unit(world, source, target, heal_per_tick, action_kind, allow_overheal);
-	sync_targeting_if_healed(host, target, gained);
+	const double gained = status::heal_unit(world, source, target, heal_per_tick, action_kind, allow_overheal, &host);
 	combat::run_post_heal_effects(world, host, source, target, heal_per_tick, gained, context);
 }
 

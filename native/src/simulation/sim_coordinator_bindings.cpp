@@ -90,6 +90,8 @@ void TeamfightSimulationCore::_bind_sim_host() {
 	_sim_host_callbacks.sync_targeting_frame_index = &sim_host_sync_targeting_frame_index;
 	_sim_host_callbacks.emit_trace = &sim_host_emit_trace;
 	_sim_host_callbacks.viewer_record_damage_fx = &sim_host_viewer_record_damage_fx;
+	_sim_host_callbacks.viewer_record_heal_fx = &sim_host_viewer_record_heal_fx;
+	_sim_host_callbacks.viewer_record_shield_fx = &sim_host_viewer_record_shield_fx;
 	_sim_host_callbacks.viewer_record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
 	_sim_host_callbacks.randf = &sim_host_randf;
 	_viewer_hooks.user_data = this;

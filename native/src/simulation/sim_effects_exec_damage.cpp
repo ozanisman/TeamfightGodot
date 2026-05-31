@@ -76,7 +76,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 					if (life_steal > 0.0) {
 						double old_hp = source.hp;
 						double heal_amount = dealt * life_steal;
-						sim::status::heal_unit(world, source, source, heal_amount, context.action_kind);
+						sim::status::heal_unit(world, source, source, heal_amount, context.action_kind, false, &host);
 						double heal_gained = source.hp - old_hp;
 						sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 					}

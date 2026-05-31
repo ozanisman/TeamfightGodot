@@ -92,7 +92,7 @@ void heal_with_hooks(
 		double amount,
 		const StringName &action_kind,
 		bool allow_overheal) {
-	status::heal_unit(world, source, target, amount, action_kind, allow_overheal, host.viewer_hooks, &host);
+	status::heal_unit(world, source, target, amount, action_kind, allow_overheal, &host);
 }
 
 void emit_trace(SimHostCallbacks &host, const StringName &kind, int64_t src_id, int64_t tgt_id, double val) {

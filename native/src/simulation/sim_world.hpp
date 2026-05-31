@@ -101,6 +101,8 @@ struct SimHostCallbacks {
 			double total_damage,
 			const StringName &action_kind,
 			const StringName &damage_type) = nullptr;
+	void (*viewer_record_heal_fx)(void *user_data, const UnitState &target, double amount) = nullptr;
+	void (*viewer_record_shield_fx)(void *user_data, const UnitState &target, double amount) = nullptr;
 	void (*viewer_record_hot_status_fx)(
 			void *user_data,
 			const UnitState &target,

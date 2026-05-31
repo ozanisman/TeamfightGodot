@@ -88,7 +88,7 @@ Dictionary exec_status_cc(
 			Dictionary knockback_result = Dictionary(context.accumulated_results.get(StringName("knockback"), Dictionary()));
 			if (bool(knockback_result.get("knockback_applied", false))) {
 				double shield_amt = context.damage * effect.scalar0;
-				sim::status::add_shield(world, source, source, shield_amt, context.action_kind);
+				sim::status::add_shield(world, source, source, shield_amt, context.action_kind, &host);
 				ks_result["success"] = true;
 				ks_result["shield_applied"] = true;
 				ks_result["amount"] = shield_amt;

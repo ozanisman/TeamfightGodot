@@ -4,8 +4,15 @@
 			"ability": {
 				"kind": "projectile",
 				"params": {
-					"damage_ratio": 1.0,
-					"damage_type": "physical",
+					"on_hit": {
+						"kind": "damage",
+						"params": {
+							"damage_ratio": 1.0,
+							"damage_type": "physical",
+							"reason": "Test",
+							"trigger_on_hit": true
+						}
+					},
 					"reason": "Test"
 				},
 				"requires_target_in_range": true

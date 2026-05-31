@@ -58,6 +58,9 @@ Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWor
 			projectile_state.pos_y = source.pos_y;
 			projectile_state.action_kind = context.action_kind;
 			projectile_state.reason = String(effect.reason);
+			if (host.next_projectile_id != nullptr) {
+				projectile_state.projectile_id = (*host.next_projectile_id)++;
+			}
 			if (match_host.projectiles != nullptr) {
 				match_host.projectiles->push_back(projectile_state);
 			}

@@ -142,6 +142,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		const ProjectileState &p = (*input.projectiles)[static_cast<size_t>(i)];
 		Dictionary pd;
 		pd["id"] = i;
+		pd["projectile_id"] = p.projectile_id;
 		pd["pos_x"] = p.pos_x;
 		pd["pos_y"] = p.pos_y;
 		pd["radius"] = p.radius;

@@ -604,6 +604,7 @@ struct BalancePatch {
 };
 
 struct ProjectileState {
+	int64_t projectile_id = 0;
 	int64_t source_id = 0;
 	int64_t target_id = 0;
 	double pos_x = 0.0;

@@ -171,7 +171,11 @@ void perform_auto_attack(
 	double damage = get_effective_attack_damage(unit);
 	damage = damage::apply_attack_modifiers(world, host, unit, target, distance, damage);
 	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
-		projectiles.push_back(make_auto_projectile(unit, target, damage));
+		ProjectileState projectile = make_auto_projectile(unit, target, damage);
+		if (host.next_projectile_id != nullptr) {
+			projectile.projectile_id = (*host.next_projectile_id)++;
+		}
+		projectiles.push_back(projectile);
 		emit_trace(host, StringName("projectile"), unit.instance_id, target.instance_id, damage);
 	} else {
 		EffectContext context = build_context(unit, &target, nullptr, damage, sn_auto());

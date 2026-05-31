@@ -79,9 +79,10 @@ var _draft_step_index: int = 0
 
 # Unit visualization
 var _unit_nodes: Dictionary = {}  # instance_id -> Node2D
-var _projectile_nodes: Dictionary = {}  # projectile_id -> Node2D
+var _projectile_nodes: Dictionary = {}  # id -> Node2D
 var _projectile_offsets: Dictionary = {}  # projectile_id -> Vector2 (cached spread offsets)
-var _projectile_slot_usage: Dictionary = {}  # position_key -> Array[int] (used slot indices per position)
+var _projectile_slot_usage: Dictionary = {}  # pool_key -> Array[int] (used slot indices per pool)
+var _projectile_slot_owners: Dictionary = {}  # projectile_id -> Dictionary {"slot": int, "pool": String}
 var _floating_texts: Array = []  # Array of floating text nodes
 var _hot_status_rings: Dictionary = {}  # instance_id -> Node2D (current HoT ring per unit)
 var _passive_aoe_rings: Dictionary = {}  # instance_id -> Array[Node2D] (persistent passive AOE rings)
@@ -1012,24 +1013,28 @@ func _update_projectiles(projectiles: Array) -> void:
 	
 	# Clear cached offsets and slot usage for projectiles that no longer exist
 	var active_proj_ids := {}
-	var active_positions := {}
+	var active_projectile_ids := {}
 	for proj_data in projectiles:
 		if proj_data is Dictionary:
 			var proj_dict: Dictionary = proj_data as Dictionary
 			var proj_id: int = int(proj_dict.get("id", 0))
-			var pos_x: float = float(proj_dict.get("pos_x", 0.0))
-			var pos_y: float = float(proj_dict.get("pos_y", 0.0))
-			var reason: StringName = StringName(proj_dict.get("reason", ""))
+			var projectile_id: int = int(proj_dict.get("projectile_id", 0))
 			active_proj_ids[proj_id] = true
-			active_positions["%s_%d,%d" % [reason, int(pos_x), int(pos_y)]] = true
+			active_projectile_ids[projectile_id] = true
 	
-	for cached_id in _projectile_offsets.keys():
-		if not active_proj_ids.has(cached_id):
-			_projectile_offsets.erase(cached_id)
-	
-	for pos_key in _projectile_slot_usage.keys():
-		if not active_positions.has(pos_key):
-			_projectile_slot_usage.erase(pos_key)
+	for cached_pid in _projectile_offsets.keys():
+		if not active_projectile_ids.has(cached_pid):
+			_projectile_offsets.erase(cached_pid)
+			if _projectile_slot_owners.has(cached_pid):
+				var owner: Dictionary = _projectile_slot_owners[cached_pid]
+				var pool_key: String = owner["pool"]
+				var slot_index: int = int(owner["slot"])
+				if _projectile_slot_usage.has(pool_key):
+					var used_slots: Array = _projectile_slot_usage[pool_key]
+					used_slots.erase(slot_index)
+					if used_slots.is_empty():
+						_projectile_slot_usage.erase(pool_key)
+				_projectile_slot_owners.erase(cached_pid)
 
 	# Create new projectiles
 	for proj_data in projectiles:
@@ -1037,12 +1042,14 @@ func _update_projectiles(projectiles: Array) -> void:
 			continue
 		var proj_dict: Dictionary = proj_data as Dictionary
 		var proj_id: int = int(proj_dict.get("id", 0))
+		var projectile_id: int = int(proj_dict.get("projectile_id", 0))
 		var pos_x: float = float(proj_dict.get("pos_x", 0.0))
 		var pos_y: float = float(proj_dict.get("pos_y", 0.0))
 		var team_s: StringName = StringName(proj_dict.get("team", "player"))
 		var reason: StringName = StringName(proj_dict.get("reason", ""))
 		var action_kind: StringName = StringName(proj_dict.get("action_kind", ""))
-		var proj_node := _create_projectile_node(proj_id, pos_x, pos_y, team_s, reason, action_kind)
+		var source_id: int = int(proj_dict.get("source_id", 0))
+		var proj_node := _create_projectile_node(proj_id, projectile_id, pos_x, pos_y, team_s, reason, action_kind, source_id)
 		_projectile_nodes[proj_id] = proj_node
 		_world_layer.add_child(proj_node)
 
@@ -1056,43 +1063,51 @@ func _projectile_screen_radius_px() -> float:
 	)
 
 
-func _create_projectile_node(proj_id: int, pos_x: float, pos_y: float, team: StringName, reason: StringName, action_kind: StringName) -> Node2D:
+func _create_projectile_node(proj_id: int, projectile_id: int, pos_x: float, pos_y: float, team: StringName, reason: StringName, action_kind: StringName, source_id: int) -> Node2D:
 	var proj_node := Node2D.new()
 	proj_node.name = "Projectile_%d" % proj_id
 	
-	# Apply spread pattern offset based on projectile ID to prevent visual stacking
+	# Apply spread pattern offset based on stable projectile_id to prevent visual stacking
 	var spread_offset := Vector2.ZERO
 	
 	# Use cached random offset if available, otherwise generate and cache
-	if not _projectile_offsets.has(proj_id):
-		# Group projectiles by reason and position to prevent overlap
-		var pos_key := "%s_%d,%d" % [reason, int(pos_x), int(pos_y)]
-		if not _projectile_slot_usage.has(pos_key):
-			_projectile_slot_usage[pos_key] = []
+	if not _projectile_offsets.has(projectile_id):
+		# Group projectiles by source + reason to prevent overlap from same caster
+		var pool_key := "%d_%s" % [source_id, reason]
+		if not _projectile_slot_usage.has(pool_key):
+			_projectile_slot_usage[pool_key] = []
 		
-		var used_slots: Array = _projectile_slot_usage[pos_key]
-		# Note: Array.has() is O(n). For typical projectile counts (3-10), this is acceptable.
-		# If performance becomes an issue with many projectiles, consider using Dictionary as a Set.
-		var available_slots := []
-		for i in range(SimConstants.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS):
-			if not used_slots.has(i):
-				available_slots.append(i)
+		var used_slots: Array = _projectile_slot_usage[pool_key]
 		
-		# If all slots used, pick random anyway (fallback)
-		var spread_index: int
-		if available_slots.is_empty():
-			spread_index = randi() % SimConstants.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS
+		# First projectile in this pool - place at center
+		if used_slots.is_empty():
+			spread_offset = Vector2.ZERO
+			used_slots.append(-1)  # Mark center as used
+			_projectile_slot_owners[projectile_id] = {"slot": -1, "pool": pool_key}
 		else:
-			spread_index = available_slots[randi() % available_slots.size()]
-			used_slots.append(spread_index)
+			# Subsequent projectiles - use spread pattern
+			var available_slots := []
+			for i in range(SimConstantsScript.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS):
+				if not used_slots.has(i):
+					available_slots.append(i)
+			
+			# If all slots used, pick random anyway (fallback)
+			var spread_index: int
+			if available_slots.is_empty():
+				spread_index = randi() % SimConstantsScript.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS
+			else:
+				spread_index = available_slots[randi() % available_slots.size()]
+				used_slots.append(spread_index)
+			
+			var spread_radius := SimConstantsScript.VIEWER_PROJECTILE_SPREAD_BASE_RADIUS + randf() * SimConstantsScript.VIEWER_PROJECTILE_SPREAD_RADIUS_VARIATION
+			var angle_variation := (randf() - 0.5) * SimConstantsScript.VIEWER_PROJECTILE_SPREAD_ANGLE_VARIATION
+			var spread_angle := TAU * float(spread_index) / float(SimConstantsScript.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS) + angle_variation
+			spread_offset = Vector2(cos(spread_angle), sin(spread_angle)) * spread_radius
+			_projectile_slot_owners[projectile_id] = {"slot": spread_index, "pool": pool_key}
 		
-		var spread_radius := SimConstants.VIEWER_PROJECTILE_SPREAD_BASE_RADIUS + randf() * SimConstants.VIEWER_PROJECTILE_SPREAD_RADIUS_VARIATION
-		var angle_variation := (randf() - 0.5) * SimConstants.VIEWER_PROJECTILE_SPREAD_ANGLE_VARIATION
-		var spread_angle := TAU * float(spread_index) / float(SimConstants.VIEWER_PROJECTILE_SPREAD_NUM_SLOTS) + angle_variation
-		spread_offset = Vector2(cos(spread_angle), sin(spread_angle)) * spread_radius
-		_projectile_offsets[proj_id] = spread_offset
+		_projectile_offsets[projectile_id] = spread_offset
 	else:
-		spread_offset = _projectile_offsets[proj_id]
+		spread_offset = _projectile_offsets[projectile_id]
 	
 	proj_node.position = world_to_battle_local(pos_x, pos_y) + spread_offset
 	proj_node.set_meta("reason", reason)

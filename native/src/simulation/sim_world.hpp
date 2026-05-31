@@ -88,6 +88,7 @@ struct SimHostCallbacks {
 	void *user_data = nullptr;
 	const ViewerHooks *viewer_hooks = nullptr;
 	effects::EffectExecBindings *effect_exec = nullptr;
+	int64_t *next_projectile_id = nullptr;
 
 	Dictionary (*execute_effect)(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context) = nullptr;
 	void (*handle_death)(void *user_data, UnitState &killer, UnitState &target) = nullptr;

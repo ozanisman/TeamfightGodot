@@ -70,6 +70,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 	_player_kills = 0;
 	_enemy_kills = 0;
 	_max_instance_id = 0;
+	_next_projectile_id = 1;
 
 	_player_spawn_slots_used.clear();
 	_enemy_spawn_slots_used.clear();

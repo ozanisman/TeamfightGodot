@@ -82,7 +82,8 @@ public:
 	int64_t _player_kills = 0;
 	int64_t _enemy_kills = 0;
 	int64_t _max_instance_id = 0;
-	
+	int64_t _next_projectile_id = 1;
+
 	// Spawn slot tracking per team (indices into spawn_points array)
 	std::vector<bool> _player_spawn_slots_used;
 	std::vector<bool> _enemy_spawn_slots_used;

@@ -84,6 +84,7 @@ void TeamfightSimulationCore::_bind_sim_host() {
 	_bind_effect_exec_bindings();
 	_sim_host_callbacks.user_data = this;
 	_sim_host_callbacks.effect_exec = &_effect_exec_bindings;
+	_sim_host_callbacks.next_projectile_id = &_next_projectile_id;
 	_sim_host_callbacks.execute_effect = &sim::effects::host_execute_effect;
 	_sim_host_callbacks.handle_death = &sim_host_handle_death;
 	_sim_host_callbacks.sync_targeting_frame_unit = &sim_host_sync_targeting_frame_unit;

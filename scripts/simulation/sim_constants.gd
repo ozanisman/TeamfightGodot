@@ -59,6 +59,14 @@ const SIMULATION_VIEWER_MAX_TICKS_PER_FRAME: int = 48
 const VIEWER_WORLD_GRID_DIVISIONS: int = 10
 
 # ========================================
+# VIEWER PROJECTILE SPREAD
+# ========================================
+const VIEWER_PROJECTILE_SPREAD_NUM_SLOTS: int = 16  # Number of radial positions
+const VIEWER_PROJECTILE_SPREAD_BASE_RADIUS: float = 15.0  # Base spread radius in pixels
+const VIEWER_PROJECTILE_SPREAD_RADIUS_VARIATION: float = 3.0  # Random radius variation
+const VIEWER_PROJECTILE_SPREAD_ANGLE_VARIATION: float = 0.5  # Random angle variation in radians
+
+# ========================================
 # DRAFT & POSITIONING
 # ========================================
 const DRAFT_X_BASE: float = 0.9

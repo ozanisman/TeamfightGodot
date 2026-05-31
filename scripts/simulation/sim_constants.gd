@@ -14,7 +14,7 @@ const RESPAWN_TIME: float = 5.0
 const WORLD_SIZE: float = 10.0
 const EPSILON: float = 0.000001
 const CASTING_WINDUP: float = 0.5
-const AOE_VISUAL_MAX_DURATION: float = 0.55
+const AOE_VISUAL_MAX_DURATION: float = 0.30
 ## Floor (screen px) for drawing small world radii (e.g. demolition 0.5) so sub-pixel rings are not dropped.
 const VIEWER_AOE_MIN_RING_RADIUS_PX: float = 2.0
 

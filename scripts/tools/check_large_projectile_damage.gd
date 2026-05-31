@@ -32,9 +32,16 @@ func _run_check() -> void:
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 1000.5,
-				"damage_type": "physical",
-				"reason": "large_projectile_damage_regression"
+				"reason": "large_projectile_damage_regression",
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 1000.5,
+						"damage_type": "physical",
+						"trigger_on_hit": true,
+						"reason": "large_projectile_damage_regression"
+					}
+				}
 			}
 		},
 	}])

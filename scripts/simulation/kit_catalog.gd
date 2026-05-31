@@ -15,12 +15,33 @@ const KIT_DATA := {
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 0.05,
-				"damage_type": "physical",
 				"radius_override": null,
 				"reason": "Balance suite kit_id test",
 				"speed_override": null,
-				"stun_duration": 0.8
+				"on_hit": {
+					"kind": "multi_effect",
+					"params": {
+						"effects": [
+							{
+								"kind": "damage",
+								"params": {
+									"damage_ratio": 0.05,
+									"damage_type": "physical",
+									"trigger_on_hit": true,
+									"reason": "Balance suite kit_id test"
+								}
+							},
+							{
+								"kind": "stun",
+								"params": {
+									"duration": 0.8,
+									"reason": "Balance suite kit_id test"
+								}
+							}
+						],
+						"reason": "Balance suite kit_id test"
+					}
+				}
 			},
 			"requires_target_in_range": true
 		}
@@ -31,12 +52,33 @@ const KIT_DATA := {
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 3.0,
-				"damage_type": "magic",
 				"radius_override": 2.0,
 				"reason": "Artillery Nuke",
 				"speed_override": 3.0,
-				"stun_duration": 1.5
+				"on_hit": {
+					"kind": "multi_effect",
+					"params": {
+						"effects": [
+							{
+								"kind": "damage",
+								"params": {
+									"damage_ratio": 3.0,
+									"damage_type": "magic",
+									"trigger_on_hit": true,
+									"reason": "Artillery Nuke"
+								}
+							},
+							{
+								"kind": "stun",
+								"params": {
+									"duration": 1.5,
+									"reason": "Artillery Nuke"
+								}
+							}
+						],
+						"reason": "Artillery Nuke"
+					}
+				}
 			},
 			"requires_target_in_range": true
 		}

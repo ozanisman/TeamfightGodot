@@ -7,9 +7,16 @@ static func generate_minimal_kit_json() -> Dictionary:
 			"ability": {
 				"kind": "projectile",
 				"params": {
-					"damage_ratio": 1.0,
-					"damage_type": "physical",
-					"reason": "Test"
+					"reason": "Test",
+					"on_hit": {
+						"kind": "damage",
+						"params": {
+							"damage_ratio": 1.0,
+							"damage_type": "physical",
+							"trigger_on_hit": true,
+							"reason": "Test"
+						}
+					}
 				},
 				"requires_target_in_range": true
 			}

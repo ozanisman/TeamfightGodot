@@ -101,12 +101,33 @@ func test_inline_ability_reduces_ability_damage(core: Object) -> void:
 	var weak_ability := {
 		"kind": "projectile",
 		"params": {
-			"damage_ratio": 0.05,
-			"damage_type": "physical",
 			"radius_override": null,
 			"reason": "suite_inline_weak",
 			"speed_override": null,
-			"stun_duration": 0.8,
+			"on_hit": {
+				"kind": "multi_effect",
+				"params": {
+					"effects": [
+						{
+							"kind": "damage",
+							"params": {
+								"damage_ratio": 0.05,
+								"damage_type": "physical",
+								"trigger_on_hit": true,
+								"reason": "suite_inline_weak"
+							}
+						},
+						{
+							"kind": "stun",
+							"params": {
+								"duration": 0.8,
+								"reason": "suite_inline_weak"
+							}
+						}
+					],
+					"reason": "suite_inline_weak"
+				}
+			},
 		},
 	}
 

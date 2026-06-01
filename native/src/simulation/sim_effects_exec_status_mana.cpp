@@ -22,8 +22,8 @@ Dictionary exec_status_mana(
 		case EFFECT_OPCODE_MANA_REGEN: {
 			Dictionary mana_result;
 			mana_result["success"] = true;
-			sim::status::restore_mana(world, source, source, effect.scalar0 + get_effective_max_mana(source) * effect.scalar1);
-			mana_result["mana_restored"] = effect.scalar0 + get_effective_max_mana(source) * effect.scalar1;
+			sim::status::restore_mana(world, source, source, effect.scalar0 + get_effective_mana_cost(source) * effect.scalar1);
+			mana_result["mana_restored"] = effect.scalar0 + get_effective_mana_cost(source) * effect.scalar1;
 			return mana_result;
 		}
 		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN: {

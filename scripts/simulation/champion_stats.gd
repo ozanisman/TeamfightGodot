@@ -15,7 +15,7 @@ var armor: float = 0.0
 var magic_resist: float = 0.0
 var tenacity: float = 0.0
 var life_steal: float = 0.0
-var max_mana: float = 50.0
+var mana_cost: float = 50.0
 var mana_per_attack: float = 10.0
 var ability_cd: float = 5.0
 var projectile_speed: float = SimConstantsScript.DEFAULT_PROJECTILE_SPEED
@@ -37,7 +37,7 @@ func to_dict() -> Dictionary:
 		"magic_resist": magic_resist,
 		"tenacity": tenacity,
 		"life_steal": life_steal,
-		"max_mana": max_mana,
+		"mana_cost": mana_cost,
 		"mana_per_attack": mana_per_attack,
 		"ability_cd": ability_cd,
 		"projectile_speed": projectile_speed,
@@ -60,7 +60,7 @@ static func from_dict(data: Dictionary):
 	stats.magic_resist = float(data.get("magic_resist", 0.0))
 	stats.tenacity = float(data.get("tenacity", 0.0))
 	stats.life_steal = float(data.get("life_steal", 0.0))
-	stats.max_mana = float(data.get("max_mana", 50.0))
+	stats.mana_cost = float(data.get("mana_cost", 50.0))
 	stats.mana_per_attack = float(data.get("mana_per_attack", 10.0))
 	stats.ability_cd = float(data.get("ability_cd", 5.0))
 	stats.projectile_speed = float(data.get("projectile_speed", SimConstantsScript.DEFAULT_PROJECTILE_SPEED))

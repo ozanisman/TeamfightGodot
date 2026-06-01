@@ -200,7 +200,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 	}
 	if (kind == sn_mana_regen()) {
 		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
-		compiled.scalar1 = double(tracker.get("max_mana_ratio", 0.0));
+		compiled.scalar1 = double(tracker.get("mana_cost_ratio", 0.0));
 		// INCONSISTENT: no reason string
 		return true;
 	}

@@ -66,8 +66,8 @@ bool try_cast_ultimate(SimWorld &world, SimHostCallbacks &host, const CombatHost
 	if (uc(world, unit).is_channeling) {
 		return false;
 	}
-	const double max_mana = get_effective_max_mana(unit);
-	if (max_mana <= 0.0 || unit.mana < max_mana) {
+	const double mana_cost = get_effective_mana_cost(unit);
+	if (mana_cost <= 0.0 || unit.mana < mana_cost) {
 		return false;
 	}
 	return start_cast(world, host, hooks, unit, target, distance, sn_ultimate());
@@ -93,7 +93,7 @@ bool start_cast(
 	if (action_kind == sn_ability()) {
 		uc(world, unit).abilities += 1;
 	} else {
-		unit.mana = Math::max(0.0, unit.mana - get_effective_max_mana(unit));
+		unit.mana = Math::max(0.0, unit.mana - get_effective_mana_cost(unit));
 	}
 	UnitStateCold &ucast = uc(world, unit);
 	ucast.casting_kind = action_kind;
@@ -140,8 +140,8 @@ void resolve_cast(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks
 		if (action_kind == sn_ability()) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == sn_ultimate()) {
-			const double effective_max_mana = get_effective_max_mana(unit);
-			unit.mana = Math::min(effective_max_mana, unit.mana + effective_max_mana);
+			const double effective_mana_cost = get_effective_mana_cost(unit);
+			unit.mana = Math::min(effective_mana_cost, unit.mana + effective_mana_cost);
 		}
 		return;
 	}
@@ -193,8 +193,8 @@ void perform_auto_attack(
 	}
 	const double mana_gain = get_effective_mana_per_attack(unit);
 	if (mana_gain > 0.0) {
-		const double max_mana = get_effective_max_mana(unit);
-		unit.mana = Math::min(max_mana, unit.mana + mana_gain);
+		const double mana_cost = get_effective_mana_cost(unit);
+		unit.mana = Math::min(mana_cost, unit.mana + mana_gain);
 	}
 	const double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
 	unit.attack_cooldown = 1.0 / attack_speed;

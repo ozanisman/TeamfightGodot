@@ -2,7 +2,7 @@
 
 Resource for ability casting with generation and consumption.
 
-Mana stats: max_mana (default 50), mana_per_attack (default 10). Mana gained on auto-attack: `unit.mana = min(max_mana, unit.mana + mana_per_attack)`.
+Mana stats: mana_cost (default 50), mana_per_attack (default 10). Mana gained on auto-attack: `unit.mana = min(mana_cost, unit.mana + mana_per_attack)`.
 
 Mana restoration via effects: mana_restore (flat amount + max_hp_ratio). Casting requires mana >= 0. Ability/ultimate consume mana on cast (implied by ability_cd). Mana resets to max on spawn/respawn.
 

@@ -279,7 +279,7 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_ability_label.visible = false
 	
 	# Set ultimate label based on mana, casting, or channeling
-	var max_mn: float = float(ud.get("max_mana", 0.0))
+	var mana_cost: float = float(ud.get("mana_cost", 0.0))
 	var mn: float = float(ud.get("mana", 0.0))
 	var ultimate_text := ""
 	if is_channeling and (channel_kind.to_lower().contains("ult") or channel_kind == "ultimate"):
@@ -288,8 +288,8 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	elif casting_rem > 0.0 and casting_kind.to_lower().contains("ult"):
 		ultimate_text = "Ultimate: [CASTING %.1fs]" % casting_rem
 		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
-	elif max_mn > SimConstantsScript.EPSILON * 2.0:
-		ultimate_text = "Ultimate: [%d/%d]" % [int(mn), int(max_mn)]
+	elif mana_cost > SimConstantsScript.EPSILON * 2.0:
+		ultimate_text = "Ultimate: [%d/%d]" % [int(mn), int(mana_cost)]
 		_ultimate_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
 	
 	if not ultimate_text.is_empty():
@@ -316,10 +316,10 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var shield: float = float(ud.get("shield", 0.0))
 	if _hp_shield_bar != null and _hp_shield_bar.has_method("set_data"):
 		_hp_shield_bar.set_data(max_hp, hp, shield)
-	if max_mn > SimConstantsScript.EPSILON * 2.0:
+	if mana_cost > SimConstantsScript.EPSILON * 2.0:
 		_mana_bar.visible = true
-		_mana_bar.max_value = max_mn
-		_mana_bar.value = clampf(mn, 0.0, max_mn)
+		_mana_bar.max_value = mana_cost
+		_mana_bar.value = clampf(mn, 0.0, mana_cost)
 	else:
 		_mana_bar.visible = false
 

@@ -163,10 +163,10 @@ func _draw() -> void:
 	if shield > 0.0:
 		var shield_x: float = hp_x + HP_W * hp_ratio
 		draw_rect(Rect2(o + Vector2(shield_x, hp_y), Vector2(HP_W * shield_ratio, HP_H)), Color(1.0, 1.0, 1.0, 0.9))
-	var max_mana: float = float(_u.get("max_mana", 0.0))
-	if max_mana > 0.0:
+	var mana_cost: float = float(_u.get("mana_cost", 0.0))
+	if mana_cost > 0.0:
 		var mn: float = float(_u.get("mana", 0.0))
-		var m_ratio: float = clampf(mn / maxf(1.0, max_mana), 0.0, 1.0)
+		var m_ratio: float = clampf(mn / maxf(1.0, mana_cost), 0.0, 1.0)
 		draw_rect(
 			Rect2(o + Vector2(hp_x, hp_y + HP_H + 1.0), Vector2(HP_W * m_ratio, 3.0)),
 			Color(0.3, 0.55, 0.9, 0.9)

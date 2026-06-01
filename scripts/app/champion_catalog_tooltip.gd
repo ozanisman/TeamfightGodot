@@ -13,6 +13,9 @@ const UI_TOOLTIP_CONTENT_MARGIN := 10
 const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
 const COLOR_TEXT := Color(0.9, 0.9, 0.9, 1.0)
 const COLOR_SUBTLE := Color(0.71, 0.71, 0.75, 1.0)
+const COLOR_STAT_BUFF := Color(0.4, 0.9, 0.4, 1.0)
+const COLOR_STAT_NERF := Color(0.9, 0.4, 0.4, 1.0)
+const STAT_DIFF_EPSILON := 0.01
 
 var _ui_parent: Control
 var _tt_style: StyleBoxFlat
@@ -152,12 +155,16 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 		return ""
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary
+	var base_stats: Dictionary
+	
+	# Always get base stats for comparison
+	base_stats = ChampionCatalogScript.get_effective_stats(hero_id)
 	
 	# Use unit data stats if provided (in-game with modifiers), otherwise use catalog stats (draft phase)
 	if not unit_data.is_empty():
 		st = _build_effective_stats_from_unit_data(unit_data, hero_id)
 	else:
-		st = ChampionCatalogScript.get_effective_stats(hero_id)
+		st = base_stats
 	
 	var name: String = str(st.get("name", hero_id))
 	var role_s: String = str(st.get("role", "")).to_upper()
@@ -169,40 +176,40 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(title_line)
 	lines.append(_escape_bbcode_plain(str(d.get("description", ""))))
-	lines.append("")  # Line break before abilities
-	lines.append(
-		_escape_bbcode_plain(
-			"HP: %.0f | AD: %.0f | AS: %.2f | Range: %.1f | MS: %.1f"
-			% [
-				float(st.get("max_hp", 0.0)),
-				float(st.get("attack_damage", 0.0)),
-				float(st.get("attack_speed", 0.0)),
-				float(st.get("attack_range", 0.0)),
-				float(st.get("move_speed", 0.0)),
-			]
-		)
-	)
-	lines.append(
-		_escape_bbcode_plain(
-			"Armor: %.0f%% | MR: %.0f%% | Tenacity: %.0f%% | Lifesteal: %.0f%%"
-			% [
-				float(st.get("armor", 0.0)) * 100,
-				float(st.get("magic_resist", 0.0)) * 100,
-				float(st.get("tenacity", 0.0)) * 100,
-				float(st.get("life_steal", 0.0)) * 100,
-			]
-		)
-	)
+	lines.append("")  # Line break before stats
+	
+	# Core stats (higher is better)
+	var hp_str: String = _format_stat_diff_higher_better(float(base_stats.get("max_hp", 0.0)), float(st.get("max_hp", 0.0)), "HP: %.0f")
+	var ad_str: String = _format_stat_diff_higher_better(float(base_stats.get("attack_damage", 0.0)), float(st.get("attack_damage", 0.0)), "AD: %.0f")
+	var as_str: String = _format_stat_diff_higher_better(float(base_stats.get("attack_speed", 0.0)), float(st.get("attack_speed", 0.0)), "AS: %.2f")
+	var range_str: String = _format_stat_diff_higher_better(float(base_stats.get("attack_range", 0.0)), float(st.get("attack_range", 0.0)), "Range: %.1f")
+	var ms_str: String = _format_stat_diff_higher_better(float(base_stats.get("move_speed", 0.0)), float(st.get("move_speed", 0.0)), "MS: %.1f")
+	lines.append("%s | %s | %s | %s | %s" % [hp_str, ad_str, as_str, range_str, ms_str])
+	
+	# Defensive stats (higher is better)
+	var armor_str: String = _format_stat_diff_higher_better(float(base_stats.get("armor", 0.0)) * 100, float(st.get("armor", 0.0)) * 100, "Armor: %.0f%%")
+	var mr_str: String = _format_stat_diff_higher_better(float(base_stats.get("magic_resist", 0.0)) * 100, float(st.get("magic_resist", 0.0)) * 100, "MR: %.0f%%")
+	var base_tenacity: float = float(base_stats.get("tenacity", 0.0))
+	var effective_tenacity: float = float(st.get("tenacity", 0.0))
+	print("DEBUG tenacity - base: %s, effective: %s, diff: %s" % [base_tenacity, effective_tenacity, effective_tenacity - base_tenacity])
+	var tenacity_str: String = _format_stat_diff_higher_better(base_tenacity * 100, effective_tenacity * 100, "Tenacity: %.0f%%")
+	var lifesteal_str: String = _format_stat_diff_higher_better(float(base_stats.get("life_steal", 0.0)) * 100, float(st.get("life_steal", 0.0)) * 100, "Lifesteal: %.0f%%")
+	lines.append("%s | %s | %s | %s" % [armor_str, mr_str, tenacity_str, lifesteal_str])
+	
 	lines.append("")  # Line break before passive
 	lines.append("%s (passive): %s" % [_escape_bbcode_plain(str(d.get("passive_name", "Passive"))), _escape_bbcode_plain(str(d.get("passive_desc", "")))])
 	lines.append("")  # Line break before ability
-	lines.append(
-		"%s (%ss): %s" % [_escape_bbcode_plain(str(d.get("ability_name", "Ability"))), str(st.get("ability_cd", 0.0)), _escape_bbcode_plain(str(d.get("ability_desc", "")))]
-	)
+	
+	# Ability cooldown (lower is better)
+	var cd_str: String = _format_stat_diff_lower_better(float(base_stats.get("ability_cd", 0.0)), float(st.get("ability_cd", 0.0)), "%.1fs")
+	lines.append("%s (%s): %s" % [_escape_bbcode_plain(str(d.get("ability_name", "Ability"))), cd_str, _escape_bbcode_plain(str(d.get("ability_desc", "")))])
+	
 	lines.append("")  # Line break before ultimate
-	lines.append(
-		"%s (%.0f mana): %s" % [_escape_bbcode_plain(str(d.get("ultimate_name", "Ultimate"))), float(st.get("max_mana", 0.0)), _escape_bbcode_plain(str(d.get("ultimate_desc", "")))]
-	)
+	
+	# Mana cost (lower is better for cost)
+	var mana_str: String = _format_stat_diff_lower_better(float(base_stats.get("mana_cost", 0.0)), float(st.get("mana_cost", 0.0)), "%.0f")
+	lines.append("%s (%s mana): %s" % [_escape_bbcode_plain(str(d.get("ultimate_name", "Ultimate"))), mana_str, _escape_bbcode_plain(str(d.get("ultimate_desc", "")))])
+	
 	return "\n".join(lines)
 
 
@@ -230,8 +237,8 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, hero_id: Strin
 		effective_stats["tenacity"] = float(unit_data["tenacity"])
 	if unit_data.has("life_steal"):
 		effective_stats["life_steal"] = float(unit_data["life_steal"])
-	if unit_data.has("max_mana"):
-		effective_stats["max_mana"] = float(unit_data["max_mana"])
+	if unit_data.has("mana_cost"):
+		effective_stats["mana_cost"] = float(unit_data["mana_cost"])
 	if unit_data.has("ability_cd_max"):
 		effective_stats["ability_cd"] = float(unit_data["ability_cd_max"])
 	
@@ -241,3 +248,25 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, hero_id: Strin
 func _border_for_dict(st: Dictionary) -> Color:
 	var rk: String = str(st.get("role", "")).to_lower()
 	return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+
+
+## Format stat diff where higher values are better (green for increase, red for decrease)
+func _format_stat_diff_higher_better(base: float, effective: float, format_string: String) -> String:
+	var diff: float = effective - base
+	if diff > STAT_DIFF_EPSILON:
+		return "[color=%s]%s[/color]" % [COLOR_STAT_BUFF.to_html(false), format_string % effective]
+	elif diff < -STAT_DIFF_EPSILON:
+		return "[color=%s]%s[/color]" % [COLOR_STAT_NERF.to_html(false), format_string % effective]
+	else:
+		return format_string % effective
+
+
+## Format stat diff where lower values are better (green for decrease, red for increase)
+func _format_stat_diff_lower_better(base: float, effective: float, format_string: String) -> String:
+	var diff: float = effective - base
+	if diff < -STAT_DIFF_EPSILON:
+		return "[color=%s]%s[/color]" % [COLOR_STAT_BUFF.to_html(false), format_string % effective]
+	elif diff > STAT_DIFF_EPSILON:
+		return "[color=%s]%s[/color]" % [COLOR_STAT_NERF.to_html(false), format_string % effective]
+	else:
+		return format_string % effective

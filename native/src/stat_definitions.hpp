@@ -16,7 +16,7 @@
     X(magic_resist, 0.0, NO_BOUND, 1.0) \
     X(tenacity, 0.0, NO_BOUND, 1.0) \
     X(life_steal, 0.0, 0.0, 10.0) \
-    X(max_mana, 50.0, 10.0, NO_BOUND) \
+    X(mana_cost, 50.0, 10.0, NO_BOUND) \
     X(mana_per_attack, 10.0, 0.0, NO_BOUND) \
     X(ability_cd, 5.0, 0.1, NO_BOUND) \
     X(projectile_speed, 5.0, 0.1, 50.0) \

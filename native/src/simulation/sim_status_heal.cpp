@@ -52,8 +52,8 @@ void restore_mana(SimWorld &world, UnitState &source, UnitState &target, double 
 	if (amount <= 0.0) {
 		return;
 	}
-	const double max_mana = get_effective_max_mana(target);
-	target.mana = Math::min(max_mana, target.mana + amount);
+	const double mana_cost = get_effective_mana_cost(target);
+	target.mana = Math::min(mana_cost, target.mana + amount);
 }
 
 } // namespace status

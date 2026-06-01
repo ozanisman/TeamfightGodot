@@ -79,7 +79,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["max_hp"] = get_effective_max_hp(u);
 		d["shield"] = u.shield;
 		d["mana"] = u.mana;
-		d["max_mana"] = get_effective_max_mana(u);
+		d["mana_cost"] = get_effective_mana_cost(u);
 		d["target"] = u.target_id;
 		d["target_id"] = u.target_id;
 		d["stun"] = u.stun_remaining;

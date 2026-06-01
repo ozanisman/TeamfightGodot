@@ -219,7 +219,7 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 
 	double max_hp = double(stats.get("max_hp", 0.0));
-	double max_mana = double(stats.get("max_mana", 0.0));
+	double mana_cost = double(stats.get("mana_cost", 0.0));
 	double x = 0.0;
 	double y = 0.0;
 

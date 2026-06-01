@@ -247,7 +247,7 @@ func _validate_snapshot_unit(unit_data: Dictionary, index: int) -> bool:
 		"max_hp",
 		"shield",
 		"mana",
-		"max_mana",
+		"mana_cost",
 		"alive",
 		"state",
 		"target_id",

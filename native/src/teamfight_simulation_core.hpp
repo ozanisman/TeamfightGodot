@@ -63,6 +63,8 @@ public:
 		ROLE_SLOT_COUNT = sim::ROLE_SLOT_COUNT,
 	};
 
+	Dictionary effective_champion_for(const StringName &archetype_id) const;
+
 	std::vector<sim::ProjectileState> _projectiles;
 	std::vector<sim::ProjectileState> _scratch_projectiles;
 	std::vector<sim::ProjectileState> _active_projectiles;

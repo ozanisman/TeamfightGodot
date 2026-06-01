@@ -11,8 +11,7 @@ static var _role_config_cache: Dictionary = {}
 static var _catalog_cache: Dictionary = {}
 static var _passive_cache: Dictionary = {}
 static var _champion_ids_cache: Array[StringName] = []
-static var _role_kits: Dictionary = {}
-static var _role_kits_loaded: bool = false
+static var _native_core: Object = null
 
 # Thread-local cache storage for safe multi-threading
 static var _thread_local_caches: Dictionary = {}
@@ -2954,61 +2953,25 @@ static func build_minion_catalog() -> Dictionary:
 static func get_minion(minion_id: StringName):
 	return build_minion_catalog().get(minion_id, null)
 
-static func _load_role_kits() -> void:
-	if _role_kits_loaded:
-		return
-	var file := FileAccess.open("res://fixtures/goldens/role_kits.json", FileAccess.READ)
-	if file == null:
-		_role_kits = {}
-		_role_kits_loaded = true
-		return
-	var json_string := file.get_as_text()
-	file.close()
-	var json := JSON.new()
-	var parse_result := json.parse(json_string)
-	if parse_result != OK:
-		_role_kits = {}
-		_role_kits_loaded = true
-		return
-	var data: Dictionary = json.data
-	_role_kits = data.get("kits", {})
-	_role_kits_loaded = true
-
-static func reload_role_kits() -> void:
-	_role_kits_loaded = false
-	_role_kits.clear()
-	_role_config_cache.clear()
-	_load_role_kits()
-
 static func get_effective_stats(hero_id: StringName) -> Dictionary:
+	# Use native effective_champion_for for source of truth
+	if _native_core == null:
+		if ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore"):
+			_native_core = ClassDB.instantiate("TeamfightSimulationCore")
+		else:
+			push_error("Native simulation core unavailable for effective stats")
+			return {}
+	
+	if _native_core != null and _native_core.has_method("effective_champion_for"):
+		var effective_champion: Dictionary = _native_core.effective_champion_for(hero_id)
+		if not effective_champion.is_empty():
+			return Dictionary(effective_champion.get("stats", {}))
+	
+	# Fallback to base stats if native fails
 	var champion = get_champion(hero_id)
 	if champion == null:
 		return {}
-	var stats_dict: Dictionary = champion.stats.to_dict().duplicate(true)
-	var role: StringName = stats_dict.get("role", &"")
-	
-	# Apply role kit overrides
-	_load_role_kits()
-	for kit_id in _role_kits.keys():
-		var kit: Dictionary = _role_kits[kit_id]
-		if kit.get("role", "") == String(role):
-			var kit_stat_mods: Dictionary = kit.get("stat_mods", {})
-			for key in kit_stat_mods.keys():
-				var mod_data: Dictionary = kit_stat_mods[key]
-				var mod_type: String = mod_data.get("type", "add")
-				var mod_value: float = mod_data.get("value", 0.0)
-				var current_value: float = stats_dict.get(key, 0.0)
-				match mod_type:
-					"multiply":
-						stats_dict[key] = current_value * mod_value
-					"divide":
-						stats_dict[key] = current_value / mod_value if mod_value != 0.0 else current_value
-					"subtract":
-						stats_dict[key] = current_value - mod_value
-					_:  # add (default)
-						stats_dict[key] = current_value + mod_value
-	
-	return stats_dict
+	return champion.stats.to_dict().duplicate(true)
 
 static func export_schema_dict() -> Dictionary:
 	var schema: Dictionary = {}

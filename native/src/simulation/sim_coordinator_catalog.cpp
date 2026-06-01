@@ -70,3 +70,7 @@ void TeamfightSimulationCore::set_balance_patches(const Array &patches) {
 Array TeamfightSimulationCore::get_balance_patches() const {
 	return sim::catalog::get_balance_patches(_catalog);
 }
+
+Dictionary TeamfightSimulationCore::effective_champion_for(const StringName &archetype_id) const {
+	return _effective_champion_for(archetype_id);
+}

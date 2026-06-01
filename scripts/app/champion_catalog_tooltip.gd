@@ -189,10 +189,7 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 	# Defensive stats (higher is better)
 	var armor_str: String = _format_stat_diff_higher_better(float(base_stats.get("armor", 0.0)) * 100, float(st.get("armor", 0.0)) * 100, "Armor: %.0f%%")
 	var mr_str: String = _format_stat_diff_higher_better(float(base_stats.get("magic_resist", 0.0)) * 100, float(st.get("magic_resist", 0.0)) * 100, "MR: %.0f%%")
-	var base_tenacity: float = float(base_stats.get("tenacity", 0.0))
-	var effective_tenacity: float = float(st.get("tenacity", 0.0))
-	print("DEBUG tenacity - base: %s, effective: %s, diff: %s" % [base_tenacity, effective_tenacity, effective_tenacity - base_tenacity])
-	var tenacity_str: String = _format_stat_diff_higher_better(base_tenacity * 100, effective_tenacity * 100, "Tenacity: %.0f%%")
+	var tenacity_str: String = _format_stat_diff_higher_better(float(base_stats.get("tenacity", 0.0)) * 100, float(st.get("tenacity", 0.0)) * 100, "Tenacity: %.0f%%")
 	var lifesteal_str: String = _format_stat_diff_higher_better(float(base_stats.get("life_steal", 0.0)) * 100, float(st.get("life_steal", 0.0)) * 100, "Lifesteal: %.0f%%")
 	lines.append("%s | %s | %s | %s" % [armor_str, mr_str, tenacity_str, lifesteal_str])
 	

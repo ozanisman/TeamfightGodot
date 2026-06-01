@@ -1,24 +1,28 @@
 {
   "patches": [
     {
-      "patch_id": "example_artillery_adjustment",
+      "patch_id": "example_artillery_attack_damage",
       "targets": ["artillery"],
       "roles": [],
-      "stat_multipliers": { "attack_damage": 1.1 },
       "stat_additions": {},
-      "reason": "Small tuning example for live balance overlays"
+      "stat_multipliers": { "attack_damage": 1.0 },
+      "reason": "[TESTING]"
     },
     {
-      "patch_id": "example_nerf_tank_movespeed",
+      "patch_id": "example_tank_move_speed",
+      "targets": [],
       "roles": ["tank"],
-      "stat_additions": {"move_speed": 1.0},
-      "stat_multipliers": {}
+      "stat_additions": {"move_speed": 0.0},
+      "stat_multipliers": {},
+      "reason": "[TESTING]"
     },
     {
-      "patch_id": "example_buff_marksman_attack_speed",
-      "roles": ["marksman"],
-      "stat_multipliers": {"attack_speed": 1.2},
-      "stat_additions": {}
+      "patch_id": "example_all_move_speed",
+      "targets": [],
+      "roles": [],
+      "stat_additions": {"move_speed": 0.0},
+      "stat_multipliers": {},
+      "reason": "[TESTING]"
     }
   ]
 }

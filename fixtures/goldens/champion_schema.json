@@ -8,7 +8,15 @@
 				"sub_effects": {
 					"kind": "projectile",
 					"params": {
-						"damage_ratio": 0.4,
+						"on_hit": {
+							"kind": "damage",
+							"params": {
+								"damage_ratio": 0.7,
+								"damage_type": "physical",
+								"reason": "Volley",
+								"trigger_on_hit": true
+							}
+						},
 						"reason": "Volley"
 					}
 				},
@@ -17,28 +25,28 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Fires a volley of three arrows at the closest enemy, each dealing 40% physical damage.",
+		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
 		"ability_name": "Volley",
-		"description": "A swift ranged attacker who fires volleys of arrows.",
+		"description": "A swift ranged attacker who fires volleys of arrows that reduce enemy armor.",
 		"name": "Archer",
-		"passive_desc": "Each attack reduces the target's armor by 1 + 5% for 3 seconds. (Max 5 stacks)",
+		"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
 		"passive_ids": [
 			"eagle_eye"
 		],
 		"passive_name": "Eagle Eye",
 		"role": "marksman",
 		"stats": {
-			"ability_cd": 5.5,
+			"ability_cd": 4.5,
 			"armor": 0.05,
-			"attack_damage": 17.0,
+			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.15,
 			"life_steal": 0.0,
 			"magic_resist": 0.05,
 			"mana_per_attack": 10.0,
 			"max_hp": 150.0,
-			"max_mana": 90.0,
-			"move_speed": 0.75,
+			"max_mana": 100.0,
+			"move_speed": 0.8,
 			"name": "Archer",
 			"passive_id": "eagle_eye",
 			"projectile_radius": 0.03,
@@ -49,42 +57,42 @@
 			"unit_id": "archer"
 		},
 		"ultimate": {
-			"kind": "multi_target",
+			"kind": "channel",
 			"params": {
-				"repeat_count": 10,
-				"selection_strategy": "closest",
-				"sub_effects": {
-					"kind": "multi_effect",
+				"allow_movement": true,
+				"duration": 1.5,
+				"reason": "Rain of Arrows",
+				"sub_effect": {
+					"kind": "multi_target",
 					"params": {
-						"effects": [
-							{
-								"kind": "projectile",
-								"params": {
-									"damage_ratio": 0.15,
-									"reason": "Rain of Arrows"
-								}
-							},
-							{
-								"kind": "damage_over_time",
-								"params": {
-									"damage_ratio": 0.12,
-									"damage_type": "physical",
-									"duration": 2.0,
-									"reason": "Rain of Arrows",
-									"stacking_mode": "separate",
-									"tick_interval": 0.5
-								}
+						"excess_handling": "stack",
+						"repeat_count": 5,
+						"selection_strategy": "closest",
+						"sub_effects": {
+							"kind": "projectile",
+							"params": {
+								"on_hit": {
+									"kind": "damage",
+									"params": {
+										"damage_ratio": 0.4,
+										"damage_type": "physical",
+										"reason": "Rain of Arrows",
+										"trigger_on_hit": true
+									}
+								},
+								"reason": "Rain of Arrows"
 							}
-						],
-						"reason": "Rain of Arrows"
+						},
+						"target_count": 1,
+						"team_filter": "enemy"
 					}
 				},
-				"target_count": -1,
-				"team_filter": "enemy"
+				"target_mode": "fixed",
+				"tick_interval": 0.5
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Shoots 10 arrows distributed among alive enemies, each dealing 15% physical damage and applying a 12% attack damage bleed over 2.0 seconds.",
+		"ultimate_desc": "Channels for 1.5 seconds, shooting 5 arrows every 0.5s at the closest enemy dealing 40% physical damage each.",
 		"ultimate_name": "Rain of Arrows",
 		"unit_id": "archer"
 	},
@@ -92,13 +100,43 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 1.5,
-				"reason": "Shell Shock",
-				"stun_duration": 0.5
+				"on_hit": {
+					"kind": "multi_effect",
+					"params": {
+						"effects": [
+							{
+								"kind": "damage",
+								"params": {
+									"damage_ratio": 1.5,
+									"damage_type": "physical",
+									"reason": "Shell Shock",
+									"trigger_on_hit": true
+								}
+							},
+							{
+								"kind": "stun",
+								"params": {
+									"duration": 0.5,
+									"reason": "Shell Shock"
+								}
+							},
+							{
+								"kind": "knockback",
+								"params": {
+									"direction": "away_from_source",
+									"distance": 1.0,
+									"reason": "Shell Shock"
+								}
+							}
+						],
+						"reason": "Shell Shock"
+					}
+				},
+				"reason": "Shell Shock"
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Explosive shell that deals 150% damage and stuns the target for 0.5s.",
+		"ability_desc": "Explosive shell that deals 150% damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ability_name": "Explosive Shell",
 		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
 		"name": "Artillery",
@@ -132,7 +170,15 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 3.3,
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 3.3,
+						"damage_type": "physical",
+						"reason": "Big Bertha",
+						"trigger_on_hit": true
+					}
+				},
 				"radius_override": 0.1,
 				"reason": "Big Bertha"
 			},
@@ -150,8 +196,8 @@
 					{
 						"kind": "damage",
 						"params": {
+							"current_hp_ratio": 0.2,
 							"damage_type": "true",
-							"max_hp_ratio": 0.15,
 							"reason": "Blood Price",
 							"target_self": true
 						},
@@ -160,7 +206,7 @@
 					{
 						"kind": "shield",
 						"params": {
-							"max_hp_ratio": 0.3,
+							"max_hp_ratio": 0.4,
 							"reason": "Blood Price",
 							"target_self": true
 						},
@@ -169,7 +215,7 @@
 					{
 						"kind": "stat_modifier",
 						"params": {
-							"duration": 2.0,
+							"duration": 2.5,
 							"duration_type": "respawn",
 							"multiplicative": 1.5,
 							"reason": "Blood Price",
@@ -183,7 +229,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Damages himself for 15% max HP, gains a 30% max HP shield, and gains 50% attack speed for 2s.",
+		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 50% attack speed for 2.5s.",
 		"ability_name": "Blood Sacrifice",
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"name": "Berserker",
@@ -804,24 +850,15 @@
 			"unit_id": "mirror_knight"
 		},
 		"ultimate": {
-			"kind": "multi_effect",
+			"kind": "aoe_reflect",
 			"params": {
-				"effects": [
-					{
-						"kind": "aoe_reflect",
-						"params": {
-							"anchor": "self",
-							"duration": 5.0,
-							"radius": 4.0,
-							"reason": "Mirror Dimension",
-							"reflect_percentage": 0.5,
-							"reflect_type": "all",
-							"shape": "circle"
-						},
-						"requires_target_in_range": true
-					}
-				],
-				"reason": "Mirror Dimension"
+				"anchor": "self",
+				"duration": 5.0,
+				"radius": 4.0,
+				"reason": "Mirror Dimension",
+				"reflect_percentage": 0.5,
+				"reflect_type": "all",
+				"shape": "circle"
 			},
 			"requires_target_in_range": true
 		},
@@ -833,19 +870,20 @@
 		"ability": {
 			"kind": "heal_over_time",
 			"params": {
-				"duration": 5.0,
-				"missing_hp_ratio": 0.15,
+				"allow_overheal": true,
+				"duration": 3.0,
+				"max_hp_ratio": 0.15,
 				"reason": "Healing Bloom",
 				"stacking_mode": "separate",
-				"tick_interval": 0.5
+				"tick_interval": 0.2
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Heals a target for 5% of their missing health over 5s.",
+		"ability_desc": "Heals a target for 15% of their maximum health over 3s.",
 		"ability_name": "Healing Bloom",
 		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
 		"name": "Mistcaller",
-		"passive_desc": "Every 5s, heals all allies in a 2.0 tile radius for 5% of their missing health over 5s.",
+		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum health. Every 5s, heals all allies in a 3.0 tile radius for 10 + 5% missing health over 3s.",
 		"passive_ids": [
 			"restorative_mist"
 		],
@@ -877,18 +915,18 @@
 			"params": {
 				"allow_overheal": true,
 				"anchor": "self",
-				"duration": 5.0,
-				"max_hp_ratio": 0.15,
-				"radius": 4.0,
+				"duration": 3.0,
+				"max_hp_ratio": 0.25,
+				"radius": 3.5,
 				"reason": "Celestial Rain",
 				"shape": "circle",
 				"stacking_mode": "separate",
 				"target_self": true,
-				"tick_interval": 0.5
+				"tick_interval": 0.2
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Heals all allies in a 4.0 tile radius for 15% of their maximum health over 5s. Excess healing is converted into temporary maximum health.",
+		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum health over 3s. Excess healing is converted into temporary maximum health.",
 		"ultimate_name": "Enveloping Mist",
 		"unit_id": "mistcaller"
 	},
@@ -994,28 +1032,26 @@
 				"reason": "Raise Dead",
 				"spawn_radius": 2.0
 			},
-			"requires_target_in_range": true
+			"requires_target_in_range": false
 		},
 		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
 		"ability_name": "Raise Dead",
 		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
 		"name": "Necromancer",
-		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
-		"passive_ids": [
-			"soul_harvest"
-		],
-		"passive_name": "Soul Harvest",
+		"passive_desc": "",
+		"passive_ids": [],
+		"passive_name": "",
 		"role": "mage",
 		"stats": {
-			"ability_cd": 8.0,
+			"ability_cd": 4.0,
 			"armor": 0.1,
-			"attack_damage": 8.0,
+			"attack_damage": 10.0,
 			"attack_range": 2.5,
 			"attack_speed": 0.8,
 			"life_steal": 0.0,
 			"magic_resist": 0.25,
 			"mana_per_attack": 5.0,
-			"max_hp": 180.0,
+			"max_hp": 200.0,
 			"max_mana": 120.0,
 			"move_speed": 0.65,
 			"name": "Necromancer",
@@ -1096,15 +1132,15 @@
 		"role": "assassin",
 		"stats": {
 			"ability_cd": 4.0,
-			"armor": 0.15,
+			"armor": 0.11,
 			"attack_damage": 25.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.5,
+			"attack_speed": 1.2,
 			"life_steal": 0.0,
-			"magic_resist": 0.15,
+			"magic_resist": 0.11,
 			"mana_per_attack": 10.0,
-			"max_hp": 205.0,
-			"max_mana": 90.0,
+			"max_hp": 190.0,
+			"max_mana": 100.0,
 			"move_speed": 0.9,
 			"name": "Ninja",
 			"passive_id": "executioner",
@@ -1118,7 +1154,15 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 9.0,
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 9.0,
+						"damage_type": "physical",
+						"reason": "Assassinate",
+						"trigger_on_hit": true
+					}
+				},
 				"reason": "Assassinate"
 			},
 			"requires_target_in_range": true
@@ -1440,11 +1484,10 @@
 				{
 					"kind": "stat_modifier",
 					"params": {
-						"additive": -0.01,
+						"additive": -0.02,
 						"duration": 3.0,
 						"duration_type": "respawn",
-						"max_stacks": 5,
-						"multiplicative": 0.95,
+						"max_stacks": 7,
 						"reason": "Eagle Eye",
 						"stack_behavior": "stack",
 						"stat_name": "armor"
@@ -1590,16 +1633,18 @@
 				{
 					"kind": "aoe_heal_over_time",
 					"params": {
+						"allow_overheal": true,
 						"anchor": "self",
-						"duration": 5.0,
+						"duration": 3.0,
+						"flat_amount": 10,
 						"missing_hp_ratio": 0.05,
 						"on_tick_interval": 5.0,
-						"radius": 2.5,
+						"radius": 3.0,
 						"reason": "Restorative Mist",
 						"shape": "circle",
 						"stacking_mode": "separate",
 						"target_self": true,
-						"tick_interval": 0.5
+						"tick_interval": 0.2
 					},
 					"requires_target_in_range": true
 				}
@@ -1656,7 +1701,7 @@
 					"kind": "stat_modifier",
 					"params": {
 						"duration_type": "match",
-						"heal_gained_ratio": 0.25,
+						"heal_gained_ratio": 0.5,
 						"reason": "Soul Feast",
 						"stack_behavior": "stack",
 						"stat_name": "max_hp",
@@ -1733,7 +1778,7 @@
 								"params": {
 									"anchor": "self",
 									"damage_type": "physical",
-									"flat_amount": 10.0,
+									"flat_amount": 7.0,
 									"radius": 0.75,
 									"reason": "Sweeping Strikes",
 									"shape": "circle"
@@ -1787,6 +1832,21 @@
 					"params": {
 						"every_n": 3,
 						"stun_duration": 0.5
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
+		"unstable_creation": {
+			"on_tick": [
+				{
+					"kind": "damage",
+					"params": {
+						"damage_type": "true",
+						"flat_amount": 5.0,
+						"on_tick_interval": 1.0,
+						"reason": "Unstable Creation",
+						"target_self": true
 					},
 					"requires_target_in_range": true
 				}
@@ -2112,7 +2172,15 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 1.5,
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 1.5,
+						"damage_type": "physical",
+						"reason": "Headshot",
+						"trigger_on_hit": true
+					}
+				},
 				"reason": "Headshot"
 			},
 			"requires_target_in_range": true
@@ -2151,7 +2219,15 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 3.5,
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 3.5,
+						"damage_type": "physical",
+						"reason": "Snipe",
+						"trigger_on_hit": true
+					}
+				},
 				"reason": "Snipe",
 				"speed_override": 15.0
 			},
@@ -2310,7 +2386,7 @@
 		"stats": {
 			"ability_cd": 6.0,
 			"armor": 0.17,
-			"attack_damage": 19.0,
+			"attack_damage": 18.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.0,
 			"life_steal": 0.0,
@@ -2435,7 +2511,7 @@
 							{
 								"kind": "damage_based_heal",
 								"params": {
-									"damage_ratio": 0.3,
+									"damage_ratio": 0.25,
 									"reason": "Chaos Rift",
 									"use_accumulated_damage": false
 								}
@@ -2449,11 +2525,11 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 30% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
 		"ability_name": "Chaos Rift",
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
 		"name": "Warlock",
-		"passive_desc": "Gains permanent max HP equal to 25% of all self healing.",
+		"passive_desc": "Gains permanent max HP equal to 50% of all self healing.",
 		"passive_ids": [
 			"soul_feast"
 		],
@@ -2462,7 +2538,7 @@
 		"stats": {
 			"ability_cd": 2.0,
 			"armor": 0.15,
-			"attack_damage": 20.0,
+			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.7,
 			"life_steal": 0.0,
@@ -2546,12 +2622,12 @@
 		"role": "mage",
 		"stats": {
 			"ability_cd": 7.0,
-			"armor": 0.15,
-			"attack_damage": 19.0,
+			"armor": 0.1,
+			"attack_damage": 18.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.9,
 			"life_steal": 0.0,
-			"magic_resist": 0.28,
+			"magic_resist": 0.18,
 			"mana_per_attack": 10.0,
 			"max_hp": 170.0,
 			"max_mana": 100.0,
@@ -2575,7 +2651,7 @@
 							"anchor": "self",
 							"damage_ratio": 2.5,
 							"damage_type": "magic",
-							"radius": 4.0,
+							"radius": 3.5,
 							"reason": "Tornado",
 							"shape": "circle"
 						},
@@ -2587,7 +2663,7 @@
 							"anchor": "self",
 							"direction": "away_from_source",
 							"distance": 2.5,
-							"radius": 4.0,
+							"radius": 3.5,
 							"reason": "Tornado",
 							"shape": "circle"
 						},
@@ -2609,7 +2685,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 4 tile radius by 2 units.",
+		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 3.5 tile radius by 2.5 tiles.",
 		"ultimate_name": "Tornado",
 		"unit_id": "windcaller"
 	},
@@ -2617,8 +2693,15 @@
 		"ability": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 1.5,
-				"damage_type": "magic",
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 1.5,
+						"damage_type": "magic",
+						"reason": "Arcane Bolt",
+						"trigger_on_hit": true
+					}
+				},
 				"reason": "Arcane Bolt",
 				"speed_override": 7.0
 			},
@@ -2658,8 +2741,15 @@
 		"ultimate": {
 			"kind": "projectile",
 			"params": {
-				"damage_ratio": 5.0,
-				"damage_type": "magic",
+				"on_hit": {
+					"kind": "damage",
+					"params": {
+						"damage_ratio": 5.0,
+						"damage_type": "magic",
+						"reason": "Meteor Bombardment",
+						"trigger_on_hit": true
+					}
+				},
 				"reason": "Meteor Bombardment",
 				"speed_override": 4.0
 			},
@@ -2708,17 +2798,17 @@
 		"passive_name": "Shadow Steps",
 		"role": "assassin",
 		"stats": {
-			"ability_cd": 4.0,
-			"armor": 0.15,
-			"attack_damage": 23.0,
+			"ability_cd": 4.5,
+			"armor": 0.1,
+			"attack_damage": 21.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.85,
 			"life_steal": 0.0,
-			"magic_resist": 0.12,
+			"magic_resist": 0.1,
 			"mana_per_attack": 10.0,
 			"max_hp": 210.0,
 			"max_mana": 80.0,
-			"move_speed": 1.0,
+			"move_speed": 0.9,
 			"name": "Wraith",
 			"passive_id": "shadow_steps",
 			"projectile_radius": 0.03,

@@ -335,26 +335,26 @@ const CHAMPION_DATA := {
 			"name": &"Archer",
 			"role": &"marksman",
 			"max_hp": 150.0,
-			"attack_damage": 17.0,
+			"attack_damage": 15.0,
 			"attack_range": 3.5,
 			"attack_speed": 1.15,
-			"move_speed": 0.75,
+			"move_speed": 0.80,
 			"armor": 0.05,
 			"magic_resist": 0.05,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 90.0,
+			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 5.5,
+			"ability_cd": 4.5,
 			"projectile_speed": 8.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"eagle_eye",
 			"respawn_time": 0.0,
 		},
-		"description": "A swift ranged attacker who fires volleys of arrows.",
-		"ability_desc": "Fires a volley of three arrows at the closest enemy, each dealing 40% physical damage.",
-		"ultimate_desc": "Shoots 10 arrows distributed among alive enemies, each dealing 15% physical damage and applying a 12% attack damage bleed over 2.0 seconds.",
-		"passive_desc": "Each attack reduces the target's armor by 1 + 5% for 3 seconds. (Max 5 stacks)",
+		"description": "A swift ranged attacker who fires volleys of arrows that reduce enemy armor.",
+		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
+		"ultimate_desc": "Channels for 1.5 seconds, shooting 5 arrows every 0.5s at the closest enemy dealing 40% physical damage each.",
+		"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
 		"passive_name": "Eagle Eye",
 		"ability_name": "Volley",
 		"ultimate_name": "Rain of Arrows",
@@ -368,43 +368,51 @@ const CHAMPION_DATA := {
 				"sub_effects": {
 					"kind": &"projectile",
 					"params": {
-						"damage_ratio": 0.4,
-						"reason": "Volley"
+						"on_hit": {
+							"kind": &"damage",
+							"params": {
+								"damage_ratio": 0.7,
+								"damage_type": "physical",
+								"trigger_on_hit": true,
+								"reason": "Volley"
+							}
+						},
+						"reason": "Volley",
 					}
 				}
 			}
 		},
 		"ultimate": {
-			"kind": &"multi_target",
+			"kind": &"channel",
 			"params": {
-				"target_count": -1,
-				"repeat_count": 10,
-				"selection_strategy": "closest",
-				"team_filter": "enemy",
-				"sub_effects": {
-					"kind": &"multi_effect",
+				"duration": 1.5,
+				"tick_interval": 0.5,
+				"allow_movement": true,
+				"target_mode": "fixed",
+				"reason": "Rain of Arrows",
+				"sub_effect": {
+					"kind": &"multi_target",
 					"params": {
-						"effects": [
-							{
-								"kind": &"projectile",
-								"params": {
-									"damage_ratio": 0.15,
-									"reason": "Rain of Arrows"
-								}
-							},
-							{
-								"kind": &"damage_over_time",
-								"params": {
-									"damage_ratio": 0.12,
-									"duration": 2.0,
-									"tick_interval": 0.5,
-									"stacking_mode": "separate",
-									"damage_type": "physical",
-									"reason": "Rain of Arrows"
-								}
+						"target_count": 1,
+						"repeat_count": 5,
+						"excess_handling": "stack",
+						"selection_strategy": "closest",
+						"team_filter": "enemy",
+						"sub_effects": {
+							"kind": &"projectile",
+							"params": {
+								"on_hit": {
+									"kind": &"damage",
+									"params": {
+										"damage_ratio": 0.4,
+										"damage_type": "physical",
+										"trigger_on_hit": true,
+										"reason": "Rain of Arrows"
+									}
+								},
+								"reason": "Rain of Arrows",
 							}
-						],
-						"reason": "Rain of Arrows"
+						}
 					}
 				}
 			}
@@ -488,16 +496,16 @@ const CHAMPION_DATA := {
 			"unit_id": &"ninja",
 			"name": &"Ninja",
 			"role": &"assassin",
-			"max_hp": 205.0,
+			"max_hp": 190.0,
 			"attack_damage": 25.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.5,
+			"attack_speed": 1.2,
 			"move_speed": 0.90,
-			"armor": 0.15,
-			"magic_resist": 0.15,
+			"armor": 0.11,
+			"magic_resist": 0.11,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"max_mana": 90.0,
+			"max_mana": 100.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 4.0,
 			"projectile_speed": 0.0,
@@ -550,8 +558,16 @@ const CHAMPION_DATA := {
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 9.0,
-				"reason": "Assassinate"
+				"reason": "Assassinate",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 9.0,
+						"damage_type": "physical",
+						"trigger_on_hit": true,
+						"reason": "Assassinate"
+					}
+				}
 			}
 		},
 		"passive_ids": [&"executioner"],
@@ -588,16 +604,32 @@ const CHAMPION_DATA := {
 		"ability": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 1.5,
-				"reason": "Headshot"
+				"reason": "Headshot",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 1.5,
+						"damage_type": "physical",
+						"trigger_on_hit": true,
+						"reason": "Headshot"
+					}
+				}
 			}
 		},
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 3.5,
 				"speed_override": 15.0,
-				"reason": "Snipe"
+				"reason": "Snipe",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 3.5,
+						"damage_type": "physical",
+						"trigger_on_hit": true,
+						"reason": "Snipe"
+					}
+				}
 			}
 		},
 		"passive_ids": [&"deadeye"],
@@ -625,7 +657,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
-		"ability_desc": "Damages himself for 15% max HP, gains a 30% max HP shield, and gains 50% attack speed for 2s.",
+		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 50% attack speed for 2.5s.",
 		"ultimate_desc": "Unleashes a devastating strike for 400% true damage that applies lifesteal.",
 		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
 		"passive_name": "Bloodlust",
@@ -638,7 +670,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"damage",
 						"params": {
-							"max_hp_ratio": 0.15,
+							"current_hp_ratio": 0.20,
 							"damage_type": "true",
 							"target_self": true,
 							"reason": "Blood Price"
@@ -647,7 +679,7 @@ const CHAMPION_DATA := {
 					{
 						"kind": &"shield",
 						"params": {
-							"max_hp_ratio": 0.30,
+							"max_hp_ratio": 0.40,
 							"target_self": true,
 							"reason": "Blood Price"
 						}
@@ -657,7 +689,7 @@ const CHAMPION_DATA := {
 						"params": {
 							"stat_name": "attack_speed",
 							"multiplicative": 1.5,
-							"duration": 2.0,
+							"duration": 2.5,
 							"duration_type": "respawn",
 							"reason": "Blood Price",
 							"target_self": true
@@ -950,17 +982,17 @@ const CHAMPION_DATA := {
 			"name": &"Wraith",
 			"role": &"assassin",
 			"max_hp": 210.0,
-			"attack_damage": 23.0,
+			"attack_damage": 21.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.85,
-			"move_speed": 1.0,
-			"armor": 0.15,
-			"magic_resist": 0.12,
+			"move_speed": 0.9,
+			"armor": 0.10,
+			"magic_resist": 0.10,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 80.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 4.0,
+			"ability_cd": 4.5,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"shadow_steps",
@@ -1029,7 +1061,7 @@ const CHAMPION_DATA := {
 			"name": &"Warlock",
 			"role": &"mage",
 			"max_hp": 250.0,
-			"attack_damage": 20.0,
+			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.70,
 			"move_speed": 0.70,
@@ -1046,9 +1078,9 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
-		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 30% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
 		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
-		"passive_desc": "Gains permanent max HP equal to 25% of all self healing.",
+		"passive_desc": "Gains permanent max HP equal to 50% of all self healing.",
 		"passive_name": "Soul Feast",
 		"ability_name": "Chaos Rift",
 		"ultimate_name": "",
@@ -1076,7 +1108,7 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"damage_based_heal",
 								"params": {
-									"damage_ratio": 0.30,
+									"damage_ratio": 0.25,
 									"use_accumulated_damage": false,
 									"reason": "Chaos Rift"
 								}
@@ -1176,19 +1208,33 @@ const CHAMPION_DATA := {
 		"ability": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 1.5,
-				"damage_type": "magic",
 				"speed_override": 7.0,
-				"reason": "Arcane Bolt"
+				"reason": "Arcane Bolt",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 1.5,
+						"damage_type": "magic",
+						"trigger_on_hit": true,
+						"reason": "Arcane Bolt"
+					}
+				}
 			}
 		},
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 5.0,
-				"damage_type": "magic",
 				"speed_override": 4.0,
-				"reason": "Meteor Bombardment"
+				"reason": "Meteor Bombardment",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 5.0,
+						"damage_type": "magic",
+						"trigger_on_hit": true,
+						"reason": "Meteor Bombardment"
+					}
+				}
 			}
 		},
 		"passive_ids": [&"mana_font"],
@@ -1294,7 +1340,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
-		"ability_desc": "Explosive shell that deals 150% damage and stuns the target for 0.5s.",
+		"ability_desc": "Explosive shell that deals 150% damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"passive_desc": "Attacks and abilities deal additional 30% splash damage in a 0.5 tile radius.",
 		"passive_name": "Demolition",
@@ -1303,17 +1349,55 @@ const CHAMPION_DATA := {
 		"ability": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 1.5,
-				"stun_duration": 0.5,
-				"reason": "Shell Shock"
+				"reason": "Shell Shock",
+				"on_hit": {
+					"kind": &"multi_effect",
+					"params": {
+						"effects": [
+							{
+								"kind": &"damage",
+								"params": {
+									"damage_ratio": 1.5,
+									"damage_type": "physical",
+									"trigger_on_hit": true,
+									"reason": "Shell Shock"
+								}
+							},
+							{
+								"kind": &"stun",
+								"params": {
+									"duration": 0.5,
+									"reason": "Shell Shock"
+								}
+							},
+							{
+								"kind": &"knockback",
+								"params": {
+									"distance": 1.0,
+									"direction": "away_from_source",
+									"reason": "Shell Shock"
+								}
+							},
+						],
+						"reason": "Shell Shock"
+					}
+				}
 			}
 		},
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
-				"damage_ratio": 3.3,
 				"radius_override": 0.1,
-				"reason": "Big Bertha"
+				"reason": "Big Bertha",
+				"on_hit": {
+					"kind": &"damage",
+					"params": {
+						"damage_ratio": 3.3,
+						"damage_type": "physical",
+						"trigger_on_hit": true,
+						"reason": "Big Bertha"
+					}
+				}
 			}
 		},
 		"passive_ids": [&"demolition"],
@@ -1440,7 +1524,7 @@ const CHAMPION_DATA := {
 			"name": &"Valkyrie",
 			"role": &"fighter",
 			"max_hp": 270.0,
-			"attack_damage": 19.0,
+			"attack_damage": 18.0,
 			"attack_range": 0.3,
 			"attack_speed": 1.0,
 			"move_speed": 0.75,
@@ -1854,12 +1938,12 @@ const CHAMPION_DATA := {
 			"name": &"Windcaller",
 			"role": &"mage",
 			"max_hp": 170.0,
-			"attack_damage": 19.0,
+			"attack_damage": 18.0,
 			"attack_range": 3.5,
 			"attack_speed": 0.9,
 			"move_speed": 0.60,
-			"armor": 0.15,
-			"magic_resist": 0.28,
+			"armor": 0.10,
+			"magic_resist": 0.18,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"max_mana": 100.0,
@@ -1872,7 +1956,7 @@ const CHAMPION_DATA := {
 		},
 		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
 		"ability_desc": "Blasts a target with wind for 120% magic damage, knocking them back 1.0 tiles and slowing them by 20% for 1.5s.",
-		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 4 tile radius by 2 units.",
+		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 3.5 tile radius by 2.5 tiles.",
 		"passive_desc": "Gaisn a 10% max hp shield after knocking back enemies.",
 		"passive_name": "Gust Protection",
 		"ability_name": "Wind Blast",
@@ -1930,7 +2014,7 @@ const CHAMPION_DATA := {
 						"params": {
 							"shape": "circle",
 							"anchor": "self",
-							"radius": 4.0,
+							"radius": 3.5,
 							"damage_ratio": 2.5,
 							"damage_type": "magic",
 							"reason": "Tornado"
@@ -1941,7 +2025,7 @@ const CHAMPION_DATA := {
 						"params": {
 							"shape": "circle",
 							"anchor": "self",
-							"radius": 4.0,
+							"radius": 3.5,
 							"distance": 2.5,
 							"direction": "away_from_source",
 							"reason": "Tornado"
@@ -2017,22 +2101,14 @@ const CHAMPION_DATA := {
 			}
 		},
 		"ultimate": {
-			"kind": &"multi_effect",
+			"kind": &"aoe_reflect",
 			"params": {
-				"effects": [
-					{
-						"kind": &"aoe_reflect",
-						"params": {
-							"shape": "circle",
-							"anchor": "self",
-							"radius": 4.0,
-							"reflect_percentage": 0.50,
-							"duration": 5.0,
-							"reflect_type": "all",
-							"reason": "Mirror Dimension"
-						}
-					}
-				],
+				"shape": "circle",
+				"anchor": "self",
+				"radius": 4.0,
+				"reflect_percentage": 0.50,
+				"duration": 5.0,
+				"reflect_type": "all",
 				"reason": "Mirror Dimension"
 			}
 		},
@@ -2061,18 +2137,19 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
-		"ability_desc": "Heals a target for 5% of their missing health over 5s.",
-		"ultimate_desc": "Heals all allies in a 4.0 tile radius for 15% of their maximum health over 5s. Excess healing is converted into temporary maximum health.",
-		"passive_desc": "Every 5s, heals all allies in a 2.0 tile radius for 5% of their missing health over 5s.",
+		"ability_desc": "Heals a target for 15% of their maximum health over 3s.",
+		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum health over 3s. Excess healing is converted into temporary maximum health.",
+		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum health. Every 5s, heals all allies in a 3.0 tile radius for 10 + 5% missing health over 3s.",
 		"passive_name": "Restorative Mist",
 		"ability_name": "Healing Bloom",
 		"ultimate_name": "Enveloping Mist",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
-				"missing_hp_ratio": 0.15,
-				"duration": 5.0,
-				"tick_interval": 0.5,
+				"max_hp_ratio": 0.15,
+				"duration": 3.0,
+				"tick_interval": 0.2,
+				"allow_overheal": true,
 				"stacking_mode": "separate",
 				"reason": "Healing Bloom"
 			}
@@ -2082,10 +2159,10 @@ const CHAMPION_DATA := {
 			"params": {
 				"shape": "circle",
 				"anchor": "self",
-				"radius": 4.0,
-				"max_hp_ratio": 0.15,
-				"duration": 5.0,
-				"tick_interval": 0.5,
+				"radius": 3.5,
+				"max_hp_ratio": 0.25,
+				"duration": 3.0,
+				"tick_interval": 0.2,
 				"target_self": true,
 				"allow_overheal": true,
 				"stacking_mode": "separate",
@@ -2099,8 +2176,8 @@ const CHAMPION_DATA := {
 			"unit_id": &"necromancer",
 			"name": &"Necromancer",
 			"role": &"mage",
-			"max_hp": 180.0,
-			"attack_damage": 8.0,
+			"max_hp": 200.0,
+			"attack_damage": 10.0,
 			"attack_range": 2.5,
 			"attack_speed": 0.8,
 			"move_speed": 0.65,
@@ -2110,7 +2187,7 @@ const CHAMPION_DATA := {
 			"life_steal": 0.0,
 			"max_mana": 120.0,
 			"mana_per_attack": 5.0,
-			"ability_cd": 8.0,
+			"ability_cd": 4.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"",
@@ -2119,8 +2196,8 @@ const CHAMPION_DATA := {
 		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
 		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
 		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
-		"passive_desc": "When the Necromancer gets a kill or assist, gain 5 attack damage and 5% ability cooldown reduction for 5s. (Max 5 stacks)",
-		"passive_name": "Soul Harvest",
+		"passive_desc": "",
+		"passive_name": "",
 		"ability_name": "Raise Dead",
 		"ultimate_name": "Army of Darkness",
 		"ability": {
@@ -2131,7 +2208,8 @@ const CHAMPION_DATA := {
 					{"minion_id": "skeleton", "count": 2}
 				],
 				"reason": "Raise Dead"
-			}
+			},
+			"requires_target_in_range": false,
 		},
 		"ultimate": {
 			"kind": &"summon_ally",
@@ -2143,7 +2221,7 @@ const CHAMPION_DATA := {
 				"reason": "Army of Darkness"
 			}
 		},
-		"passive_ids": [&"soul_harvest"],
+		"passive_ids": [],
 	},
 }
 
@@ -2168,11 +2246,10 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "armor",
-				"additive": -0.01,
-				"multiplicative": 0.95,
+				"additive": -0.02,
 				"duration": 3.0,
 				"duration_type": "respawn",
-				"max_stacks": 5,
+				"max_stacks": 7,
 				"stack_behavior": "stack",
 				"reason": "Eagle Eye"
 			}
@@ -2243,6 +2320,18 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
+	&"unstable_creation": {
+		&"on_tick": [{
+			"kind": &"damage",
+			"params": {
+				"flat_amount": 5.0,
+				"damage_type": "true",
+				"target_self": true,
+				"on_tick_interval": 1.0,
+				"reason": "Unstable Creation"
+			}
+		}],
+	},
 	&"rejuvenation": {
 		&"on_tick": [{
 			"kind": &"heal",
@@ -2304,7 +2393,7 @@ const PASSIVE_DATA := {
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "max_hp",
-				"heal_gained_ratio": 0.25,
+				"heal_gained_ratio": 0.50,
 				"duration_type": "match",
 				"stack_behavior": "stack",
 				"target_self": true,
@@ -2370,7 +2459,7 @@ const PASSIVE_DATA := {
 							"shape": "circle",
 							"anchor": "self",
 							"radius": 0.75,
-							"flat_amount": 10.0,
+							"flat_amount": 7.0,
 							"damage_type": "physical",
 							"reason": "Sweeping Strikes"
 						}
@@ -2485,12 +2574,14 @@ const PASSIVE_DATA := {
 			"params": {
 				"shape": "circle",
 				"anchor": "self",
-				"radius": 2.5,
+				"radius": 3.0,
 				"on_tick_interval": 5.0,
 				"stacking_mode": "separate",
 				"missing_hp_ratio": 0.05,
-				"duration": 5.0,
-				"tick_interval": 0.5,
+				"flat_amount": 10,
+				"duration": 3.0,
+				"tick_interval": 0.2,
+				"allow_overheal": true,
 				"target_self": true,
 				"reason": "Restorative Mist"
 			}
@@ -2653,10 +2744,10 @@ const MINION_DATA := {
 			"unit_id": &"skeleton",
 			"name": &"Skeleton",
 			"role": &"minion",
-			"max_hp": 50.0,
+			"max_hp": 60.0,
 			"attack_damage": 12.0,
 			"attack_range": 0.3,
-			"attack_speed": 1.0,
+			"attack_speed": 0.85,
 			"move_speed": 0.75,
 			"armor": 0.05,
 			"magic_resist": 0.05,
@@ -2667,7 +2758,7 @@ const MINION_DATA := {
 			"ability_cd": 0.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
-			"passive_id": &"",
+			"passive_id": &"unstable_creation",
 			"respawn_time": 0.0,
 		},
 		"description": "A fragile undead warrior that fights with basic attacks.",
@@ -2679,7 +2770,7 @@ const MINION_DATA := {
 		"ultimate_name": "",
 		"ability": {},
 		"ultimate": {},
-		"passive_ids": [],
+		"passive_ids": [&"unstable_creation"],
 	},
 	&"wolf": {
 		"stats": {
@@ -2719,8 +2810,8 @@ const MINION_DATA := {
 			"unit_id": &"ghoul",
 			"name": &"Ghoul",
 			"role": &"minion",
-			"max_hp": 150.0,
-			"attack_damage": 10.0,
+			"max_hp": 170.0,
+			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.9,
 			"move_speed": 0.5,
@@ -2740,7 +2831,7 @@ const MINION_DATA := {
 		"ability_desc": "",
 		"ultimate_desc": "",
 		"passive_desc": "",
-		"passive_name": "",
+		"passive_name": "Has innate 15% lifesteal",
 		"ability_name": "",
 		"ultimate_name": "",
 		"ability": {},

@@ -36,6 +36,11 @@ void apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_n
 		return;
 	}
 
+	// Skip attack speed modifications if base is 0
+	if (stat_name == StringName("attack_speed") && target.combat.attack_speed == 0.0) {
+		return;
+	}
+
 	if (additive < -10000.0) {
 		additive = -10000.0;
 	}
@@ -44,9 +49,6 @@ void apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_n
 	}
 	if (multiplicative > 1000.0) {
 		multiplicative = 1000.0;
-	}
-	if (multiplicative == 0.0) {
-		multiplicative = 0.0001;
 	}
 	if (duration < 0.0) {
 		duration = 0.0;

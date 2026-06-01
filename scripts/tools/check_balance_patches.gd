@@ -162,7 +162,7 @@ func test_kit_id_reduces_ability_damage(core: Object) -> void:
 		"roles": [],
 		"stat_multipliers": {},
 		"stat_additions": {},
-		"kit_id": "balance_suite_weak_artillery_ability",
+		"kit_id": "test_ability",
 	}])
 	var kit_summary := _run_duel(core, seed)
 	var kit_ab: float = float(_stats_for_archetype(kit_summary, "artillery").get("damage_dealt_ability", 0.0))
@@ -177,7 +177,7 @@ func test_get_balance_patches_round_trip(core: Object) -> void:
 		"roles": ["marksman"],
 		"stat_multipliers": {"attack_damage": 0.9},
 		"stat_additions": {"max_hp": 5.0},
-		"kit_id": "balance_suite_weak_artillery_ability",
+		"kit_id": "test_ability",
 		"ability": {"kind": "heal", "params": {"max_hp_ratio": 0.1, "reason": "rt"}},
 		"passive_ids": ["bastion"],
 	}]
@@ -187,7 +187,7 @@ func test_get_balance_patches_round_trip(core: Object) -> void:
 	var p0: Dictionary = back[0]
 	_assert(float(p0.get("stat_multipliers", {}).get("attack_damage", 0.0)) == 0.9, "round-trip: stat_multipliers")
 	_assert(float(p0.get("stat_additions", {}).get("max_hp", 0.0)) == 5.0, "round-trip: stat_additions")
-	_assert(String(p0.get("kit_id", "")) == "balance_suite_weak_artillery_ability", "round-trip: kit_id")
+	_assert(String(p0.get("kit_id", "")) == "test_ability", "round-trip: kit_id")
 	_assert(p0.has("ability"), "round-trip: ability present")
 	_assert(Array(p0.get("passive_ids", [])) == ["bastion"], "round-trip: passive_ids")
 

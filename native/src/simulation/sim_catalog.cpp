@@ -323,7 +323,10 @@ void ensure_loaded(CatalogState &state, const CatalogHooks &hooks) {
 	state.role_configs = role_configs;
 	state.passive_registry = passive_registry;
 	state.ability_kits = ability_kits;
-	state.balance_patches = balance_patches;
+	// On first load, use file patches; on hot reload preserve programmatic patches.
+	if (!state.catalog_loaded) {
+		state.balance_patches = balance_patches;
+	}
 
 	rebuild_effective_champion_cache(state, hooks);
 	state.catalog_loaded = true;

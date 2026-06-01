@@ -29,6 +29,22 @@ if(NOT EXISTS "${GODOT_CPP_PATH}/include/godot_cpp/core/class_db.hpp")
         "or place one at third_party/godot-cpp.")
 endif()
 
+set(GODOT_EXE "" CACHE FILEPATH "Path to the Godot executable")
+if(NOT GODOT_EXE AND DEFINED ENV{GODOT})
+    set(GODOT_EXE "$ENV{GODOT}")
+endif()
+if(NOT GODOT_EXE)
+    find_program(GODOT_EXE godot NAMES godot.exe)
+endif()
+if(NOT GODOT_EXE AND EXISTS "C:/Godot/godot.exe")
+    set(GODOT_EXE "C:/Godot/godot.exe")
+endif()
+if(NOT GODOT_EXE)
+    message(FATAL_ERROR
+        "Godot executable not found. Set GODOT_EXE or the GODOT environment variable, "
+        "or place godot at C:/Godot/godot.exe.")
+endif()
+
 set(GODOTCPP_BUILD_PROFILE "" CACHE PATH "" FORCE)
 set(GODOTCPP_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 # godot-cpp template is chosen at configure time (single library per build tree).
@@ -146,7 +162,7 @@ set(EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tools/export_champion_
 
 add_custom_command(
     OUTPUT ${CHAMPION_SCHEMA_OUTPUT}
-    COMMAND godot --headless --script ${EXPORT_SCRIPT}
+    COMMAND ${GODOT_EXE} --headless --script ${EXPORT_SCRIPT}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
     COMMENT "Generating champion schema from GDScript"
     VERBATIM

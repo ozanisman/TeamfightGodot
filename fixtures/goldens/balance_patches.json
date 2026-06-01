@@ -1,12 +1,24 @@
 {
   "patches": [
     {
-      "patch_id": "season_1_artillery_adjustment",
+      "patch_id": "example_artillery_adjustment",
       "targets": ["artillery"],
       "roles": [],
-      "stat_multipliers": { "attack_damage": 0.95 },
+      "stat_multipliers": { "attack_damage": 1.1 },
       "stat_additions": {},
       "reason": "Small tuning example for live balance overlays"
+    },
+    {
+      "patch_id": "example_nerf_tank_movespeed",
+      "roles": ["tank"],
+      "stat_additions": {"move_speed": 1.0},
+      "stat_multipliers": {}
+    },
+    {
+      "patch_id": "example_buff_marksman_attack_speed",
+      "roles": ["marksman"],
+      "stat_multipliers": {"attack_speed": 1.2},
+      "stat_additions": {}
     }
   ]
 }

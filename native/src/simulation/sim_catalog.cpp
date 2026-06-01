@@ -41,31 +41,33 @@ Dictionary load_json_optional(const String &path) {
 }
 
 bool patch_applies_to(const BalancePatch &patch, const StringName &archetype_id, const StringName &role) {
+	// TODO: Current O(champions × patches) complexity is acceptable for current scale.
+	// Consider indexing patches by target/role if catalog loading becomes a bottleneck.
+	bool matches_target = false;
 	if (!patch.targets.empty()) {
-		bool matched = false;
 		for (const StringName &t : patch.targets) {
 			if (t == archetype_id) {
-				matched = true;
+				matches_target = true;
 				break;
 			}
 		}
-		if (!matched) {
-			return false;
-		}
+	} else {
+		matches_target = true; // Empty targets means match all
 	}
+
+	bool matches_role = false;
 	if (!patch.roles.empty()) {
-		bool matched = false;
 		for (const StringName &r : patch.roles) {
 			if (r == role) {
-				matched = true;
+				matches_role = true;
 				break;
 			}
 		}
-		if (!matched) {
-			return false;
-		}
+	} else {
+		matches_role = true; // Empty roles means match all
 	}
-	return true;
+
+	return matches_target || matches_role; // OR logic: match either target or role
 }
 
 void apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) {
@@ -74,6 +76,10 @@ void apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) {
 		Variant key = mul_keys[i];
 		if (stats.has(key)) {
 			double current = double(stats[key]);
+			// Skip attack speed modifications if base is 0
+			if (String(key) == "attack_speed" && current == 0.0) {
+				continue;
+			}
 			double multiplier = double(patch.stat_multipliers[key]);
 			stats[key] = current * multiplier;
 		}
@@ -83,6 +89,10 @@ void apply_stat_patch_to_stats(const BalancePatch &patch, Dictionary &stats) {
 		Variant key = add_keys[i];
 		if (stats.has(key)) {
 			double current = double(stats[key]);
+			// Skip attack speed modifications if base is 0
+			if (String(key) == "attack_speed" && current == 0.0) {
+				continue;
+			}
 			double delta = double(patch.stat_additions[key]);
 			stats[key] = current + delta;
 		}

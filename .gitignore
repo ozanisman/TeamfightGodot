@@ -23,7 +23,9 @@ Python/
 /logs
 native/bin/
 native/build/
+native/build_ninja/
 *.uid
 .aider*
 *.csv
 wiki/.obsidian/
+compile_commands.json

@@ -29,3 +29,9 @@ native/build_ninja/
 *.csv
 wiki/.obsidian/
 compile_commands.json
+
+# IDE/editor specific
+.cache/
+.cursor/
+.clangd
+.vscode/

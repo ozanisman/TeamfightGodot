@@ -1,16 +1,9 @@
 #include "sim_effects_exec.hpp"
 #include "sim_effects_exec_internal.hpp"
-#include "sim_effects_compile.hpp"
 
-#include "sim_channel.hpp"
 #include "sim_combat.hpp"
-#include "sim_constants.hpp"
-#include "sim_movement.hpp"
-#include "sim_match_spawn.hpp"
 #include "sim_stats_modifiers.hpp"
-#include "sim_targeting.hpp"
 #include "sim_damage.hpp"
-#include "sim_periodic.hpp"
 #include "sim_stats.hpp"
 #include "sim_status.hpp"
 

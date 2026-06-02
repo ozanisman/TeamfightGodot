@@ -2,14 +2,10 @@
 
 #include "../teamfight_simulation_core.hpp"
 
-#include "sim_constants.hpp"
-#include "sim_match_loop.hpp"
 #include "sim_match_roster.hpp"
 #include "sim_match_benchmark_host.hpp"
 #include "sim_match_benchmark_stats_internal.hpp"
 #include "sim_unit_builder.hpp"
-
-#include "../python_random.hpp"
 
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -124,11 +120,13 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 
 		std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
 		std::unordered_map<int64_t, double> summoner_minion_damage_received;
+		std::unordered_map<int64_t, double> summoner_minion_damage_mitigated;
 		for (UnitState &unit : GeneratedMatchHost::units(&core)) {
 			if (unit.summoner_instance_id != 0) {
 				const UnitStateCold &c = GeneratedMatchHost::uc(&core, unit);
 				summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
 				summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
+				summoner_minion_damage_mitigated[unit.summoner_instance_id] += c.damage_mitigated;
 			}
 		}
 
@@ -166,7 +164,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 				hero_entry = make_stat_entry();
 			}
 			const bool unit_won = GeneratedMatchHost::winner_team(&core) != StringName() && unit.team == GeneratedMatchHost::winner_team(&core);
-			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true, summoner_minion_damage_dealt, summoner_minion_damage_received);
+			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			heroes[hero] = hero_entry;
 
 			const String role = String(Dictionary(c.stats).get("role", String("unknown")));
@@ -174,7 +172,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			if (role_entry.is_empty()) {
 				role_entry = make_role_entry();
 			}
-			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false, summoner_minion_damage_dealt, summoner_minion_damage_received);
+			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			roles[role] = role_entry;
 		}
 		bucket["heroes"] = heroes;

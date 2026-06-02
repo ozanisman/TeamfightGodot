@@ -303,6 +303,7 @@ struct UnitStateCold {
 	// Minion stats aggregated to this summoner
 	double minion_damage_dealt = 0.0;
 	double minion_damage_received = 0.0;
+	double minion_damage_mitigated = 0.0;
 	std::unordered_map<int64_t, double> recent_benefactors;
 	double last_hit_time = 0.0;
 	int64_t respawn_slot_index = -1; // -1 = no assigned slot

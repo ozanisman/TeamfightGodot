@@ -29,12 +29,14 @@ void aggregate_summoner_minion_stats(
 		const std::vector<UnitState> &units,
 		const std::vector<UnitStateCold> &unit_cold,
 		std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		std::unordered_map<int64_t, double> &summoner_minion_damage_received) {
+		std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated) {
 	for (const UnitState &unit : units) {
 		if (unit.summoner_instance_id != 0) {
 			const UnitStateCold &c = unit_cold_at(units, unit_cold, unit);
 			summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
 			summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
+			summoner_minion_damage_mitigated[unit.summoner_instance_id] += c.damage_mitigated;
 		}
 	}
 }
@@ -45,7 +47,8 @@ void fill_common_unit_summary_fields(
 		const UnitStateCold &c,
 		const StringName &winner_team,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		const std::unordered_map<int64_t, double> &summoner_minion_damage_received) {
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated) {
 	unit_summary["won"] = winner_team != StringName() && unit.team == winner_team;
 	unit_summary["damage_dealt"] = c.damage_dealt;
 	unit_summary["damage_dealt_auto"] = c.damage_dealt_auto;
@@ -74,12 +77,15 @@ void fill_common_unit_summary_fields(
 
 	auto it_dealt = summoner_minion_damage_dealt.find(unit.instance_id);
 	auto it_received = summoner_minion_damage_received.find(unit.instance_id);
-	if (it_dealt != summoner_minion_damage_dealt.end() || it_received != summoner_minion_damage_received.end()) {
+	auto it_mitigated = summoner_minion_damage_mitigated.find(unit.instance_id);
+	if (it_dealt != summoner_minion_damage_dealt.end() || it_received != summoner_minion_damage_received.end() || it_mitigated != summoner_minion_damage_mitigated.end()) {
 		unit_summary["minion_damage_dealt"] = it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0;
 		unit_summary["minion_damage_received"] = it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0;
+		unit_summary["minion_damage_mitigated"] = it_mitigated != summoner_minion_damage_mitigated.end() ? it_mitigated->second : 0.0;
 	} else {
 		unit_summary["minion_damage_dealt"] = 0.0;
 		unit_summary["minion_damage_received"] = 0.0;
+		unit_summary["minion_damage_mitigated"] = 0.0;
 	}
 }
 
@@ -104,7 +110,8 @@ Dictionary build_summary(
 
 	std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
 	std::unordered_map<int64_t, double> summoner_minion_damage_received;
-	aggregate_summoner_minion_stats(units, unit_cold, summoner_minion_damage_dealt, summoner_minion_damage_received);
+	std::unordered_map<int64_t, double> summoner_minion_damage_mitigated;
+	aggregate_summoner_minion_stats(units, unit_cold, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 
 	for (const UnitState &unit : units) {
 		// Skip minions in unit_stats output - their damage is aggregated to summoners
@@ -124,7 +131,8 @@ Dictionary build_summary(
 				c,
 				match.winner_team,
 				summoner_minion_damage_dealt,
-				summoner_minion_damage_received);
+				summoner_minion_damage_received,
+				summoner_minion_damage_mitigated);
 
 		Dictionary telemetry;
 		telemetry["schema"] = String("teamfight.telemetry.v1");
@@ -151,7 +159,8 @@ Dictionary build_stats_summary(
 
 	std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
 	std::unordered_map<int64_t, double> summoner_minion_damage_received;
-	aggregate_summoner_minion_stats(units, unit_cold, summoner_minion_damage_dealt, summoner_minion_damage_received);
+	std::unordered_map<int64_t, double> summoner_minion_damage_mitigated;
+	aggregate_summoner_minion_stats(units, unit_cold, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 
 	Array unit_stats;
 	for (const UnitState &unit : units) {
@@ -170,7 +179,8 @@ Dictionary build_stats_summary(
 				c,
 				match.winner_team,
 				summoner_minion_damage_dealt,
-				summoner_minion_damage_received);
+				summoner_minion_damage_received,
+				summoner_minion_damage_mitigated);
 
 		if (!omit_unit_telemetry) {
 			Dictionary telemetry;

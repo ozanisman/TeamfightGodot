@@ -38,6 +38,7 @@ Dictionary make_stat_entry() {
 	entry["d_passive"] = 0.0;
 	entry["minion_dmg_d"] = 0.0;
 	entry["minion_dmg_r"] = 0.0;
+	entry["minion_dmg_m"] = 0.0;
 	return entry;
 }
 
@@ -91,12 +92,15 @@ void accumulate_common_with_minions(
 		const UnitStateCold &c,
 		int64_t instance_id,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		const std::unordered_map<int64_t, double> &summoner_minion_damage_received) {
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated) {
 	accumulate_common(entry, c);
 	auto it_dealt = summoner_minion_damage_dealt.find(instance_id);
 	auto it_received = summoner_minion_damage_received.find(instance_id);
+	auto it_mitigated = summoner_minion_damage_mitigated.find(instance_id);
 	entry["minion_dmg_d"] = double(entry["minion_dmg_d"]) + (it_dealt != summoner_minion_damage_dealt.end() ? it_dealt->second : 0.0);
 	entry["minion_dmg_r"] = double(entry["minion_dmg_r"]) + (it_received != summoner_minion_damage_received.end() ? it_received->second : 0.0);
+	entry["minion_dmg_m"] = double(entry["minion_dmg_m"]) + (it_mitigated != summoner_minion_damage_mitigated.end() ? it_mitigated->second : 0.0);
 }
 
 void add_record_with_minions(
@@ -107,7 +111,8 @@ void add_record_with_minions(
 		bool draw,
 		bool include_kda,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		const std::unordered_map<int64_t, double> &summoner_minion_damage_received) {
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated) {
 	if (draw) {
 		entry["d"] = int64_t(entry["d"]) + 1;
 	} else if (won) {
@@ -115,7 +120,7 @@ void add_record_with_minions(
 	} else {
 		entry["l"] = int64_t(entry["l"]) + 1;
 	}
-	accumulate_common_with_minions(entry, c, instance_id, summoner_minion_damage_dealt, summoner_minion_damage_received);
+	accumulate_common_with_minions(entry, c, instance_id, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 	if (include_kda) {
 		entry["kills"] = int64_t(entry["kills"]) + c.kills;
 		entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;

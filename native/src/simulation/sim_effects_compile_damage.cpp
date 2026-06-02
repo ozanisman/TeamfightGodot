@@ -2,7 +2,6 @@
 
 #include "sim_effects_compile.hpp"
 
-#include "sim_constants.hpp"
 #include "sim_effect_kinds.inl.hpp"
 
 #include <godot_cpp/core/math.hpp>

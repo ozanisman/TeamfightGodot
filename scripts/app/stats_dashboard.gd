@@ -1654,9 +1654,13 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			"Received: %.1f"
 			% damage_taken
 		)
+		var mitigated_pct: float = 0.0
+		var total_incoming: float = damage_taken + damage_mitigated
+		if total_incoming > 0.0:
+			mitigated_pct = (damage_mitigated / total_incoming) * 100.0
 		lines.append(
-			"Mitigated: %.1f"
-			% damage_mitigated
+			"Mitigated: %.1f (%.1f%%)"
+			% [damage_mitigated, mitigated_pct]
 		)
 		lines.append(
 			"Healing: %.1f"
@@ -1669,10 +1673,16 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		lines.append("Stuns: %.1f" % (float(u_data.get("stuns", 0.0)) / cf))
 		var minion_dmg_dealt: float = float(u_data.get("minion_damage_dealt", 0.0))
 		var minion_dmg_received: float = float(u_data.get("minion_damage_received", 0.0))
-		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0:
+		var minion_dmg_mitigated: float = float(u_data.get("minion_damage_mitigated", 0.0))
+		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0 or minion_dmg_mitigated > 0.0:
 			lines.append("")
 			lines.append("Minion Dealt: %.1f" % (minion_dmg_dealt / cf))
 			lines.append("Minion Received: %.1f" % (minion_dmg_received / cf))
+			var minion_mitigated_pct: float = 0.0
+			var minion_total_incoming: float = minion_dmg_received + minion_dmg_mitigated
+			if minion_total_incoming > 0.0:
+				minion_mitigated_pct = (minion_dmg_mitigated / minion_total_incoming) * 100.0
+			lines.append("Minion Mitigated: %.1f (%.1f%%)" % [(minion_dmg_mitigated / cf), minion_mitigated_pct])
 		if u_data.has("breakdown"):
 			var b: Dictionary = u_data["breakdown"]
 			lines.append("")

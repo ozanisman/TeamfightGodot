@@ -148,6 +148,7 @@ func load_from_dir(dir_path: String) -> Error:
 			"kda": _float_cell(row, "kda"),
 			"minion_damage_dealt": _float_cell(row, "avg_minion_dmg_dealt", 0.0) * float(total),
 			"minion_damage_received": _float_cell(row, "avg_minion_dmg_received", 0.0) * float(total),
+			"minion_damage_mitigated": _float_cell(row, "avg_minion_dmg_mitigated", 0.0) * float(total),
 			"breakdown": {
 				"auto": _float_cell(row, "avg_dmg_auto") * float(total),
 				"ability": _float_cell(row, "avg_dmg_ability") * float(total),

@@ -315,6 +315,7 @@ func _hero_entry(bucket: Dictionary, hero: String) -> Dictionary:
 			"d_passive": 0.0,
 			"minion_dmg_d": 0.0,
 			"minion_dmg_r": 0.0,
+			"minion_dmg_m": 0.0,
 		}
 	return heroes[hero]
 
@@ -352,6 +353,8 @@ func _acc_hero(bucket: Dictionary, hero: String, wt: StringName, u: Object) -> v
 	h["minion_dmg_d"] = float(h["minion_dmg_d"]) + (float(minion_dmg_d_val) if minion_dmg_d_val != null else 0.0)
 	var minion_dmg_r_val = u.get("minion_damage_received")
 	h["minion_dmg_r"] = float(h["minion_dmg_r"]) + (float(minion_dmg_r_val) if minion_dmg_r_val != null else 0.0)
+	var minion_dmg_m_val = u.get("minion_damage_mitigated")
+	h["minion_dmg_m"] = float(h["minion_dmg_m"]) + (float(minion_dmg_m_val) if minion_dmg_m_val != null else 0.0)
 
 
 func _acc_hero_dict(bucket: Dictionary, hero: String, wt: StringName, u: Dictionary) -> void:
@@ -385,6 +388,7 @@ func _acc_hero_dict(bucket: Dictionary, hero: String, wt: StringName, u: Diction
 	h["d_passive"] = float(h["d_passive"]) + _unit_float(u, "damage_dealt_passive")
 	h["minion_dmg_d"] = float(h["minion_dmg_d"]) + _unit_float(u, "minion_damage_dealt")
 	h["minion_dmg_r"] = float(h["minion_dmg_r"]) + _unit_float(u, "minion_damage_received")
+	h["minion_dmg_m"] = float(h["minion_dmg_m"]) + _unit_float(u, "minion_damage_mitigated")
 
 
 func _role_entry(bucket: Dictionary, role: String) -> Dictionary:
@@ -557,7 +561,7 @@ func _build_summary_csv() -> String:
 func _build_combat_csv() -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(
-		"team_size,hero,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_healing_passive,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_shielding_passive,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate,avg_dmg_passive,avg_minion_dmg_dealt,avg_minion_dmg_received"
+		"team_size,hero,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_healing_passive,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_shielding_passive,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate,avg_dmg_passive,avg_minion_dmg_dealt,avg_minion_dmg_received,avg_minion_dmg_mitigated"
 	)
 	var sizes: Array = _by_size.keys()
 	sizes.sort()
@@ -576,7 +580,7 @@ func _build_combat_csv() -> String:
 			var wr: float = float(w) / float(tg)
 			var kda: float = (float(h["kills"]) + float(h["assists"])) / maxf(1.0, float(h["deaths"]))
 			lines.append(
-				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
 				% [
 					int(sz),
 					_csv_cell(String(hero)),
@@ -609,6 +613,7 @@ func _build_combat_csv() -> String:
 					_fmt_f(float(h["d_passive"]) / float(tg)),
 					_fmt_f(float(h.get("minion_dmg_d", 0.0)) / float(tg)),
 					_fmt_f(float(h.get("minion_dmg_r", 0.0)) / float(tg)),
+					_fmt_f(float(h.get("minion_dmg_m", 0.0)) / float(tg)),
 				]
 			)
 	return "\n".join(lines) + "\n"

@@ -26,7 +26,8 @@ void accumulate_common_with_minions(
 		const UnitStateCold &c,
 		int64_t instance_id,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		const std::unordered_map<int64_t, double> &summoner_minion_damage_received);
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated);
 void add_record_with_minions(
 		godot::Dictionary &entry,
 		const UnitStateCold &c,
@@ -35,7 +36,8 @@ void add_record_with_minions(
 		bool draw,
 		bool include_kda,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
-		const std::unordered_map<int64_t, double> &summoner_minion_damage_received);
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
+		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated);
 godot::String sorted_combo_label(const godot::Array &comp);
 void record_matchup(godot::Dictionary &matchup_data, const godot::StringName &champion_id, const godot::String &key, bool won);
 void record_matchup_result(godot::Dictionary &matchup_data, const godot::Array &winners, const godot::Array &losers);

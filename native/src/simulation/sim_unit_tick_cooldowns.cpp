@@ -143,11 +143,7 @@ void cooldowns_and_cc(
 		unit.last_kite_timer = Math::max(0.0, unit.last_kite_timer - tick_rate);
 	}
 
-	bool has_temporary_stat_modifiers = !unit.stat_modifiers.is_empty()
-#define X(name, def, min_val, max_val) || unit.stat_temp_##name > 0.0
-			STAT_LIST
-#undef X
-			;
+	bool has_temporary_stat_modifiers = !unit.stat_modifiers.is_empty() || !unit.stat_stacks.is_empty();
 
 	if (!unit.stat_stacks.is_empty()) {
 		stats_modifiers::update_stacks(unit, tick_rate, world.time);

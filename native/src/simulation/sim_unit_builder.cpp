@@ -337,9 +337,7 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	unit.attack_count = 0;
 #define X(name, def, min_val, max_val) \
 	unit.stat_additive_##name = 0.0; \
-	unit.stat_multiplicative_##name = 1.0; \
-	unit.stat_temp_##name = 0.0; \
-	unit.stat_perm_##name = 0.0;
+	unit.stat_multiplicative_##name = 1.0;
 	STAT_LIST
 #undef X
 	cold.damage_dealt = 0.0;

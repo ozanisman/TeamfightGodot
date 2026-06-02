@@ -98,7 +98,7 @@ const VIEW_MODES: Array[Dictionary] = [
 @export var chart_label_w: int = 152
 @export var chart_label_w_synergy: int = 464
 @export var chart_games_col_w: int = 72
-@export var chart_kda_col_w: int = 120
+@export var chart_kda_col_w: int = 185
 @export var chart_val_col_w: int = 96
 
 var _loader = StatsDashboardLoaderScript.new()
@@ -436,6 +436,7 @@ func _build_ui() -> void:
 	_ci_button = Button.new()
 	_ci_button.custom_minimum_size.y = UI_MIN_CONTROL_H
 	filter_vb.add_child(_ci_button)
+	# TODO: CI feature appears broken - button always disabled, ci_stats empty. Investigate CSV generation.
 
 	filter_vb.add_child(_section_label("SORT BY"))
 	_sort_option = OptionButton.new()
@@ -1106,7 +1107,7 @@ func _refresh_all() -> void:
 
 func _update_sidebar_buttons() -> void:
 	var has_ci: bool = not _loader.ci_stats.is_empty()
-	_ci_button.disabled = not has_ci
+	_ci_button.disabled = not has_ci  # Disabled when CI data missing from CSV bundle
 	_ci_button.text = "Mode: CI" if _use_ci else "Mode: Regular"
 	_color_button.text = "Mode: Absolute" if _absolute_colors else "Mode: Relative"
 	if not _stats_path.is_empty():
@@ -1462,7 +1463,8 @@ func _format_kda_per_game_cells(u_data: Dictionary, count: int) -> String:
 	var kk: float = float(u_data.get("kills", 0.0)) / cf
 	var dd: float = float(u_data.get("deaths", 0.0)) / cf
 	var aa: float = float(u_data.get("assists", 0.0)) / cf
-	return "%.1f/%.1f/%.1f" % [kk, dd, aa]
+	var kda_ratio: float = float(u_data.get("kda", 0.0))
+	return "%.1f/%.1f/%.1f (%.2f)" % [kk, dd, aa, kda_ratio]
 
 
 func _blend_bar_color(ratio: float) -> Color:
@@ -1589,34 +1591,39 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		var dm: Array = ci.get("damage_mitigated", [u_data.get("damage_mitigated", 0.0), u_data.get("damage_mitigated", 0.0)])
 		var hd: Array = ci.get("healing_done", [u_data.get("healing_done", 0.0), u_data.get("healing_done", 0.0)])
 		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
+		lines.append("")
 		lines.append("Samples: %d" % int(count))
 		lines.append("Win Rate: %.2f%% [%.2f%%, %.2f%%]" % [
 			float(u_data.get("winRate", 0.0)) * 100.0,
 			float(wr[0]) * 100.0,
 			float(wr[1]) * 100.0,
 		])
-		lines.append("Average damage: %.1f [%.1f, %.1f]" % [
+		lines.append("")
+		lines.append("[b]Average Match Stats:[/b]")
+		lines.append("")
+		lines.append("Dealt: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_dealt", 0.0)),
 			float(dd[0]),
 			float(dd[1]),
 		])
-		lines.append("Average received: %.1f [%.1f, %.1f]" % [
+		lines.append("Received: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_received", 0.0)),
 			float(dr[0]),
 			float(dr[1]),
 		])
-		lines.append("Average mitigated: %.1f [%.1f, %.1f]" % [
+		lines.append("Mitigated: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("damage_mitigated", 0.0)),
 			float(dm[0]),
 			float(dm[1]),
 		])
-		lines.append("Average healing: %.1f [%.1f, %.1f]" % [
+		lines.append("Healing: %.1f [%.1f, %.1f]" % [
 			float(u_data.get("healing_done", 0.0)),
 			float(hd[0]),
 			float(hd[1]),
 		])
 	else:
 		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
+		lines.append("")
 		lines.append("Games Played: %d" % int(count))
 		lines.append(
 			"Win Rate: %.2f%%" % (float(u_data.get("winRate", 0.0)) * 100.0)
@@ -1626,6 +1633,8 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			% [int(u_data.get("wins", 0)), int(u_data.get("losses", 0)), int(u_data.get("draws", 0))]
 		)
 		lines.append("")
+		lines.append("[b]Average Match Stats:[/b]")
+		lines.append("")
 		var kills: float = float(u_data.get("kills", 0.0))
 		var deaths: float = float(u_data.get("deaths", 0.0))
 		var assists: float = float(u_data.get("assists", 0.0))
@@ -1634,63 +1643,84 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			"K/D/A: %.1f/%.1f/%.1f (%.2f)"
 			% [kills / cf, deaths / cf, assists / cf, float(u_data.get("kda", 0.0))]
 		)
+		lines.append("")
 		lines.append(
-			"Average damage: %.1f (Received: %.1f)"
-			% [
-				float(u_data.get("damage_dealt", 0.0)) / cf,
-				float(u_data.get("damage_received", 0.0)) / cf,
-			]
+			"Dealt: %.1f"
+			% (float(u_data.get("damage_dealt", 0.0)) / cf)
 		)
-		var minion_dmg_dealt: float = float(u_data.get("minion_damage_dealt", 0.0))
-		var minion_dmg_received: float = float(u_data.get("minion_damage_received", 0.0))
-		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0:
-			lines.append(
-				"Minion Damage: %.1f (Received: %.1f)"
-				% [minion_dmg_dealt / cf, minion_dmg_received / cf]
-			)
-		lines.append("Average mitigated: %.1f" % (float(u_data.get("damage_mitigated", 0.0)) / cf))
+		var damage_taken: float = float(u_data.get("damage_received", 0.0)) / cf
+		var damage_mitigated: float = float(u_data.get("damage_mitigated", 0.0)) / cf
 		lines.append(
-			"Average healing: %.1f"
+			"Received: %.1f"
+			% damage_taken
+		)
+		lines.append(
+			"Mitigated: %.1f"
+			% damage_mitigated
+		)
+		lines.append(
+			"Healing: %.1f"
 			% (float(u_data.get("healing_done", 0.0)) / cf)
 		)
 		lines.append(
-			"Average shielding: %.1f"
+			"Shielding: %.1f"
 			% (float(u_data.get("shielding_done", 0.0)) / cf)
 		)
 		lines.append("Stuns: %.1f" % (float(u_data.get("stuns", 0.0)) / cf))
+		var minion_dmg_dealt: float = float(u_data.get("minion_damage_dealt", 0.0))
+		var minion_dmg_received: float = float(u_data.get("minion_damage_received", 0.0))
+		if minion_dmg_dealt > 0.0 or minion_dmg_received > 0.0:
+			lines.append("")
+			lines.append("Minion Dealt: %.1f" % (minion_dmg_dealt / cf))
+			lines.append("Minion Received: %.1f" % (minion_dmg_received / cf))
 		if u_data.has("breakdown"):
 			var b: Dictionary = u_data["breakdown"]
 			lines.append("")
 			lines.append("Damage Dealt Breakdown:")
 			lines.append(
-				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
+				"Auto-attacks: %.1f | Passive: %.1f"
 				% [
 					float(b.get("auto", 0.0)) / cf,
+					float(b.get("passive", 0.0)) / cf,
+				]
+			)
+			lines.append(
+				"Abilities: %.1f | Ultimates: %.1f"
+				% [
 					float(b.get("ability", 0.0)) / cf,
 					float(b.get("ultimate", 0.0)) / cf,
-					float(b.get("passive", 0.0)) / cf,
 				]
 			)
 			lines.append("")
 			lines.append("Healing Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
+				"Auto-attacks: %.1f | Passive: %.1f"
 				% [
 					float(b.get("heal_auto", 0.0)) / cf,
+					float(b.get("heal_passive", 0.0)) / cf,
+				]
+			)
+			lines.append(
+				"Abilities: %.1f | Ultimates: %.1f"
+				% [
 					float(b.get("heal_ability", 0.0)) / cf,
 					float(b.get("heal_ultimate", 0.0)) / cf,
-					float(b.get("heal_passive", 0.0)) / cf,
 				]
 			)
 			lines.append("")
 			lines.append("Shielding Done Breakdown:")
 			lines.append(
-				"Auto-attacks: %.1f | Abilities: %.1f | Ultimates: %.1f | Passive: %.1f"
+				"Auto-attacks: %.1f | Passive: %.1f"
 				% [
 					float(b.get("shield_auto", 0.0)) / cf,
+					float(b.get("shield_passive", 0.0)) / cf,
+				]
+			)
+			lines.append(
+				"Abilities: %.1f | Ultimates: %.1f"
+				% [
 					float(b.get("shield_ability", 0.0)) / cf,
 					float(b.get("shield_ultimate", 0.0)) / cf,
-					float(b.get("shield_passive", 0.0)) / cf,
 				]
 			)
 	for i in range(1, lines.size()):

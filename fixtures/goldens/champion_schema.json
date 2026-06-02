@@ -217,7 +217,7 @@
 						"params": {
 							"duration": 2.5,
 							"duration_type": "respawn",
-							"multiplicative": 1.5,
+							"multiplicative": 1.25,
 							"reason": "Blood Price",
 							"stat_name": "attack_speed",
 							"target_self": true
@@ -229,7 +229,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 50% attack speed for 2.5s.",
+		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 25% attack speed for 2.5s.",
 		"ability_name": "Blood Sacrifice",
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"name": "Berserker",
@@ -873,6 +873,7 @@
 				"allow_overheal": true,
 				"duration": 3.0,
 				"max_hp_ratio": 0.15,
+				"max_stacks": 0,
 				"reason": "Healing Bloom",
 				"stacking_mode": "separate",
 				"tick_interval": 0.2
@@ -917,6 +918,7 @@
 				"anchor": "self",
 				"duration": 3.0,
 				"max_hp_ratio": 0.25,
+				"max_stacks": 0,
 				"radius": 3.5,
 				"reason": "Celestial Rain",
 				"shape": "circle",
@@ -1034,24 +1036,24 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
+		"ability_desc": "Summons 2 Skeleton warriors.",
 		"ability_name": "Raise Dead",
-		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
+		"description": "A dark sorcerer who commands the undead, summoning allies to fight for him.",
 		"name": "Necromancer",
 		"passive_desc": "",
 		"passive_ids": [],
 		"passive_name": "",
 		"role": "mage",
 		"stats": {
-			"ability_cd": 4.0,
+			"ability_cd": 6.5,
 			"armor": 0.1,
 			"attack_damage": 10.0,
 			"attack_range": 2.5,
 			"attack_speed": 0.8,
 			"life_steal": 0.0,
-			"magic_resist": 0.25,
+			"magic_resist": 0.2,
 			"mana_cost": 120.0,
-			"mana_per_attack": 5.0,
+			"mana_per_attack": 10.0,
 			"max_hp": 200.0,
 			"move_speed": 0.65,
 			"name": "Necromancer",
@@ -1077,7 +1079,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"ultimate_desc": "Summons 3 brutish Ghouls.",
 		"ultimate_name": "Army of Darkness",
 		"unit_id": "necromancer"
 	},
@@ -1312,24 +1314,6 @@
 		"unit_id": "paladin"
 	},
 	"passives": {
-		"accumulate_shields": {
-			"on_tick": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"additive": 2.0,
-						"duration": 3.0,
-						"duration_type": "respawn",
-						"max_stacks": 10,
-						"reason": "ShieldAccumulation",
-						"stack_behavior": "accumulate",
-						"stat_name": "armor",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
 		"agility": {
 			"on_defense": [
 				{
@@ -1489,7 +1473,7 @@
 						"duration_type": "respawn",
 						"max_stacks": 7,
 						"reason": "Eagle Eye",
-						"stack_behavior": "stack",
+						"stack_behavior": "refresh",
 						"stat_name": "armor"
 					},
 					"requires_target_in_range": true
@@ -1610,24 +1594,6 @@
 				}
 			]
 		},
-		"reset_berserk": {
-			"on_attack": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"duration": 6.0,
-						"duration_type": "respawn",
-						"max_stacks": 3,
-						"multiplicative": 1.05,
-						"reason": "BerserkRage",
-						"stack_behavior": "reset",
-						"stat_name": "attack_speed",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
 		"restorative_mist": {
 			"on_tick": [
 				{
@@ -1637,6 +1603,7 @@
 						"anchor": "self",
 						"duration": 3.0,
 						"flat_amount": 10,
+						"max_stacks": 0,
 						"missing_hp_ratio": 0.05,
 						"on_tick_interval": 5.0,
 						"radius": 3.0,
@@ -1680,21 +1647,6 @@
 				}
 			]
 		},
-		"slayer": {
-			"on_takedown": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"additive": 5.0,
-						"duration_type": "match",
-						"reason": "Slayer",
-						"stat_name": "attack_damage",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
 		"soul_feast": {
 			"post_heal": [
 				{
@@ -1703,64 +1655,7 @@
 						"duration_type": "match",
 						"heal_gained_ratio": 0.5,
 						"reason": "Soul Feast",
-						"stack_behavior": "stack",
 						"stat_name": "max_hp",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"soul_harvest": {
-			"on_takedown": [
-				{
-					"kind": "multi_effect",
-					"params": {
-						"effects": [
-							{
-								"kind": "stat_modifier",
-								"params": {
-									"additive": 5.0,
-									"duration": 5.0,
-									"duration_type": "respawn",
-									"max_stacks": 5,
-									"reason": "Soul Harvest",
-									"stack_behavior": "refresh",
-									"stat_name": "attack_damage",
-									"target_self": true
-								},
-								"requires_target_in_range": true
-							},
-							{
-								"kind": "stat_modifier",
-								"params": {
-									"duration": 5.0,
-									"duration_type": "respawn",
-									"max_stacks": 5,
-									"multiplicative": 0.95,
-									"reason": "Soul Harvest",
-									"stack_behavior": "refresh",
-									"stat_name": "ability_cd",
-									"target_self": true
-								},
-								"requires_target_in_range": true
-							}
-						],
-						"reason": "Soul Harvest"
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"speed_burst": {
-			"on_attack": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"duration": 2.0,
-						"duration_type": "respawn",
-						"multiplicative": 1.2,
-						"stat_name": "move_speed",
 						"target_self": true
 					},
 					"requires_target_in_range": true
@@ -1810,21 +1705,6 @@
 				}
 			]
 		},
-		"tank_boost": {
-			"on_tick": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"additive": 5.0,
-						"duration": 0.0,
-						"duration_type": "match",
-						"stat_name": "armor",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
 		"technique": {
 			"post_attack": [
 				{
@@ -1846,21 +1726,6 @@
 						"flat_amount": 5.0,
 						"on_tick_interval": 1.0,
 						"reason": "Unstable Creation",
-						"target_self": true
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"weaken": {
-			"on_attack": [
-				{
-					"kind": "stat_modifier",
-					"params": {
-						"duration": 3.0,
-						"duration_type": "respawn",
-						"multiplicative": 0.8,
-						"stat_name": "attack_damage",
 						"target_self": true
 					},
 					"requires_target_in_range": true
@@ -2256,6 +2121,7 @@
 							"damage_ratio": 2.5,
 							"duration": 3.0,
 							"effect_type": "generic",
+							"max_stacks": 0,
 							"reason": "Bleeding Cut",
 							"stacking_mode": "separate",
 							"tick_interval": 0.5

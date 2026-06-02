@@ -285,6 +285,7 @@ const CHAMPION_DATA := {
 							"duration": 3.0,
 							"tick_interval": 0.5,
 							"stacking_mode": "separate",
+							"max_stacks": 0,
 							"effect_type": "generic",
 							"reason": "Bleeding Cut"
 						}
@@ -657,7 +658,7 @@ const CHAMPION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
-		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 50% attack speed for 2.5s.",
+		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 25% attack speed for 2.5s.",
 		"ultimate_desc": "Unleashes a devastating strike for 400% true damage that applies lifesteal.",
 		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
 		"passive_name": "Bloodlust",
@@ -688,7 +689,7 @@ const CHAMPION_DATA := {
 						"kind": &"stat_modifier",
 						"params": {
 							"stat_name": "attack_speed",
-							"multiplicative": 1.5,
+							"multiplicative": 1.25,
 							"duration": 2.5,
 							"duration_type": "respawn",
 							"target_self": true,
@@ -2151,6 +2152,7 @@ const CHAMPION_DATA := {
 				"tick_interval": 0.2,
 				"allow_overheal": true,
 				"stacking_mode": "separate",
+				"max_stacks": 0,
 				"reason": "Healing Bloom"
 			}
 		},
@@ -2166,6 +2168,7 @@ const CHAMPION_DATA := {
 				"target_self": true,
 				"allow_overheal": true,
 				"stacking_mode": "separate",
+				"max_stacks": 0,
 				"reason": "Celestial Rain"
 			}
 		},
@@ -2182,20 +2185,20 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.8,
 			"move_speed": 0.65,
 			"armor": 0.10,
-			"magic_resist": 0.25,
+			"magic_resist": 0.20,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 120.0,
-			"mana_per_attack": 5.0,
-			"ability_cd": 4.0,
+			"mana_per_attack": 10.0,
+			"ability_cd": 6.5,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"",
 			"respawn_time": 0.0,
 		},
-		"description": "A dark sorcerer who commands the undead, growing stronger with each enemy he claims.",
-		"ability_desc": "Summons 2 Skeleton warriors to the fight.",
-		"ultimate_desc": "Summons 3 Ghouls and heals all minions for 30% of their max HP over 5s.",
+		"description": "A dark sorcerer who commands the undead, summoning allies to fight for him.",
+		"ability_desc": "Summons 2 Skeleton warriors.",
+		"ultimate_desc": "Summons 3 brutish Ghouls.",
 		"passive_desc": "",
 		"passive_name": "",
 		"ability_name": "Raise Dead",
@@ -2250,7 +2253,7 @@ const PASSIVE_DATA := {
 				"duration": 3.0,
 				"duration_type": "respawn",
 				"max_stacks": 7,
-				"stack_behavior": "stack",
+				"stack_behavior": "refresh",
 				"reason": "Eagle Eye"
 			}
 		}],
@@ -2376,18 +2379,6 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
-	&"slayer": {
-		&"on_takedown": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "attack_damage",
-				"additive": 5.0,
-				"duration_type": "match",
-				"target_self": true,
-				"reason": "Slayer"
-			}
-		}],
-	},
 	&"soul_feast": {
 		&"post_heal": [{
 			"kind": &"stat_modifier",
@@ -2395,7 +2386,6 @@ const PASSIVE_DATA := {
 				"stat_name": "max_hp",
 				"heal_gained_ratio": 0.50,
 				"duration_type": "match",
-				"stack_behavior": "stack",
 				"target_self": true,
 				"reason": "Soul Feast"
 			}
@@ -2524,22 +2514,6 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
-	&"weapon_breaker": {
-		&"post_attack": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "attack_speed",
-				"multiplicative": 1.25,
-				"duration": 3.0,
-				"max_stacks": 1,
-				"target_self": true,
-				"stack_behavior": "refresh",
-				"requires_target_status": "disarm",
-				"status_target": "target",
-				"reason": "Weapon Breaker"
-			}
-		}],
-	},
 	# Gust Protection passive is implemented in the ability effects of Windcaller, so no hooks are needed here
 	&"gust_protection": {
 	},
@@ -2577,6 +2551,7 @@ const PASSIVE_DATA := {
 				"radius": 3.0,
 				"on_tick_interval": 5.0,
 				"stacking_mode": "separate",
+				"max_stacks": 0,
 				"missing_hp_ratio": 0.05,
 				"flat_amount": 10,
 				"duration": 3.0,
@@ -2587,108 +2562,19 @@ const PASSIVE_DATA := {
 			}
 		}]
 	},
-	# Stat modifier example passives
-	&"weaken": {
-		&"on_attack": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "attack_damage",
-				"multiplicative": 0.8,
-				"duration": 3.0,
-				"duration_type": "respawn",
-				"target_self": true
-			}
-		}],
-	},
-	&"tank_boost": {
-		&"on_tick": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "armor",
-				"additive": 5.0,
-				"duration": 0.0,
-				"duration_type": "match",
-				"target_self": true
-			}
-		}],
-	},
-	&"speed_burst": {
-		&"on_attack": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "move_speed",
-				"multiplicative": 1.2,
-				"duration": 2.0,
-				"duration_type": "respawn",
-				"target_self": true
-			}
-		}],
-	},
-	
-	# Stack-aware stat modifier examples
-	&"accumulate_shields": {
-		&"on_tick": [{
-			"kind": &"stat_modifier",
-			"params": {
-				"stat_name": "armor",
-				"additive": 2.0,
-				"duration": 3.0,
-				"duration_type": "respawn",
-				"max_stacks": 10,
-				"stack_behavior": "accumulate",
-				"reason": "ShieldAccumulation",
-				"target_self": true
-			}
-		}],
-	},
-	&"reset_berserk": {
-		&"on_attack": [{
+	&"weapon_breaker": {
+		&"post_attack": [{
 			"kind": &"stat_modifier",
 			"params": {
 				"stat_name": "attack_speed",
-				"multiplicative": 1.05,
-				"duration": 6.0,
-				"duration_type": "respawn",
-				"max_stacks": 3,
-				"stack_behavior": "reset",
-				"reason": "BerserkRage",
-				"target_self": true
-			}
-		}],
-	},
-	&"soul_harvest": {
-		&"on_takedown": [{
-			"kind": &"multi_effect",
-			"params": {
-				"effects": [
-					{
-						"kind": &"stat_modifier",
-						"params": {
-							"stat_name": "attack_damage",
-							"additive": 5.0,
-							"duration": 5.0,
-							"duration_type": "respawn",
-							"max_stacks": 5,
-							"stack_behavior": "refresh",
-							"reason": "Soul Harvest",
-							"target_self": true
-						}
-					},
-					{
-						"kind": &"stat_modifier",
-						"params": {
-							"stat_name": "ability_cd",
-							"multiplicative": 0.95,
-							"duration": 5.0,
-							"duration_type": "respawn",
-							"max_stacks": 5,
-							"stack_behavior": "refresh",
-							"reason": "Soul Harvest",
-							"target_self": true
-						}
-					}
-				],
-				"reason": "Soul Harvest"
+				"multiplicative": 1.25,
+				"duration": 3.0,
+				"max_stacks": 1,
+				"target_self": true,
+				"stack_behavior": "refresh",
+				"requires_target_status": "disarm",
+				"status_target": "target",
+				"reason": "Weapon Breaker"
 			}
 		}],
 	},

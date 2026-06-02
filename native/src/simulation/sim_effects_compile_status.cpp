@@ -197,7 +197,7 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.scalar3 = double(tracker.get("heal_gained_ratio", 0.0));
 		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
 		compiled.int1 = tracker.get("duration_type", "respawn") == "match" ? 1 : 0;
-		compiled.int2 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int2 = int64_t(tracker.get("max_stacks", 0));
 		String stack_behavior = String(tracker.get("stack_behavior", "refresh"));
 		if (stack_behavior == "accumulate") {
 			compiled.int3 = 1;

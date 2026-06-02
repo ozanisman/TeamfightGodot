@@ -116,7 +116,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
 		compiled.reason = String(tracker.get("reason", ""));
 		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;  // target_self parameter
-		compiled.int1 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int1 = int64_t(tracker.get("max_stacks", 0));
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int2 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 		return true;
@@ -133,7 +133,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
 		compiled.reason = String(tracker.get("reason", ""));
 		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;  // target_self parameter
-		compiled.int1 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int1 = int64_t(tracker.get("max_stacks", 0));
 		compiled.int2 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int3 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
@@ -161,7 +161,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
 		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.int0 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int1 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 		compiled.int2 = tracker.get("target_self", false) ? 1 : 0;
@@ -180,7 +180,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
 		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
-		compiled.int0 = int64_t(tracker.get("max_stacks", 1));
+		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
 		compiled.int1 = int64_t(tracker.get("duration", 0.0));  // Duration stays in int1
 		compiled.int2 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
 		compiled.int3 = tracker.get("target_self", false) ? 1 : 0;

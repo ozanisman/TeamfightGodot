@@ -163,7 +163,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 					additive_value += heal_based_additive;
 				}
 
-				bool use_stacking = effect.int2 > 1 || effect.int3 != 0;
+				bool use_stacking = effect.int2 > 0 || effect.int3 != 0;
 				if (use_stacking) {
 					StackBehavior stack_behavior = StackBehavior::Refresh;
 					if (effect.int3 == 1) {

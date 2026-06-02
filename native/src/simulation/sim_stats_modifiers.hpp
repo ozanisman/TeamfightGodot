@@ -8,7 +8,6 @@ namespace stats_modifiers {
 
 void apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration);
 void apply_simple_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, const String &reason);
-void set_stat_modifier_duration(UnitState &unit, StringName stat_name, double duration, bool is_match_duration);
 void apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringName stat_name, double additive, double multiplicative, double duration, bool is_match_duration, int max_stacks, StackBehavior stack_behavior, const String &reason);
 void clear_all_stat_modifiers(UnitState &unit);
 void update_stat_modifier_durations(UnitState &unit, double delta);

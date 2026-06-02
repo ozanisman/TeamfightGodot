@@ -40,13 +40,13 @@ Dictionary load_json_optional(const String &path) {
 	return Dictionary(parsed);
 }
 
-bool patch_applies_to(const BalancePatch &patch, const StringName &archetype_id, const StringName &role) {
+bool patch_applies_to(const BalancePatch &patch, const StringName &unit_id, const StringName &role) {
 	// TODO: Current O(champions × patches) complexity is acceptable for current scale.
 	// Consider indexing patches by target/role if catalog loading becomes a bottleneck.
 	bool matches_target = false;
 	if (!patch.targets.empty()) {
 		for (const StringName &t : patch.targets) {
-			if (t == archetype_id) {
+			if (t == unit_id) {
 				matches_target = true;
 				break;
 			}
@@ -123,7 +123,7 @@ void merge_kit_into_champion(Dictionary &champion, const Dictionary &kit) {
 bool validate_effective_champion(
 		const CatalogState &state,
 		const CatalogHooks &hooks,
-		const StringName &archetype_id,
+		const StringName &unit_id,
 		const Dictionary &champion) {
 	bool ok = true;
 	Variant ab = champion.get("ability", Variant());
@@ -132,7 +132,7 @@ bool validate_effective_champion(
 		StringName kind = StringName(String(abd.get("kind", "")));
 		EffectRecord compiled = hooks.compile_effect != nullptr ? hooks.compile_effect(hooks.user_data, abd) : EffectRecord{};
 		if (!kind.is_empty() && compiled.opcode == EFFECT_OPCODE_UNKNOWN) {
-			UtilityFunctions::push_error(vformat("Unknown or unsupported ability kind '%s' for archetype '%s'", String(kind), String(archetype_id)));
+			UtilityFunctions::push_error(vformat("Unknown or unsupported ability kind '%s' for unit '%s'", String(kind), String(unit_id)));
 			ok = false;
 		}
 	}
@@ -142,7 +142,7 @@ bool validate_effective_champion(
 		StringName kind = StringName(String(ultd.get("kind", "")));
 		EffectRecord compiled = hooks.compile_effect != nullptr ? hooks.compile_effect(hooks.user_data, ultd) : EffectRecord{};
 		if (!kind.is_empty() && compiled.opcode == EFFECT_OPCODE_UNKNOWN) {
-			UtilityFunctions::push_error(vformat("Unknown or unsupported ultimate kind '%s' for archetype '%s'", String(kind), String(archetype_id)));
+			UtilityFunctions::push_error(vformat("Unknown or unsupported ultimate kind '%s' for unit '%s'", String(kind), String(unit_id)));
 			ok = false;
 		}
 	}
@@ -153,7 +153,7 @@ bool validate_effective_champion(
 			continue;
 		}
 		if (!state.passive_registry.has(pid)) {
-			UtilityFunctions::push_error(vformat("Unknown passive_id '%s' for archetype '%s'", String(pid), String(archetype_id)));
+			UtilityFunctions::push_error(vformat("Unknown passive_id '%s' for unit '%s'", String(pid), String(unit_id)));
 			ok = false;
 		}
 	}
@@ -199,7 +199,7 @@ void rebuild_effective_champion_cache(CatalogState &state, const CatalogHooks &h
 			continue;
 		}
 
-		StringName archetype_id = StringName(key_str);
+		StringName unit_id = StringName(key_str);
 		Dictionary base = Dictionary(state.champion_catalog[key_var]);
 		if (base.is_empty()) {
 			continue;
@@ -216,7 +216,7 @@ void rebuild_effective_champion_cache(CatalogState &state, const CatalogHooks &h
 		StringName role_name = StringName(stats.get("role", StringName()));
 
 		for (const BalancePatch &patch : state.balance_patches) {
-			if (!patch_applies_to(patch, archetype_id, role_name)) {
+			if (!patch_applies_to(patch, unit_id, role_name)) {
 				continue;
 			}
 			apply_stat_patch_to_stats(patch, stats);
@@ -226,7 +226,7 @@ void rebuild_effective_champion_cache(CatalogState &state, const CatalogHooks &h
 				if (kit_v.get_type() == Variant::DICTIONARY) {
 					merge_kit_into_champion(eff, Dictionary(kit_v));
 				} else {
-					UtilityFunctions::push_error(vformat("Balance patch references unknown kit_id '%s' (archetype '%s')", String(patch.kit_id), key_str));
+					UtilityFunctions::push_error(vformat("Balance patch references unknown kit_id '%s' (unit '%s')", String(patch.kit_id), key_str));
 				}
 			}
 			if (patch.ability_override.get_type() == Variant::DICTIONARY) {
@@ -242,7 +242,7 @@ void rebuild_effective_champion_cache(CatalogState &state, const CatalogHooks &h
 
 		eff["stats"] = stats;
 
-		if (!validate_effective_champion(state, hooks, archetype_id, eff)) {
+		if (!validate_effective_champion(state, hooks, unit_id, eff)) {
 			UtilityFunctions::push_error(vformat("Effective champion validation failed for '%s'; using vanilla catalog entry.", key_str));
 			Dictionary vanilla = base.duplicate(true);
 			Dictionary vstats = Dictionary(vanilla["stats"]);
@@ -342,22 +342,22 @@ void ensure_loaded(CatalogState &state, const CatalogHooks &hooks) {
 	state.catalog_loaded = true;
 }
 
-Dictionary effective_champion_for(const CatalogState &state, const StringName &archetype_id) {
-	String key = String(archetype_id);
+Dictionary effective_champion_for(const CatalogState &state, const StringName &unit_id) {
+	String key = String(unit_id);
 	if (state.effective_champion_by_archetype.has(key)) {
 		return Dictionary(state.effective_champion_by_archetype[key]);
 	}
-	return champion_for(state, archetype_id);
+	return champion_for(state, unit_id);
 }
 
-Dictionary champion_for(const CatalogState &state, const StringName &archetype_id) {
+Dictionary champion_for(const CatalogState &state, const StringName &unit_id) {
 	// Check champion catalog first
-	if (state.champion_catalog.has(archetype_id)) {
-		return Dictionary(state.champion_catalog[archetype_id]);
+	if (state.champion_catalog.has(unit_id)) {
+		return Dictionary(state.champion_catalog[unit_id]);
 	}
 	// Fall back to minion catalog for minions
-	if (state.minion_catalog.has(archetype_id)) {
-		return Dictionary(state.minion_catalog[archetype_id]);
+	if (state.minion_catalog.has(unit_id)) {
+		return Dictionary(state.minion_catalog[unit_id]);
 	}
 	return Dictionary();
 }

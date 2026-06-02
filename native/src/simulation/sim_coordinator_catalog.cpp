@@ -54,12 +54,12 @@ sim::EffectRecord TeamfightSimulationCore::_catalog_compile_effect(void *user_da
 	return static_cast<TeamfightSimulationCore *>(user_data)->_compile_effect(effect);
 }
 
-Dictionary TeamfightSimulationCore::_effective_champion_for(const StringName &archetype_id) const {
-	return sim::catalog::effective_champion_for(_catalog, archetype_id);
+Dictionary TeamfightSimulationCore::_effective_champion_for(const StringName &unit_id) const {
+	return sim::catalog::effective_champion_for(_catalog, unit_id);
 }
 
-Dictionary TeamfightSimulationCore::_champion_for(const StringName &archetype_id) const {
-	return sim::catalog::champion_for(_catalog, archetype_id);
+Dictionary TeamfightSimulationCore::_champion_for(const StringName &unit_id) const {
+	return sim::catalog::champion_for(_catalog, unit_id);
 }
 
 void TeamfightSimulationCore::set_balance_patches(const Array &patches) {
@@ -71,6 +71,6 @@ Array TeamfightSimulationCore::get_balance_patches() const {
 	return sim::catalog::get_balance_patches(_catalog);
 }
 
-Dictionary TeamfightSimulationCore::effective_champion_for(const StringName &archetype_id) const {
-	return _effective_champion_for(archetype_id);
+Dictionary TeamfightSimulationCore::effective_champion_for(const StringName &unit_id) const {
+	return _effective_champion_for(unit_id);
 }

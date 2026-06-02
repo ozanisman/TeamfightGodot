@@ -31,8 +31,8 @@ struct CatalogState {
 void ensure_loaded(CatalogState &state, const CatalogHooks &hooks);
 void parse_balance_patch_from_dict(const Dictionary &pd, BalancePatch &patch);
 void rebuild_effective_champion_cache(CatalogState &state, const CatalogHooks &hooks);
-Dictionary effective_champion_for(const CatalogState &state, const StringName &archetype_id);
-Dictionary champion_for(const CatalogState &state, const StringName &archetype_id);
+Dictionary effective_champion_for(const CatalogState &state, const StringName &unit_id);
+Dictionary champion_for(const CatalogState &state, const StringName &unit_id);
 void set_balance_patches(CatalogState &state, const Array &patches, const CatalogHooks &hooks);
 Array get_balance_patches(const CatalogState &state);
 

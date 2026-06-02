@@ -101,7 +101,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			available_archetypes.erase(available_archetypes.begin() + archetype_index);
 			
 			spawn_spec.clear();
-			spawn_spec["archetype_id"] = selected_archetype;
+			spawn_spec["unit_id"] = selected_archetype;
 			sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
 			std::pair<UnitState, UnitStateCold> built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_player(), next_instance_id);
@@ -110,7 +110,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			if (unit_index < 0) {
 				continue;
 			}
-			GeneratedMatchHost::player_comp(&core).append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).archetype_id);
+			GeneratedMatchHost::player_comp(&core).append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).unit_id);
 			next_instance_id += 1;
 		}
 		
@@ -126,7 +126,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			available_archetypes.erase(available_archetypes.begin() + archetype_index);
 			
 			spawn_spec.clear();
-			spawn_spec["archetype_id"] = selected_archetype;
+			spawn_spec["unit_id"] = selected_archetype;
 			sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
 			std::pair<UnitState, UnitStateCold> built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_enemy(), next_instance_id);
@@ -135,7 +135,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			if (unit_index < 0) {
 				continue;
 			}
-			GeneratedMatchHost::enemy_comp(&core).append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).archetype_id);
+			GeneratedMatchHost::enemy_comp(&core).append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).unit_id);
 			next_instance_id += 1;
 		}
 		GeneratedMatchHost::build_role_strategy_cache(&core);

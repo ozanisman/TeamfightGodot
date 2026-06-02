@@ -177,7 +177,7 @@ func _consume_individual_summary_common(
 	for item in unit_stats:
 		if item is Dictionary:
 			var u: Dictionary = Dictionary(item)
-			var hero: String = String(u.get("archetype_id", u.get("archetype", "")))
+			var hero: String = String(u.get("unit_id", u.get("archetype", "")))
 			if hero.is_empty():
 				continue
 			# Skip minions - stats are for champions only
@@ -191,7 +191,7 @@ func _consume_individual_summary_common(
 			var uo: Object = item as Object
 			if uo == null:
 				continue
-			var hero_obj: String = String(uo.archetype_id)
+			var hero_obj: String = String(uo.unit_id)
 			if hero_obj.is_empty():
 				continue
 			# Skip minions - stats are for champions only

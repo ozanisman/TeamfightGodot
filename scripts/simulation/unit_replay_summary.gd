@@ -2,7 +2,7 @@ class_name UnitReplaySummary
 extends RefCounted
 
 var instance_id: int = 0
-var archetype_id: StringName = &""
+var unit_id: StringName = &""
 var team: StringName = &""
 var won: bool = false
 var damage_dealt: float = 0.0
@@ -35,8 +35,8 @@ var telemetry: Dictionary = {}
 static func from_dict(unit_data: Dictionary) -> UnitReplaySummary:
 	var unit_summary := new()
 	unit_summary.instance_id = int(unit_data.get("instance_id", 0))
-	var archetype_value = unit_data.get("archetype", unit_data.get("archetype_id", ""))
-	unit_summary.archetype_id = StringName(String(archetype_value))
+	var archetype_value = unit_data.get("archetype", unit_data.get("unit_id", ""))
+	unit_summary.unit_id = StringName(String(archetype_value))
 	unit_summary.team = StringName(String(unit_data.get("team", "")))
 	unit_summary.won = bool(unit_data.get("won", false))
 	unit_summary.damage_dealt = float(unit_data.get("damage_dealt", 0.0))
@@ -73,7 +73,7 @@ static func from_dict(unit_data: Dictionary) -> UnitReplaySummary:
 func to_dict() -> Dictionary:
 	var result := {
 		"instance_id": instance_id,
-		"archetype": String(archetype_id),
+		"archetype": String(unit_id),
 		"team": String(team),
 		"won": won,
 		"damage_dealt": damage_dealt,

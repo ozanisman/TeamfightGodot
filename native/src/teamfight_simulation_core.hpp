@@ -63,7 +63,7 @@ public:
 		ROLE_SLOT_COUNT = sim::ROLE_SLOT_COUNT,
 	};
 
-	Dictionary effective_champion_for(const StringName &archetype_id) const;
+	Dictionary effective_champion_for(const StringName &unit_id) const;
 
 	std::vector<sim::ProjectileState> _projectiles;
 	std::vector<sim::ProjectileState> _scratch_projectiles;
@@ -127,7 +127,7 @@ public:
 	void _ensure_catalog_loaded();
 	sim::catalog::CatalogHooks _catalog_hooks() const;
 	static sim::EffectRecord _catalog_compile_effect(void *user_data, const Dictionary &effect);
-	Dictionary _effective_champion_for(const StringName &archetype_id) const;
+	Dictionary _effective_champion_for(const StringName &unit_id) const;
 
 	sim::EffectRecord _compile_effect(const Dictionary &effect) const;
 	std::vector<sim::EffectRecord> _compile_effect_array(const Array &effects) const;
@@ -192,7 +192,7 @@ public:
 	void _log_sudden_death_draw();
 	String _join_team_names(const Array &team) const;
 
-	Dictionary _champion_for(const StringName &archetype_id) const;
+	Dictionary _champion_for(const StringName &unit_id) const;
 
 	Vector2 _resolve_aoe_direction(const sim::UnitState &source, const sim::AoShapeParams &params, const sim::UnitState *target_override = nullptr) const;
 

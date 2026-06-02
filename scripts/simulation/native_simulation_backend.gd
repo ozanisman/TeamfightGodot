@@ -239,7 +239,7 @@ func _validate_snapshot_unit(unit_data: Dictionary, index: int) -> bool:
 	var scope: String = "snapshot.units[%d]" % index
 	var required_fields: Array[String] = [
 		"instance_id",
-		"archetype_id",
+		"unit_id",
 		"team",
 		"pos_x",
 		"pos_y",

@@ -131,7 +131,7 @@ Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWor
 
 				// Create spawn spec
 				Dictionary spawn_spec;
-				spawn_spec["archetype_id"] = minion_id;
+				spawn_spec["unit_id"] = minion_id;
 				spawn_spec["x"] = spawn_pos.x;
 				spawn_spec["y"] = spawn_pos.y;
 

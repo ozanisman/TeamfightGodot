@@ -146,17 +146,17 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	UnitState unit;
 	UnitStateCold cold;
 	const catalog::CatalogState &catalog = *host.catalog;
-	StringName archetype_id = StringName(String(spawn_spec.get("archetype_id", "")));
+	StringName unit_id = StringName(String(spawn_spec.get("unit_id", "")));
 
-	Dictionary minion_data = Dictionary(catalog.minion_catalog.get(String(archetype_id), Dictionary()));
+	Dictionary minion_data = Dictionary(catalog.minion_catalog.get(String(unit_id), Dictionary()));
 	Dictionary champion;
 
 	if (!minion_data.is_empty()) {
 		champion = minion_data;
 	} else {
-		champion = host.effective_champion_for(host.user_data, archetype_id);
+		champion = host.effective_champion_for(host.user_data, unit_id);
 		if (champion.is_empty()) {
-			UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(archetype_id)));
+			UtilityFunctions::push_error(vformat("Unknown champion archetype: %s", String(unit_id)));
 			return { unit, cold };
 		}
 	}
@@ -254,7 +254,7 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	}
 
 	unit.instance_id = instance_id;
-	cold.archetype_id = archetype_id;
+	cold.unit_id = unit_id;
 	unit.team = team;
 	cold.role_id = role_name;
 

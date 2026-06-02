@@ -256,7 +256,7 @@ struct UnitStateCold {
 		double damage = 0.0;
 		double last_time = 0.0;
 	};
-	StringName archetype_id;
+	StringName unit_id;
 	StringName role_id;
 	Dictionary stats;
 	std::array<std::vector<EffectRecord>, 10> passive_effects;

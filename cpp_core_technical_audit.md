@@ -133,7 +133,7 @@ struct UnitState {
 
 struct UnitStateCold {
     // Cold path: accessed rarely (telemetry, passives)
-    StringName archetype_id;
+    StringName unit_id;
     Dictionary stats;
     std::array<std::vector<EffectRecord>, 10> passive_effects;
     double damage_dealt, damage_received;

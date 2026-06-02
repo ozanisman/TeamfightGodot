@@ -120,8 +120,8 @@ void sim_host_viewer_record_unit_death_fx(void *user_data, const UnitState &targ
 	sim::viewer::record_unit_death_fx(CoordinatorHostAccess::viewer_fx(core), target);
 }
 
-Dictionary sim_host_effective_champion_for(void *user_data, const StringName &archetype_id) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_effective_champion_for(archetype_id);
+Dictionary sim_host_effective_champion_for(void *user_data, const StringName &unit_id) {
+	return static_cast<TeamfightSimulationCore *>(user_data)->_effective_champion_for(unit_id);
 }
 
 EffectRecord sim_host_compile_effect(void *user_data, const Dictionary &effect) {
@@ -155,7 +155,7 @@ double sim_host_randf(void *user_data) {
 }
 
 StringName sim_host_archetype_for_unit(void *user_data, const UnitState &unit) {
-	return static_cast<TeamfightSimulationCore *>(user_data)->_uc(unit).archetype_id;
+	return static_cast<TeamfightSimulationCore *>(user_data)->_uc(unit).unit_id;
 }
 
 void sim_host_print_line(void *user_data, const String &line) {

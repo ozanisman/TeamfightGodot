@@ -17,7 +17,7 @@ struct UnitBuilderHost {
 	void *user_data = nullptr;
 	const catalog::CatalogState *catalog = nullptr;
 	EffectRecord (*compile_effect)(void *user_data, const Dictionary &effect) = nullptr;
-	Dictionary (*effective_champion_for)(void *user_data, const StringName &archetype_id) = nullptr;
+	Dictionary (*effective_champion_for)(void *user_data, const StringName &unit_id) = nullptr;
 	void (*finalize_reflect_passives)(void *user_data, UnitState &unit, UnitStateCold &cold) = nullptr;
 	int64_t (*assign_spawn_slot)(void *user_data, const StringName &team) = nullptr;
 	Vector2 (*get_random_spawn_position)(void *user_data, const StringName &team, bool is_respawn) = nullptr;

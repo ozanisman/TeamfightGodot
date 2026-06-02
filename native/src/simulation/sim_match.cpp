@@ -115,7 +115,7 @@ Dictionary build_summary(
 		const UnitStateCold &c = unit_cold_at(units, unit_cold, unit);
 		Dictionary unit_summary;
 		unit_summary["instance_id"] = unit.instance_id;
-		unit_summary["archetype"] = String(c.archetype_id);
+		unit_summary["archetype"] = String(c.unit_id);
 		unit_summary["role"] = String(c.role_id);
 		unit_summary["team"] = String(unit.team);
 		fill_common_unit_summary_fields(
@@ -162,7 +162,7 @@ Dictionary build_stats_summary(
 
 		const UnitStateCold &c = unit_cold_at(units, unit_cold, unit);
 		Dictionary unit_summary;
-		unit_summary["archetype_id"] = String(c.archetype_id);
+		unit_summary["unit_id"] = String(c.unit_id);
 		unit_summary["role"] = String(c.role_id);
 		fill_common_unit_summary_fields(
 				unit_summary,

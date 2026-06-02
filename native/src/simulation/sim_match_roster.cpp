@@ -108,7 +108,7 @@ void append_team_units(
 			continue;
 		}
 
-		team_comp.append(world.unit_cold[static_cast<size_t>(unit_index)].archetype_id);
+		team_comp.append(world.unit_cold[static_cast<size_t>(unit_index)].unit_id);
 		emit_spawn_passive_aoe_fx(viewer, world, unit_index);
 		++next_instance_id;
 	}

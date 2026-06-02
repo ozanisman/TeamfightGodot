@@ -765,7 +765,7 @@ func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
 	if card is Node:
 		catch = (card as Node).find_child("RosterChampionTooltipCatcher", true, false)
 	if catch is Control:
-		var hid: StringName = StringName(str(ud.get("archetype_id", "")))
+		var hid: StringName = StringName(str(ud.get("unit_id", "")))
 		_register_champ_tooltip(catch as Control, hid, ud)
 
 
@@ -882,7 +882,7 @@ func _update_active_tooltip_from_snapshot() -> void:
 		if unit_data is not Dictionary:
 			continue
 		var unit_dict: Dictionary = unit_data as Dictionary
-		if String(unit_dict.get("archetype_id", "")) == String(active_hero):
+		if String(unit_dict.get("unit_id", "")) == String(active_hero):
 			_champ_catalog_tt.call("update_with_unit_data", unit_dict)
 			break
 
@@ -2188,14 +2188,14 @@ func _update_inspection_panel(instance_id: int) -> void:
 		var unit_dict: Dictionary = Dictionary(unit_data)
 		var uid: int = int(unit_dict.get("instance_id", 0))
 		if uid == instance_id:
-			var archetype_id: StringName = StringName(unit_dict.get("archetype_id", ""))
+			var unit_id: StringName = StringName(unit_dict.get("unit_id", ""))
 			var ut: String = String(unit_dict.get("team", ""))
 			var hp: float = float(unit_dict.get("hp", 0.0))
 			var max_hp: float = float(unit_dict.get("max_hp", 0.0))
 			var state: StringName = StringName(unit_dict.get("state", ""))
 			var target_id: int = int(unit_dict.get("target_id", 0))
 
-			label.text = "Unit: %s\nTeam: %s\nHP: %.1f/%.1f\nState: %s\nTarget: %d" % [archetype_id, ut, hp, max_hp, state, target_id]
+			label.text = "Unit: %s\nTeam: %s\nHP: %.1f/%.1f\nState: %s\nTarget: %d" % [unit_id, ut, hp, max_hp, state, target_id]
 			return
 
 	label.text = "Unit %d not found in snapshot" % instance_id
@@ -2460,7 +2460,7 @@ func _show_match_results(summary: Dictionary) -> void:
 		var u: Dictionary = item
 		var row := Label.new()
 		row.text = "%s  |  %s  |  K/D/A %d/%d/%d  |  Dmg %.0f  |  Heal %.0f  |  Mitig %.0f" % [
-			String(u.get("archetype", u.get("archetype_id", "?"))),
+			String(u.get("archetype", u.get("unit_id", "?"))),
 			String(u.get("team", "?")),
 			int(u.get("kills", 0)),
 			int(u.get("deaths", 0)),

@@ -85,6 +85,7 @@ static func clear_all_caches() -> void:
 	_frozen_passive.clear()
 	_frozen_minion.clear()
 	_frozen_champion_ids.clear()
+	_native_core = null  # Clear native core to force reinitialization
 	_cache_mutex.unlock()
 	
 	# Clear array pool
@@ -690,8 +691,8 @@ const CHAMPION_DATA := {
 							"multiplicative": 1.5,
 							"duration": 2.5,
 							"duration_type": "respawn",
+							"target_self": true,
 							"reason": "Blood Price",
-							"target_self": true
 						}
 					}
 				],
@@ -2954,13 +2955,17 @@ static func get_minion(minion_id: StringName):
 	return build_minion_catalog().get(minion_id, null)
 
 static func get_effective_stats(hero_id: StringName) -> Dictionary:
-	# Use native effective_champion_for for source of truth
+	# Thread-safe native core initialization
 	if _native_core == null:
-		if ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore"):
-			_native_core = ClassDB.instantiate("TeamfightSimulationCore")
-		else:
-			push_error("Native simulation core unavailable for effective stats")
-			return {}
+		_cache_mutex.lock()
+		if _native_core == null:  # Double-check after lock
+			if ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore"):
+				_native_core = ClassDB.instantiate("TeamfightSimulationCore")
+			else:
+				_cache_mutex.unlock()
+				push_error("Native simulation core unavailable for effective stats")
+				return {}
+		_cache_mutex.unlock()
 	
 	if _native_core != null and _native_core.has_method("effective_champion_for"):
 		var effective_champion: Dictionary = _native_core.effective_champion_for(hero_id)
@@ -2972,6 +2977,38 @@ static func get_effective_stats(hero_id: StringName) -> Dictionary:
 	if champion == null:
 		return {}
 	return champion.stats.to_dict().duplicate(true)
+
+static func reload_balance_patches() -> void:
+	# Load balance patches from JSON
+	var file := FileAccess.open("res://fixtures/goldens/balance_patches.json", FileAccess.READ)
+	if file == null:
+		push_error("Failed to open balance_patches.json")
+		return
+	
+	var json_string := file.get_as_text()
+	file.close()
+	var json := JSON.new()
+	var parse_result := json.parse(json_string)
+	if parse_result != OK:
+		push_error("Failed to parse balance_patches.json: %s" % json.get_error_message())
+		return
+	
+	var data: Dictionary = json.data
+	var patches: Array = data.get("patches", [])
+	
+	# Thread-safe native core initialization
+	_cache_mutex.lock()
+	if _native_core == null:
+		if ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore"):
+			_native_core = ClassDB.instantiate("TeamfightSimulationCore")
+		else:
+			_cache_mutex.unlock()
+			push_error("Native simulation core unavailable for balance patch reload")
+			return
+	
+	if _native_core != null and _native_core.has_method("set_balance_patches"):
+		_native_core.set_balance_patches(patches)
+	_cache_mutex.unlock()
 
 static func export_schema_dict() -> Dictionary:
 	var schema: Dictionary = {}

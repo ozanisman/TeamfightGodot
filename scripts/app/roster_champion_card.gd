@@ -213,7 +213,7 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_square_px = maxi(square_px, MIN_SQUARE_PX)
 	if p_do_font:
 		apply_font_and_bar_scales()
-	var nm: String = str(ud.get("archetype_id", "?"))
+	var nm: String = str(ud.get("unit_id", "?"))
 	_name_label.text = nm.capitalize() if not nm.begins_with("?") else nm
 	var k: int = int(ud.get("kills", 0))
 	var d: int = int(ud.get("deaths", 0))

@@ -171,7 +171,7 @@ func _draw() -> void:
 			Rect2(o + Vector2(hp_x, hp_y + HP_H + 1.0), Vector2(HP_W * m_ratio, 3.0)),
 			Color(0.3, 0.55, 0.9, 0.9)
 		)
-	var label: String = str(_u.get("archetype_id", &""))
+	var label: String = str(_u.get("unit_id", &""))
 	if label.is_empty():
 		label = "?"
 	if String(_u.get("state", "")) == "DEAD":

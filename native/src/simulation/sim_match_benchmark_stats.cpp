@@ -58,14 +58,14 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			int64_t &next_instance_id,
 			Array &comp) {
 		spawn_spec.clear();
-		spawn_spec["archetype_id"] = archetype;
+		spawn_spec["unit_id"] = archetype;
 		sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
 		std::pair<UnitState, UnitStateCold> built = sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, team, next_instance_id);
 		const int64_t unit_index = sim::match_roster::register_built_unit(w, roster, std::move(built), team, next_instance_id);
 		if (unit_index < 0) {
 			return;
 		}
-		comp.append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).archetype_id);
+		comp.append(GeneratedMatchHost::unit_cold_at(&core, static_cast<size_t>(unit_index)).unit_id);
 		next_instance_id += 1;
 	};
 
@@ -160,7 +160,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			if (c.role_id == StringName("minion")) {
 				continue;
 			}
-			const String hero = String(c.archetype_id);
+			const String hero = String(c.unit_id);
 			Dictionary hero_entry = Dictionary(heroes.get(hero, Dictionary()));
 			if (hero_entry.is_empty()) {
 				hero_entry = make_stat_entry();

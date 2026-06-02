@@ -5,7 +5,7 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 5.0
@@ -13,7 +13,7 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "swordsman",
+						"unit_id": "swordsman",
 						"team": "player",
 						"x": 2.0,
 						"y": 5.0
@@ -112,7 +112,7 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 5.0
@@ -120,7 +120,7 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "archer",
+						"unit_id": "archer",
 						"team": "player",
 						"x": 2.0,
 						"y": 5.0
@@ -219,13 +219,13 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "swordsman",
+						"unit_id": "swordsman",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "archer",
+						"unit_id": "archer",
 						"team": "enemy",
 						"x": 8.4,
 						"y": 5.5
@@ -233,13 +233,13 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "cleric",
+						"unit_id": "cleric",
 						"team": "player",
 						"x": 1.6,
 						"y": 5.5
@@ -408,13 +408,13 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "artillery",
+						"unit_id": "artillery",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "enemy",
 						"x": 8.4,
 						"y": 5.5
@@ -422,13 +422,13 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "rogue",
+						"unit_id": "rogue",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "wizard",
+						"unit_id": "wizard",
 						"team": "player",
 						"x": 1.6,
 						"y": 5.5
@@ -597,31 +597,31 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "swordsman",
+						"unit_id": "swordsman",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "artillery",
+						"unit_id": "artillery",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "warlock",
+						"unit_id": "warlock",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "rogue",
+						"unit_id": "rogue",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 7.0
@@ -629,31 +629,31 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "player",
 						"x": 2.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "swordsman",
+						"unit_id": "swordsman",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "cleric",
+						"unit_id": "cleric",
 						"team": "player",
 						"x": 1.4,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "wizard",
+						"unit_id": "wizard",
 						"team": "player",
 						"x": 1.4,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "archer",
+						"unit_id": "archer",
 						"team": "player",
 						"x": 1.4,
 						"y": 7.0
@@ -1032,31 +1032,31 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "disarmer",
+						"unit_id": "disarmer",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "windcaller",
+						"unit_id": "windcaller",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "guardian",
+						"unit_id": "guardian",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "oracle",
+						"unit_id": "oracle",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "cleric",
+						"unit_id": "cleric",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 7.0
@@ -1064,31 +1064,31 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "colossus",
+						"unit_id": "colossus",
 						"team": "player",
 						"x": 2.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "earthbender",
+						"unit_id": "earthbender",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "frost_mage",
+						"unit_id": "frost_mage",
 						"team": "player",
 						"x": 1.4,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "silencer",
+						"unit_id": "silencer",
 						"team": "player",
 						"x": 1.4,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "mirror_knight",
+						"unit_id": "mirror_knight",
 						"team": "player",
 						"x": 1.4,
 						"y": 7.0
@@ -1467,31 +1467,31 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "paladin",
+						"unit_id": "paladin",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "rogue",
+						"unit_id": "rogue",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "berserker",
+						"unit_id": "berserker",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "warlock",
+						"unit_id": "warlock",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "valkyrie",
+						"unit_id": "valkyrie",
 						"team": "enemy",
 						"x": 8.6,
 						"y": 7.0
@@ -1499,31 +1499,31 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "ninja",
+						"unit_id": "ninja",
 						"team": "player",
 						"x": 2.0,
 						"y": 3.0
 					},
 					{
-						"archetype_id": "archer",
+						"unit_id": "archer",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.0
 					},
 					{
-						"archetype_id": "artillery",
+						"unit_id": "artillery",
 						"team": "player",
 						"x": 1.4,
 						"y": 5.0
 					},
 					{
-						"archetype_id": "wizard",
+						"unit_id": "wizard",
 						"team": "player",
 						"x": 1.4,
 						"y": 6.0
 					},
 					{
-						"archetype_id": "sniper",
+						"unit_id": "sniper",
 						"team": "player",
 						"x": 1.4,
 						"y": 7.0
@@ -1902,7 +1902,7 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "monk",
+						"unit_id": "monk",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 5.0
@@ -1910,7 +1910,7 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "wraith",
+						"unit_id": "wraith",
 						"team": "player",
 						"x": 2.0,
 						"y": 5.0
@@ -2009,13 +2009,13 @@
 			"input": {
 				"enemy_units": [
 					{
-						"archetype_id": "warlock",
+						"unit_id": "warlock",
 						"team": "enemy",
 						"x": 8.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "siren",
+						"unit_id": "siren",
 						"team": "enemy",
 						"x": 8.4,
 						"y": 5.5
@@ -2023,13 +2023,13 @@
 				],
 				"player_units": [
 					{
-						"archetype_id": "necromancer",
+						"unit_id": "necromancer",
 						"team": "player",
 						"x": 2.0,
 						"y": 4.5
 					},
 					{
-						"archetype_id": "mistcaller",
+						"unit_id": "mistcaller",
 						"team": "player",
 						"x": 1.6,
 						"y": 5.5

@@ -74,7 +74,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["pos_x"] = u.pos_x;
 		d["pos_y"] = u.pos_y;
 		d["team"] = String(u.team);
-		d["archetype_id"] = String(uc.archetype_id);
+		d["unit_id"] = String(uc.unit_id);
 		d["hp"] = u.hp;
 		d["max_hp"] = get_effective_max_hp(u);
 		d["shield"] = u.shield;

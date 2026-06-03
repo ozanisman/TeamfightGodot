@@ -5,9 +5,9 @@
 		"ability_name": "",
 		"description": "A rotting undead creature that sustains itself through combat.",
 		"name": "Ghoul",
-		"passive_desc": "",
+		"passive_desc": "Has innate 15% lifesteal",
 		"passive_ids": [],
-		"passive_name": "Has innate 15% lifesteal",
+		"passive_name": "Bloody Claws",
 		"role": "minion",
 		"stats": {
 			"ability_cd": 0.0,
@@ -41,7 +41,7 @@
 		"ability_name": "",
 		"description": "A fragile undead warrior that fights with basic attacks.",
 		"name": "Skeleton",
-		"passive_desc": "Skeletons take 5 damage every second",
+		"passive_desc": "Takes 5 damage every second.",
 		"passive_ids": [
 			"unstable_creation"
 		],

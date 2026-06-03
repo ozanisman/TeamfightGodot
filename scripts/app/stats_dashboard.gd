@@ -1662,8 +1662,6 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			var shield_total: float = float(b.get("shield_auto", 0.0)) + float(b.get("shield_passive", 0.0)) + float(b.get("shield_ability", 0.0)) + float(b.get("shield_ultimate", 0.0))
 			lines.append("")
 			lines.append("Damage Dealt (Total: %.1f):" % (damage_total / cf))
-			lines.append("[hr]")
-			lines.append("[hr]")
 			lines.append(
 				"Auto-attacks: %.1f | Passive: %.1f"
 				% [

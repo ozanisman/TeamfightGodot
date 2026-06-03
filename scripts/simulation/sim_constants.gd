@@ -47,6 +47,28 @@ const ROLE_COLORS: Dictionary = {
 }
 
 # ========================================
+# EFFECT METADATA
+# ========================================
+## Source of truth for effect metadata (color, category, description, etc.)
+## Single dictionary for all effect properties for easy expansion
+const EFFECT_METADATA: Dictionary = {
+	"stun": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move, attack, or cast abilities or ultimates."},
+	"silence": {"color": "#ce88ee", "category": "CC", "description": "The target cannot cast abilities or ultimates. Affects both unless specified."},
+	"root": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move."},
+	"taunt": {"color": "#ce88ee", "category": "CC", "description": "The target is forced to attack the taunter and cannot kite."},
+	"disarm": {"color": "#ce88ee", "category": "CC", "description": "The target cannot auto-attack."},
+	"slow": {"color": "#ce88ee", "category": "CC", "description": "The target's movement speed is reduced."},
+	"knockback": {"color": "#ce88ee", "category": "CC", "description": "The target is pushed away from the source."},
+	"reflect": {"color": "#ff9933", "category": "DEBUFF", "description": "A percentage of incoming damage is dealt back to the attacker."},
+	"shield": {"color": "#66e666", "category": "UTILITY", "description": "Absorbs incoming damage before HP is affected."},
+	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies."},
+	"heal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP to the target."},
+	"physical damage": {"color": "#ff5555", "category": "DAMAGE", "description": "Value is reduced by the target's armor."},
+	"magic damage": {"color": "#55aaff", "category": "DAMAGE", "description": "Value is reduced by the target's magic resist."},
+	"true damage": {"color": "#eecfa1", "category": "DAMAGE", "description": "Value ignores ALL defensive stats."}
+}
+
+# ========================================
 # PROJECTILE DEFAULTS
 # ========================================
 const DEFAULT_PROJECTILE_SPEED: float = 5.0
@@ -57,6 +79,24 @@ const DEFAULT_PROJECTILE_RADIUS: float = 0.03
 # ========================================
 const SIMULATION_VIEWER_MAX_TICKS_PER_FRAME: int = 48
 const VIEWER_WORLD_GRID_DIVISIONS: int = 10
+
+# ========================================
+# UNIT STATE STRINGS
+# ========================================
+# The 'state' field is a computed priority-based summary from native code.
+# It represents the primary unit condition, prioritizing most restrictive effects.
+# Priority order: DEAD > STUNNED > ROOTED > SILENCED > REFLECTING > DISARMED > SLOWED > CHANNELING > CASTING > KITING > ALIVE
+const UNIT_STATE_STUNNED: String = "STUNNED"
+const UNIT_STATE_DEAD: String = "DEAD"
+const UNIT_STATE_KITING: String = "KITING"
+const UNIT_STATE_ROOTED: String = "ROOTED"
+const UNIT_STATE_SILENCED: String = "SILENCED"
+const UNIT_STATE_REFLECTING: String = "REFLECTING"
+const UNIT_STATE_DISARMED: String = "DISARMED"
+const UNIT_STATE_SLOWED: String = "SLOWED"
+const UNIT_STATE_CHANNELING: String = "CHANNELING"
+const UNIT_STATE_CASTING: String = "CASTING"
+const UNIT_STATE_ALIVE: String = "ALIVE"
 
 # ========================================
 # VIEWER PROJECTILE SPREAD
@@ -98,6 +138,34 @@ const SIM_TELEMETRY_SCHEMA_V1: String = "teamfight.telemetry.v1"
 # ========================================
 # HELPER FUNCTIONS
 # ========================================
+
+## Get all CC, DEBUFF, and UTILITY effect kinds from EFFECT_METADATA
+static func get_effect_kinds() -> Array[StringName]:
+	var kinds: Array[StringName] = []
+	for key in EFFECT_METADATA:
+		var metadata: Dictionary = EFFECT_METADATA[key]
+		var category: String = metadata.get("category", "")
+		if category in ["CC", "DEBUFF", "UTILITY"]:
+			kinds.append(StringName(key))
+	return kinds
+
+## Get all damage types from EFFECT_METADATA (short names, e.g., "physical" not "physical damage")
+static func get_damage_types() -> Array[StringName]:
+	var types: Array[StringName] = []
+	for key in EFFECT_METADATA:
+		var metadata: Dictionary = EFFECT_METADATA[key]
+		var category: String = metadata.get("category", "")
+		if category == "DAMAGE":
+			# Strip " damage" suffix to match existing usage
+			var short_name: String = key.replace(" damage", "")
+			types.append(StringName(short_name))
+	return types
+
+## Get base effect kind from AOE variant (e.g., "aoe_taunt" → "taunt")
+static func get_base_effect_from_aoe(aoe_kind: StringName) -> StringName:
+	if str(aoe_kind).begins_with("aoe_"):
+		return StringName(str(aoe_kind).substr(4))
+	return aoe_kind
 
 static func spawn_position(index: int, team: StringName) -> Vector2:
 	var column: int = index / SIMULATION_FORMATION_COLUMNS

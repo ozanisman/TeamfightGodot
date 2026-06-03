@@ -181,7 +181,7 @@ static func _parse_single_damage_type(effect: Dictionary, damage_types: Array[St
 		&"damage", &"aoe_damage":
 			var params: Dictionary = effect.get("params", {})
 			var damage_type: StringName = params.get("damage_type", &"")
-			if not damage_type.is_empty() and not damage_types.has(damage_type):
+			if not damage_type.is_empty() and damage_type in SimConstants.get_damage_types() and not damage_types.has(damage_type):
 				damage_types.append(damage_type)
 		&"multi_effect":
 			var params: Dictionary = effect.get("params", {})
@@ -195,25 +195,19 @@ static func _parse_single_cc(effect: Dictionary, cc_effects: Array[StringName]) 
 	var kind: StringName = effect.get("kind", &"")
 	
 	# Check for direct CC kinds
+	if kind in SimConstants.get_effect_kinds():
+		if not cc_effects.has(kind):
+			cc_effects.append(kind)
+	
+	# Check for AOE variants
+	if str(kind).begins_with("aoe_"):
+		var base_effect: StringName = SimConstants.get_base_effect_from_aoe(kind)
+		# Only add if base_effect is actually a valid CC effect kind
+		if base_effect in SimConstants.get_effect_kinds() and not cc_effects.has(base_effect):
+			cc_effects.append(base_effect)
+	
+	# Check for passive triggers
 	match kind:
-		&"stun", &"silence", &"root", &"taunt", &"reflect":
-			if not cc_effects.has(kind):
-				cc_effects.append(kind)
-		&"aoe_taunt":
-			if not cc_effects.has(&"taunt"):
-				cc_effects.append(&"taunt")
-		&"aoe_stun":
-			if not cc_effects.has(&"stun"):
-				cc_effects.append(&"stun")
-		&"aoe_silence":
-			if not cc_effects.has(&"silence"):
-				cc_effects.append(&"silence")
-		&"aoe_root":
-			if not cc_effects.has(&"root"):
-				cc_effects.append(&"root")
-		&"aoe_reflect":
-			if not cc_effects.has(&"reflect"):
-				cc_effects.append(&"reflect")
 		&"every_n_attacks_stun":
 			if not cc_effects.has(&"stun"):
 				cc_effects.append(&"stun")
@@ -244,15 +238,11 @@ static func _parse_cc_effects(unit_data: Dictionary) -> Array[SatelliteSpec]:
 	var satellites: Array[SatelliteSpec] = []
 	
 	# Check for active CC effects
-	var cc_effects: Array[StringName] = [&"stun", &"silence", &"root", &"taunt", &"reflect"]
+	var cc_effects: Array[StringName] = SimConstants.get_effect_kinds()
 	
 	for effect_type in cc_effects:
 		var duration_key: StringName = StringName("%s_remaining" % effect_type)
 		var duration: float = unit_data.get(duration_key, 0.0)
-		
-		# Reflect uses reflect_buff_remaining instead
-		if effect_type == &"reflect":
-			duration = unit_data.get("reflect_buff_remaining", 0.0)
 		
 		if duration > 0.0:
 			var spec: SatelliteSpec = SatelliteRegistriesScript.status(effect_type)

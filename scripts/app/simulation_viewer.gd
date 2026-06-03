@@ -945,7 +945,7 @@ func _update_unit_node(unit_dict: Dictionary) -> void:
 func _is_unit_on_battlefield(u: Dictionary) -> bool:
 	if _game_state != COMBAT and _game_state != PREPARATION:
 		return true
-	if str(u.get("state", "")) == "DEAD":
+	if str(u.get("state", "")) == SimConstants.UNIT_STATE_DEAD:
 		return false
 	if not bool(u.get("alive", true)):
 		return false

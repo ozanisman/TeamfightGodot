@@ -89,7 +89,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["silence_remaining"] = u.silence_remaining;
 		d["disarm_remaining"] = u.disarm_remaining;
 		d["stealth_remaining"] = u.stealth_remaining;
-		d["reflect_buff_remaining"] = uc.reflect_buffs.empty() ? 0.0 : 1.0;
+		d["reflect_remaining"] = uc.reflect_buffs.empty() ? 0.0 : 1.0;
 		d["alive"] = u.alive;
 		d["state"] = viewer_state_string(u, uc);
 		d["acd"] = u.attack_cooldown;

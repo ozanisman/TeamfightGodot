@@ -262,7 +262,7 @@ func _validate_snapshot_unit(unit_data: Dictionary, index: int) -> bool:
 		"silence_remaining",
 		"disarm_remaining",
 		"stealth_remaining",
-		"reflect_buff_remaining",
+		"reflect_remaining",
 		"kills",
 		"deaths",
 		"assists",

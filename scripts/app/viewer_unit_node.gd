@@ -117,7 +117,7 @@ func _draw() -> void:
 			var s_b: float = SimConstantsScript.viewer_battle_square_side(vp2)
 			var r_px: float = ar * (s_b / SimConstantsScript.WORLD_SIZE)
 			draw_arc(o, r_px, 0.0, TAU, 64, Color(0.8, 0.8, 0.4, 0.55), 1.0, true)
-	if float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
+	if String(_u.get("state", "")) == SimConstants.UNIT_STATE_STUNNED:
 		draw_circle(o, UNIT_RADIUS + 3.0, Color(0.9, 0.65, 0.2, 0.9), false, 2.0)
 	# Apply stealth opacity
 	var draw_color := wcol
@@ -174,14 +174,14 @@ func _draw() -> void:
 	var label: String = str(_u.get("unit_id", &""))
 	if label.is_empty():
 		label = "?"
-	if String(_u.get("state", "")) == "DEAD":
-		label += " [DEAD]"
-	elif float(_u.get("stun_remaining", 0.0)) > 0.0 or String(_u.get("state", "")) == "STUNNED":
-		label += " [STUNNED]"
+	if String(_u.get("state", "")) == SimConstants.UNIT_STATE_DEAD:
+		label += " [%s]" % SimConstants.UNIT_STATE_DEAD
+	elif String(_u.get("state", "")) == SimConstants.UNIT_STATE_STUNNED:
+		label += " [%s]" % SimConstants.UNIT_STATE_STUNNED
 	elif float(_u.get("taunt_remaining", 0.0)) > 0.0:
 		label += " [TAUNTED]"
-	elif String(_u.get("state", "")) == "KITING":
-		label += " [KITING]"
+	elif String(_u.get("state", "")) == SimConstants.UNIT_STATE_KITING:
+		label += " [%s]" % SimConstants.UNIT_STATE_KITING
 	elif float(_u.get("casting_remaining", 0.0)) > 0.0:
 		var ckind: String = str(_u.get("casting_kind", ""))
 		if ckind.to_lower().contains("ult"):

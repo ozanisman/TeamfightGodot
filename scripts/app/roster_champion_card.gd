@@ -224,14 +224,14 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	
 	# Set behavior label based on unit state
 	var behavior_text := ""
-	if st == "DEAD":
-		behavior_text = "Behavior: [DEAD]"
-	elif float(ud.get("stun_remaining", 0.0)) > 0.0 or st == "STUNNED":
-		behavior_text = "Behavior: [STUNNED]"
+	if st == SimConstants.UNIT_STATE_DEAD:
+		behavior_text = "Behavior: [%s]" % SimConstants.UNIT_STATE_DEAD
+	elif st == SimConstants.UNIT_STATE_STUNNED:
+		behavior_text = "Behavior: [%s]" % SimConstants.UNIT_STATE_STUNNED
 	elif float(ud.get("taunt_remaining", 0.0)) > 0.0:
 		behavior_text = "Behavior: [TAUNTED]"
-	elif st == "KITING":
-		behavior_text = "Behavior: [KITING]"
+	elif st == SimConstants.UNIT_STATE_KITING:
+		behavior_text = "Behavior: [%s]" % SimConstants.UNIT_STATE_KITING
 	elif float(ud.get("casting_remaining", 0.0)) > 0.0:
 		var ckind: String = str(ud.get("casting_kind", ""))
 		if ckind.to_lower().contains("ult"):
@@ -299,7 +299,7 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_ultimate_label.visible = false
 	
 	var name_c: Color = _role_color_for_archetype(nm)
-	if st == "DEAD" or not bool(ud.get("alive", true)):
+	if st == SimConstants.UNIT_STATE_DEAD or not bool(ud.get("alive", true)):
 		var t_rem: float = maxf(0.0, float(ud.get("respawn_timer", 0.0)))
 		_respawn_label.visible = true
 		_respawn_label.text = "Respawn: %.1fs" % t_rem

@@ -2,23 +2,12 @@ extends Node
 ## Global registries for satellite content builders, layout strategies, and style presets.
 
 const SatelliteSpecScript := preload("res://scripts/app/satellite_spec.gd")
+const SimConstants := preload("res://scripts/simulation/sim_constants.gd")
 
 static var _content_builders: Dictionary = {}
 static var _layout_strategies: Dictionary = {}
 static var _style_presets: Dictionary = {}
 static var _initialized: bool = false
-
-# Keyword coloring for tooltip descriptions - same as champion_catalog_tooltip
-const KEYWORD_COLORS: Dictionary = {
-	"stun": "#e66666",
-	"silence": "#9966e6",
-	"root": "#e69966",
-	"taunt": "#e6e666",
-	"reflect": "#66e6e6",
-	"physical damage": "#ff6b6b",
-	"magic damage": "#9b59b6",
-	"true damage": "#f39c12"
-}
 
 
 ## Color keywords in text using BBCode tags.
@@ -26,8 +15,9 @@ const KEYWORD_COLORS: Dictionary = {
 static func _color_keywords_in_text(text: String) -> String:
 	var result: String = text
 	
-	for keyword in KEYWORD_COLORS:
-		var color: String = KEYWORD_COLORS[keyword]
+	for keyword in SimConstants.EFFECT_METADATA:
+		var metadata: Dictionary = SimConstants.EFFECT_METADATA[keyword]
+		var color: String = metadata.get("color", "#ffffff")
 		# Match word boundaries with case-insensitive flag
 		var regex: RegEx = RegEx.new()
 		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
@@ -148,7 +138,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	var name: String = str(stats.get("name", minion_id))
 	
 	var lines: PackedStringArray = PackedStringArray()
-	lines.append("[color=#b4b4b4]%s[/color]" % name)
+	lines.append("[color=#b4b4b4]%s (MINION)[/color]" % name)
 	
 	# Description
 	var description: String = str(minion_data.get("description", ""))
@@ -204,16 +194,9 @@ static func _build_status_content(data: Dictionary, context) -> String:
 	var effect_type: StringName = data.get("effect_type", &"")
 	var unit_data: Dictionary = context.get_main_data(&"unit_data") if context else {}
 	
-	# CC effect descriptions
-	var cc_descriptions: Dictionary = {
-		&"stun": "The target cannot move, attack, or cast abilities or ultimates.",
-		&"silence": "The target cannot cast abilities or ultimates (both unless specified).",
-		&"root": "The target cannot move.",
-		&"taunt": "The target is forced to attack the taunter and cannot kite.",
-		&"reflect": "A percentage of incoming damage is dealt back to the attacker."
-	}
-	
-	var description: String = cc_descriptions.get(effect_type, "")
+	# Use SimConstants.EFFECT_METADATA for color, category, and description
+	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(effect_type), {"color": "#e66666", "category": "EFFECT", "description": ""})
+	var description: String = metadata.get("description", "")
 	
 	var duration: float = 0.0
 	var has_duration: bool = false
@@ -230,7 +213,15 @@ static func _build_status_content(data: Dictionary, context) -> String:
 			&"taunt":
 				duration = unit_data.get("taunt_remaining", 0.0)
 			&"reflect":
-				duration = unit_data.get("reflect_buff_remaining", 0.0)
+				duration = unit_data.get("reflect_remaining", 0.0)
+			&"disarm":
+				duration = unit_data.get("disarm_remaining", 0.0)
+			&"slow":
+				duration = unit_data.get("slow_remaining", 0.0)
+			&"stealth":
+				duration = unit_data.get("stealth_remaining", 0.0)
+			&"shield":
+				duration = unit_data.get("shield_remaining", 0.0)
 			_:
 				duration = 0.0
 		has_duration = duration > 0.0
@@ -240,24 +231,20 @@ static func _build_status_content(data: Dictionary, context) -> String:
 	if not unit_data.is_empty() and not has_duration:
 		return ""
 	
-	var color: String = "#e66666"  # Red default
-	match effect_type:
-		&"stun":
-			color = "#e66666"
-		&"silence":
-			color = "#9966e6"
-		&"root":
-			color = "#e69966"
-		&"taunt":
-			color = "#e6e666"
-		&"reflect":
-			color = "#66e6e6"
+	# Get color and category from metadata (already declared above)
+	var color: String = metadata.get("color", "#e66666")
+	var effect_category: String = metadata.get("category", "EFFECT")
+	# Capitalize to title case, CC becomes "Crowd Control"
+	if effect_category == "CC":
+		effect_category = "Crowd Control"
+	else:
+		effect_category = effect_category.capitalize()
 	
 	var lines: PackedStringArray = []
 	if has_duration:
-		lines.append("[color=%s]%s: %.1fs[/color]" % [color, str(effect_type).to_upper(), duration])
+		lines.append("[color=%s]%s (%s): %.1fs[/color]" % [color, str(effect_type).to_upper(), effect_category, duration])
 	else:
-		lines.append("[color=%s]%s[/color]" % [color, str(effect_type).to_upper()])
+		lines.append("[color=%s]%s (%s)[/color]" % [color, str(effect_type).to_upper(), effect_category])
 	
 	if not description.is_empty():
 		lines.append(_color_keywords_in_text(description))
@@ -281,26 +268,19 @@ static func _build_modifier_content(data: Dictionary, context) -> String:
 static func _build_damage_type_content(data: Dictionary, context) -> String:
 	var damage_type: StringName = data.get("damage_type", &"")
 	
-	# Damage type colors
-	var colors: Dictionary = {
-		&"physical": "#ff6b6b",
-		&"magic": "#9b59b6",
-		&"true": "#f39c12"
-	}
+	# Use SimConstants.EFFECT_METADATA for color, category, and description
+	var keyword_key: String = "%s damage" % damage_type
+	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(keyword_key, {"color": "#ffffff", "category": "DAMAGE", "description": ""})
+	var color: String = metadata.get("color", "#ffffff")
+	var effect_category: String = metadata.get("category", "DAMAGE")
+	# Capitalize to title case
+	effect_category = effect_category.capitalize()
+	var description: String = metadata.get("description", "")
 	
-	# Damage type descriptions
-	var descriptions: Dictionary = {
-		&"physical": "Reduced by armor.",
-		&"magic": "Reduced by magic resist.",
-		&"true": "Ignores ALL defensive stats."
-	}
-	
-	var color: String = colors.get(damage_type, "#ffffff")
 	var type_name: String = str(damage_type).to_upper()
-	var description: String = descriptions.get(damage_type, "")
 	
 	var lines: PackedStringArray = []
-	lines.append("[color=%s]%s DAMAGE[/color]" % [color, type_name])
+	lines.append("[color=%s]%s (%s)[/color]" % [color, type_name, effect_category])
 	if not description.is_empty():
 		lines.append(_color_keywords_in_text(description))
 	

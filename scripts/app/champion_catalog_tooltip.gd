@@ -20,17 +20,7 @@ const COLOR_STAT_BUFF := Color(0.4, 0.9, 0.4, 1.0)
 const COLOR_STAT_NERF := Color(0.9, 0.4, 0.4, 1.0)
 const STAT_DIFF_EPSILON := 0.01
 
-# Keyword coloring for tooltip descriptions - expandable for future keywords
-const KEYWORD_COLORS: Dictionary = {
-	"stun": "#e66666",
-	"silence": "#9966e6",
-	"root": "#e69966",
-	"taunt": "#e6e666",
-	"reflect": "#66e6e6",
-	"physical damage": "#ff6b6b",
-	"magic damage": "#9b59b6",
-	"true damage": "#f39c12"
-}
+const SimConstants := preload("res://scripts/simulation/sim_constants.gd")
 
 var _ui_parent: Control
 var _tt_style: StyleBoxFlat
@@ -214,8 +204,9 @@ static func _color_keywords_in_text(text: String) -> String:
 	var escaped: String = _escape_bbcode_plain(text)
 	var result: String = escaped
 	
-	for keyword in KEYWORD_COLORS:
-		var color: String = KEYWORD_COLORS[keyword]
+	for keyword in SimConstants.EFFECT_METADATA:
+		var metadata: Dictionary = SimConstants.EFFECT_METADATA[keyword]
+		var color: String = metadata.get("color", "#ffffff")
 		# Match word boundaries with case-insensitive flag
 		var regex: RegEx = RegEx.new()
 		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
@@ -243,15 +234,14 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 		st = base_stats
 	
 	var name: String = str(st.get("name", hero_id))
-	var role_s: String = str(st.get("role", "")).to_upper()
 	var display_name: String = _escape_bbcode_plain(name)
 	var br_col: Color = _border_for_dict(st)
 	var title_line: String = (
-		"[color=%s]%s[/color]  (%s)" % [br_col.to_html(false), display_name, role_s]
+		"[color=%s]%s[/color]" % [br_col.to_html(false), display_name]
 	)
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(title_line)
-	lines.append(_color_keywords_in_text(str(d.get("description", ""))))
+	lines.append(_escape_bbcode_plain(str(d.get("description", ""))))
 	lines.append("")  # Line break before stats
 	
 	# Core stats (higher is better)

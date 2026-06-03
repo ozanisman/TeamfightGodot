@@ -382,7 +382,7 @@
 			"armor": 0.45,
 			"attack_damage": 13.0,
 			"attack_range": 0.3,
-			"attack_speed": 0.65,
+			"attack_speed": 0.75,
 			"life_steal": 0.0,
 			"magic_resist": 0.4,
 			"mana_cost": 100.0,
@@ -559,7 +559,7 @@
 			"armor": 0.15,
 			"attack_damage": 12.0,
 			"attack_range": 0.3,
-			"attack_speed": 0.9,
+			"attack_speed": 0.8,
 			"life_steal": 0.0,
 			"magic_resist": 0.15,
 			"mana_cost": 70.0,
@@ -965,9 +965,9 @@
 		"name": "Monk",
 		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
 		"passive_ids": [
-			"technique"
+			"stunning_strikes"
 		],
-		"passive_name": "Technique",
+		"passive_name": "Stunning Strikes",
 		"role": "fighter",
 		"stats": {
 			"ability_cd": 4.0,
@@ -982,7 +982,7 @@
 			"max_hp": 300.0,
 			"move_speed": 0.76,
 			"name": "Monk",
-			"passive_id": "technique",
+			"passive_id": "stunning_strikes",
 			"projectile_radius": 0.03,
 			"projectile_speed": 5.0,
 			"respawn_time": 5.0,
@@ -1662,6 +1662,18 @@
 				}
 			]
 		},
+		"stunning_strikes": {
+			"post_attack": [
+				{
+					"kind": "every_n_attacks_stun",
+					"params": {
+						"every_n": 3,
+						"stun_duration": 0.5
+					},
+					"requires_target_in_range": true
+				}
+			]
+		},
 		"sweeping_strikes": {
 			"post_attack": [
 				{
@@ -1700,18 +1712,6 @@
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 1.15
-					},
-					"requires_target_in_range": true
-				}
-			]
-		},
-		"technique": {
-			"post_attack": [
-				{
-					"kind": "every_n_attacks_stun",
-					"params": {
-						"every_n": 3,
-						"stun_duration": 0.5
 					},
 					"requires_target_in_range": true
 				}

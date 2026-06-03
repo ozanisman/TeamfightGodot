@@ -1259,14 +1259,14 @@ const CHAMPION_DATA := {
 			"ability_cd": 4.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
-			"passive_id": &"technique",
+			"passive_id": &"stunning_strikes",
 			"respawn_time": 0.0,
 		},
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
 		"ability_desc": "Precise strike for 160% damage that silences the target for 1.0s.",
 		"ultimate_desc": "Gains 25% max HP shield and reflects 75% damage for 5s.",
 		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
-		"passive_name": "Technique",
+		"passive_name": "Stunning Strikes",
 		"ability_name": "Pressure Point",
 		"ultimate_name": "Drunken Stance",
 		"ability": {
@@ -1316,7 +1316,7 @@ const CHAMPION_DATA := {
 				"reason": "Drunken Stance"
 			}
 		},
-		"passive_ids": [&"technique"],
+		"passive_ids": [&"stunning_strikes"],
 	},
 	&"artillery": {
 		"stats": {
@@ -2391,7 +2391,7 @@ const PASSIVE_DATA := {
 			}
 		}]
 	},
-	&"technique": {
+	&"stunning_strikes": {
 		&"post_attack": [{
 			"kind": &"every_n_attacks_stun",
 			"params": {

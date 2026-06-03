@@ -20,6 +20,18 @@ const COLOR_STAT_BUFF := Color(0.4, 0.9, 0.4, 1.0)
 const COLOR_STAT_NERF := Color(0.9, 0.4, 0.4, 1.0)
 const STAT_DIFF_EPSILON := 0.01
 
+# Keyword coloring for tooltip descriptions - expandable for future keywords
+const KEYWORD_COLORS: Dictionary = {
+	"stun": "#e66666",
+	"silence": "#9966e6",
+	"root": "#e69966",
+	"taunt": "#e6e666",
+	"reflect": "#66e6e6",
+	"physical damage": "#ff6b6b",
+	"magic damage": "#9b59b6",
+	"true damage": "#f39c12"
+}
+
 var _ui_parent: Control
 var _tt_style: StyleBoxFlat
 var _tt_panel: PanelContainer
@@ -194,6 +206,24 @@ static func _escape_bbcode_plain(s: String) -> String:
 	return str(s).replace("[", "[lb]").replace("]", "[rb]")
 
 
+## Color keywords in text using BBCode tags.
+## Escapes text first, then applies coloring to keywords.
+## Case-insensitive, matches full words containing keywords.
+## TODO: Expand to minion tooltips if needed
+static func _color_keywords_in_text(text: String) -> String:
+	var escaped: String = _escape_bbcode_plain(text)
+	var result: String = escaped
+	
+	for keyword in KEYWORD_COLORS:
+		var color: String = KEYWORD_COLORS[keyword]
+		# Match word boundaries with case-insensitive flag
+		var regex: RegEx = RegEx.new()
+		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
+		result = regex.sub(result, "[color=%s]$1[/color]" % color, true)
+	
+	return result
+
+
 ## BBCode: title line in role color; rest escaped plain.
 func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> String:
 	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
@@ -221,7 +251,7 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 	)
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(title_line)
-	lines.append(_escape_bbcode_plain(str(d.get("description", ""))))
+	lines.append(_color_keywords_in_text(str(d.get("description", ""))))
 	lines.append("")  # Line break before stats
 	
 	# Core stats (higher is better)
@@ -240,18 +270,18 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 	lines.append("%s | %s | %s | %s" % [armor_str, mr_str, tenacity_str, lifesteal_str])
 	
 	lines.append("")  # Line break before passive
-	lines.append("%s (passive): %s" % [_escape_bbcode_plain(str(d.get("passive_name", "Passive"))), _escape_bbcode_plain(str(d.get("passive_desc", "")))])
+	lines.append("%s (passive): %s" % [_escape_bbcode_plain(str(d.get("passive_name", "Passive"))), _color_keywords_in_text(str(d.get("passive_desc", "")))])
 	lines.append("")  # Line break before ability
 	
 	# Ability cooldown (lower is better)
 	var cd_str: String = _format_stat_diff_lower_better(float(base_stats.get("ability_cd", 0.0)), float(st.get("ability_cd", 0.0)), "%.1fs")
-	lines.append("%s (%s): %s" % [_escape_bbcode_plain(str(d.get("ability_name", "Ability"))), cd_str, _escape_bbcode_plain(str(d.get("ability_desc", "")))])
+	lines.append("%s (%s): %s" % [_escape_bbcode_plain(str(d.get("ability_name", "Ability"))), cd_str, _color_keywords_in_text(str(d.get("ability_desc", "")))])
 	
 	lines.append("")  # Line break before ultimate
 	
 	# Mana cost (lower is better for cost)
 	var mana_str: String = _format_stat_diff_lower_better(float(base_stats.get("mana_cost", 0.0)), float(st.get("mana_cost", 0.0)), "%.0f")
-	lines.append("%s (%s mana): %s" % [_escape_bbcode_plain(str(d.get("ultimate_name", "Ultimate"))), mana_str, _escape_bbcode_plain(str(d.get("ultimate_desc", "")))])
+	lines.append("%s (%s mana): %s" % [_escape_bbcode_plain(str(d.get("ultimate_name", "Ultimate"))), mana_str, _color_keywords_in_text(str(d.get("ultimate_desc", "")))])
 	
 	return "\n".join(lines)
 

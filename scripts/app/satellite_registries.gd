@@ -8,6 +8,33 @@ static var _layout_strategies: Dictionary = {}
 static var _style_presets: Dictionary = {}
 static var _initialized: bool = false
 
+# Keyword coloring for tooltip descriptions - same as champion_catalog_tooltip
+const KEYWORD_COLORS: Dictionary = {
+	"stun": "#e66666",
+	"silence": "#9966e6",
+	"root": "#e69966",
+	"taunt": "#e6e666",
+	"reflect": "#66e6e6",
+	"physical damage": "#ff6b6b",
+	"magic damage": "#9b59b6",
+	"true damage": "#f39c12"
+}
+
+
+## Color keywords in text using BBCode tags.
+## Case-insensitive, matches full words containing keywords.
+static func _color_keywords_in_text(text: String) -> String:
+	var result: String = text
+	
+	for keyword in KEYWORD_COLORS:
+		var color: String = KEYWORD_COLORS[keyword]
+		# Match word boundaries with case-insensitive flag
+		var regex: RegEx = RegEx.new()
+		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
+		result = regex.sub(result, "[color=%s]$1[/color]" % color, true)
+	
+	return result
+
 
 ## Initialize default builders, layouts, and styles.
 static func _static_init() -> void:
@@ -19,6 +46,7 @@ static func _static_init() -> void:
 	register_builder(&"minion", _build_minion_content)
 	register_builder(&"status", _build_status_content)
 	register_builder(&"modifier", _build_modifier_content)
+	register_builder(&"damage_type", _build_damage_type_content)
 	
 	# Register default layout strategies
 	register_layout(&"grid", _layout_grid)
@@ -176,20 +204,40 @@ static func _build_status_content(data: Dictionary, context) -> String:
 	var effect_type: StringName = data.get("effect_type", &"")
 	var unit_data: Dictionary = context.get_main_data(&"unit_data") if context else {}
 	
-	var duration: float = 0.0
-	match effect_type:
-		&"stun":
-			duration = unit_data.get("stun_remaining", 0.0)
-		&"silence":
-			duration = unit_data.get("silence_remaining", 0.0)
-		&"root":
-			duration = unit_data.get("root_remaining", 0.0)
-		&"taunt":
-			duration = unit_data.get("taunt_remaining", 0.0)
-		_:
-			duration = 0.0
+	# CC effect descriptions
+	var cc_descriptions: Dictionary = {
+		&"stun": "The target cannot move, attack, or cast abilities or ultimates.",
+		&"silence": "The target cannot cast abilities or ultimates (both unless specified).",
+		&"root": "The target cannot move.",
+		&"taunt": "The target is forced to attack the taunter and cannot kite.",
+		&"reflect": "A percentage of incoming damage is dealt back to the attacker."
+	}
 	
-	if duration <= 0.0:
+	var description: String = cc_descriptions.get(effect_type, "")
+	
+	var duration: float = 0.0
+	var has_duration: bool = false
+	
+	# Try to get duration from unit_data (in-game)
+	if not unit_data.is_empty():
+		match effect_type:
+			&"stun":
+				duration = unit_data.get("stun_remaining", 0.0)
+			&"silence":
+				duration = unit_data.get("silence_remaining", 0.0)
+			&"root":
+				duration = unit_data.get("root_remaining", 0.0)
+			&"taunt":
+				duration = unit_data.get("taunt_remaining", 0.0)
+			&"reflect":
+				duration = unit_data.get("reflect_buff_remaining", 0.0)
+			_:
+				duration = 0.0
+		has_duration = duration > 0.0
+	
+	# In draft phase, show CC effect without duration
+	# In-game, only show if duration > 0
+	if not unit_data.is_empty() and not has_duration:
 		return ""
 	
 	var color: String = "#e66666"  # Red default
@@ -202,8 +250,19 @@ static func _build_status_content(data: Dictionary, context) -> String:
 			color = "#e69966"
 		&"taunt":
 			color = "#e6e666"
+		&"reflect":
+			color = "#66e6e6"
 	
-	return "[color=%s]%s: %.1fs[/color]" % [color, str(effect_type).to_upper(), duration]
+	var lines: PackedStringArray = []
+	if has_duration:
+		lines.append("[color=%s]%s: %.1fs[/color]" % [color, str(effect_type).to_upper(), duration])
+	else:
+		lines.append("[color=%s]%s[/color]" % [color, str(effect_type).to_upper()])
+	
+	if not description.is_empty():
+		lines.append(_color_keywords_in_text(description))
+	
+	return "\n".join(lines)
 
 
 ## Default modifier content builder.
@@ -216,6 +275,36 @@ static func _build_modifier_content(data: Dictionary, context) -> String:
 	var sign: String = "+" if value > 0 and is_buff else ""
 	
 	return "[color=%s]%s: %s%.2f[/color]" % [color, str(stat_name).to_upper(), sign, value]
+
+
+## Default damage type content builder.
+static func _build_damage_type_content(data: Dictionary, context) -> String:
+	var damage_type: StringName = data.get("damage_type", &"")
+	
+	# Damage type colors
+	var colors: Dictionary = {
+		&"physical": "#ff6b6b",
+		&"magic": "#9b59b6",
+		&"true": "#f39c12"
+	}
+	
+	# Damage type descriptions
+	var descriptions: Dictionary = {
+		&"physical": "Reduced by armor.",
+		&"magic": "Reduced by magic resist.",
+		&"true": "Ignores ALL defensive stats."
+	}
+	
+	var color: String = colors.get(damage_type, "#ffffff")
+	var type_name: String = str(damage_type).to_upper()
+	var description: String = descriptions.get(damage_type, "")
+	
+	var lines: PackedStringArray = []
+	lines.append("[color=%s]%s DAMAGE[/color]" % [color, type_name])
+	if not description.is_empty():
+		lines.append(_color_keywords_in_text(description))
+	
+	return "\n".join(lines)
 
 
 ## Default grid layout strategy.
@@ -380,6 +469,28 @@ static func modifier(
 	var content_builder := func(data: Dictionary, context):
 		return get_builder(&"modifier").call(data, context)
 	var style_config := get_style_preset(&"modifier")
+	return SatelliteSpecScript.new(
+		spec_id,
+		content_builder,
+		data_source,
+		style_config,
+		p_position_hint
+	)
+
+
+## Create a damage type satellite spec with default styling.
+static func damage_type(
+	damage_type: StringName,
+	p_id: StringName = &"",
+	p_position_hint: StringName = &"grid"
+):
+	_static_init()
+	var spec_id := p_id if not p_id.is_empty() else StringName("damage_type_%s" % damage_type)
+	var data_source := func(context) -> Dictionary:
+		return {"damage_type": damage_type}
+	var content_builder := func(data: Dictionary, context):
+		return get_builder(&"damage_type").call(data, context)
+	var style_config := get_style_preset(&"status")  # Reuse status style
 	return SatelliteSpecScript.new(
 		spec_id,
 		content_builder,

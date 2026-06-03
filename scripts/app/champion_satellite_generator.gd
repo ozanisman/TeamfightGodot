@@ -15,10 +15,13 @@ static func register_generator(champion_id: StringName, generator: Callable) -> 
 
 ## Generate satellites for a champion.
 static func generate_satellites(champion_id: StringName, unit_data: Dictionary = {}) -> Array[SatelliteSpec]:
+	ensure_initialized()
+	
 	# Check for champion-specific generator
 	if _generators.has(champion_id):
 		var generator: Callable = _generators[champion_id]
-		return generator.call(champion_id, unit_data)
+		var result = generator.call(champion_id, unit_data)
+		return result
 	
 	# Fall back to default summon parser
 	return _parse_summon_effects(champion_id, unit_data)
@@ -65,7 +68,8 @@ static func _parse_single_summon(effect: Dictionary, satellites: Array[Satellite
 		
 		# Create a satellite spec for this minion
 		var spec: SatelliteSpec = SatelliteRegistriesScript.minion(minion_id)
-		satellites.append(spec)
+		if spec != null:
+			satellites.append(spec)
 
 
 ## Initialize default generators.

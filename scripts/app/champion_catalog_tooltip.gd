@@ -140,7 +140,7 @@ func _show_for_hero(hero_id: StringName, unit_data: Dictionary = {}) -> void:
 	# Show satellites
 	if _satellite_manager != null and not _active_satellite_specs.is_empty():
 		var context = _create_satellite_context(hero_id, unit_data)
-		_satellite_manager.show_satellites(_active_satellite_specs, _tt_panel.global_position, context)
+		_satellite_manager.show_satellites(_active_satellite_specs, _tt_panel.global_position, context, _tt_panel.size)
 
 
 func _hide() -> void:

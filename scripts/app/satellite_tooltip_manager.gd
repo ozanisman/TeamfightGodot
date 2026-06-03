@@ -11,6 +11,7 @@ var _satellite_pool: Dictionary = {}  # spec_id -> PanelContainer
 var _active_satellites: Dictionary = {}  # spec_id -> {spec, panel, data}
 var _origin: Vector2 = Vector2.ZERO
 var _context: SatelliteContext
+var _tooltip_size: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -26,9 +27,10 @@ func setup(ui_layer: Control) -> void:
 
 
 ## Show satellites with given specs at the specified origin.
-func show_satellites(specs: Array[SatelliteSpec], origin: Vector2, context: SatelliteContext) -> void:
+func show_satellites(specs: Array[SatelliteSpec], origin: Vector2, context: SatelliteContext, tooltip_size: Vector2 = Vector2.ZERO) -> void:
 	_origin = origin
 	_context = context
+	_tooltip_size = tooltip_size
 	
 	# Hide existing satellites that are not in the new specs
 	var new_spec_ids: Array[StringName] = []
@@ -87,15 +89,16 @@ func update_origin(new_origin: Vector2) -> void:
 ## Show a single satellite (create or reuse panel).
 func _show_satellite(spec: SatelliteSpec) -> void:
 	var spec_id: StringName = spec.id
+	var panel: PanelContainer
 	
 	# Check if satellite already exists
 	if _active_satellites.has(spec_id):
 		var satellite_data: Dictionary = _active_satellites[spec_id]
-		satellite_data.panel.visible = true
-		return
-	
-	# Get or create panel
-	var panel: PanelContainer = _get_or_create_panel(spec)
+		panel = satellite_data.panel
+		panel.z_index = 150  # Below main tooltip (z_index 200)
+	else:
+		# Get or create panel
+		panel = _get_or_create_panel(spec)
 	
 	# Get initial data
 	var data: Dictionary = spec.data_source.call(_context)
@@ -159,7 +162,7 @@ func _get_or_create_panel(spec: SatelliteSpec) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "Satellite_%s" % spec_id
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.z_index = 195  # Below main tooltip (z_index 200)
+	panel.z_index = 150  # Below main tooltip (z_index 200)
 	_ui_parent.add_child(panel)
 	
 	# Add to pool
@@ -255,8 +258,12 @@ func _position_satellites() -> void:
 				"spec": satellite_data.spec
 			})
 		
+		# Get viewport size for dynamic positioning
+		var viewport := get_viewport()
+		var viewport_size: Vector2 = viewport.get_visible_rect().size if viewport else Vector2(1920, 1080)
+		
 		# Calculate positions
-		var positions: Array[Vector2] = layout.call(satellite_array, _origin)
+		var positions: Array[Vector2] = layout.call(satellite_array, _origin, Vector2(10, 10), viewport_size, _tooltip_size)
 		
 		# Apply positions
 		for i in range(satellites.size()):
@@ -267,7 +274,9 @@ func _position_satellites() -> void:
 			# Clamp to viewport
 			var vp: Rect2 = get_viewport().get_visible_rect()
 			var size: Vector2 = panel.get_combined_minimum_size()
-			pos.x = clampf(pos.x, vp.position.x + 4.0, vp.end.x - size.x - 4.0)
-			pos.y = clampf(pos.y, vp.position.y + 4.0, vp.end.y - size.y - 4.0)
+			var clamped_x = clampf(pos.x, vp.position.x + 4.0, vp.end.x - size.x - 4.0)
+			var clamped_y = clampf(pos.y, vp.position.y + 4.0, vp.end.y - size.y - 4.0)
+			pos.x = clamped_x
+			pos.y = clamped_y
 			
 			panel.global_position = pos

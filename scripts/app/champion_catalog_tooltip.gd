@@ -4,6 +4,9 @@ extends Node
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const SatelliteTooltipManagerScript := preload("res://scripts/app/satellite_tooltip_manager.gd")
+const SatelliteContextScript := preload("res://scripts/app/satellite_context.gd")
+const ChampionSatelliteGeneratorScript := preload("res://scripts/app/champion_satellite_generator.gd")
 
 # Match stats_dashboard.gd (keep in sync for visual parity).
 const UI_TOOLTIP_MOUSE_OFF := Vector2(16, 20)
@@ -23,6 +26,8 @@ var _tt_panel: PanelContainer
 var _tt_rich: RichTextLabel
 var _active_hero: StringName = StringName()
 var _active_unit_data: Dictionary = {}
+var _satellite_manager
+var _active_satellite_specs: Array = []
 
 
 func _ready() -> void:
@@ -57,13 +62,22 @@ func setup(ui_layer: Control) -> void:
 	_tt_rich.custom_minimum_size.x = UI_TOOLTIP_MIN_WIDTH
 	_tt_panel.add_child(_tt_rich)
 	_ui_parent.add_child(_tt_panel)
+	
+	# Initialize satellite manager
+	_satellite_manager = SatelliteTooltipManagerScript.new()
+	add_child(_satellite_manager)
+	_satellite_manager.setup(ui_layer)
+	ChampionSatelliteGeneratorScript.ensure_initialized()
 
 
-func register_source(ctl: Control, hero_id: StringName, unit_data: Dictionary = {}) -> void:
+
+
+func register_source(ctl: Control, hero_id: StringName, unit_data: Dictionary = {}, satellite_specs: Array = []) -> void:
 	if not is_instance_valid(ctl) or not is_instance_valid(self):
 		return
 	ctl.set_meta(&"champ_tt_hero", hero_id)
 	ctl.set_meta(&"champ_tt_unit_data", unit_data)
+	ctl.set_meta(&"champ_tt_satellite_specs", satellite_specs)
 	if bool(ctl.get_meta(&"champ_tt_wired", false)):
 		return
 	ctl.set_meta(&"champ_tt_wired", true)
@@ -75,14 +89,22 @@ func register_source(ctl: Control, hero_id: StringName, unit_data: Dictionary = 
 func _on_tt_enter(ctl: Control) -> void:
 	var hero_id: StringName = ctl.get_meta(&"champ_tt_hero", StringName()) as StringName
 	var unit_data: Dictionary = ctl.get_meta(&"champ_tt_unit_data", {}) as Dictionary
+	var satellite_specs: Array = ctl.get_meta(&"champ_tt_satellite_specs", []) as Array
 	_active_hero = hero_id
 	_active_unit_data = unit_data
+	
+	# Auto-generate satellite specs if not provided
+	if satellite_specs.is_empty():
+		satellite_specs = ChampionSatelliteGeneratorScript.generate_satellites.call(hero_id, unit_data)
+	
+	_active_satellite_specs = satellite_specs
 	_show_for_hero(hero_id, unit_data)
 	_position_panel()
 
 
 func _on_tt_exit(_ctl: Control) -> void:
 	_active_hero = StringName()
+	_active_satellite_specs.clear()
 	_hide()
 
 
@@ -91,6 +113,8 @@ func _on_tt_motion(event: InputEvent, _ctl: Control) -> void:
 		return
 	if event is InputEventMouseMotion:
 		_position_panel()
+		if _satellite_manager != null:
+			_satellite_manager.update_origin(_tt_panel.global_position)
 
 
 func _position_panel() -> void:
@@ -112,11 +136,18 @@ func _show_for_hero(hero_id: StringName, unit_data: Dictionary = {}) -> void:
 	_tt_panel.visible = true
 	_tt_panel.reset_size()
 	_position_panel()
+	
+	# Show satellites
+	if _satellite_manager != null and not _active_satellite_specs.is_empty():
+		var context = _create_satellite_context(hero_id, unit_data)
+		_satellite_manager.show_satellites(_active_satellite_specs, _tt_panel.global_position, context)
 
 
 func _hide() -> void:
 	if _tt_panel != null:
 		_tt_panel.visible = false
+	if _satellite_manager != null:
+		_satellite_manager.hide_satellites()
 
 
 ## Update tooltip content with fresh unit data (called every tick during simulation)
@@ -127,11 +158,26 @@ func update_with_unit_data(unit_data: Dictionary) -> void:
 	_tt_rich.text = _build_champion_bbcode(_active_hero, _active_unit_data)
 	_tt_panel.reset_size()
 	_position_panel()
+	
+	# Update satellites
+	if _satellite_manager != null and not _active_satellite_specs.is_empty():
+		var context = _create_satellite_context(_active_hero, unit_data)
+		_satellite_manager.update_satellites(context)
 
 
 ## Get the currently active hero (for tooltip updates)
 func get_active_hero() -> StringName:
 	return _active_hero
+
+
+## Create a SatelliteContext for the current tooltip state.
+func _create_satellite_context(hero_id: StringName, unit_data: Dictionary):
+	var main_data: Dictionary = {
+		&"hero_id": hero_id,
+		&"unit_data": unit_data,
+		&"tooltip_position": _tt_panel.global_position if _tt_panel else Vector2.ZERO
+	}
+	return SatelliteContextScript.new(main_data, {}, {})
 
 
 func _border_color_for_hero(hero_id: StringName) -> Color:

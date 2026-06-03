@@ -283,7 +283,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Heals an ally for 20 Health.",
+		"ability_desc": "Heals an ally for 20 HP.",
 		"ability_name": "Heal",
 		"description": "A dedicated holy healer who constantly heals her allies instead of attacking enemies.",
 		"name": "Cleric",
@@ -330,7 +330,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Heals all allies for 25% missing Health.",
+		"ultimate_desc": "Heals all allies for 25% missing HP.",
 		"ultimate_name": "Mass Restoration",
 		"unit_id": "cleric"
 	},
@@ -880,11 +880,11 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Heals a target for 15% of their maximum health over 3s.",
+		"ability_desc": "Heals a target for 15% of their maximum HP over 3s.",
 		"ability_name": "Healing Bloom",
 		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
 		"name": "Mistcaller",
-		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum health. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing health over 3s.",
+		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum HP. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing HP over 3s.",
 		"passive_ids": [
 			"restorative_mist"
 		],
@@ -928,7 +928,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum health over 3s. Excess healing is converted into temporary maximum health.",
+		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum HP over 3s. Excess healing is converted into temporary maximum HP.",
 		"ultimate_name": "Enveloping Mist",
 		"unit_id": "mistcaller"
 	},
@@ -1036,7 +1036,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Summons 2 Skeleton warriors.",
+		"ability_desc": "Summons 2 Skeleton minions.",
 		"ability_name": "Raise Dead",
 		"description": "A dark sorcerer who commands the undead, summoning allies to fight for him.",
 		"name": "Necromancer",
@@ -1079,7 +1079,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Summons 3 brutish Ghouls.",
+		"ultimate_desc": "Summons 3 Ghoul minions.",
 		"ultimate_name": "Army of Darkness",
 		"unit_id": "necromancer"
 	},

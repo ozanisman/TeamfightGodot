@@ -202,17 +202,22 @@ void handle_death(
 
 	UnitState *killer_unit = targeting::unit_by_id(world, killer_id);
 	if (killer_unit != nullptr) {
-		uc(world, *killer_unit).kills += 1;
-		// Minion deaths do not count for team score
+		// Minion deaths do not count for KDA stats or trigger takedown effects
 		static const StringName sn_minion("minion");
+		if (uc(world, target).role_id != sn_minion) {
+			uc(world, *killer_unit).kills += 1;
+		}
+		// Minion deaths do not count for team score
 		if (score.player_kills != nullptr && killer_unit->team == sn_player() && uc(world, target).role_id != sn_minion) {
 			*score.player_kills += 1;
 		} else if (score.enemy_kills != nullptr && killer_unit->team == sn_enemy() && uc(world, target).role_id != sn_minion) {
 			*score.enemy_kills += 1;
 		}
-		const EffectContext takedown_context =
-				combat::build_context(*killer_unit, &target, nullptr, killer_damage, sn_takedown());
-		combat::run_on_takedown_effects(world, host, *killer_unit, target, killer_damage, true, takedown_context);
+		if (uc(world, target).role_id != sn_minion) {
+			const EffectContext takedown_context =
+					combat::build_context(*killer_unit, &target, nullptr, killer_damage, sn_takedown());
+			combat::run_on_takedown_effects(world, host, *killer_unit, target, killer_damage, true, takedown_context);
+		}
 	}
 
 	std::set<int64_t> assist_ids;
@@ -227,7 +232,11 @@ void handle_death(
 		if (score.time - hit_time <= ASSIST_WINDOW) {
 			UnitState *assist_unit = targeting::unit_by_id(world, source_id);
 			if (assist_unit != nullptr) {
-				uc(world, *assist_unit).assists += 1;
+				// Minion deaths do not count for assist stats
+				static const StringName sn_minion("minion");
+				if (uc(world, target).role_id != sn_minion) {
+					uc(world, *assist_unit).assists += 1;
+				}
 				assist_ids.insert(source_id);
 				assist_damage_map[source_id] = entry.second.damage;
 			}
@@ -245,7 +254,11 @@ void handle_death(
 		}
 		UnitState *assist_unit = targeting::unit_by_id(world, benefactor_id);
 		if (assist_unit != nullptr) {
-			uc(world, *assist_unit).assists += 1;
+			// Minion deaths do not count for assist stats
+			static const StringName sn_minion("minion");
+			if (uc(world, target).role_id != sn_minion) {
+				uc(world, *assist_unit).assists += 1;
+			}
 			assist_ids.insert(benefactor_id);
 			if (assist_damage_map.find(benefactor_id) == assist_damage_map.end()) {
 				assist_damage_map[benefactor_id] = 0.0;
@@ -256,10 +269,14 @@ void handle_death(
 	for (const int64_t assist_id : assist_ids) {
 		UnitState *assist_unit = targeting::unit_by_id(world, assist_id);
 		if (assist_unit != nullptr) {
-			const double damage = assist_damage_map[assist_id];
-			const EffectContext takedown_context =
-					combat::build_context(*assist_unit, &target, nullptr, damage, sn_takedown());
-			combat::run_on_takedown_effects(world, host, *assist_unit, target, damage, false, takedown_context);
+			// Minion deaths do not trigger takedown effects
+			static const StringName sn_minion("minion");
+			if (uc(world, target).role_id != sn_minion) {
+				const double damage = assist_damage_map[assist_id];
+				const EffectContext takedown_context =
+						combat::build_context(*assist_unit, &target, nullptr, damage, sn_takedown());
+				combat::run_on_takedown_effects(world, host, *assist_unit, target, damage, false, takedown_context);
+			}
 		}
 	}
 

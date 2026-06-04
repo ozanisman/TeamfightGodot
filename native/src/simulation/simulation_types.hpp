@@ -354,7 +354,7 @@ struct UnitStateCold {
 	struct SlowBuff {
 		double slow_percentage = 0.0;
 		double remaining_duration = 0.0;
-		String reason;
+		StringName reason;
 	};
 	std::vector<SlowBuff> slow_buffs;
 

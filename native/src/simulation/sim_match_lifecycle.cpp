@@ -290,8 +290,6 @@ void respawn_unit(
 	unit.perceived_threat = 0.0;
 	unit.ability_cooldown = get_effective_ability_cd(unit);
 	unit.stun_remaining = 0.0;
-	unit.slow_remaining = 0.0;
-	unit.slow_move_mult = 1.0;
 	unit.root_remaining = 0.0;
 	unit.silence_remaining = 0.0;
 	unit.silence_ability_remaining = 0.0;

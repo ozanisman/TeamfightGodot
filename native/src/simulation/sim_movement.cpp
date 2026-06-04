@@ -125,7 +125,7 @@ void move_toward_target(SimWorld &world, UnitState &unit, const UnitState &targe
 }
 
 void move_toward_target_with_range(SimWorld &world, UnitState &unit, const UnitState &target, double target_range) {
-	double speed = get_effective_move_speed(unit) * movement_speed_multiplier(unit) * world.tick_rate;
+	double speed = get_effective_move_speed(unit) * movement_speed_multiplier(world, unit) * world.tick_rate;
 	if (unit.last_kite_timer > 0.0) {
 		speed *= KITE_SPEED_MODIFIER;
 	}
@@ -246,7 +246,7 @@ bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit,
 	vel_x /= new_mag;
 	vel_y /= new_mag;
 	unit.last_kite_timer = KITE_DURATION;
-	const double move_speed = get_effective_move_speed(unit) * movement_speed_multiplier(unit);
+	const double move_speed = get_effective_move_speed(unit) * movement_speed_multiplier(world, unit);
 	const double step = move_speed * KITE_SPEED_MODIFIER * world.tick_rate;
 	const double new_x = Math::clamp(ux + vel_x * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
 	const double new_y = Math::clamp(uy + vel_y * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);

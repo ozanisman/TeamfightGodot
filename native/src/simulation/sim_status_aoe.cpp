@@ -73,7 +73,7 @@ void apply_aoe_slow(SimWorld &world, UnitState &source, double radius, double sl
 void apply_aoe_slow_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double slow_percentage, double duration, const SimHostCallbacks *host) {
 	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_slow"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, [&](UnitState &unit) {
-		apply_slow(world, source, unit, slow_percentage, duration);
+		apply_slow(world, source, unit, slow_percentage, duration, effect.reason);
 	});
 }
 

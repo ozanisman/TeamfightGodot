@@ -12,7 +12,8 @@ using namespace internal;
 
 bool target_has_status(const SimWorld &world, const UnitState &target, const StringName &status_kind) {
 	if (status_kind == sn_slow()) {
-		return target.slow_remaining > 0.0;
+		const UnitStateCold &cold = uc(world, target);
+		return !cold.slow_buffs.empty();
 	}
 	if (status_kind == sn_root()) {
 		return target.root_remaining > 0.0;
@@ -49,7 +50,7 @@ void apply_stun(SimWorld &world, UnitState &source, UnitState &target, double du
 	uc(world, source).stuns += 1;
 }
 
-void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double slow_percentage, double duration) {
+void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double slow_percentage, double duration, const String &reason) {
 	(void)source;
 	(void)world;
 	if (duration <= 0.0 || slow_percentage <= 0.0) {
@@ -61,9 +62,11 @@ void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double sl
 		return;
 	}
 	const double pct = Math::clamp(slow_percentage, 0.0, 1.0);
-	const double mult = Math::clamp(1.0 - pct, SLOW_MOVEMENT_MULTIPLIER_MIN, 1.0);
-	target.slow_remaining = Math::max(target.slow_remaining, effective_duration);
-	target.slow_move_mult = Math::min(target.slow_move_mult, mult);
+	UnitStateCold::SlowBuff new_buff;
+	new_buff.slow_percentage = pct;
+	new_buff.remaining_duration = effective_duration;
+	new_buff.reason = StringName(reason);
+	uc(world, target).slow_buffs.push_back(new_buff);
 }
 
 void apply_root(SimWorld &world, UnitState &source, UnitState &target, double duration) {

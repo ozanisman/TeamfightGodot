@@ -42,7 +42,7 @@ Dictionary exec_status_cc(
 			Dictionary slow_result;
 			slow_result["success"] = true;
 			if (target != nullptr) {
-				sim::status::apply_slow(world, source, *target, effect.scalar0, effect.scalar1);
+				sim::status::apply_slow(world, source, *target, effect.scalar0, effect.scalar1, effect.reason);
 			}
 			return slow_result;
 		}

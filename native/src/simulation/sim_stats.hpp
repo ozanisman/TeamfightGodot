@@ -2,6 +2,7 @@
 #define SIM_STATS_HPP
 
 #include "simulation_types.hpp"
+#include "sim_world.hpp"
 #include "sim_stats.inl.hpp" // IWYU pragma: export
 
 namespace sim {
@@ -14,7 +15,7 @@ inline double distance_between(const UnitState &left, const UnitState &right) {
 	return distance_between_coords(left.pos_x, left.pos_y, right.pos_x, right.pos_y);
 }
 
-double movement_speed_multiplier(const UnitState &unit);
+double movement_speed_multiplier(const SimWorld &world, const UnitState &unit);
 
 } // namespace sim
 

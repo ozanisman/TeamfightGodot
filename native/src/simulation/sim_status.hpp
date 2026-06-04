@@ -10,7 +10,7 @@ namespace status {
 bool target_has_status(const SimWorld &world, const UnitState &target, const StringName &status_kind);
 
 void apply_stun(SimWorld &world, UnitState &source, UnitState &target, double duration);
-void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double slow_percentage, double duration);
+void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double slow_percentage, double duration, const String &reason = String());
 void apply_root(SimWorld &world, UnitState &source, UnitState &target, double duration);
 void apply_silence(SimWorld &world, UnitState &source, UnitState &target, double duration, bool block_abilities, bool block_ultimate);
 void apply_disarm(SimWorld &world, UnitState &source, UnitState &target, double duration);

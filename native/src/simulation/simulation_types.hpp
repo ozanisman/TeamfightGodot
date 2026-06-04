@@ -350,6 +350,14 @@ struct UnitStateCold {
 	};
 	std::vector<ReflectBuff> reflect_buffs;
 
+	// Slow buff effects (active slows from abilities/ultimates)
+	struct SlowBuff {
+		double slow_percentage = 0.0;
+		double remaining_duration = 0.0;
+		String reason;
+	};
+	std::vector<SlowBuff> slow_buffs;
+
 	// Channel effect state
 	bool is_channeling = false;
 	double channel_remaining_duration = 0.0;
@@ -406,9 +414,6 @@ struct UnitState {
 	double stun_remaining = 0.0;
 	/// Seconds alive during hard CC (stun_remaining > 0); incremented per tick by min(remaining, tick_rate).
 	double hard_cc_seconds = 0.0;
-	/// Movement slow: remaining duration and multiplier on base move speed (1.0 = no slow).
-	double slow_remaining = 0.0;
-	double slow_move_mult = 1.0;
 	/// Cannot move (separation / kite / chase) while > 0; can still cast and auto if in range.
 	double root_remaining = 0.0;
 	double silence_remaining = 0.0;

@@ -61,12 +61,17 @@ void cooldowns_and_cc(
 			unit.stun_remaining = 0.0;
 		}
 	}
-	if (unit.slow_remaining > 0.0) {
+	if (!uc(world, unit).slow_buffs.empty()) {
 		SimProfileAccScope _ucc_slow(profile_sim, profile.ucc_slow);
-		unit.slow_remaining -= tick_rate;
-		if (unit.slow_remaining <= 0.0) {
-			unit.slow_remaining = 0.0;
-			unit.slow_move_mult = 1.0;
+		auto &slow_buffs = uc(world, unit).slow_buffs;
+		size_t index = 0;
+		while (index < slow_buffs.size()) {
+			slow_buffs[index].remaining_duration = Math::max(0.0, slow_buffs[index].remaining_duration - tick_rate);
+			if (slow_buffs[index].remaining_duration <= 0.0) {
+				slow_buffs.erase(slow_buffs.begin() + static_cast<std::ptrdiff_t>(index));
+			} else {
+				++index;
+			}
 		}
 	}
 	if (unit.root_remaining > 0.0) {

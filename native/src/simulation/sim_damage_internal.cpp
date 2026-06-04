@@ -99,7 +99,8 @@ UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 
 bool target_has_status(const SimWorld &world, const UnitState &target, const StringName &status_kind) {
 	if (status_kind == sn_slow()) {
-		return target.slow_remaining > 0.0;
+		const UnitStateCold &cold = uc(world, target);
+		return !cold.slow_buffs.empty();
 	}
 	if (status_kind == sn_root()) {
 		return target.root_remaining > 0.0;

@@ -28,7 +28,7 @@ String viewer_state_string(const UnitState &unit, const UnitStateCold &cold) {
 	if (unit.disarm_remaining > 0.0) {
 		return String("DISARMED");
 	}
-	if (unit.slow_remaining > 0.0) {
+	if (!cold.slow_buffs.empty()) {
 		return String("SLOWED");
 	}
 	if (cold.is_channeling) {
@@ -84,7 +84,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["target_id"] = u.target_id;
 		d["stun"] = u.stun_remaining;
 		d["stun_remaining"] = u.stun_remaining;
-		d["slow_remaining"] = u.slow_remaining;
+		d["slow_remaining"] = uc.slow_buffs.empty() ? 0.0 : 1.0;
 		d["root_remaining"] = u.root_remaining;
 		d["silence_remaining"] = u.silence_remaining;
 		d["disarm_remaining"] = u.disarm_remaining;

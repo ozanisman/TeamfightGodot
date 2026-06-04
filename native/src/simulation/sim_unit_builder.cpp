@@ -316,8 +316,6 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	unit.current_target_score = 0.0;
 	unit.stun_remaining = 0.0;
 	unit.hard_cc_seconds = 0.0;
-	unit.slow_remaining = 0.0;
-	unit.slow_move_mult = 1.0;
 	unit.root_remaining = 0.0;
 	unit.silence_remaining = 0.0;
 	unit.silence_ability_remaining = 0.0;

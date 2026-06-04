@@ -108,8 +108,7 @@ Dictionary exec_status_cc(
 		case EFFECT_OPCODE_REFLECT: {
 			Dictionary rf_result;
 			rf_result["success"] = true;
-			StringName damage_type = effect.int0 == 1 ? StringName("all") : StringName("physical");
-			sim::periodic::apply_reflect_buff(world, source, source, effect.scalar0, effect.scalar1, context.action_kind, damage_type, effect.reason);
+			sim::periodic::apply_reflect_buff(world, source, source, effect.scalar0, effect.scalar1, context.action_kind, effect.damage_type, effect.reason);
 			return rf_result;
 		}
 		default:

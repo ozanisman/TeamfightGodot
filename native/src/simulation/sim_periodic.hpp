@@ -194,7 +194,7 @@ void apply_aoe_reflect_shape(
 		const EffectRecord &effect,
 		double pct,
 		double duration,
-		bool all_damage_types,
+		const StringName &damage_type,
 		const StringName &action_kind,
 		const String &reason);
 

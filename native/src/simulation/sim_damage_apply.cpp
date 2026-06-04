@@ -132,6 +132,10 @@ void maybe_apply_reflect_damage(
 			applies = true;
 		} else if (entry.damage_type == StringName("physical") && damage_type == sn_physical()) {
 			applies = true;
+		} else if (entry.damage_type == StringName("magic") && damage_type == sn_magic()) {
+			applies = true;
+		} else if (entry.damage_type == StringName("true") && damage_type == sn_true()) {
+			applies = true;
 		}
 
 		if (!applies) {
@@ -157,6 +161,10 @@ void maybe_apply_reflect_damage(
 		if (buff.damage_type == StringName("all")) {
 			applies = true;
 		} else if (buff.damage_type == StringName("physical") && damage_type == sn_physical()) {
+			applies = true;
+		} else if (buff.damage_type == StringName("magic") && damage_type == sn_magic()) {
+			applies = true;
+		} else if (buff.damage_type == StringName("true") && damage_type == sn_true()) {
 			applies = true;
 		}
 

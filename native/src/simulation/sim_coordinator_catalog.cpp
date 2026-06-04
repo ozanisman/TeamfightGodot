@@ -32,7 +32,7 @@ void TeamfightSimulationCore::_finalize_reflect_passives(sim::UnitState &unit, s
 		if (eff.opcode == sim::EFFECT_OPCODE_REFLECT_DAMAGE) {
 			sim::PassiveReflectEntry entry;
 			entry.percentage = eff.scalar0;
-			entry.damage_type = eff.int0 == 1 ? StringName("all") : StringName("physical");
+			entry.damage_type = eff.damage_type;
 			entry.action_kind = StringName("passive");
 			cold.passive_reflect_entries.push_back(entry);
 		}

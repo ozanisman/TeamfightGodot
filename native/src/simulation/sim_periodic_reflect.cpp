@@ -60,14 +60,13 @@ void apply_aoe_reflect_shape(
 		const EffectRecord &effect,
 		double pct,
 		double duration,
-		bool all_damage_types,
+		const StringName &damage_type,
 		const StringName &action_kind,
 		const String &reason) {
 	if (effect.aoe_shape_params.radius <= 0.0 || duration <= 0.0 || pct <= 0.0) {
 		return;
 	}
 	record_aoe_shape_fx(host.viewer_hooks, world, source, target, effect, StringName("aoe_reflect"));
-	const StringName damage_type = all_damage_types ? StringName("all") : StringName("physical");
 	for_each_ally_in_aoe_shape(world, source, target, effect, 0, [&](UnitState &ally) {
 		apply_reflect_buff(world, source, ally, pct, duration, action_kind, damage_type, reason);
 	});

@@ -82,11 +82,22 @@ bool try_fill_aoe(EffectRecord &compiled, const StringName &kind, ParamTracker &
 		return true;
 	}
 	if (kind == sn_aoe_reflect()) {
-		// TODO: Rework reflect_type to be selectable per damage type (physical, magic, true) instead of binary "all" vs "physical"
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("reflect_percentage", 0.0));
 		compiled.scalar2 = double(tracker.get("duration", 0.0));
-		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
+		String reflect_type_str = String(tracker.get("reflect_type", "all"));
+		if (reflect_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (reflect_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (reflect_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else if (reflect_type_str == "all") {
+			compiled.damage_type = StringName("all");
+		} else {
+			UtilityFunctions::push_error(vformat("Invalid reflect_type '%s' for aoe_reflect effect. Must be 'physical', 'magic', 'true', or 'all'", reflect_type_str));
+			return false;
+		}
 		compiled.aoe_shape_params = parse_aoe_shape_metadata(params, tracker);
 		compiled.reason = String(tracker.get("reason", "AOE Reflect"));
 		return true;

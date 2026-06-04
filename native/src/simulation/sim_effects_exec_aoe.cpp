@@ -140,7 +140,7 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_REFLECT: {
 			Dictionary aoe_rf_result;
 			aoe_rf_result["success"] = true;
-			sim::periodic::apply_aoe_reflect_shape(world, host, source, target, effect, effect.scalar1, effect.scalar2, effect.int0 == 1, context.action_kind, effect.reason);
+			sim::periodic::apply_aoe_reflect_shape(world, host, source, target, effect, effect.scalar1, effect.scalar2, effect.damage_type, context.action_kind, effect.reason);
 			return aoe_rf_result;
 		}
 		case EFFECT_OPCODE_AOE_STUN: {

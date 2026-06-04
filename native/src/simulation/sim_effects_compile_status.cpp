@@ -150,7 +150,19 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 	if (kind == sn_reflect()) {
 		compiled.scalar0 = double(tracker.get("reflect_percentage", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
-		compiled.int0 = tracker.get("reflect_type", "all") == "all" ? 1 : 0;
+		String reflect_type_str = String(tracker.get("reflect_type", "all"));
+		if (reflect_type_str == "physical") {
+			compiled.damage_type = sn_physical();
+		} else if (reflect_type_str == "magic") {
+			compiled.damage_type = sn_magic();
+		} else if (reflect_type_str == "true") {
+			compiled.damage_type = sn_true();
+		} else if (reflect_type_str == "all") {
+			compiled.damage_type = StringName("all");
+		} else {
+			UtilityFunctions::push_error(vformat("Invalid reflect_type '%s' for reflect effect. Must be 'physical', 'magic', 'true', or 'all'", reflect_type_str));
+			return false;
+		}
 		compiled.reason = String(tracker.get("reason", "Reflect"));
 		return true;
 	}

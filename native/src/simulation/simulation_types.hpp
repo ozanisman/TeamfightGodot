@@ -246,7 +246,7 @@ struct PendingSpawn {
 /// Passive reflect entry for tracking reflect damage sources
 struct PassiveReflectEntry {
 	double percentage = 0.0;
-	StringName damage_type; // "all" or "physical"
+	StringName damage_type; // "physical", "magic", "true", or "all"
 	StringName action_kind; // "passive", "ability", "ultimate"
 };
 
@@ -345,7 +345,7 @@ struct UnitStateCold {
 		double remaining_duration = 0.0;
 		StringName action_kind; // "auto", "ability", "ultimate", "passive"
 		int64_t source_instance_id = 0; // Who granted this buff (for AOE reflect attribution)
-		StringName damage_type; // "all" or "physical"
+		StringName damage_type; // "physical", "magic", "true", or "all"
 		String reason;
 	};
 	std::vector<ReflectBuff> reflect_buffs;

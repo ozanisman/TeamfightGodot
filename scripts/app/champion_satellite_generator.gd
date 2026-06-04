@@ -243,6 +243,11 @@ static func _parse_single_damage_type(effect: Dictionary, damage_types: Array[St
 			var effects: Array = params.get("effects", [])
 			for sub_effect in effects:
 				_parse_single_damage_type(sub_effect, damage_types)
+		&"multi_target":
+			var params: Dictionary = effect.get("params", {})
+			var sub_effects: Dictionary = params.get("sub_effects", {})
+			if not sub_effects.is_empty():
+				_parse_single_damage_type(sub_effects, damage_types)
 
 
 ## Parse a single effect for CC effects.
@@ -271,6 +276,11 @@ static func _parse_single_cc(effect: Dictionary, cc_effects: Array[StringName]) 
 			var effects: Array = params.get("effects", [])
 			for sub_effect in effects:
 				_parse_single_cc(sub_effect, cc_effects)
+		&"multi_target":
+			var params: Dictionary = effect.get("params", {})
+			var sub_effects: Dictionary = params.get("sub_effects", {})
+			if not sub_effects.is_empty():
+				_parse_single_cc(sub_effects, cc_effects)
 		_:
 			# Check params for CC-related fields
 			var params: Dictionary = effect.get("params", {})
@@ -333,13 +343,18 @@ static func _parse_single_utility(effect: Dictionary, utility_effects: Array[Str
 		if display_base in utility_kinds and not utility_effects.has(display_base):
 			utility_effects.append(display_base)
 	
-	# Check for multi_effect
+	# Check for multi_effect and multi_target
 	match kind:
 		&"multi_effect":
 			var params: Dictionary = effect.get("params", {})
 			var effects: Array = params.get("effects", [])
 			for sub_effect in effects:
 				_parse_single_utility(sub_effect, utility_effects)
+		&"multi_target":
+			var params: Dictionary = effect.get("params", {})
+			var sub_effects: Dictionary = params.get("sub_effects", {})
+			if not sub_effects.is_empty():
+				_parse_single_utility(sub_effects, utility_effects)
 
 
 ## Parse crowd control effects from unit data.

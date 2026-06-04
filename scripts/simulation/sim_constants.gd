@@ -61,8 +61,12 @@ const EFFECT_METADATA: Dictionary = {
 	"knockback": {"color": "#ce88ee", "category": "CC", "description": "The target is pushed away from the source."},
 	"reflect": {"color": "#ff9933", "category": "DEBUFF", "description": "A percentage of incoming damage is dealt back to the attacker."},
 	"shield": {"color": "#66e666", "category": "UTILITY", "description": "Absorbs incoming damage before HP is affected."},
-	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies."},
+	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies. Can ends prematurely when attacking or casting unless specified."},
 	"heal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP to the target."},
+	"dodge": {"color": "#66e666", "category": "UTILITY", "description": "Chance to avoid incoming auto attacks, taking no damage."},
+	"mana": {"color": "#66e666", "category": "UTILITY", "description": "Restores mana to the target."},
+	"dash": {"color": "#66e666", "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
+	"summon": {"color": "#66e666", "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
 	"physical damage": {"color": "#ff5555", "category": "DAMAGE", "description": "Value is reduced by the target's armor."},
 	"magic damage": {"color": "#55aaff", "category": "DAMAGE", "description": "Value is reduced by the target's magic resist."},
 	"true damage": {"color": "#eecfa1", "category": "DAMAGE", "description": "Value ignores ALL defensive stats."}

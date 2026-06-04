@@ -37,6 +37,10 @@ static func generate_satellites(champion_id: StringName, unit_data: Dictionary =
 		var cc_satellites: Array[SatelliteSpec] = _parse_cc_from_abilities(champion_id)
 		satellites.append_array(cc_satellites)
 		
+		# Draft phase: parse utility effects from champion abilities
+		var utility_satellites: Array[SatelliteSpec] = _parse_utility_from_abilities(champion_id)
+		satellites.append_array(utility_satellites)
+		
 		# Draft phase: parse damage types from champion abilities
 		var damage_satellites: Array[SatelliteSpec] = _parse_damage_types(champion_id)
 		satellites.append_array(damage_satellites)
@@ -114,6 +118,57 @@ static func _parse_cc_from_abilities(champion_id: StringName) -> Array[Satellite
 	
 	# Create satellite specs for found CC effects
 	for effect_type in cc_effects:
+		var spec: SatelliteSpec = SatelliteRegistriesScript.status(effect_type)
+		if spec != null:
+			satellites.append(spec)
+	
+	return satellites
+
+
+## Parse utility effects from champion abilities (draft phase).
+static func _parse_utility_from_abilities(champion_id: StringName) -> Array[SatelliteSpec]:
+	var satellites: Array[SatelliteSpec] = []
+	
+	var champion = ChampionCatalogScript.get_champion(champion_id)
+	if champion == null:
+		return satellites
+	
+	var champion_data: Dictionary = champion.to_dict()
+	var utility_effects: Array[StringName] = []
+	
+	# Parse ability for utility effects
+	var ability = champion_data.get("ability")
+	if ability and not ability.is_empty():
+		_parse_single_utility(ability, utility_effects)
+	
+	# Parse ultimate for utility effects
+	var ultimate = champion_data.get("ultimate")
+	if ultimate and not ultimate.is_empty():
+		_parse_single_utility(ultimate, utility_effects)
+	
+	# Parse passives for utility effects
+	var passive_ids: Array = champion_data.get("passive_ids", [])
+	var passives_dict: Dictionary = ChampionCatalogScript.build_passive_registry()
+	for passive_id in passive_ids:
+		var passive: Dictionary = passives_dict.get(passive_id, {})
+		if not passive.is_empty():
+			# Passives have nested effect arrays (post_attack, on_attack, etc.)
+			for key in passive:
+				var value = passive[key]
+				if value is Array:
+					for effect in value:
+						# Convert EffectSpec to dictionary if needed
+						var effect_dict: Dictionary
+						if effect.has_method("to_dict"):
+							effect_dict = effect.to_dict()
+						elif effect is Dictionary:
+							effect_dict = effect
+						else:
+							continue
+						_parse_single_utility(effect_dict, utility_effects)
+	
+	# Create satellite specs for found utility effects
+	for effect_type in utility_effects:
 		var spec: SatelliteSpec = SatelliteRegistriesScript.status(effect_type)
 		if spec != null:
 			satellites.append(spec)
@@ -231,6 +286,60 @@ static func _parse_single_cc(effect: Dictionary, cc_effects: Array[StringName]) 
 			if params.has("taunt_duration") and params["taunt_duration"] > 0:
 				if not cc_effects.has(&"taunt"):
 					cc_effects.append(&"taunt")
+
+
+## Parse a single effect for utility effects.
+static func _parse_single_utility(effect: Dictionary, utility_effects: Array[StringName]) -> void:
+	var kind: StringName = effect.get("kind", &"")
+	
+	# Check for direct utility kinds (heal, heal_over_time, shield, stealth, dodge, dash, summon)
+	var utility_kinds: Array[StringName] = [&"heal", &"heal_over_time", &"shield", &"stealth", &"dodge", &"dash", &"summon"]
+	if kind in utility_kinds:
+		# Map heal_over_time to heal for display
+		var display_kind: StringName = kind
+		if kind == &"heal_over_time":
+			display_kind = &"heal"
+		if not utility_effects.has(display_kind):
+			utility_effects.append(display_kind)
+	
+	# Check for auto_dodge (map to dodge)
+	if kind == &"auto_dodge":
+		if not utility_effects.has(&"dodge"):
+			utility_effects.append(&"dodge")
+	
+	# Check for self_dash (map to dash)
+	if kind == &"self_dash":
+		if not utility_effects.has(&"dash"):
+			utility_effects.append(&"dash")
+	
+	# Check for summon_ally (map to summon)
+	if kind == &"summon_ally":
+		if not utility_effects.has(&"summon"):
+			utility_effects.append(&"summon")
+	
+	# Check for mana-related effects (map to mana)
+	var mana_kinds: Array[StringName] = [&"mana_restore", &"mana_regen", &"mana_restore_on_hit", &"drain_target_mana_on_hit"]
+	if kind in mana_kinds:
+		if not utility_effects.has(&"mana"):
+			utility_effects.append(&"mana")
+	
+	# Check for AOE variants
+	if str(kind).begins_with("aoe_"):
+		var base_effect: StringName = SimConstants.get_base_effect_from_aoe(kind)
+		# Map aoe_heal_over_time to heal for display
+		var display_base: StringName = base_effect
+		if base_effect == &"heal_over_time":
+			display_base = &"heal"
+		if display_base in utility_kinds and not utility_effects.has(display_base):
+			utility_effects.append(display_base)
+	
+	# Check for multi_effect
+	match kind:
+		&"multi_effect":
+			var params: Dictionary = effect.get("params", {})
+			var effects: Array = params.get("effects", [])
+			for sub_effect in effects:
+				_parse_single_utility(sub_effect, utility_effects)
 
 
 ## Parse crowd control effects from unit data.

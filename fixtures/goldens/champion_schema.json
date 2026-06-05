@@ -136,11 +136,11 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Explosive shell that deals 150% damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
+		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ability_name": "Explosive Shell",
-		"description": "A fragile but explosive backline siege unit that deals massive damage to anything in its sights.",
+		"description": "A fragile slow backline siege unit that deals explosive damage to anything in its sights.",
 		"name": "Artillery",
-		"passive_desc": "Attacks and abilities deal additional 30% splash damage in a 0.5 tile radius.",
+		"passive_desc": "Attacks and abilities deal additional 30% physical damage as splash in a 0.5 tile radius.",
 		"passive_ids": [
 			"demolition"
 		],
@@ -367,11 +367,11 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Taunts all targets in a 2.5 tile radius for 2.5s and deals 130% damage in a 1.0 tile radius.",
+		"ability_desc": "Taunts all targets in a 2.5 tile radius for 2.5s and deals 130% physical damage in a 1.0 tile radius.",
 		"ability_name": "Taunt",
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
 		"name": "Colossus",
-		"passive_desc": "Reduces all incoming damage by 10%.",
+		"passive_desc": "Reduces incoming damage by 10%. (Doesn't affect true damage)",
 		"passive_ids": [
 			"durability"
 		],
@@ -430,7 +430,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Colossal impact in a 2.5 tile radius for 250% damage and a 2.0s stun.",
+		"ultimate_desc": "Colossal impact in a 2.5 tile radius for 250% physical damage and a 2.0s stun.",
 		"ultimate_name": "Colossal Impact",
 		"unit_id": "colossus"
 	},
@@ -461,7 +461,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Disarms target for 1.5s and deals 150% physicaal damage.",
+		"ability_desc": "Disarms target for 1.5s and deals 150% physical damage.",
 		"ability_name": "Disarm",
 		"description": "A weapon specialist who can disarm enemies and prevent them from attacking.",
 		"name": "Disarmer",
@@ -728,9 +728,9 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Grants a 20% max HP shield to himself AND the closest ally. If alone, he gains a 40% max HP shield instead.",
+		"ability_desc": "Grants a 20% max HP shield to himself AND tand he closest ally. If alone, he gains a 40% max HP shield instead.",
 		"ability_name": "Protection",
-		"description": "A hulking protector who uses heavy shields to soak damage and a massive slam to stun entire groups.",
+		"description": "A hulking protector who uses heavy shields to shield his allies.",
 		"name": "Guardian",
 		"passive_desc": "Redirects 20% of damage taken by allies in a 2.0 tile radius.",
 		"passive_ids": [
@@ -785,7 +785,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Slams the ground for 300% damage and a 3.5s stun.",
+		"ultimate_desc": "Slams the ground for 300% physical damage and a 3.5s stun.",
 		"ultimate_name": "Ground Slam",
 		"unit_id": "guardian"
 	},
@@ -820,9 +820,9 @@
 		},
 		"ability_desc": "Gains a 10% max HP shield and 25% reflect for 2.5s.",
 		"ability_name": "Mirror Shield",
-		"description": "A defensive warrior who reflects damage back at attackers and protects allies with mirrored shields.",
+		"description": "A defensive warrior who reflects incoming damage back at attackers.",
 		"name": "Mirror Knight",
-		"passive_desc": "Permanently reflects 10% of all damage taken back to attackers.",
+		"passive_desc": "Reflects 10% of all damage taken back to attackers.",
 		"passive_ids": [
 			"reflective_armor"
 		],
@@ -959,7 +959,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Precise strike for 160% damage that silences the target for 1.0s.",
+		"ability_desc": "Precise strike for 160% physical damage that silences the target for 1.0s.",
 		"ability_name": "Pressure Point",
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
 		"name": "Monk",
@@ -1017,7 +1017,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Gains 25% max HP shield and reflects 75% damage for 5s.",
+		"ultimate_desc": "Gains 25% max HP shield and reflects 75% of incoming damage for 5s.",
 		"ultimate_name": "Drunken Stance",
 		"unit_id": "monk"
 	},
@@ -1122,7 +1122,7 @@
 			},
 			"requires_target_in_range": false
 		},
-		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% damage and stun for 0.5s.",
+		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% physical damage and stun for 0.5s.",
 		"ability_name": "Shadow Dash",
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
 		"name": "Ninja",
@@ -1775,7 +1775,7 @@
 		"ability_name": "Backstab",
 		"description": "A nimble backline specialist who strikes with precision and vanishes before being targeted.",
 		"name": "Rogue",
-		"passive_desc": "25% chance to dodge incoming auto attacks, avoiding all damage.",
+		"passive_desc": "25% chance to dodge incoming auto attacks.",
 		"passive_ids": [
 			"agility"
 		],
@@ -1894,7 +1894,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Strikes target for 170% damage and silences for 2.0s.",
+		"ability_desc": "Strikes target for 170% physical damage and silences for 2.0s.",
 		"ability_name": "Arcane Strike",
 		"description": "A magical assassin who specializes in silencing mages and disrupting spellcasters.",
 		"name": "Silencer",
@@ -1958,7 +1958,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Creates a silence zone for 340% damage, silencing all enemies in 3.0 tile radius for 4.0s.",
+		"ultimate_desc": "Creates a silence zone for 340% physical damage, silencing all enemies in 3.0 tile radius for 4.0s.",
 		"ultimate_name": "Silence Zone",
 		"unit_id": "silencer"
 	},
@@ -2050,7 +2050,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "High-precision strike for 150% damage.",
+		"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
 		"ability_name": "Headshot",
 		"description": "An elite marksman specializing in devastating single-target shots.",
 		"name": "Sniper",
@@ -2098,7 +2098,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Lethal long-range shot for 350% damage.",
+		"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Snipe",
 		"unit_id": "sniper"
 	},
@@ -2133,7 +2133,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Deals 120% damage and applies a bleed that deals 250% AD as a bleed over 3s.",
+		"ability_desc": "Deals 120% physical damage and applies a bleed that deals 250% physical damage as a bleed over 3s.",
 		"ability_name": "Bleeding Cut",
 		"description": "A skilled duelist who grows more dangerous as he fights, excelling in prolonged combats.",
 		"name": "Swordsman",
@@ -2201,7 +2201,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase damage by 50% per stack. If it kills the target, gain full passive stacks.",
+		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase the damage by 50% per stack. If it kills the target, gain full passive stacks.",
 		"ultimate_name": "Execution",
 		"unit_id": "swordsman"
 	},
@@ -2241,9 +2241,9 @@
 		},
 		"ability_desc": "Cleaves enemies in a 150 degree cone within 0.75 tiles for 150% physical damage and a 0.5s stun.",
 		"ability_name": "Cleave",
-		"description": "A formidable bruiser who deals wild area of effect damage, slashing through foes with her massive axe.",
+		"description": "A formidable bruiser who wildly slashes through foes with her massive axe.",
 		"name": "Valkyrie",
-		"passive_desc": "Auto attacks deal an additional 10 physical damage in a 0.75 tile radius and heal for 100% of the damage dealt.",
+		"passive_desc": "Auto attacks deal an additional 7 physical damage in a 0.75 tile radius and heal for 100% of the damage dealt.",
 		"passive_ids": [
 			"sweeping_strikes"
 		],
@@ -2395,7 +2395,7 @@
 		"ability_name": "Chaos Rift",
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
 		"name": "Warlock",
-		"passive_desc": "Gains permanent max HP equal to 50% of all self healing.",
+		"passive_desc": "Gains permanent max HP equal to 50% of self healing.",
 		"passive_ids": [
 			"soul_feast"
 		],
@@ -2653,11 +2653,11 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ability_desc": "Magic strike for 150% damage and a 1.0s disarm.",
+		"ability_desc": "Deals 150% magic damage and a 1.0s disarm.",
 		"ability_name": "Spectral Strike",
 		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
 		"name": "Wraith",
-		"passive_desc": "Every second, enters stealth for 0.5s. Stealth breaks on attack or ability cast.",
+		"passive_desc": "Every second, enters stealth for 0.5s.",
 		"passive_ids": [
 			"shadow_steps"
 		],
@@ -2711,7 +2711,7 @@
 			},
 			"requires_target_in_range": true
 		},
-		"ultimate_desc": "Magic strike for 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
+		"ultimate_desc": "Deals 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Haunt",
 		"unit_id": "wraith"
 	}

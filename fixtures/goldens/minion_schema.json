@@ -41,7 +41,7 @@
 		"ability_name": "",
 		"description": "A fragile undead warrior that fights with basic attacks.",
 		"name": "Skeleton",
-		"passive_desc": "Takes 5 damage every second.",
+		"passive_desc": "Takes 5 true damage every second.",
 		"passive_ids": [
 			"unstable_creation"
 		],

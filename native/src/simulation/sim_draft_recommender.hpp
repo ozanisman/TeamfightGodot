@@ -30,6 +30,13 @@ struct PredictionConfig {
 	int confidence_prior_samples = 100;
 
 	double logistic_k = 10.0;
+
+	// Scoring sensitivity parameters (opt-in)
+	float smoothing_strength = 1.0f;
+	int64_t smoothing_threshold_samples = 250;
+	float score_sharpness = 1.0f;
+	bool use_multiplicative_model = false;
+	float interaction_weight = 0.0f;
 };
 
 struct DraftScoreWeights {

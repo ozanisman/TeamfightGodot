@@ -174,7 +174,8 @@ func _initialize() -> void:
 		print("========================")
 		print("")  # Force flush
 		
-		var report = core.run_stress_test_with_perturbations(
+		# Run with default config
+		var report_default = core.run_stress_test_with_perturbations(
 			test["allies"],
 			test["enemies"],
 			test["available"],
@@ -185,41 +186,64 @@ func _initialize() -> void:
 			0.25,
 			0.25,
 			1.2,
-			1.2
+			1.2,
+			false  # Default config
 		)
 		
-		scenario_reports.append({"name": test["name"], "report": report})
+		# Run with tuned config
+		var report_tuned = core.run_stress_test_with_perturbations(
+			test["allies"],
+			test["enemies"],
+			test["available"],
+			"res://stats_output",
+			42,  # Same seed for comparison
+			30,
+			0.50,
+			0.25,
+			0.25,
+			1.2,
+			1.2,
+			true  # Tuned config
+		)
 		
-		# Print baseline reference
+		scenario_reports.append({"name": test["name"], "report": report_default})
+		
+		# Print baseline reference (same for both configs)
 		print("\nBaseline ranking:")
-		print("  Top-1: %s" % report.get("baseline_top1", ""))
-		print("  Top-3: %s" % ", ".join(report.get("baseline_top3", [])))
+		print("  Top-1: %s" % report_default.get("baseline_top1", ""))
+		print("  Top-3: %s" % ", ".join(report_default.get("baseline_top3", [])))
 		
-		# Print global distribution metrics
-		print("\nGlobal score distribution:")
-		print("  Min: %.6f" % report.get("score_min", 0.0))
-		print("  Max: %.6f" % report.get("score_max", 0.0))
-		print("  Mean: %.6f" % report.get("score_mean", 0.0))
-		print("  P50: %.6f" % report.get("score_p50", 0.0))
-		print("  P90: %.6f" % report.get("score_p90", 0.0))
+		# Print comparison of score ranges
+		print("\nScore range comparison:")
+		var range_default = report_default.get("score_max", 0.0) - report_default.get("score_min", 0.0)
+		var range_tuned = report_tuned.get("score_max", 0.0) - report_tuned.get("score_min", 0.0)
+		print("  Default: %.6f (min=%.6f, max=%.6f)" % [range_default, report_default.get("score_min", 0.0), report_default.get("score_max", 0.0)])
+		print("  Tuned:   %.6f (min=%.6f, max=%.6f)" % [range_tuned, report_tuned.get("score_min", 0.0), report_tuned.get("score_max", 0.0)])
+		print("  Expansion: %.2fx" % (range_tuned / range_default if range_default > 0 else 0.0))
 		
-		# Print rank volatility
-		print("\nRank volatility:")
-		print("  Avg rank change: %.6f" % report.get("avg_rank_change", 0.0))
-		print("  Max rank swing: %d" % report.get("max_rank_swing", 0))
+		# Print comparison of rank volatility
+		print("\nRank volatility comparison:")
+		print("  Default: avg=%.6f, max=%d" % [report_default.get("avg_rank_change", 0.0), report_default.get("max_rank_swing", 0)])
+		print("  Tuned:   avg=%.6f, max=%d" % [report_tuned.get("avg_rank_change", 0.0), report_tuned.get("max_rank_swing", 0)])
 		
-		# Print context sensitivity
-		print("\nContext sensitivity:")
-		print("  Avg score delta from baseline: %.6f" % report.get("context_sensitivity", 0.0))
+		# Print comparison of top-3 stability
+		print("\nTop-3 stability comparison:")
+		print("  Default: %.2f%%" % report_default.get("top3_stability_rate", 0.0))
+		print("  Tuned:   %.2f%%" % report_tuned.get("top3_stability_rate", 0.0))
 		
-		# Print winner stability
-		print("\nWinner stability:")
-		print("  Top-1 stability rate: %.2f%%" % report.get("top1_stability_rate", 0.0))
-		print("  Top-3 stability rate: %.2f%%" % report.get("top3_stability_rate", 0.0))
+		# Print context sensitivity comparison
+		print("\nContext sensitivity comparison:")
+		print("  Default: %.6f" % report_default.get("context_sensitivity", 0.0))
+		print("  Tuned:   %.6f" % report_tuned.get("context_sensitivity", 0.0))
 		
-		# Print per-candidate statistics
-		print("\nPer-candidate statistics:")
-		var candidate_stats = report.get("candidate_stats", [])
+		# Print winner stability (default config)
+		print("\nWinner stability (default config):")
+		print("  Top-1 stability rate: %.2f%%" % report_default.get("top1_stability_rate", 0.0))
+		print("  Top-3 stability rate: %.2f%%" % report_default.get("top3_stability_rate", 0.0))
+		
+		# Print per-candidate statistics (default config)
+		print("\nPer-candidate statistics (default config):")
+		var candidate_stats = report_default.get("candidate_stats", [])
 		for stats in candidate_stats:
 			print("  %s:" % stats.get("champion", ""))
 			print("    Mean score: %.6f (stddev: %.6f)" % [stats.get("mean_score", 0.0), stats.get("score_stddev", 0.0)])

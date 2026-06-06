@@ -369,9 +369,18 @@ double DraftStatsDatabase::apply_bayesian_smoothing(double raw_winrate, int64_t 
 	if (samples <= 0) {
 		return config.prior_winrate;
 	}
+	
 	double prior = config.prior_winrate;
 	int64_t N = config.confidence_prior_samples;
-	return (raw_winrate * samples + prior * N) / (samples + N);
+	double adjusted = (raw_winrate * samples + prior * N) / (samples + N);
+	
+	// Apply threshold-based smoothing strength adjustment
+	if (samples < config.smoothing_threshold_samples) {
+		adjusted = config.smoothing_strength * adjusted +
+		           (1.0f - config.smoothing_strength) * 0.5f;
+	}
+	
+	return adjusted;
 }
 
 DraftStatsDatabase::StatValue DraftStatsDatabase::composition_winrate_for(const std::vector<StringName> &team) const {
@@ -464,10 +473,29 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	// Calculate composition bonus
 	double composition_bonus = calculate_composition_bonus(allies, candidate);
 
-	result.score = (_config.base_weight * result.base_winrate) +
-				  (_config.synergy_weight * effective_synergy) +
-				  (_config.matchup_weight * effective_matchup) +
-				  composition_bonus;
+	// Calculate score based on model type
+	if (_config.use_multiplicative_model) {
+		// Multiplicative model: base modulated by context
+		double w_synergy = _config.synergy_weight;
+		double w_counter = _config.matchup_weight;
+		result.score = result.base_winrate
+			* std::pow(std::max(effective_synergy, 1e-4), w_synergy)
+			* std::pow(std::max(effective_matchup, 1e-4), w_counter);
+		result.score = std::clamp(result.score, 0.0, 1.0);
+	} else {
+		// Additive model (default)
+		result.score = (_config.base_weight * result.base_winrate) +
+					  (_config.synergy_weight * effective_synergy) +
+					  (_config.matchup_weight * effective_matchup) +
+					  composition_bonus;
+	}
+
+	// Add interaction term
+	result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
+
+	// Apply score sharpening
+	result.score = std::pow(result.score, _config.score_sharpness);
+
 	return result;
 }
 

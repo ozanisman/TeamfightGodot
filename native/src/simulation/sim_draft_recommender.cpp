@@ -223,8 +223,24 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	return result;
 }
 
-DraftRecommender::DraftRecommender(const DraftEvaluator &evaluator) :
-		_evaluator(evaluator) {
+double DraftEvaluator::evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug) const {
+	DraftEvaluation evaluation = evaluate(candidate, allies, enemies);
+	if (out_debug != nullptr) {
+		out_debug->base = evaluation.base_winrate;
+		out_debug->synergy = evaluation.avg_synergy;
+		out_debug->matchup = evaluation.avg_matchup;
+		out_debug->final = evaluation.score;
+	}
+	return evaluation.score;
+}
+
+DraftRecommender::DraftRecommender(const DraftEvaluator &evaluator, bool debug_mode) :
+		_evaluator(evaluator),
+		_debug_mode(debug_mode) {
+}
+
+void DraftRecommender::set_debug_mode(bool enabled) {
+	_debug_mode = enabled;
 }
 
 std::vector<DraftEvaluation> DraftRecommender::recommend(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const {
@@ -247,16 +263,50 @@ void DraftRecommender::print_top(const std::vector<DraftEvaluation> &ranked, int
 	UtilityFunctions::print(vformat("Draft recommendations (top %d of %d)", limit, ranked.size()));
 	for (int64_t i = 0; i < limit; ++i) {
 		const DraftEvaluation &r = ranked[static_cast<size_t>(i)];
-		UtilityFunctions::print(vformat(
-				"%d. %s score=%.6f base=%.6f synergy=%.6f(%d) matchup=%.6f(%d)",
-				i + 1,
-				String(r.champion),
-				r.score,
-				r.base_winrate,
-				r.avg_synergy,
-				r.synergy_samples,
-				r.avg_matchup,
-				r.matchup_samples));
+		if (_debug_mode) {
+			UtilityFunctions::print(vformat("%d. %s", i + 1, String(r.champion)));
+			UtilityFunctions::print(vformat("  base:    %.6f", r.base_winrate));
+			UtilityFunctions::print(vformat("  synergy: %.6f", r.avg_synergy));
+			UtilityFunctions::print(vformat("  matchup: %.6f", r.avg_matchup));
+			UtilityFunctions::print(vformat("  final:   %.6f", r.score));
+		} else {
+			UtilityFunctions::print(vformat(
+					"%d. %s score=%.6f base=%.6f synergy=%.6f(%d) matchup=%.6f(%d)",
+					i + 1,
+					String(r.champion),
+					r.score,
+					r.base_winrate,
+					r.avg_synergy,
+					r.synergy_samples,
+					r.avg_matchup,
+					r.matchup_samples));
+		}
+	}
+}
+
+void DraftRecommender::run_debug_evaluation_batch(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, int64_t num_runs) const {
+	if (available.empty()) {
+		UtilityFunctions::print("Draft debug evaluation batch: no available champions");
+		return;
+	}
+
+	int64_t runs = num_runs > 0 ? num_runs : 1;
+	for (int64_t run = 0; run < runs; ++run) {
+		std::vector<StringName> batch_allies = allies;
+		std::vector<StringName> batch_enemies = enemies;
+		if (!available.empty()) {
+			if (batch_allies.empty()) {
+				batch_allies.push_back(available[static_cast<size_t>(run % static_cast<int64_t>(available.size()))]);
+			}
+			if (batch_enemies.empty()) {
+				batch_enemies.push_back(available[static_cast<size_t>((run + 1) % static_cast<int64_t>(available.size()))]);
+			}
+		}
+
+		UtilityFunctions::print(vformat("Draft debug evaluation state %d/%d", run + 1, runs));
+		std::vector<DraftEvaluation> ranked = recommend(batch_allies, batch_enemies, available);
+		DraftRecommender debug_recommender(_evaluator, true);
+		debug_recommender.print_top(ranked, static_cast<int64_t>(ranked.size()));
 	}
 }
 

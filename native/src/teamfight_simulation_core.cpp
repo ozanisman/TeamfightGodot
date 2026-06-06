@@ -124,7 +124,9 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("benchmark_progress_read"), &TeamfightSimulationCore::benchmark_progress_read);
 	ClassDB::bind_method(D_METHOD("sim_profile_set_enabled", "enabled"), &TeamfightSimulationCore::sim_profile_set_enabled);
 	ClassDB::bind_method(D_METHOD("targeting_profile_set_enabled", "enabled"), &TeamfightSimulationCore::targeting_profile_set_enabled);
-	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "debug_mode"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -181,6 +183,37 @@ void TeamfightSimulationCore::debug_print_draft_recommendations(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
+		double matchup_weight,
+		bool debug_mode) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return;
+	}
+
+	sim::draft::DraftScoreWeights weights;
+	weights.base = base_weight;
+	weights.synergy = synergy_weight;
+	weights.matchup = matchup_weight;
+
+	sim::draft::DraftEvaluator evaluator(database, weights);
+	sim::draft::DraftRecommender recommender(evaluator, debug_mode);
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available));
+	recommender.print_top(ranked, top_n);
+	std::fflush(stdout);
+}
+
+void TeamfightSimulationCore::run_debug_draft_evaluation_batch(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t num_runs,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
 		double matchup_weight) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
@@ -194,13 +227,48 @@ void TeamfightSimulationCore::debug_print_draft_recommendations(
 	weights.matchup = matchup_weight;
 
 	sim::draft::DraftEvaluator evaluator(database, weights);
-	sim::draft::DraftRecommender recommender(evaluator);
+	sim::draft::DraftRecommender recommender(evaluator, true);
+	recommender.run_debug_evaluation_batch(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available),
+			num_runs);
+	std::fflush(stdout);
+}
+
+Array TeamfightSimulationCore::get_draft_recommendation_names(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t top_n,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return Array();
+	}
+
+	sim::draft::DraftScoreWeights weights;
+	weights.base = base_weight;
+	weights.synergy = synergy_weight;
+	weights.matchup = matchup_weight;
+
+	sim::draft::DraftEvaluator evaluator(database, weights);
+	sim::draft::DraftRecommender recommender(evaluator, false);
 	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
 			array_to_string_names(allies),
 			array_to_string_names(enemies),
 			array_to_string_names(available));
-	recommender.print_top(ranked, top_n);
-	std::fflush(stdout);
+
+	Array result;
+	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	for (int64_t i = 0; i < count; ++i) {
+		result.push_back(String(ranked[static_cast<size_t>(i)].champion));
+	}
+	return result;
 }
 
 double TeamfightSimulationCore::_randf() {

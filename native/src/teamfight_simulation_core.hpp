@@ -269,7 +269,9 @@ public:
 	/// When true (or env TEAMFIGHT_SIM_PROFILE), _simulate emits one stderr JSON line per match with per-section tick timings.
 	void sim_profile_set_enabled(bool enabled);
 	void targeting_profile_set_enabled(bool enabled);
-	void debug_print_draft_recommendations(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 5, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25);
+	void debug_print_draft_recommendations(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 5, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, bool debug_mode = false);
+	void run_debug_draft_evaluation_batch(const Array &allies, const Array &enemies, const Array &available, int64_t num_runs = 50, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25);
+	Array get_draft_recommendation_names(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 3, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25);
 };
 
 #endif

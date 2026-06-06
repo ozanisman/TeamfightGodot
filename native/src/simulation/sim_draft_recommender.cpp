@@ -389,32 +389,40 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 
 	// Base component with confidence weighting
 	DraftStatsDatabase::StatValue base_stat = _database.base_winrate_for(candidate);
+	result.base_raw = base_stat.winrate;
+	result.base_samples = base_stat.samples;
 	result.base_winrate = _database.apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, _config);
 
 	// Synergy component with confidence weighting
 	double synergy_total = 0.0;
+	double synergy_raw_total = 0.0;
 	int64_t synergy_samples = 0;
 	for (const StringName &ally : allies) {
 		DraftStatsDatabase::StatValue synergy_stat;
 		if (_database.synergy_winrate_for(candidate, ally, synergy_stat)) {
 			synergy_total += _database.apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, _config);
+			synergy_raw_total += synergy_stat.winrate;
 			++synergy_samples;
 		}
 	}
 	result.avg_synergy = synergy_samples > 0 ? synergy_total / double(synergy_samples) : 0.5; // Neutral fallback
+	result.synergy_raw = synergy_samples > 0 ? synergy_raw_total / double(synergy_samples) : 0.5;
 	result.synergy_samples = synergy_samples;
 
 	// Counter component with confidence weighting
 	double counter_total = 0.0;
+	double counter_raw_total = 0.0;
 	int64_t counter_samples = 0;
 	for (const StringName &enemy : enemies) {
 		DraftStatsDatabase::StatValue counter_stat;
 		if (_database.counter_winrate_for(candidate, enemy, counter_stat)) {
 			counter_total += _database.apply_bayesian_smoothing(counter_stat.winrate, counter_stat.samples, _config);
+			counter_raw_total += counter_stat.winrate;
 			++counter_samples;
 		}
 	}
 	result.avg_counter = counter_samples > 0 ? counter_total / double(counter_samples) : 0.5; // Neutral fallback
+	result.counter_raw = counter_samples > 0 ? counter_raw_total / double(counter_samples) : 0.5;
 	result.counter_samples = counter_samples;
 
 	result.score = (_config.base_weight * result.base_winrate) +
@@ -465,21 +473,29 @@ void DraftRecommender::print_top(const std::vector<DraftEvaluation> &ranked, int
 		const DraftEvaluation &r = ranked[static_cast<size_t>(i)];
 		if (_debug_mode) {
 			UtilityFunctions::print(vformat("%d. %s", i + 1, String(r.champion)));
-			UtilityFunctions::print(vformat("  base:    %.6f", r.base_winrate));
-			UtilityFunctions::print(vformat("  synergy: %.6f", r.avg_synergy));
-			UtilityFunctions::print(vformat("  counter: %.6f", r.avg_counter));
-			UtilityFunctions::print(vformat("  final:   %.6f", r.score));
+			UtilityFunctions::print(vformat(""));
+			UtilityFunctions::print(vformat("base:"));
+			UtilityFunctions::print(vformat("  raw=%.6f", r.base_raw));
+			UtilityFunctions::print(vformat("  samples=%d", r.base_samples));
+			UtilityFunctions::print(vformat("  adjusted=%.6f", r.base_winrate));
+			UtilityFunctions::print(vformat(""));
+			UtilityFunctions::print(vformat("synergy:"));
+			UtilityFunctions::print(vformat("  raw=%.6f", r.synergy_raw));
+			UtilityFunctions::print(vformat("  samples=%d", r.synergy_samples));
+			UtilityFunctions::print(vformat("  adjusted=%.6f", r.avg_synergy));
+			UtilityFunctions::print(vformat(""));
+			UtilityFunctions::print(vformat("counter:"));
+			UtilityFunctions::print(vformat("  raw=%.6f", r.counter_raw));
+			UtilityFunctions::print(vformat("  samples=%d", r.counter_samples));
+			UtilityFunctions::print(vformat("  adjusted=%.6f", r.avg_counter));
+			UtilityFunctions::print(vformat(""));
+			UtilityFunctions::print(vformat("final=%.6f", r.score));
 		} else {
 			UtilityFunctions::print(vformat(
-					"%d. %s score=%.6f base=%.6f synergy=%.6f(%d) counter=%.6f(%d)",
+					"%d. %s score=%.6f",
 					i + 1,
 					String(r.champion),
-					r.score,
-					r.base_winrate,
-					r.avg_synergy,
-					r.synergy_samples,
-					r.avg_counter,
-					r.counter_samples));
+					r.score));
 		}
 	}
 }

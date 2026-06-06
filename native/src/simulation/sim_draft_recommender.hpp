@@ -33,9 +33,19 @@ struct DraftScoreWeights {
 struct DraftEvaluation {
 	StringName champion;
 	double score = 0.0;
+	
+	// Adjusted values (after Bayesian smoothing)
 	double base_winrate = 0.5;
 	double avg_synergy = 0.5;
 	double avg_counter = 0.5;
+	
+	// Raw values (before Bayesian smoothing)
+	double base_raw = 0.5;
+	double synergy_raw = 0.5;
+	double counter_raw = 0.5;
+	
+	// Sample counts
+	int64_t base_samples = 0;
 	int64_t synergy_samples = 0;
 	int64_t counter_samples = 0;
 };

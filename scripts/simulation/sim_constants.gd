@@ -57,7 +57,7 @@ const EFFECT_METADATA: Dictionary = {
 	"root": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move."},
 	"taunt": {"color": "#ce88ee", "category": "CC", "description": "The target is forced to attack the taunter and cannot kite."},
 	"disarm": {"color": "#ce88ee", "category": "CC", "description": "The target cannot auto-attack."},
-	"slow": {"color": "#ce88ee", "category": "CC", "description": "The target's movement speed is reduced by a percentage. Each slow expires independently. The most severe slow is applied each tick."},
+	"slow": {"color": "#ce88ee", "category": "CC", "description": "The target's movement speed is reduced by a percentage. Only the slow with the highest value is applied."},
 	"knockback": {"color": "#ce88ee", "category": "CC", "description": "The target is pushed away from the source."},
 	"reflect": {"color": "#ff9933", "category": "DEBUFF", "description": "A percentage of incoming damage is dealt back to the attacker."},
 	"shield": {"color": "#66e666", "category": "UTILITY", "description": "Absorbs incoming damage before HP. Decays 1% of the current value per tick."},

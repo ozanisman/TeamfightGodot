@@ -4,7 +4,10 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <cmath>
+#include <map>
 #include <set>
+#include <vector>
 
 namespace sim {
 namespace draft {
@@ -633,6 +636,633 @@ double DraftEvaluator::calculate_composition_bonus(const std::vector<StringName>
 		// Severely unbalanced: penalty
 		return -_config.composition_unbalance_penalty;
 	}
+}
+
+StressTestReport DraftEvaluator::run_stress_test(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, int64_t num_iterations) const {
+	StressTestReport report;
+	
+	// Compute baseline ranking (deterministic)
+	std::vector<DraftEvaluation> baseline_ranked;
+	baseline_ranked.reserve(available.size());
+	for (const StringName &candidate : available) {
+		baseline_ranked.push_back(evaluate(candidate, allies, enemies));
+	}
+	std::sort(baseline_ranked.begin(), baseline_ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
+		if (a.score == b.score) {
+			return String(a.champion) < String(b.champion);
+		}
+		return a.score > b.score;
+	});
+	
+	// Store baseline top-3 and top-1
+	for (int64_t i = 0; i < std::min(int64_t(3), static_cast<int64_t>(baseline_ranked.size())); ++i) {
+		report.baseline_top3.push_back(baseline_ranked[i].champion);
+	}
+	if (!baseline_ranked.empty()) {
+		report.baseline_top1 = baseline_ranked[0].champion;
+	}
+	
+	// Create champion -> baseline rank map
+	std::map<StringName, int64_t> baseline_ranks;
+	for (int64_t i = 0; i < static_cast<int64_t>(baseline_ranked.size()); ++i) {
+		baseline_ranks[baseline_ranked[i].champion] = i;
+	}
+	
+	// Accumulate scores and ranks across iterations
+	std::map<StringName, std::vector<double>> score_history;
+	std::map<StringName, std::vector<int64_t>> rank_history;
+	std::vector<double> all_scores;
+	all_scores.reserve(available.size() * num_iterations);
+	
+	int64_t top1_stable_count = 0;
+	int64_t top3_stable_count = 0;
+	
+	for (int64_t iter = 0; iter < num_iterations; ++iter) {
+		// For stress testing, we evaluate the same deterministic scenario multiple times
+		// The "randomness" comes from the test harness varying allies/enemies/available
+		// Here we just accumulate statistics for the given fixed scenario
+		std::vector<DraftEvaluation> ranked;
+		ranked.reserve(available.size());
+		for (const StringName &candidate : available) {
+			ranked.push_back(evaluate(candidate, allies, enemies));
+		}
+		std::sort(ranked.begin(), ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
+			if (a.score == b.score) {
+				return String(a.champion) < String(b.champion);
+			}
+			return a.score > b.score;
+		});
+		
+		// Check winner stability
+		if (!ranked.empty() && ranked[0].champion == report.baseline_top1) {
+			++top1_stable_count;
+		}
+		
+		std::set<StringName> current_top3;
+		for (int64_t i = 0; i < std::min(int64_t(3), static_cast<int64_t>(ranked.size())); ++i) {
+			current_top3.insert(ranked[i].champion);
+		}
+		std::set<StringName> baseline_top3_set(report.baseline_top3.begin(), report.baseline_top3.end());
+		if (current_top3 == baseline_top3_set) {
+			++top3_stable_count;
+		}
+		
+		// Accumulate scores and ranks
+		for (int64_t i = 0; i < static_cast<int64_t>(ranked.size()); ++i) {
+			score_history[ranked[i].champion].push_back(ranked[i].score);
+			rank_history[ranked[i].champion].push_back(i);
+			all_scores.push_back(ranked[i].score);
+		}
+	}
+	
+	// Compute per-candidate statistics
+	report.candidate_stats.reserve(available.size());
+	for (const StringName &candidate : available) {
+		CandidateStressStats stats;
+		stats.champion = candidate;
+		
+		auto score_it = score_history.find(candidate);
+		auto rank_it = rank_history.find(candidate);
+		
+		if (score_it != score_history.end() && !score_it->second.empty()) {
+			// Mean score
+			double sum = 0.0;
+			for (double s : score_it->second) {
+				sum += s;
+			}
+			stats.mean_score = sum / score_it->second.size();
+			
+			// Score stddev
+			double variance = 0.0;
+			for (double s : score_it->second) {
+				variance += (s - stats.mean_score) * (s - stats.mean_score);
+			}
+			stats.score_stddev = std::sqrt(variance / score_it->second.size());
+		}
+		
+		if (rank_it != rank_history.end() && !rank_it->second.empty()) {
+			// Mean rank
+			double sum = 0.0;
+			for (int64_t r : rank_it->second) {
+				sum += r;
+			}
+			stats.mean_rank = sum / rank_it->second.size();
+			
+			// Rank stddev
+			double variance = 0.0;
+			for (int64_t r : rank_it->second) {
+				variance += (r - stats.mean_rank) * (r - stats.mean_rank);
+			}
+			stats.rank_stddev = std::sqrt(variance / rank_it->second.size());
+			
+			// Max rank swing
+			int64_t min_rank = *std::min_element(rank_it->second.begin(), rank_it->second.end());
+			int64_t max_rank = *std::max_element(rank_it->second.begin(), rank_it->second.end());
+			stats.max_rank_swing = max_rank - min_rank;
+		}
+		
+		// Baseline reference
+		auto baseline_rank_it = baseline_ranks.find(candidate);
+		if (baseline_rank_it != baseline_ranks.end()) {
+			stats.baseline_rank = baseline_rank_it->second;
+			stats.baseline_score = baseline_ranked[stats.baseline_rank].score;
+		}
+		
+		report.candidate_stats.push_back(stats);
+	}
+	
+	// Compute global distribution metrics
+	if (!all_scores.empty()) {
+		std::sort(all_scores.begin(), all_scores.end());
+		report.score_min = all_scores.front();
+		report.score_max = all_scores.back();
+		
+		double sum = 0.0;
+		for (double s : all_scores) {
+			sum += s;
+		}
+		report.score_mean = sum / all_scores.size();
+		
+		// Percentiles
+		size_t p50_idx = all_scores.size() * 50 / 100;
+		size_t p90_idx = all_scores.size() * 90 / 100;
+		report.score_p50 = all_scores[p50_idx];
+		report.score_p90 = all_scores[p90_idx];
+	}
+	
+	// Compute rank volatility (average rank change per candidate)
+	double total_rank_change = 0.0;
+	int64_t total_max_swing = 0;
+	for (const auto &stats : report.candidate_stats) {
+		total_rank_change += std::abs(stats.mean_rank - stats.baseline_rank);
+		total_max_swing = std::max(total_max_swing, stats.max_rank_swing);
+	}
+	report.avg_rank_change = total_rank_change / report.candidate_stats.size();
+	report.max_rank_swing = total_max_swing;
+	
+	// Compute context sensitivity (avg absolute delta from baseline)
+	double total_score_delta = 0.0;
+	for (const auto &stats : report.candidate_stats) {
+		total_score_delta += std::abs(stats.mean_score - stats.baseline_score);
+	}
+	report.context_sensitivity = total_score_delta / report.candidate_stats.size();
+	
+	// Compute winner stability rates
+	report.top1_stability_rate = num_iterations > 0 ? (100.0 * top1_stable_count / num_iterations) : 0.0;
+	report.top3_stability_rate = num_iterations > 0 ? (100.0 * top3_stable_count / num_iterations) : 0.0;
+	
+	return report;
+}
+
+// ScenarioPerturbationGenerator implementation
+
+ScenarioPerturbationGenerator::ScenarioPerturbationGenerator(const DraftStatsDatabase &database) :
+		_database(database),
+		_rng_state(0) {
+}
+
+void ScenarioPerturbationGenerator::_seed_rng(uint64_t seed) {
+	_rng_state = seed;
+}
+
+uint64_t ScenarioPerturbationGenerator::_rng_next() {
+	// Simple LCG (Linear Congruential Generator)
+	// Using constants from Numerical Recipes
+	_rng_state = _rng_state * 1664525 + 1013904223;
+	return _rng_state;
+}
+
+double ScenarioPerturbationGenerator::_rng_next_double() {
+	return static_cast<double>(_rng_next()) / static_cast<double>(UINT64_MAX);
+}
+
+int64_t ScenarioPerturbationGenerator::_rng_next_range(int64_t min, int64_t max) {
+	if (min >= max) {
+		return min;
+	}
+	uint64_t range = static_cast<uint64_t>(max - min);
+	return min + static_cast<int64_t>(_rng_next() % (range + 1));
+}
+
+PerturbedScenario ScenarioPerturbationGenerator::_swap_ally(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available) {
+	
+	PerturbedScenario scenario;
+	scenario.type = PerturbationType::SWAP_ALLY;
+	scenario.enemies = base_enemies;
+	scenario.available = base_available;
+	
+	if (base_allies.empty()) {
+		// If no allies, add one random champion
+		if (!base_available.empty()) {
+			int64_t idx = _rng_next_range(0, base_available.size() - 1);
+			scenario.allies.push_back(base_available[idx]);
+		} else {
+			scenario.allies = base_allies;
+		}
+	} else {
+		// Swap 1-2 random allies
+		scenario.allies = base_allies;
+		int64_t num_swaps = _rng_next_range(1, std::min(int64_t(2), static_cast<int64_t>(base_allies.size())));
+		
+		// Build pool of candidates to swap in (exclude current allies and enemies)
+		std::vector<StringName> swap_pool;
+		std::set<StringName> excluded(base_allies.begin(), base_allies.end());
+		excluded.insert(base_enemies.begin(), base_enemies.end());
+		
+		for (const StringName &champ : base_available) {
+			if (excluded.find(champ) == excluded.end()) {
+				swap_pool.push_back(champ);
+			}
+		}
+		
+		for (int64_t i = 0; i < num_swaps && !swap_pool.empty(); ++i) {
+			int64_t ally_idx = _rng_next_range(0, scenario.allies.size() - 1);
+			int64_t swap_idx = _rng_next_range(0, swap_pool.size() - 1);
+			scenario.allies[ally_idx] = swap_pool[swap_idx];
+			swap_pool.erase(swap_pool.begin() + swap_idx);
+		}
+	}
+	
+	return scenario;
+}
+
+PerturbedScenario ScenarioPerturbationGenerator::_swap_enemy(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available) {
+	
+	PerturbedScenario scenario;
+	scenario.type = PerturbationType::SWAP_ENEMY;
+	scenario.allies = base_allies;
+	scenario.available = base_available;
+	
+	if (base_enemies.empty()) {
+		// If no enemies, add one random champion
+		if (!base_available.empty()) {
+			int64_t idx = _rng_next_range(0, base_available.size() - 1);
+			scenario.enemies.push_back(base_available[idx]);
+		} else {
+			scenario.enemies = base_enemies;
+		}
+	} else {
+		// Swap 1-2 random enemies
+		scenario.enemies = base_enemies;
+		int64_t num_swaps = _rng_next_range(1, std::min(int64_t(2), static_cast<int64_t>(base_enemies.size())));
+		
+		// Build pool of candidates to swap in (exclude current allies and enemies)
+		std::vector<StringName> swap_pool;
+		std::set<StringName> excluded(base_allies.begin(), base_allies.end());
+		excluded.insert(base_enemies.begin(), base_enemies.end());
+		
+		for (const StringName &champ : base_available) {
+			if (excluded.find(champ) == excluded.end()) {
+				swap_pool.push_back(champ);
+			}
+		}
+		
+		for (int64_t i = 0; i < num_swaps && !swap_pool.empty(); ++i) {
+			int64_t enemy_idx = _rng_next_range(0, scenario.enemies.size() - 1);
+			int64_t swap_idx = _rng_next_range(0, swap_pool.size() - 1);
+			scenario.enemies[enemy_idx] = swap_pool[swap_idx];
+			swap_pool.erase(swap_pool.begin() + swap_idx);
+		}
+	}
+	
+	return scenario;
+}
+
+PerturbedScenario ScenarioPerturbationGenerator::_remove_available(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available) {
+	
+	PerturbedScenario scenario;
+	scenario.type = PerturbationType::REMOVE_AVAILABLE;
+	scenario.allies = base_allies;
+	scenario.enemies = base_enemies;
+	
+	if (base_available.size() <= 1) {
+		scenario.available = base_available;
+	} else {
+		// Remove 1-2 random champions from available pool
+		scenario.available = base_available;
+		int64_t num_remove = _rng_next_range(1, std::min(int64_t(2), static_cast<int64_t>(base_available.size()) - 1));
+		
+		for (int64_t i = 0; i < num_remove && !scenario.available.empty(); ++i) {
+			int64_t remove_idx = _rng_next_range(0, scenario.available.size() - 1);
+			scenario.available.erase(scenario.available.begin() + remove_idx);
+		}
+	}
+	
+	return scenario;
+}
+
+PerturbedScenario ScenarioPerturbationGenerator::_role_skew(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available) {
+	
+	PerturbedScenario scenario;
+	scenario.type = PerturbationType::ROLE_SKEW;
+	scenario.allies = base_allies;
+	scenario.enemies = base_enemies;
+	
+	// Collect all unique roles
+	std::set<StringName> all_roles;
+	for (const StringName &champ : base_available) {
+		StringName role = _database.get_champion_role(champ);
+		if (role != StringName()) {
+			all_roles.insert(role);
+		}
+	}
+	
+	if (all_roles.empty()) {
+		// No role data available, return unchanged
+		scenario.available = base_available;
+		return scenario;
+	}
+	
+	// Pick a random role to skew toward
+	std::vector<StringName> role_vector(all_roles.begin(), all_roles.end());
+	int64_t role_idx = _rng_next_range(0, role_vector.size() - 1);
+	StringName target_role = role_vector[role_idx];
+	
+	// Filter available pool with bias toward target role (70-100%)
+	scenario.available = base_available;
+	std::vector<StringName> filtered;
+	
+	for (const StringName &champ : base_available) {
+		StringName role = _database.get_champion_role(champ);
+		double keep_prob = (role == target_role) ? 0.9 : 0.3;  // 90% keep if target role, 30% otherwise
+		
+		if (_rng_next_double() < keep_prob) {
+			filtered.push_back(champ);
+		}
+	}
+	
+	// Ensure at least some champions remain
+	if (!filtered.empty()) {
+		scenario.available = filtered;
+	}
+	
+	return scenario;
+}
+
+std::vector<PerturbedScenario> ScenarioPerturbationGenerator::generate_scenarios(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available,
+		uint64_t seed,
+		int64_t count) {
+	
+	std::vector<PerturbedScenario> scenarios;
+	scenarios.reserve(count);
+	
+	_seed_rng(seed);
+	
+	for (int64_t i = 0; i < count; ++i) {
+		// Use seed + scenario_index for determinism
+		_seed_rng(seed + static_cast<uint64_t>(i));
+		
+		// Cycle through perturbation types
+		int64_t perturbation_type = i % 4;
+		
+		switch (perturbation_type) {
+			case 0:
+				scenarios.push_back(_swap_ally(base_allies, base_enemies, base_available));
+				break;
+			case 1:
+				scenarios.push_back(_swap_enemy(base_allies, base_enemies, base_available));
+				break;
+			case 2:
+				scenarios.push_back(_remove_available(base_allies, base_enemies, base_available));
+				break;
+			case 3:
+				scenarios.push_back(_role_skew(base_allies, base_enemies, base_available));
+				break;
+		}
+	}
+	
+	return scenarios;
+}
+
+StressTestReport DraftEvaluator::run_stress_test_with_perturbations(
+		const std::vector<StringName> &allies,
+		const std::vector<StringName> &enemies,
+		const std::vector<StringName> &available,
+		uint64_t seed,
+		int64_t scenario_count) const {
+	
+	StressTestReport report;
+	
+	// Compute baseline ranking (original scenario)
+	std::vector<DraftEvaluation> baseline_ranked;
+	baseline_ranked.reserve(available.size());
+	for (const StringName &candidate : available) {
+		baseline_ranked.push_back(evaluate(candidate, allies, enemies));
+	}
+	std::sort(baseline_ranked.begin(), baseline_ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
+		if (a.score == b.score) {
+			return String(a.champion) < String(b.champion);
+		}
+		return a.score > b.score;
+	});
+	
+	// Store baseline top-3 and top-1
+	for (int64_t i = 0; i < std::min(int64_t(3), static_cast<int64_t>(baseline_ranked.size())); ++i) {
+		report.baseline_top3.push_back(baseline_ranked[i].champion);
+	}
+	if (!baseline_ranked.empty()) {
+		report.baseline_top1 = baseline_ranked[0].champion;
+	}
+	
+	// Create champion -> baseline rank map
+	std::map<StringName, int64_t> baseline_ranks;
+	for (int64_t i = 0; i < static_cast<int64_t>(baseline_ranked.size()); ++i) {
+		baseline_ranks[baseline_ranked[i].champion] = i;
+	}
+	
+	// Generate perturbed scenarios
+	ScenarioPerturbationGenerator generator(_database);
+	std::vector<PerturbedScenario> scenarios = generator.generate_scenarios(
+		allies, enemies, available, seed, scenario_count);
+	
+	// Accumulate scores and ranks across scenarios
+	std::map<StringName, std::vector<double>> score_history;
+	std::map<StringName, std::vector<int64_t>> rank_history;
+	std::vector<double> all_scores;
+	
+	int64_t top1_stable_count = 0;
+	int64_t top3_stable_count = 0;
+	
+	for (const auto &scenario : scenarios) {
+		// Evaluate this scenario
+		std::vector<DraftEvaluation> ranked;
+		ranked.reserve(scenario.available.size());
+		for (const StringName &candidate : scenario.available) {
+			ranked.push_back(evaluate(candidate, scenario.allies, scenario.enemies));
+		}
+		std::sort(ranked.begin(), ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
+			if (a.score == b.score) {
+				return String(a.champion) < String(b.champion);
+			}
+			return a.score > b.score;
+		});
+		
+		// Check winner stability (only if champion is in current scenario)
+		bool top1_in_scenario = false;
+		for (const auto &eval : ranked) {
+			if (eval.champion == report.baseline_top1) {
+				top1_in_scenario = true;
+				break;
+			}
+		}
+		if (top1_in_scenario && !ranked.empty() && ranked[0].champion == report.baseline_top1) {
+			++top1_stable_count;
+		}
+		
+		// Check top-3 stability
+		std::set<StringName> current_top3;
+		int64_t baseline_in_current = 0;
+		for (int64_t i = 0; i < std::min(int64_t(3), static_cast<int64_t>(ranked.size())); ++i) {
+			current_top3.insert(ranked[i].champion);
+		}
+		std::set<StringName> baseline_top3_set(report.baseline_top3.begin(), report.baseline_top3.end());
+		
+		// Count how many baseline top-3 are in current scenario
+		for (const StringName &champ : report.baseline_top3) {
+			for (const auto &eval : ranked) {
+				if (eval.champion == champ) {
+					++baseline_in_current;
+					break;
+				}
+			}
+		}
+		
+		// Only count as stable if all baseline top-3 are present and match
+		if (baseline_in_current == 3 && current_top3 == baseline_top3_set) {
+			++top3_stable_count;
+		}
+		
+		// Accumulate scores and ranks
+		for (int64_t i = 0; i < static_cast<int64_t>(ranked.size()); ++i) {
+			score_history[ranked[i].champion].push_back(ranked[i].score);
+			rank_history[ranked[i].champion].push_back(i);
+			all_scores.push_back(ranked[i].score);
+		}
+	}
+	
+	// Compute per-candidate statistics
+	report.candidate_stats.reserve(available.size());
+	for (const StringName &candidate : available) {
+		CandidateStressStats stats;
+		stats.champion = candidate;
+		
+		auto score_it = score_history.find(candidate);
+		auto rank_it = rank_history.find(candidate);
+		
+		if (score_it != score_history.end() && !score_it->second.empty()) {
+			// Mean score
+			double sum = 0.0;
+			for (double s : score_it->second) {
+				sum += s;
+			}
+			stats.mean_score = sum / score_it->second.size();
+			
+			// Score stddev
+			double variance = 0.0;
+			for (double s : score_it->second) {
+				variance += (s - stats.mean_score) * (s - stats.mean_score);
+			}
+			stats.score_stddev = std::sqrt(variance / score_it->second.size());
+		}
+		
+		if (rank_it != rank_history.end() && !rank_it->second.empty()) {
+			// Mean rank
+			double sum = 0.0;
+			for (int64_t r : rank_it->second) {
+				sum += r;
+			}
+			stats.mean_rank = sum / rank_it->second.size();
+			
+			// Rank stddev
+			double variance = 0.0;
+			for (int64_t r : rank_it->second) {
+				variance += (r - stats.mean_rank) * (r - stats.mean_rank);
+			}
+			stats.rank_stddev = std::sqrt(variance / rank_it->second.size());
+			
+			// Max rank swing
+			int64_t min_rank = *std::min_element(rank_it->second.begin(), rank_it->second.end());
+			int64_t max_rank = *std::max_element(rank_it->second.begin(), rank_it->second.end());
+			stats.max_rank_swing = max_rank - min_rank;
+		}
+		
+		// Baseline reference
+		auto baseline_rank_it = baseline_ranks.find(candidate);
+		if (baseline_rank_it != baseline_ranks.end()) {
+			stats.baseline_rank = baseline_rank_it->second;
+			stats.baseline_score = baseline_ranked[stats.baseline_rank].score;
+		}
+		
+		report.candidate_stats.push_back(stats);
+	}
+	
+	// Compute global distribution metrics
+	if (!all_scores.empty()) {
+		std::sort(all_scores.begin(), all_scores.end());
+		report.score_min = all_scores.front();
+		report.score_max = all_scores.back();
+		
+		double sum = 0.0;
+		for (double s : all_scores) {
+			sum += s;
+		}
+		report.score_mean = sum / all_scores.size();
+		
+		// Percentiles
+		size_t p50_idx = all_scores.size() * 50 / 100;
+		size_t p90_idx = all_scores.size() * 90 / 100;
+		report.score_p50 = all_scores[p50_idx];
+		report.score_p90 = all_scores[p90_idx];
+	}
+	
+	// Compute rank volatility (average rank change per candidate)
+	double total_rank_change = 0.0;
+	int64_t total_max_swing = 0;
+	for (const auto &stats : report.candidate_stats) {
+		total_rank_change += std::abs(stats.mean_rank - stats.baseline_rank);
+		total_max_swing = std::max(total_max_swing, stats.max_rank_swing);
+	}
+	report.avg_rank_change = total_rank_change / report.candidate_stats.size();
+	report.max_rank_swing = total_max_swing;
+	
+	// Compute context sensitivity (avg absolute delta from baseline)
+	double total_score_delta = 0.0;
+	for (const auto &stats : report.candidate_stats) {
+		total_score_delta += std::abs(stats.mean_score - stats.baseline_score);
+	}
+	report.context_sensitivity = total_score_delta / report.candidate_stats.size();
+	
+	// Compute winner stability rates
+	int64_t valid_scenarios = 0;
+	for (const auto &scenario : scenarios) {
+		// Count scenarios where baseline top-1 is in available pool
+		for (const StringName &champ : scenario.available) {
+			if (champ == report.baseline_top1) {
+				++valid_scenarios;
+				break;
+			}
+		}
+	}
+	
+	report.top1_stability_rate = valid_scenarios > 0 ? (100.0 * top1_stable_count / valid_scenarios) : 0.0;
+	report.top3_stability_rate = valid_scenarios > 0 ? (100.0 * top3_stable_count / valid_scenarios) : 0.0;
+	
+	return report;
 }
 
 DraftRecommender::DraftRecommender(const DraftEvaluator &evaluator, bool debug_mode) :

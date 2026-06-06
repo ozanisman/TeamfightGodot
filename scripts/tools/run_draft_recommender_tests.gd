@@ -164,97 +164,133 @@ func _initialize() -> void:
 	print("STRESS TESTING")
 	print("========================")
 	
-	# Random drafts (50 per scenario)
-	print("\nRandom draft evaluation (50 iterations per scenario)")
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
+	# Store scenario reports for aggregated summary
+	var scenario_reports := []
 	
 	for i in tests.size():
 		var test: Dictionary = tests[i]
-		var total_random_synergy_impact := 0.0
-		var total_random_matchup_impact := 0.0
-		var total_random_synergy_overlap := 0
-		var total_random_matchup_overlap := 0
+		print("\n========================")
+		print("SCENARIO: %s" % test["name"])
+		print("========================")
+		print("")  # Force flush
 		
-		for j in range(50):
-			# Random team selection
-			var random_allies: Array = []
-			var random_enemies: Array = []
-			var random_available: Array = available.duplicate()
-			random_available.shuffle()
-			
-			# Pick 2 random allies and 3 random enemies
-			for k in range(2):
-				if random_available.size() > 0:
-					random_allies.append(random_available.pop_back())
-			for k in range(3):
-				if random_available.size() > 0:
-					random_enemies.append(random_available.pop_back())
-			
-			var eval = core.run_controlled_draft_evaluation(
-				random_allies,
-				random_enemies,
-				random_available,
-				"res://stats_output",
-				0.50,
-				0.25,
-				0.25,
-				1.2,
-				1.2
-			)
-			total_random_synergy_impact += eval.get("avg_synergy_impact", 0.0)
-			total_random_matchup_impact += eval.get("avg_matchup_impact", 0.0)
-			total_random_synergy_overlap += eval.get("top3_overlap_synergy_removed", 0)
-			total_random_matchup_overlap += eval.get("top3_overlap_matchup_removed", 0)
-		
-		print("\nScenario: %s" % test["name"])
-		print("  Avg synergy impact: %.6f" % (total_random_synergy_impact / 50))
-		print("  Avg matchup impact: %.6f" % (total_random_matchup_impact / 50))
-		print("  Avg top3 overlap vs synergy removed: %.2f/3" % (float(total_random_synergy_overlap) / 50))
-		print("  Avg top3 overlap vs matchup removed: %.2f/3" % (float(total_random_matchup_overlap) / 50))
-	
-	# Extreme composition test cases
-	print("\nExtreme composition evaluation")
-	var extreme_cases := [
-		{
-			"name": "5_tanks",
-			"team": ["colossus", "colossus", "colossus", "colossus", "colossus"],
-		},
-		{
-			"name": "5_assassins",
-			"team": ["berserker", "berserker", "berserker", "berserker", "berserker"],
-		},
-		{
-			"name": "5_supports",
-			"team": ["cleric", "cleric", "cleric", "cleric", "cleric"],
-		},
-		{
-			"name": "5_ranged",
-			"team": ["archer", "archer", "archer", "archer", "archer"],
-		},
-		{
-			"name": "5_mixed",
-			"team": ["colossus", "berserker", "cleric", "archer", "swordsman"],
-		},
-	]
-	
-	for case in extreme_cases:
-		var team: Array = case["team"]
-		var eval = core.run_controlled_draft_evaluation(
-			[],
-			[],
-			available,
+		var report = core.run_stress_test_with_perturbations(
+			test["allies"],
+			test["enemies"],
+			test["available"],
 			"res://stats_output",
+			42,  # Fixed seed for reproducibility
+			30,  # Number of perturbed scenarios
 			0.50,
 			0.25,
 			0.25,
 			1.2,
 			1.2
 		)
-		print("\nCASE: %s" % case["name"])
-		print("  Synergy impact: %.6f" % eval.get("avg_synergy_impact", 0.0))
-		print("  Matchup impact: %.6f" % eval.get("avg_matchup_impact", 0.0))
-		print("  Top3 overlap vs synergy removed: %d/3" % eval.get("top3_overlap_synergy_removed", 0))
-		print("  Top3 overlap vs matchup removed: %d/3" % eval.get("top3_overlap_matchup_removed", 0))
+		
+		scenario_reports.append({"name": test["name"], "report": report})
+		
+		# Print baseline reference
+		print("\nBaseline ranking:")
+		print("  Top-1: %s" % report.get("baseline_top1", ""))
+		print("  Top-3: %s" % ", ".join(report.get("baseline_top3", [])))
+		
+		# Print global distribution metrics
+		print("\nGlobal score distribution:")
+		print("  Min: %.6f" % report.get("score_min", 0.0))
+		print("  Max: %.6f" % report.get("score_max", 0.0))
+		print("  Mean: %.6f" % report.get("score_mean", 0.0))
+		print("  P50: %.6f" % report.get("score_p50", 0.0))
+		print("  P90: %.6f" % report.get("score_p90", 0.0))
+		
+		# Print rank volatility
+		print("\nRank volatility:")
+		print("  Avg rank change: %.6f" % report.get("avg_rank_change", 0.0))
+		print("  Max rank swing: %d" % report.get("max_rank_swing", 0))
+		
+		# Print context sensitivity
+		print("\nContext sensitivity:")
+		print("  Avg score delta from baseline: %.6f" % report.get("context_sensitivity", 0.0))
+		
+		# Print winner stability
+		print("\nWinner stability:")
+		print("  Top-1 stability rate: %.2f%%" % report.get("top1_stability_rate", 0.0))
+		print("  Top-3 stability rate: %.2f%%" % report.get("top3_stability_rate", 0.0))
+		
+		# Print per-candidate statistics
+		print("\nPer-candidate statistics:")
+		var candidate_stats = report.get("candidate_stats", [])
+		for stats in candidate_stats:
+			print("  %s:" % stats.get("champion", ""))
+			print("    Mean score: %.6f (stddev: %.6f)" % [stats.get("mean_score", 0.0), stats.get("score_stddev", 0.0)])
+			print("    Mean rank: %.2f (stddev: %.6f)" % [stats.get("mean_rank", 0.0), stats.get("rank_stddev", 0.0)])
+			print("    Max rank swing: %d" % stats.get("max_rank_swing", 0))
+			print("    Baseline: score=%.6f, rank=%d" % [stats.get("baseline_score", 0.0), stats.get("baseline_rank", 0)])
+	
+	# Aggregated stress summary
+	print("\n========================")
+	print("AGGREGATED STRESS SUMMARY")
+	print("========================")
+	
+	if scenario_reports.size() > 0:
+		var most_stable = null
+		var most_volatile = null
+		var highest_sensitivity = null
+		
+		var best_stability_score = -1.0
+		var worst_stability_score = -1.0
+		var best_sensitivity = -1.0
+		
+		for scenario in scenario_reports:
+			var report = scenario["report"]
+			var name = scenario["name"]
+			
+			# Composite stability score: higher = more stable
+			var stability_score = (report.get("top1_stability_rate", 0.0) + report.get("top3_stability_rate", 0.0)) / 2.0
+			stability_score -= report.get("avg_rank_change", 0.0) * 10.0  # Penalize rank volatility
+			stability_score -= report.get("context_sensitivity", 0.0) * 10.0  # Penalize score sensitivity
+			
+			var sensitivity = report.get("context_sensitivity", 0.0)
+			
+			if most_stable == null or stability_score > best_stability_score:
+				most_stable = name
+				best_stability_score = stability_score
+			
+			if most_volatile == null or stability_score < worst_stability_score:
+				most_volatile = name
+				worst_stability_score = stability_score
+			
+			if highest_sensitivity == null or sensitivity > best_sensitivity:
+				highest_sensitivity = name
+				best_sensitivity = sensitivity
+		
+		print("\nMost stable scenario: %s" % most_stable)
+		print("Most volatile scenario: %s" % most_volatile)
+		print("Highest sensitivity scenario: %s" % highest_sensitivity)
+		
+		# Overall system stability score
+		var avg_top1_stability = 0.0
+		var avg_top3_stability = 0.0
+		var avg_rank_change = 0.0
+		var avg_sensitivity = 0.0
+		
+		for scenario in scenario_reports:
+			var report = scenario["report"]
+			avg_top1_stability += report.get("top1_stability_rate", 0.0)
+			avg_top3_stability += report.get("top3_stability_rate", 0.0)
+			avg_rank_change += report.get("avg_rank_change", 0.0)
+			avg_sensitivity += report.get("context_sensitivity", 0.0)
+		
+		avg_top1_stability /= scenario_reports.size()
+		avg_top3_stability /= scenario_reports.size()
+		avg_rank_change /= scenario_reports.size()
+		avg_sensitivity /= scenario_reports.size()
+		
+		var overall_stability = (avg_top1_stability + avg_top3_stability) / 2.0
+		overall_stability -= avg_rank_change * 10.0
+		overall_stability -= avg_sensitivity * 10.0
+		
+		print("\nOverall system stability score: %.2f" % overall_stability)
+		print("  (Higher = more stable, based on winner stability, rank volatility, and context sensitivity)")
 
 	quit()

@@ -90,6 +90,43 @@ struct ControlledEvaluationReport {
 	int64_t top3_overlap_matchup_removed = 0;
 };
 
+struct CandidateStressStats {
+	StringName champion;
+	double mean_score = 0.0;
+	double score_stddev = 0.0;
+	double mean_rank = 0.0;
+	double rank_stddev = 0.0;
+	int64_t max_rank_swing = 0;
+	double baseline_score = 0.0;
+	int64_t baseline_rank = 0;
+};
+
+struct StressTestReport {
+	std::vector<CandidateStressStats> candidate_stats;
+	
+	// Global distribution metrics
+	double score_min = 0.0;
+	double score_max = 0.0;
+	double score_mean = 0.0;
+	double score_p50 = 0.0;
+	double score_p90 = 0.0;
+	
+	// Rank volatility
+	double avg_rank_change = 0.0;
+	int64_t max_rank_swing = 0;
+	
+	// Context sensitivity
+	double context_sensitivity = 0.0;  // avg absolute delta from baseline
+	
+	// Winner stability
+	double top1_stability_rate = 0.0;  // % runs where top-1 unchanged
+	double top3_stability_rate = 0.0;  // % runs where top-3 set unchanged
+	
+	// Baseline reference
+	std::vector<StringName> baseline_top3;
+	StringName baseline_top1;
+};
+
 class DraftStatsDatabase {
 public:
 	struct StatValue {
@@ -137,6 +174,62 @@ private:
 	void _load_champion_roles();
 };
 
+enum class PerturbationType {
+	SWAP_ALLY,
+	SWAP_ENEMY,
+	REMOVE_AVAILABLE,
+	ROLE_SKEW
+};
+
+struct PerturbedScenario {
+	std::vector<StringName> allies;
+	std::vector<StringName> enemies;
+	std::vector<StringName> available;
+	PerturbationType type;
+};
+
+class ScenarioPerturbationGenerator {
+public:
+	ScenarioPerturbationGenerator(const DraftStatsDatabase &database);
+	std::vector<PerturbedScenario> generate_scenarios(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available,
+		uint64_t seed,
+		int64_t count
+	);
+
+private:
+	const DraftStatsDatabase &_database;
+	
+	uint64_t _rng_state;
+	void _seed_rng(uint64_t seed);
+	uint64_t _rng_next();
+	double _rng_next_double();
+	int64_t _rng_next_range(int64_t min, int64_t max);
+	
+	PerturbedScenario _swap_ally(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available
+	);
+	PerturbedScenario _swap_enemy(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available
+	);
+	PerturbedScenario _remove_available(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available
+	);
+	PerturbedScenario _role_skew(
+		const std::vector<StringName> &base_allies,
+		const std::vector<StringName> &base_enemies,
+		const std::vector<StringName> &base_available
+	);
+};
+
 class DraftEvaluator {
 public:
 	explicit DraftEvaluator(const DraftStatsDatabase &database, PredictionConfig config = PredictionConfig());
@@ -144,6 +237,8 @@ public:
 	double evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug = nullptr) const;
 	SignalInfluenceReport analyze_signal_influence(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
 	ControlledEvaluationReport run_controlled_evaluation(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const;
+	StressTestReport run_stress_test(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, int64_t num_iterations) const;
+	StressTestReport run_stress_test_with_perturbations(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, uint64_t seed, int64_t scenario_count) const;
 
 private:
 	const DraftStatsDatabase &_database;

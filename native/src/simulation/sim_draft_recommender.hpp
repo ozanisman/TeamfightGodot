@@ -15,7 +15,7 @@ namespace draft {
 struct DraftScoreWeights {
 	double base = 0.50;
 	double synergy = 0.25;
-	double matchup = 0.25;
+	double counter = 0.25;
 };
 
 struct DraftEvaluation {
@@ -23,15 +23,15 @@ struct DraftEvaluation {
 	double score = 0.0;
 	double base_winrate = 0.5;
 	double avg_synergy = 0.5;
-	double avg_matchup = 0.5;
+	double avg_counter = 0.5;
 	int64_t synergy_samples = 0;
-	int64_t matchup_samples = 0;
+	int64_t counter_samples = 0;
 };
 
 struct EvalDebug {
 	double base = 0.0;
 	double synergy = 0.0;
-	double matchup = 0.0;
+	double counter = 0.0;
 	double final = 0.0;
 };
 
@@ -45,17 +45,17 @@ public:
 
 	double base_winrate_for(const StringName &champion, double fallback = 0.5) const;
 	bool synergy_winrate_for(const StringName &champion, const StringName &ally, double &out_winrate) const;
-	bool matchup_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const;
+	bool counter_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const;
 
 private:
 	std::map<String, double> _base_winrates;
 	MatchupMap _synergy_winrates;
-	MatchupMap _matchup_winrates;
+	MatchupMap _counter_winrates;
 	bool _loaded = false;
 	String _last_error;
 
 	bool _load_combat_stats(const String &path);
-	bool _load_matchup_stats(const String &path, MatchupMap &target);
+	bool _load_counter_stats(const String &path, MatchupMap &target);
 };
 
 class DraftEvaluator {

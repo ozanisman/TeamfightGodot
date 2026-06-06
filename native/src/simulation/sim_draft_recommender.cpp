@@ -76,7 +76,7 @@ bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a,
 bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	_base_winrates.clear();
 	_synergy_winrates.clear();
-	_matchup_winrates.clear();
+	_counter_winrates.clear();
 	_loaded = false;
 	_last_error = String();
 
@@ -84,10 +84,10 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	if (!_load_combat_stats(normalized + "/combat_stats.csv")) {
 		return false;
 	}
-	if (!_load_matchup_stats(normalized + "/matchup_with.csv", _synergy_winrates)) {
+	if (!_load_counter_stats(normalized + "/matchup_with.csv", _synergy_winrates)) {
 		return false;
 	}
-	if (!_load_matchup_stats(normalized + "/matchup_vs.csv", _matchup_winrates)) {
+	if (!_load_counter_stats(normalized + "/matchup_vs.csv", _counter_winrates)) {
 		return false;
 	}
 	_loaded = true;
@@ -114,8 +114,8 @@ bool DraftStatsDatabase::synergy_winrate_for(const StringName &champion, const S
 	return lookup_pair(_synergy_winrates, champion, ally, out_winrate) || lookup_pair(_synergy_winrates, ally, champion, out_winrate);
 }
 
-bool DraftStatsDatabase::matchup_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const {
-	return lookup_pair(_matchup_winrates, champion, enemy, out_winrate);
+bool DraftStatsDatabase::counter_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const {
+	return lookup_pair(_counter_winrates, champion, enemy, out_winrate);
 }
 
 bool DraftStatsDatabase::_load_combat_stats(const String &path) {
@@ -151,7 +151,7 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 	return true;
 }
 
-bool DraftStatsDatabase::_load_matchup_stats(const String &path, MatchupMap &target) {
+bool DraftStatsDatabase::_load_counter_stats(const String &path, MatchupMap &target) {
 	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
 	if (file.is_null()) {
 		_last_error = vformat("DraftStatsDatabase: cannot open %s", path);
@@ -169,7 +169,7 @@ bool DraftStatsDatabase::_load_matchup_stats(const String &path, MatchupMap &tar
 	}
 	int64_t winrate_col = column_index(header, "winrate");
 	if (champion_col < 0 || other_col < 0 || winrate_col < 0) {
-		_last_error = vformat("DraftStatsDatabase: missing matchup columns in %s", path);
+		_last_error = vformat("DraftStatsDatabase: missing counter columns in %s", path);
 		return false;
 	}
 	while (!file->eof_reached()) {
@@ -209,17 +209,17 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	}
 	result.avg_synergy = result.synergy_samples > 0 ? synergy_total / double(result.synergy_samples) : result.base_winrate;
 
-	double matchup_total = 0.0;
+	double counter_total = 0.0;
 	for (const StringName &enemy : enemies) {
 		double winrate = 0.0;
-		if (_database.matchup_winrate_for(candidate, enemy, winrate)) {
-			matchup_total += winrate;
-			++result.matchup_samples;
+		if (_database.counter_winrate_for(candidate, enemy, winrate)) {
+			counter_total += winrate;
+			++result.counter_samples;
 		}
 	}
-	result.avg_matchup = result.matchup_samples > 0 ? matchup_total / double(result.matchup_samples) : result.base_winrate;
+	result.avg_counter = result.counter_samples > 0 ? counter_total / double(result.counter_samples) : result.base_winrate;
 
-	result.score = (_weights.base * result.base_winrate) + (_weights.synergy * result.avg_synergy) + (_weights.matchup * result.avg_matchup);
+	result.score = (_weights.base * result.base_winrate) + (_weights.synergy * result.avg_synergy) + (_weights.counter * result.avg_counter);
 	return result;
 }
 
@@ -228,7 +228,7 @@ double DraftEvaluator::evaluate_candidate(const StringName &candidate, const std
 	if (out_debug != nullptr) {
 		out_debug->base = evaluation.base_winrate;
 		out_debug->synergy = evaluation.avg_synergy;
-		out_debug->matchup = evaluation.avg_matchup;
+		out_debug->counter = evaluation.avg_counter;
 		out_debug->final = evaluation.score;
 	}
 	return evaluation.score;
@@ -267,19 +267,19 @@ void DraftRecommender::print_top(const std::vector<DraftEvaluation> &ranked, int
 			UtilityFunctions::print(vformat("%d. %s", i + 1, String(r.champion)));
 			UtilityFunctions::print(vformat("  base:    %.6f", r.base_winrate));
 			UtilityFunctions::print(vformat("  synergy: %.6f", r.avg_synergy));
-			UtilityFunctions::print(vformat("  matchup: %.6f", r.avg_matchup));
+			UtilityFunctions::print(vformat("  counter: %.6f", r.avg_counter));
 			UtilityFunctions::print(vformat("  final:   %.6f", r.score));
 		} else {
 			UtilityFunctions::print(vformat(
-					"%d. %s score=%.6f base=%.6f synergy=%.6f(%d) matchup=%.6f(%d)",
+					"%d. %s score=%.6f base=%.6f synergy=%.6f(%d) counter=%.6f(%d)",
 					i + 1,
 					String(r.champion),
 					r.score,
 					r.base_winrate,
 					r.avg_synergy,
 					r.synergy_samples,
-					r.avg_matchup,
-					r.matchup_samples));
+					r.avg_counter,
+					r.counter_samples));
 		}
 	}
 }

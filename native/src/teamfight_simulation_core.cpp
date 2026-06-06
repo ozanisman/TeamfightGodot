@@ -129,6 +129,8 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
 	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -367,7 +369,6 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 		team1_dict["composition"] = team1_breakdown.composition;
 		team1_dict["final"] = team1_breakdown.final;
 		result["team1_breakdown"] = team1_dict;
-
 		Dictionary team2_dict;
 		team2_dict["base"] = team2_breakdown.base;
 		team2_dict["synergy"] = team2_breakdown.synergy;
@@ -376,6 +377,114 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 		team2_dict["final"] = team2_breakdown.final;
 		result["team2_breakdown"] = team2_dict;
 	}
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::analyze_draft_signal_influence(
+		const Array &candidate,
+		const Array &allies,
+		const Array &enemies,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["base_only_score"] = 0.0;
+		result["synergy_removed_score"] = 0.0;
+		result["matchup_removed_score"] = 0.0;
+		result["full_score"] = 0.0;
+		result["base_only_delta"] = 0.0;
+		result["synergy_removed_delta"] = 0.0;
+		result["matchup_removed_delta"] = 0.0;
+		result["ranking_shift_synergy_removed"] = 0;
+		result["ranking_shift_matchup_removed"] = 0;
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> candidate_vec = array_to_string_names(candidate);
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	
+	if (candidate_vec.empty()) {
+		Dictionary result;
+		result["base_only_score"] = 0.0;
+		result["synergy_removed_score"] = 0.0;
+		result["matchup_removed_score"] = 0.0;
+		result["full_score"] = 0.0;
+		result["base_only_delta"] = 0.0;
+		result["synergy_removed_delta"] = 0.0;
+		result["matchup_removed_delta"] = 0.0;
+		result["ranking_shift_synergy_removed"] = 0;
+		result["ranking_shift_matchup_removed"] = 0;
+		return result;
+	}
+	
+	sim::draft::SignalInfluenceReport report = evaluator.analyze_signal_influence(
+		candidate_vec[0], allies_vec, enemies_vec);
+
+	Dictionary result;
+	result["base_only_score"] = report.base_only_score;
+	result["synergy_removed_score"] = report.synergy_removed_score;
+	result["matchup_removed_score"] = report.matchup_removed_score;
+	result["full_score"] = report.full_score;
+	result["base_only_delta"] = report.base_only_delta;
+	result["synergy_removed_delta"] = report.synergy_removed_delta;
+	result["matchup_removed_delta"] = report.matchup_removed_delta;
+	result["ranking_shift_synergy_removed"] = report.ranking_shift_synergy_removed;
+	result["ranking_shift_matchup_removed"] = report.ranking_shift_matchup_removed;
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::run_controlled_draft_evaluation(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["avg_synergy_impact"] = 0.0;
+		result["avg_matchup_impact"] = 0.0;
+		result["top3_overlap_synergy_removed"] = 0;
+		result["top3_overlap_matchup_removed"] = 0;
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	std::vector<StringName> available_vec = array_to_string_names(available);
+	
+	sim::draft::ControlledEvaluationReport report = evaluator.run_controlled_evaluation(
+		allies_vec, enemies_vec, available_vec);
+
+	Dictionary result;
+	result["avg_synergy_impact"] = report.avg_synergy_impact;
+	result["avg_matchup_impact"] = report.avg_matchup_impact;
+	result["top3_overlap_synergy_removed"] = report.top3_overlap_synergy_removed;
+	result["top3_overlap_matchup_removed"] = report.top3_overlap_matchup_removed;
 
 	return result;
 }

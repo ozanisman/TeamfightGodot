@@ -274,6 +274,8 @@ public:
 	Array get_draft_recommendation_names(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 3, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25);
 	Array get_draft_recommendations_with_breakdowns(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 3, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25);
 	Dictionary predict_draft_winner(const Array &team1, const Array &team2, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, double matchup_weight = 0.25, double composition_weight = 0.0, double logistic_k = 10.0, bool include_breakdown = false);
+	Dictionary analyze_draft_signal_influence(const Array &candidate, const Array &allies, const Array &enemies, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25);
+	Dictionary run_controlled_draft_evaluation(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25);
 };
 
 #endif

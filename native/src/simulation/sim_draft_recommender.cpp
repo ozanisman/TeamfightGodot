@@ -4,6 +4,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <set>
 
 namespace sim {
 namespace draft {
@@ -396,34 +397,40 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	// Synergy component with confidence weighting
 	double synergy_total = 0.0;
 	double synergy_raw_total = 0.0;
-	int64_t synergy_samples = 0;
+	int64_t synergy_relationships = 0;
+	int64_t synergy_stat_samples = 0;
 	for (const StringName &ally : allies) {
 		DraftStatsDatabase::StatValue synergy_stat;
 		if (_database.synergy_winrate_for(candidate, ally, synergy_stat)) {
 			synergy_total += _database.apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, _config);
 			synergy_raw_total += synergy_stat.winrate;
-			++synergy_samples;
+			synergy_stat_samples += synergy_stat.samples;
+			++synergy_relationships;
 		}
 	}
-	result.avg_synergy = synergy_samples > 0 ? synergy_total / double(synergy_samples) : 0.5; // Neutral fallback
-	result.synergy_raw = synergy_samples > 0 ? synergy_raw_total / double(synergy_samples) : 0.5;
-	result.synergy_samples = synergy_samples;
+	result.avg_synergy = synergy_relationships > 0 ? synergy_total / double(synergy_relationships) : 0.5; // Neutral fallback
+	result.synergy_raw = synergy_relationships > 0 ? synergy_raw_total / double(synergy_relationships) : 0.5;
+	result.synergy_stat_samples = synergy_stat_samples;
+	result.synergy_relationships = synergy_relationships;
 
 	// Counter component with confidence weighting
 	double counter_total = 0.0;
 	double counter_raw_total = 0.0;
-	int64_t counter_samples = 0;
+	int64_t counter_relationships = 0;
+	int64_t counter_stat_samples = 0;
 	for (const StringName &enemy : enemies) {
 		DraftStatsDatabase::StatValue counter_stat;
 		if (_database.counter_winrate_for(candidate, enemy, counter_stat)) {
 			counter_total += _database.apply_bayesian_smoothing(counter_stat.winrate, counter_stat.samples, _config);
 			counter_raw_total += counter_stat.winrate;
-			++counter_samples;
+			counter_stat_samples += counter_stat.samples;
+			++counter_relationships;
 		}
 	}
-	result.avg_counter = counter_samples > 0 ? counter_total / double(counter_samples) : 0.5; // Neutral fallback
-	result.counter_raw = counter_samples > 0 ? counter_raw_total / double(counter_samples) : 0.5;
-	result.counter_samples = counter_samples;
+	result.avg_counter = counter_relationships > 0 ? counter_total / double(counter_relationships) : 0.5; // Neutral fallback
+	result.counter_raw = counter_relationships > 0 ? counter_raw_total / double(counter_relationships) : 0.5;
+	result.counter_stat_samples = counter_stat_samples;
+	result.counter_relationships = counter_relationships;
 
 	result.score = (_config.base_weight * result.base_winrate) +
 				  (_config.synergy_weight * result.avg_synergy) +
@@ -440,6 +447,129 @@ double DraftEvaluator::evaluate_candidate(const StringName &candidate, const std
 		out_debug->final = evaluation.score;
 	}
 	return evaluation.score;
+}
+
+SignalInfluenceReport DraftEvaluator::analyze_signal_influence(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const {
+	SignalInfluenceReport report;
+	
+	// Base only (synergy_weight=0, matchup_weight=0)
+	PredictionConfig base_only_config = _config;
+	base_only_config.synergy_weight = 0.0;
+	base_only_config.matchup_weight = 0.0;
+	DraftEvaluator base_only_eval(_database, base_only_config);
+	DraftEvaluation base_only_eval_result = base_only_eval.evaluate(candidate, allies, enemies);
+	report.base_only_score = base_only_eval_result.score;
+	
+	// Synergy removed (synergy_weight=0)
+	PredictionConfig no_synergy_config = _config;
+	no_synergy_config.synergy_weight = 0.0;
+	DraftEvaluator no_synergy_eval(_database, no_synergy_config);
+	DraftEvaluation no_synergy_eval_result = no_synergy_eval.evaluate(candidate, allies, enemies);
+	report.synergy_removed_score = no_synergy_eval_result.score;
+	
+	// Matchup removed (matchup_weight=0)
+	PredictionConfig no_matchup_config = _config;
+	no_matchup_config.matchup_weight = 0.0;
+	DraftEvaluator no_matchup_eval(_database, no_matchup_config);
+	DraftEvaluation no_matchup_eval_result = no_matchup_eval.evaluate(candidate, allies, enemies);
+	report.matchup_removed_score = no_matchup_eval_result.score;
+	
+	// Full score with all weights
+	DraftEvaluation full_eval_result = evaluate(candidate, allies, enemies);
+	report.full_score = full_eval_result.score;
+	
+	// Compute deltas
+	report.base_only_delta = report.full_score - report.base_only_score;
+	report.synergy_removed_delta = report.full_score - report.synergy_removed_score;
+	report.matchup_removed_delta = report.full_score - report.matchup_removed_score;
+	
+	return report;
+}
+
+ControlledEvaluationReport DraftEvaluator::run_controlled_evaluation(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const {
+	ControlledEvaluationReport report;
+	
+	if (available.empty()) {
+		return report;
+	}
+	
+	// Full model evaluation
+	DraftRecommender full_recommender(*this, false);
+	std::vector<DraftEvaluation> full_ranked = full_recommender.recommend(allies, enemies, available);
+	
+	// Synergy removed evaluation
+	PredictionConfig no_synergy_config = _config;
+	no_synergy_config.synergy_weight = 0.0;
+	DraftEvaluator no_synergy_eval(_database, no_synergy_config);
+	DraftRecommender no_synergy_recommender(no_synergy_eval, false);
+	std::vector<DraftEvaluation> no_synergy_ranked = no_synergy_recommender.recommend(allies, enemies, available);
+	
+	// Matchup removed evaluation
+	PredictionConfig no_matchup_config = _config;
+	no_matchup_config.matchup_weight = 0.0;
+	DraftEvaluator no_matchup_eval(_database, no_matchup_config);
+	DraftRecommender no_matchup_recommender(no_matchup_eval, false);
+	std::vector<DraftEvaluation> no_matchup_ranked = no_matchup_recommender.recommend(allies, enemies, available);
+	
+	// Compute average impact scores
+	double total_synergy_impact = 0.0;
+	double total_matchup_impact = 0.0;
+	
+	for (size_t i = 0; i < available.size(); ++i) {
+		const StringName &candidate = available[i];
+		
+		// Find full model score for this candidate
+		auto full_it = std::find_if(full_ranked.begin(), full_ranked.end(), 
+			[&candidate](const DraftEvaluation &e) { return e.champion == candidate; });
+		double full_score = (full_it != full_ranked.end()) ? full_it->score : 0.5;
+		
+		// Find synergy-removed score
+		auto no_synergy_it = std::find_if(no_synergy_ranked.begin(), no_synergy_ranked.end(),
+			[&candidate](const DraftEvaluation &e) { return e.champion == candidate; });
+		double no_synergy_score = (no_synergy_it != no_synergy_ranked.end()) ? no_synergy_it->score : 0.5;
+		
+		// Find matchup-removed score
+		auto no_matchup_it = std::find_if(no_matchup_ranked.begin(), no_matchup_ranked.end(),
+			[&candidate](const DraftEvaluation &e) { return e.champion == candidate; });
+		double no_matchup_score = (no_matchup_it != no_matchup_ranked.end()) ? no_matchup_it->score : 0.5;
+		
+		total_synergy_impact += (full_score - no_synergy_score);
+		total_matchup_impact += (full_score - no_matchup_score);
+	}
+	
+	report.avg_synergy_impact = total_synergy_impact / double(available.size());
+	report.avg_matchup_impact = total_matchup_impact / double(available.size());
+	
+	// Compute top-3 overlap
+	int64_t top3_count = std::min<int64_t>(3, static_cast<int64_t>(full_ranked.size()));
+	
+	// Top-3 overlap vs synergy removed
+	std::set<StringName> full_top3;
+	for (int64_t i = 0; i < top3_count; ++i) {
+		full_top3.insert(full_ranked[static_cast<size_t>(i)].champion);
+	}
+	
+	std::set<StringName> no_synergy_top3;
+	for (int64_t i = 0; i < top3_count; ++i) {
+		no_synergy_top3.insert(no_synergy_ranked[static_cast<size_t>(i)].champion);
+	}
+	
+	std::set<StringName> no_matchup_top3;
+	for (int64_t i = 0; i < top3_count; ++i) {
+		no_matchup_top3.insert(no_matchup_ranked[static_cast<size_t>(i)].champion);
+	}
+	
+	// Count intersections
+	for (const StringName &champ : full_top3) {
+		if (no_synergy_top3.find(champ) != no_synergy_top3.end()) {
+			++report.top3_overlap_synergy_removed;
+		}
+		if (no_matchup_top3.find(champ) != no_matchup_top3.end()) {
+			++report.top3_overlap_matchup_removed;
+		}
+	}
+	
+	return report;
 }
 
 DraftRecommender::DraftRecommender(const DraftEvaluator &evaluator, bool debug_mode) :
@@ -476,17 +606,19 @@ void DraftRecommender::print_top(const std::vector<DraftEvaluation> &ranked, int
 			UtilityFunctions::print(vformat(""));
 			UtilityFunctions::print(vformat("base:"));
 			UtilityFunctions::print(vformat("  raw=%.6f", r.base_raw));
-			UtilityFunctions::print(vformat("  samples=%d", r.base_samples));
+			UtilityFunctions::print(vformat("  stat_samples=%d", r.base_samples));
 			UtilityFunctions::print(vformat("  adjusted=%.6f", r.base_winrate));
 			UtilityFunctions::print(vformat(""));
 			UtilityFunctions::print(vformat("synergy:"));
 			UtilityFunctions::print(vformat("  raw=%.6f", r.synergy_raw));
-			UtilityFunctions::print(vformat("  samples=%d", r.synergy_samples));
+			UtilityFunctions::print(vformat("  relationships=%d", r.synergy_relationships));
+			UtilityFunctions::print(vformat("  stat_samples=%d", r.synergy_stat_samples));
 			UtilityFunctions::print(vformat("  adjusted=%.6f", r.avg_synergy));
 			UtilityFunctions::print(vformat(""));
 			UtilityFunctions::print(vformat("counter:"));
 			UtilityFunctions::print(vformat("  raw=%.6f", r.counter_raw));
-			UtilityFunctions::print(vformat("  samples=%d", r.counter_samples));
+			UtilityFunctions::print(vformat("  relationships=%d", r.counter_relationships));
+			UtilityFunctions::print(vformat("  stat_samples=%d", r.counter_stat_samples));
 			UtilityFunctions::print(vformat("  adjusted=%.6f", r.avg_counter));
 			UtilityFunctions::print(vformat(""));
 			UtilityFunctions::print(vformat("final=%.6f", r.score));

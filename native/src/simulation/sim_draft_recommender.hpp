@@ -44,10 +44,14 @@ struct DraftEvaluation {
 	double synergy_raw = 0.5;
 	double counter_raw = 0.5;
 	
-	// Sample counts
+	// Statistical sample counts (from CSV, used in Bayesian smoothing)
 	int64_t base_samples = 0;
-	int64_t synergy_samples = 0;
-	int64_t counter_samples = 0;
+	int64_t synergy_stat_samples = 0;
+	int64_t counter_stat_samples = 0;
+	
+	// Relationship counts (number of allies/enemies evaluated)
+	int64_t synergy_relationships = 0;
+	int64_t counter_relationships = 0;
 };
 
 struct EvalDebug {
@@ -55,6 +59,27 @@ struct EvalDebug {
 	double synergy = 0.0;
 	double counter = 0.0;
 	double final = 0.0;
+};
+
+struct SignalInfluenceReport {
+	double base_only_score = 0.0;
+	double synergy_removed_score = 0.0;
+	double matchup_removed_score = 0.0;
+	double full_score = 0.0;
+	
+	double base_only_delta = 0.0;
+	double synergy_removed_delta = 0.0;
+	double matchup_removed_delta = 0.0;
+	
+	int64_t ranking_shift_synergy_removed = 0;
+	int64_t ranking_shift_matchup_removed = 0;
+};
+
+struct ControlledEvaluationReport {
+	double avg_synergy_impact = 0.0;
+	double avg_matchup_impact = 0.0;
+	int64_t top3_overlap_synergy_removed = 0;
+	int64_t top3_overlap_matchup_removed = 0;
 };
 
 class DraftStatsDatabase {
@@ -106,6 +131,8 @@ public:
 	explicit DraftEvaluator(const DraftStatsDatabase &database, PredictionConfig config = PredictionConfig());
 	DraftEvaluation evaluate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
 	double evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug = nullptr) const;
+	SignalInfluenceReport analyze_signal_influence(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
+	ControlledEvaluationReport run_controlled_evaluation(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const;
 
 private:
 	const DraftStatsDatabase &_database;

@@ -124,13 +124,13 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("benchmark_progress_read"), &TeamfightSimulationCore::benchmark_progress_read);
 	ClassDB::bind_method(D_METHOD("sim_profile_set_enabled", "enabled"), &TeamfightSimulationCore::sim_profile_set_enabled);
 	ClassDB::bind_method(D_METHOD("targeting_profile_set_enabled", "enabled"), &TeamfightSimulationCore::targeting_profile_set_enabled);
-	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "debug_mode"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
-	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
-	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
-	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
-	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "debug_mode", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -188,7 +188,9 @@ void TeamfightSimulationCore::debug_print_draft_recommendations(
 		double base_weight,
 		double synergy_weight,
 		double counter_weight,
-		bool debug_mode) {
+		bool debug_mode,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -199,6 +201,8 @@ void TeamfightSimulationCore::debug_print_draft_recommendations(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, debug_mode);
@@ -218,7 +222,9 @@ void TeamfightSimulationCore::run_debug_draft_evaluation_batch(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
-		double counter_weight) {
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -229,6 +235,8 @@ void TeamfightSimulationCore::run_debug_draft_evaluation_batch(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, true);
@@ -248,7 +256,9 @@ Array TeamfightSimulationCore::get_draft_recommendation_names(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
-		double counter_weight) {
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -259,6 +269,8 @@ Array TeamfightSimulationCore::get_draft_recommendation_names(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, false);
@@ -283,7 +295,9 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
-		double counter_weight) {
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -294,6 +308,8 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, false);
@@ -327,7 +343,9 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 		double matchup_weight,
 		double composition_weight,
 		double logistic_k,
-		bool include_breakdown) {
+		bool include_breakdown,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -343,6 +361,8 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 	config.matchup_weight = matchup_weight;
 	config.composition_weight = composition_weight;
 	config.logistic_k = logistic_k;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	double team1_prob = 0.0;
 	double team2_prob = 0.0;
@@ -388,7 +408,9 @@ Dictionary TeamfightSimulationCore::analyze_draft_signal_influence(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
-		double matchup_weight) {
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -409,6 +431,8 @@ Dictionary TeamfightSimulationCore::analyze_draft_signal_influence(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	
@@ -454,7 +478,9 @@ Dictionary TeamfightSimulationCore::run_controlled_draft_evaluation(
 		const String &stats_dir,
 		double base_weight,
 		double synergy_weight,
-		double matchup_weight) {
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -470,6 +496,8 @@ Dictionary TeamfightSimulationCore::run_controlled_draft_evaluation(
 	config.base_weight = base_weight;
 	config.synergy_weight = synergy_weight;
 	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
 
 	sim::draft::DraftEvaluator evaluator(database, config);
 	

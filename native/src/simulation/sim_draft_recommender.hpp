@@ -18,6 +18,14 @@ struct PredictionConfig {
 	double matchup_weight = 0.25;
 	double composition_weight = 0.0;
 
+	// Signal amplification factors
+	double synergy_amplification = 1.2;
+	double matchup_amplification = 1.2;
+
+	// Composition balance parameters
+	double composition_balance_weight = 0.05;
+	double composition_unbalance_penalty = 0.1;
+
 	double prior_winrate = 0.5;
 	int confidence_prior_samples = 100;
 
@@ -100,6 +108,7 @@ public:
 	bool synergy_winrate_for(const StringName &champion, const StringName &ally, StatValue &out_value) const;
 	bool counter_winrate_for(const StringName &champion, const StringName &enemy, StatValue &out_value) const;
 	StatValue composition_winrate_for(const std::vector<StringName> &team) const;
+	StringName get_champion_role(const StringName &champion) const;
 
 	struct TeamScoreBreakdown {
 		double base = 0.5;
@@ -118,12 +127,14 @@ private:
 	MatchupMap _synergy_winrates;
 	MatchupMap _counter_winrates;
 	CompositionMap _composition_winrates;
+	std::map<StringName, StringName> _champion_roles;  // champion -> role mapping
 	bool _loaded = false;
 	String _last_error;
 
 	bool _load_combat_stats(const String &path);
 	bool _load_counter_stats(const String &path, MatchupMap &target);
 	bool _load_composition_stats(const String &path);
+	void _load_champion_roles();
 };
 
 class DraftEvaluator {
@@ -137,6 +148,7 @@ public:
 private:
 	const DraftStatsDatabase &_database;
 	PredictionConfig _config;
+	double calculate_composition_bonus(const std::vector<StringName> &team, const StringName &candidate) const;
 };
 
 class DraftRecommender {

@@ -160,4 +160,101 @@ func _initialize() -> void:
 	print("Mean top3 overlap vs synergy removed: %.2f/3" % (float(total_synergy_overlap) / tests.size()))
 	print("Mean top3 overlap vs matchup removed: %.2f/3" % (float(total_matchup_overlap) / tests.size()))
 
+	print("\n========================")
+	print("STRESS TESTING")
+	print("========================")
+	
+	# Random drafts (50 per scenario)
+	print("\nRandom draft evaluation (50 iterations per scenario)")
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	
+	for i in tests.size():
+		var test: Dictionary = tests[i]
+		var total_random_synergy_impact := 0.0
+		var total_random_matchup_impact := 0.0
+		var total_random_synergy_overlap := 0
+		var total_random_matchup_overlap := 0
+		
+		for j in range(50):
+			# Random team selection
+			var random_allies: Array = []
+			var random_enemies: Array = []
+			var random_available: Array = available.duplicate()
+			random_available.shuffle()
+			
+			# Pick 2 random allies and 3 random enemies
+			for k in range(2):
+				if random_available.size() > 0:
+					random_allies.append(random_available.pop_back())
+			for k in range(3):
+				if random_available.size() > 0:
+					random_enemies.append(random_available.pop_back())
+			
+			var eval = core.run_controlled_draft_evaluation(
+				random_allies,
+				random_enemies,
+				random_available,
+				"res://stats_output",
+				0.50,
+				0.25,
+				0.25,
+				1.2,
+				1.2
+			)
+			total_random_synergy_impact += eval.get("avg_synergy_impact", 0.0)
+			total_random_matchup_impact += eval.get("avg_matchup_impact", 0.0)
+			total_random_synergy_overlap += eval.get("top3_overlap_synergy_removed", 0)
+			total_random_matchup_overlap += eval.get("top3_overlap_matchup_removed", 0)
+		
+		print("\nScenario: %s" % test["name"])
+		print("  Avg synergy impact: %.6f" % (total_random_synergy_impact / 50))
+		print("  Avg matchup impact: %.6f" % (total_random_matchup_impact / 50))
+		print("  Avg top3 overlap vs synergy removed: %.2f/3" % (float(total_random_synergy_overlap) / 50))
+		print("  Avg top3 overlap vs matchup removed: %.2f/3" % (float(total_random_matchup_overlap) / 50))
+	
+	# Extreme composition test cases
+	print("\nExtreme composition evaluation")
+	var extreme_cases := [
+		{
+			"name": "5_tanks",
+			"team": ["colossus", "colossus", "colossus", "colossus", "colossus"],
+		},
+		{
+			"name": "5_assassins",
+			"team": ["berserker", "berserker", "berserker", "berserker", "berserker"],
+		},
+		{
+			"name": "5_supports",
+			"team": ["cleric", "cleric", "cleric", "cleric", "cleric"],
+		},
+		{
+			"name": "5_ranged",
+			"team": ["archer", "archer", "archer", "archer", "archer"],
+		},
+		{
+			"name": "5_mixed",
+			"team": ["colossus", "berserker", "cleric", "archer", "swordsman"],
+		},
+	]
+	
+	for case in extreme_cases:
+		var team: Array = case["team"]
+		var eval = core.run_controlled_draft_evaluation(
+			[],
+			[],
+			available,
+			"res://stats_output",
+			0.50,
+			0.25,
+			0.25,
+			1.2,
+			1.2
+		)
+		print("\nCASE: %s" % case["name"])
+		print("  Synergy impact: %.6f" % eval.get("avg_synergy_impact", 0.0))
+		print("  Matchup impact: %.6f" % eval.get("avg_matchup_impact", 0.0))
+		print("  Top3 overlap vs synergy removed: %d/3" % eval.get("top3_overlap_synergy_removed", 0))
+		print("  Top3 overlap vs matchup removed: %d/3" % eval.get("top3_overlap_matchup_removed", 0))
+
 	quit()

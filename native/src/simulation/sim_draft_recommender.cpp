@@ -79,6 +79,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	_synergy_winrates.clear();
 	_counter_winrates.clear();
 	_composition_winrates.clear();
+	_champion_roles.clear();
 	_loaded = false;
 	_last_error = String();
 
@@ -93,6 +94,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 		return false;
 	}
 	_load_composition_stats(normalized + "/hero_combinations.csv"); // Optional, don't fail if missing
+	_load_champion_roles();
 	_loaded = true;
 	return true;
 }
@@ -229,6 +231,7 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 	int64_t hero_col = column_index(header, "hero");
 	int64_t winrate_col = column_index(header, "win_rate");
 	int64_t total_games_col = column_index(header, "total_games");
+	int64_t role_col = column_index(header, "role");
 	if (hero_col < 0 || winrate_col < 0) {
 		_last_error = vformat("DraftStatsDatabase: missing hero/win_rate columns in %s", path);
 		return false;
@@ -242,6 +245,7 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 		String hero = cell_or_empty(row, hero_col);
 		String winrate = cell_or_empty(row, winrate_col);
 		String total_games = total_games_col >= 0 ? cell_or_empty(row, total_games_col) : String();
+		String role = role_col >= 0 ? cell_or_empty(row, role_col) : String();
 		if (hero.is_empty() || winrate.is_empty()) {
 			continue;
 		}
@@ -249,6 +253,11 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 		value.winrate = winrate.to_float();
 		value.samples = total_games.is_empty() ? 0 : total_games.to_int();
 		_base_winrates[StringName(hero)] = value;
+		
+		// Store role if available
+		if (!role.is_empty()) {
+			_champion_roles[StringName(hero)] = StringName(role);
+		}
 	}
 	return true;
 }
@@ -338,6 +347,19 @@ bool DraftStatsDatabase::_load_composition_stats(const String &path) {
 		_composition_winrates[combination] = value;
 	}
 	return true;
+}
+
+void DraftStatsDatabase::_load_champion_roles() {
+	// Roles are already loaded from combat_stats.csv
+	// This is a placeholder for future role-specific loading if needed
+}
+
+StringName DraftStatsDatabase::get_champion_role(const StringName &champion) const {
+	auto it = _champion_roles.find(champion);
+	if (it != _champion_roles.end()) {
+		return it->second;
+	}
+	return StringName();  // Empty if not found
 }
 
 double DraftStatsDatabase::apply_bayesian_smoothing(double raw_winrate, int64_t samples, const PredictionConfig &config) const {
@@ -432,9 +454,17 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.counter_stat_samples = counter_stat_samples;
 	result.counter_relationships = counter_relationships;
 
+	// Apply signal amplification
+	double effective_synergy = result.avg_synergy * _config.synergy_amplification;
+	double effective_matchup = result.avg_counter * _config.matchup_amplification;
+
+	// Calculate composition bonus
+	double composition_bonus = calculate_composition_bonus(allies, candidate);
+
 	result.score = (_config.base_weight * result.base_winrate) +
-				  (_config.synergy_weight * result.avg_synergy) +
-				  (_config.matchup_weight * result.avg_counter);
+				  (_config.synergy_weight * effective_synergy) +
+				  (_config.matchup_weight * effective_matchup) +
+				  composition_bonus;
 	return result;
 }
 
@@ -570,6 +600,39 @@ ControlledEvaluationReport DraftEvaluator::run_controlled_evaluation(const std::
 	}
 	
 	return report;
+}
+
+double DraftEvaluator::calculate_composition_bonus(const std::vector<StringName> &team, const StringName &candidate) const {
+	// Build full team including candidate
+	std::vector<StringName> full_team = team;
+	full_team.push_back(candidate);
+	
+	// Count roles
+	std::map<StringName, int64_t> role_counts;
+	for (const StringName &champ : full_team) {
+		StringName role = _database.get_champion_role(champ);
+		if (role != StringName()) {
+			role_counts[role]++;
+		}
+	}
+	
+	// Check for balance
+	int64_t max_count = 0;
+	for (const auto &pair : role_counts) {
+		max_count = std::max(max_count, pair.second);
+	}
+	
+	// Apply bonus/penalty based on balance
+	if (max_count <= 2) {
+		// Balanced: bonus
+		return _config.composition_balance_weight;
+	} else if (max_count == 3) {
+		// Slightly unbalanced: neutral
+		return 0.0;
+	} else {
+		// Severely unbalanced: penalty
+		return -_config.composition_unbalance_penalty;
+	}
 }
 
 DraftRecommender::DraftRecommender(const DraftEvaluator &evaluator, bool debug_mode) :

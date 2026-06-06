@@ -12,6 +12,18 @@ using namespace godot;
 namespace sim {
 namespace draft {
 
+struct PredictionConfig {
+	double base_weight = 0.50;
+	double synergy_weight = 0.25;
+	double matchup_weight = 0.25;
+	double composition_weight = 0.0;
+
+	double prior_winrate = 0.5;
+	int confidence_prior_samples = 100;
+
+	double logistic_k = 10.0;
+};
+
 struct DraftScoreWeights {
 	double base = 0.50;
 	double synergy = 0.25;
@@ -37,36 +49,57 @@ struct EvalDebug {
 
 class DraftStatsDatabase {
 public:
-	using MatchupMap = std::map<String, std::map<String, double>>;
+	struct StatValue {
+		double winrate = 0.5;
+		int64_t samples = 0;
+	};
+
+	using MatchupMap = std::map<String, std::map<String, StatValue>>;
+	using CompositionMap = std::map<String, StatValue>;
 
 	bool load_from_dir(const String &dir_path);
 	bool is_loaded() const;
 	String last_error() const;
 
-	double base_winrate_for(const StringName &champion, double fallback = 0.5) const;
-	bool synergy_winrate_for(const StringName &champion, const StringName &ally, double &out_winrate) const;
-	bool counter_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const;
+	StatValue base_winrate_for(const StringName &champion) const;
+	bool synergy_winrate_for(const StringName &champion, const StringName &ally, StatValue &out_value) const;
+	bool counter_winrate_for(const StringName &champion, const StringName &enemy, StatValue &out_value) const;
+	StatValue composition_winrate_for(const std::vector<StringName> &team) const;
+
+	struct TeamScoreBreakdown {
+		double base = 0.5;
+		double synergy = 0.5;
+		double matchup = 0.5;
+		double composition = 0.5;
+		double final = 0.5;
+	};
+
+	double calculate_team_score(const std::vector<StringName> &team, const std::vector<StringName> &enemies, const PredictionConfig &config, TeamScoreBreakdown &out_breakdown) const;
+	void calculate_win_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, const PredictionConfig &config, double &out_team1_prob, double &out_team2_prob, TeamScoreBreakdown &out_team1_breakdown, TeamScoreBreakdown &out_team2_breakdown) const;
+	double apply_bayesian_smoothing(double raw_winrate, int64_t samples, const PredictionConfig &config) const;
 
 private:
-	std::map<String, double> _base_winrates;
+	std::map<String, StatValue> _base_winrates;
 	MatchupMap _synergy_winrates;
 	MatchupMap _counter_winrates;
+	CompositionMap _composition_winrates;
 	bool _loaded = false;
 	String _last_error;
 
 	bool _load_combat_stats(const String &path);
 	bool _load_counter_stats(const String &path, MatchupMap &target);
+	bool _load_composition_stats(const String &path);
 };
 
 class DraftEvaluator {
 public:
-	explicit DraftEvaluator(const DraftStatsDatabase &database, DraftScoreWeights weights = DraftScoreWeights());
+	explicit DraftEvaluator(const DraftStatsDatabase &database, PredictionConfig config = PredictionConfig());
 	DraftEvaluation evaluate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
 	double evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug = nullptr) const;
 
 private:
 	const DraftStatsDatabase &_database;
-	DraftScoreWeights _weights;
+	PredictionConfig _config;
 };
 
 class DraftRecommender {

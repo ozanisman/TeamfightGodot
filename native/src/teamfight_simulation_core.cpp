@@ -127,6 +127,8 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "debug_mode"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25));
+	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -191,12 +193,12 @@ void TeamfightSimulationCore::debug_print_draft_recommendations(
 		return;
 	}
 
-	sim::draft::DraftScoreWeights weights;
-	weights.base = base_weight;
-	weights.synergy = synergy_weight;
-	weights.counter = counter_weight;
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
 
-	sim::draft::DraftEvaluator evaluator(database, weights);
+	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, debug_mode);
 	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
 			array_to_string_names(allies),
@@ -221,12 +223,12 @@ void TeamfightSimulationCore::run_debug_draft_evaluation_batch(
 		return;
 	}
 
-	sim::draft::DraftScoreWeights weights;
-	weights.base = base_weight;
-	weights.synergy = synergy_weight;
-	weights.counter = counter_weight;
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
 
-	sim::draft::DraftEvaluator evaluator(database, weights);
+	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, true);
 	recommender.run_debug_evaluation_batch(
 			array_to_string_names(allies),
@@ -251,12 +253,12 @@ Array TeamfightSimulationCore::get_draft_recommendation_names(
 		return Array();
 	}
 
-	sim::draft::DraftScoreWeights weights;
-	weights.base = base_weight;
-	weights.synergy = synergy_weight;
-	weights.counter = counter_weight;
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
 
-	sim::draft::DraftEvaluator evaluator(database, weights);
+	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, false);
 	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
 			array_to_string_names(allies),
@@ -268,6 +270,113 @@ Array TeamfightSimulationCore::get_draft_recommendation_names(
 	for (int64_t i = 0; i < count; ++i) {
 		result.push_back(String(ranked[static_cast<size_t>(i)].champion));
 	}
+	return result;
+}
+
+Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t top_n,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return Array();
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	sim::draft::DraftRecommender recommender(evaluator, false);
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available));
+
+	Array result;
+	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	for (int64_t i = 0; i < count; ++i) {
+		const sim::draft::DraftEvaluation &eval = ranked[static_cast<size_t>(i)];
+		Dictionary breakdown;
+		breakdown["champion"] = String(eval.champion);
+		breakdown["base"] = eval.base_winrate;
+		breakdown["synergy"] = eval.avg_synergy;
+		breakdown["counter"] = eval.avg_counter;
+		breakdown["final"] = eval.score;
+		result.push_back(breakdown);
+	}
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::predict_draft_winner(
+		const Array &team1,
+		const Array &team2,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		double matchup_weight,
+		double composition_weight,
+		double logistic_k,
+		bool include_breakdown) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["team1_prob"] = 0.5;
+		result["team2_prob"] = 0.5;
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.composition_weight = composition_weight;
+	config.logistic_k = logistic_k;
+
+	double team1_prob = 0.0;
+	double team2_prob = 0.0;
+	sim::draft::DraftStatsDatabase::TeamScoreBreakdown team1_breakdown;
+	sim::draft::DraftStatsDatabase::TeamScoreBreakdown team2_breakdown;
+	database.calculate_win_probability(
+			array_to_string_names(team1),
+			array_to_string_names(team2),
+			config,
+			team1_prob,
+			team2_prob,
+			team1_breakdown,
+			team2_breakdown);
+
+	Dictionary result;
+	result["team1_prob"] = team1_prob;
+	result["team2_prob"] = team2_prob;
+
+	if (include_breakdown) {
+		Dictionary team1_dict;
+		team1_dict["base"] = team1_breakdown.base;
+		team1_dict["synergy"] = team1_breakdown.synergy;
+		team1_dict["matchup"] = team1_breakdown.matchup;
+		team1_dict["composition"] = team1_breakdown.composition;
+		team1_dict["final"] = team1_breakdown.final;
+		result["team1_breakdown"] = team1_dict;
+
+		Dictionary team2_dict;
+		team2_dict["base"] = team2_breakdown.base;
+		team2_dict["synergy"] = team2_breakdown.synergy;
+		team2_dict["matchup"] = team2_breakdown.matchup;
+		team2_dict["composition"] = team2_breakdown.composition;
+		team2_dict["final"] = team2_breakdown.final;
+		result["team2_breakdown"] = team2_dict;
+	}
+
 	return result;
 }
 

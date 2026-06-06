@@ -58,7 +58,7 @@ String cell_or_empty(const std::vector<String> &row, int64_t index) {
 	return row[static_cast<size_t>(index)];
 }
 
-bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a, const StringName &b, double &out_winrate) {
+bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a, const StringName &b, DraftStatsDatabase::StatValue &out_value) {
 	auto it = map.find(a);
 	if (it == map.end()) {
 		return false;
@@ -67,7 +67,7 @@ bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a,
 	if (jt == it->second.end()) {
 		return false;
 	}
-	out_winrate = jt->second;
+	out_value = jt->second;
 	return true;
 }
 
@@ -77,6 +77,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	_base_winrates.clear();
 	_synergy_winrates.clear();
 	_counter_winrates.clear();
+	_composition_winrates.clear();
 	_loaded = false;
 	_last_error = String();
 
@@ -90,6 +91,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	if (!_load_counter_stats(normalized + "/matchup_vs.csv", _counter_winrates)) {
 		return false;
 	}
+	_load_composition_stats(normalized + "/hero_combinations.csv"); // Optional, don't fail if missing
 	_loaded = true;
 	return true;
 }
@@ -102,20 +104,114 @@ String DraftStatsDatabase::last_error() const {
 	return _last_error;
 }
 
-double DraftStatsDatabase::base_winrate_for(const StringName &champion, double fallback) const {
+DraftStatsDatabase::StatValue DraftStatsDatabase::base_winrate_for(const StringName &champion) const {
 	auto it = _base_winrates.find(champion);
 	if (it == _base_winrates.end()) {
+		StatValue fallback;
+		fallback.winrate = 0.5;
+		fallback.samples = 0;
 		return fallback;
 	}
 	return it->second;
 }
 
-bool DraftStatsDatabase::synergy_winrate_for(const StringName &champion, const StringName &ally, double &out_winrate) const {
-	return lookup_pair(_synergy_winrates, champion, ally, out_winrate) || lookup_pair(_synergy_winrates, ally, champion, out_winrate);
+bool DraftStatsDatabase::synergy_winrate_for(const StringName &champion, const StringName &ally, StatValue &out_value) const {
+	return lookup_pair(_synergy_winrates, champion, ally, out_value) || lookup_pair(_synergy_winrates, ally, champion, out_value);
 }
 
-bool DraftStatsDatabase::counter_winrate_for(const StringName &champion, const StringName &enemy, double &out_winrate) const {
-	return lookup_pair(_counter_winrates, champion, enemy, out_winrate);
+bool DraftStatsDatabase::counter_winrate_for(const StringName &champion, const StringName &enemy, StatValue &out_value) const {
+	return lookup_pair(_counter_winrates, champion, enemy, out_value);
+}
+
+double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &team, const std::vector<StringName> &enemies, const PredictionConfig &config, TeamScoreBreakdown &out_breakdown) const {
+	if (team.empty()) {
+		out_breakdown.base = 0.5;
+		out_breakdown.synergy = 0.5;
+		out_breakdown.matchup = 0.5;
+		out_breakdown.composition = 0.5;
+		out_breakdown.final = 0.5;
+		return 0.5;
+	}
+
+	double total_base = 0.0;
+	double total_synergy = 0.0;
+	double total_matchup = 0.0;
+	double total_score = 0.0;
+
+	for (const StringName &champion : team) {
+		// Base component with confidence weighting
+		StatValue base_stat = base_winrate_for(champion);
+		double base_adjusted = apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, config);
+		total_base += base_adjusted;
+
+		// Synergy component with confidence weighting
+		double synergy_total = 0.0;
+		int64_t synergy_samples = 0;
+		for (const StringName &teammate : team) {
+			if (champion == teammate) {
+				continue;
+			}
+			StatValue synergy_stat;
+			if (synergy_winrate_for(champion, teammate, synergy_stat)) {
+				synergy_total += apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, config);
+				++synergy_samples;
+			}
+		}
+		double avg_synergy = synergy_samples > 0 ? synergy_total / double(synergy_samples) : 0.5; // Neutral fallback
+		total_synergy += avg_synergy;
+
+		// Matchup component with confidence weighting
+		double matchup_total = 0.0;
+		int64_t matchup_samples = 0;
+		for (const StringName &enemy : enemies) {
+			StatValue matchup_stat;
+			if (counter_winrate_for(champion, enemy, matchup_stat)) {
+				matchup_total += apply_bayesian_smoothing(matchup_stat.winrate, matchup_stat.samples, config);
+				++matchup_samples;
+			}
+		}
+		double avg_matchup = matchup_samples > 0 ? matchup_total / double(matchup_samples) : 0.5; // Neutral fallback
+		total_matchup += avg_matchup;
+
+		// Combine components
+		double champion_score = (config.base_weight * base_adjusted) +
+							   (config.synergy_weight * avg_synergy) +
+							   (config.matchup_weight * avg_matchup);
+		total_score += champion_score;
+	}
+
+	out_breakdown.base = total_base / double(team.size());
+	out_breakdown.synergy = total_synergy / double(team.size());
+	out_breakdown.matchup = total_matchup / double(team.size());
+
+	double avg_team_score = total_score / double(team.size());
+
+	// Add composition bonus if team is complete
+	if (team.size() == 5 && config.composition_weight > 0.0) {
+		StatValue comp_stat = composition_winrate_for(team);
+		double comp_adjusted = apply_bayesian_smoothing(comp_stat.winrate, comp_stat.samples, config);
+		out_breakdown.composition = comp_adjusted;
+		// Blend composition bonus with team score
+		avg_team_score = (avg_team_score * (1.0 - config.composition_weight)) + (comp_adjusted * config.composition_weight);
+	} else {
+		out_breakdown.composition = 0.5;
+	}
+
+	out_breakdown.final = avg_team_score;
+	return avg_team_score;
+}
+
+void DraftStatsDatabase::calculate_win_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, const PredictionConfig &config, double &out_team1_prob, double &out_team2_prob, TeamScoreBreakdown &out_team1_breakdown, TeamScoreBreakdown &out_team2_breakdown) const {
+	double score1 = calculate_team_score(team1, team2, config, out_team1_breakdown);
+	double score2 = calculate_team_score(team2, team1, config, out_team2_breakdown);
+
+	// Use logistic function to convert score difference to probability
+	double score_diff = score1 - score2;
+	double k = config.logistic_k;
+	double logistic = 1.0 / (1.0 + std::exp(-k * score_diff));
+
+	out_team1_prob = logistic;
+	out_team2_prob = 1.0 - logistic;
 }
 
 bool DraftStatsDatabase::_load_combat_stats(const String &path) {
@@ -131,6 +227,7 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 	std::vector<String> header = parse_csv_line(file->get_line());
 	int64_t hero_col = column_index(header, "hero");
 	int64_t winrate_col = column_index(header, "win_rate");
+	int64_t total_games_col = column_index(header, "total_games");
 	if (hero_col < 0 || winrate_col < 0) {
 		_last_error = vformat("DraftStatsDatabase: missing hero/win_rate columns in %s", path);
 		return false;
@@ -143,10 +240,14 @@ bool DraftStatsDatabase::_load_combat_stats(const String &path) {
 		std::vector<String> row = parse_csv_line(line);
 		String hero = cell_or_empty(row, hero_col);
 		String winrate = cell_or_empty(row, winrate_col);
+		String total_games = total_games_col >= 0 ? cell_or_empty(row, total_games_col) : String();
 		if (hero.is_empty() || winrate.is_empty()) {
 			continue;
 		}
-		_base_winrates[StringName(hero)] = winrate.to_float();
+		StatValue value;
+		value.winrate = winrate.to_float();
+		value.samples = total_games.is_empty() ? 0 : total_games.to_int();
+		_base_winrates[StringName(hero)] = value;
 	}
 	return true;
 }
@@ -168,6 +269,8 @@ bool DraftStatsDatabase::_load_counter_stats(const String &path, MatchupMap &tar
 		other_col = column_index(header, "opponent");
 	}
 	int64_t winrate_col = column_index(header, "winrate");
+	int64_t wins_col = column_index(header, "wins");
+	int64_t losses_col = column_index(header, "losses");
 	if (champion_col < 0 || other_col < 0 || winrate_col < 0) {
 		_last_error = vformat("DraftStatsDatabase: missing counter columns in %s", path);
 		return false;
@@ -181,45 +284,142 @@ bool DraftStatsDatabase::_load_counter_stats(const String &path, MatchupMap &tar
 		String champion = cell_or_empty(row, champion_col);
 		String other = cell_or_empty(row, other_col);
 		String winrate = cell_or_empty(row, winrate_col);
+		String wins = wins_col >= 0 ? cell_or_empty(row, wins_col) : String();
+		String losses = losses_col >= 0 ? cell_or_empty(row, losses_col) : String();
 		if (champion.is_empty() || other.is_empty() || winrate.is_empty()) {
 			continue;
 		}
-		target[StringName(champion)][StringName(other)] = winrate.to_float();
+		StatValue value;
+		value.winrate = winrate.to_float();
+		value.samples = (wins.is_empty() || losses.is_empty()) ? 0 : (wins.to_int() + losses.to_int());
+		target[StringName(champion)][StringName(other)] = value;
 	}
 	return true;
 }
 
-DraftEvaluator::DraftEvaluator(const DraftStatsDatabase &database, DraftScoreWeights weights) :
+bool DraftStatsDatabase::_load_composition_stats(const String &path) {
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		// Composition stats are optional, don't fail if missing
+		return true;
+	}
+	if (file->eof_reached()) {
+		return true;
+	}
+	std::vector<String> header = parse_csv_line(file->get_line());
+	int64_t team_size_col = column_index(header, "team_size");
+	int64_t combination_col = column_index(header, "combination");
+	int64_t winrate_col = column_index(header, "win_rate");
+	int64_t total_games_col = column_index(header, "total_games");
+	if (team_size_col < 0 || combination_col < 0 || winrate_col < 0) {
+		return true;
+	}
+	while (!file->eof_reached()) {
+		String line = file->get_line();
+		if (line.strip_edges().is_empty()) {
+			continue;
+		}
+		std::vector<String> row = parse_csv_line(line);
+		String team_size = cell_or_empty(row, team_size_col);
+		String combination = cell_or_empty(row, combination_col);
+		String winrate = cell_or_empty(row, winrate_col);
+		String total_games = total_games_col >= 0 ? cell_or_empty(row, total_games_col) : String();
+		if (team_size.is_empty() || combination.is_empty() || winrate.is_empty()) {
+			continue;
+		}
+		// Only load 5v5 compositions for now
+		if (team_size.to_int() != 5) {
+			continue;
+		}
+		StatValue value;
+		value.winrate = winrate.to_float();
+		value.samples = total_games.is_empty() ? 0 : total_games.to_int();
+		_composition_winrates[combination] = value;
+	}
+	return true;
+}
+
+double DraftStatsDatabase::apply_bayesian_smoothing(double raw_winrate, int64_t samples, const PredictionConfig &config) const {
+	if (samples <= 0) {
+		return config.prior_winrate;
+	}
+	double prior = config.prior_winrate;
+	int64_t N = config.confidence_prior_samples;
+	return (raw_winrate * samples + prior * N) / (samples + N);
+}
+
+DraftStatsDatabase::StatValue DraftStatsDatabase::composition_winrate_for(const std::vector<StringName> &team) const {
+	if (team.size() != 5) {
+		StatValue fallback;
+		fallback.winrate = 0.5;
+		fallback.samples = 0;
+		return fallback;
+	}
+
+	// Sort team to create consistent key
+	std::vector<String> sorted_team;
+	for (const StringName &champion : team) {
+		sorted_team.push_back(String(champion));
+	}
+	std::sort(sorted_team.begin(), sorted_team.end());
+
+	String combination = sorted_team[0];
+	for (size_t i = 1; i < sorted_team.size(); ++i) {
+		combination += " + " + sorted_team[i];
+	}
+
+	auto it = _composition_winrates.find(combination);
+	if (it == _composition_winrates.end()) {
+		StatValue fallback;
+		fallback.winrate = 0.5;
+		fallback.samples = 0;
+		return fallback;
+	}
+	return it->second;
+}
+
+DraftEvaluator::DraftEvaluator(const DraftStatsDatabase &database, PredictionConfig config) :
 		_database(database),
-		_weights(weights) {
+		_config(config) {
 }
 
 DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const {
 	DraftEvaluation result;
 	result.champion = candidate;
-	result.base_winrate = _database.base_winrate_for(candidate, 0.5);
 
+	// Base component with confidence weighting
+	DraftStatsDatabase::StatValue base_stat = _database.base_winrate_for(candidate);
+	result.base_winrate = _database.apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, _config);
+
+	// Synergy component with confidence weighting
 	double synergy_total = 0.0;
+	int64_t synergy_samples = 0;
 	for (const StringName &ally : allies) {
-		double winrate = 0.0;
-		if (_database.synergy_winrate_for(candidate, ally, winrate)) {
-			synergy_total += winrate;
-			++result.synergy_samples;
+		DraftStatsDatabase::StatValue synergy_stat;
+		if (_database.synergy_winrate_for(candidate, ally, synergy_stat)) {
+			synergy_total += _database.apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, _config);
+			++synergy_samples;
 		}
 	}
-	result.avg_synergy = result.synergy_samples > 0 ? synergy_total / double(result.synergy_samples) : result.base_winrate;
+	result.avg_synergy = synergy_samples > 0 ? synergy_total / double(synergy_samples) : 0.5; // Neutral fallback
+	result.synergy_samples = synergy_samples;
 
+	// Counter component with confidence weighting
 	double counter_total = 0.0;
+	int64_t counter_samples = 0;
 	for (const StringName &enemy : enemies) {
-		double winrate = 0.0;
-		if (_database.counter_winrate_for(candidate, enemy, winrate)) {
-			counter_total += winrate;
-			++result.counter_samples;
+		DraftStatsDatabase::StatValue counter_stat;
+		if (_database.counter_winrate_for(candidate, enemy, counter_stat)) {
+			counter_total += _database.apply_bayesian_smoothing(counter_stat.winrate, counter_stat.samples, _config);
+			++counter_samples;
 		}
 	}
-	result.avg_counter = result.counter_samples > 0 ? counter_total / double(result.counter_samples) : result.base_winrate;
+	result.avg_counter = counter_samples > 0 ? counter_total / double(counter_samples) : 0.5; // Neutral fallback
+	result.counter_samples = counter_samples;
 
-	result.score = (_weights.base * result.base_winrate) + (_weights.synergy * result.avg_synergy) + (_weights.counter * result.avg_counter);
+	result.score = (_config.base_weight * result.base_winrate) +
+				  (_config.synergy_weight * result.avg_synergy) +
+				  (_config.matchup_weight * result.avg_counter);
 	return result;
 }
 

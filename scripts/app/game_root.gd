@@ -98,7 +98,16 @@ func _open_main_menu() -> void:
 	stats_button.add_theme_font_size_override("font_size", 18)
 	stats_button.pressed.connect(_open_stats_dashboard)
 	button_container.add_child(stats_button)
-	
+
+	# Draft Testing button
+	var draft_button := Button.new()
+	draft_button.text = "Draft Testing"
+	draft_button.custom_minimum_size = Vector2(200, 80)
+	draft_button.add_theme_color_override("font_color", Color.WHITE)
+	draft_button.add_theme_font_size_override("font_size", 18)
+	draft_button.pressed.connect(_open_draft_testing)
+	button_container.add_child(draft_button)
+
 	# Add to tree
 	get_tree().root.add_child(main_menu)
 	get_tree().current_scene = main_menu
@@ -110,6 +119,10 @@ func _open_stats_dashboard() -> void:
 
 func _open_simulation_viewer() -> void:
 	get_tree().change_scene_to_file("res://scenes/simulation_viewer.tscn")
+
+
+func _open_draft_testing() -> void:
+	get_tree().change_scene_to_file("res://scenes/draft_testing.tscn")
 
 
 func _start_headless_run() -> void:

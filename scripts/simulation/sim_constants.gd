@@ -64,12 +64,12 @@ const EFFECT_METADATA: Dictionary = {
 	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies. Can ends prematurely when attacking or casting unless specified."},
 	"heal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP to the target. Cannot increase a units HP over maximum unless specified."},
 	"dodge": {"color": "#66e666", "category": "UTILITY", "description": "Chance to avoid incoming auto attacks, taking no damage."},
-	"mana": {"color": "#66e666", "category": "UTILITY", "description": "Restores mana to the target."},
+	"mana": {"color": "#66e666", "category": "UTILITY", "description": "Resource used to cast ultimates. By default 10 mana is generated per auto attack."},
 	"dash": {"color": "#66e666", "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
 	"summon": {"color": "#66e666", "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
-	"physical damage": {"color": "#ff5555", "category": "DAMAGE", "description": "Value is reduced by the target's armor."},
-	"magic damage": {"color": "#55aaff", "category": "DAMAGE", "description": "Value is reduced by the target's magic resist."},
-	"true damage": {"color": "#eecfa1", "category": "DAMAGE", "description": "Value ignores ALL defensive stats."}
+	"physical damage": {"color": "#ff5555", "category": "DAMAGE", "description": "Reduced by the target's armor."},
+	"magic damage": {"color": "#55aaff", "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
+	"true damage": {"color": "#eecfa1", "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
 }
 
 # ========================================

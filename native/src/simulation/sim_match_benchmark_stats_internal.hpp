@@ -39,6 +39,7 @@ void add_record_with_minions(
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated);
 godot::String sorted_combo_label(const godot::Array &comp);
+godot::String sorted_role_label(const godot::Array &role_strings);
 void record_matchup(godot::Dictionary &matchup_data, const godot::StringName &champion_id, const godot::String &key, bool won);
 void record_matchup_result(godot::Dictionary &matchup_data, const godot::Array &winners, const godot::Array &losers);
 int64_t pick_index(const godot::Ref<godot::RandomNumberGenerator> &rng, int64_t upper_inclusive);

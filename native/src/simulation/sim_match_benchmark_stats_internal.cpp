@@ -145,6 +145,23 @@ String sorted_combo_label(const Array &comp) {
 	return label;
 }
 
+String sorted_role_label(const Array &role_strings) {
+	std::vector<String> roles;
+	roles.reserve(static_cast<size_t>(role_strings.size()));
+	for (int64_t i = 0; i < role_strings.size(); ++i) {
+		roles.push_back(String(role_strings[i]));
+	}
+	std::sort(roles.begin(), roles.end());
+	String label;
+	for (size_t i = 0; i < roles.size(); ++i) {
+		if (i > 0) {
+			label += " + ";
+		}
+		label += roles[i];
+	}
+	return label;
+}
+
 void record_matchup(Dictionary &matchup_data, const StringName &champion_id, const String &key, bool won) {
 	const String champion = String(champion_id);
 	Dictionary champion_data = Dictionary(matchup_data.get(champion, Dictionary()));

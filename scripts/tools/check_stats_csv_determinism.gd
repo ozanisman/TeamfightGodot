@@ -15,7 +15,7 @@ const _COMPARE_FILES: Array[String] = [
 	"summary_stats.csv",
 	"combat_stats.csv",
 	"role_stats.csv",
-	"hero_combinations.csv",
+	"role_combinations.csv",
 	"matchup_vs.csv",
 	"matchup_with.csv",
 ]

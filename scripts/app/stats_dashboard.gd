@@ -96,7 +96,7 @@ const VIEW_MODES: Array[Dictionary] = [
 @export var chart_scroll_min_bar_region: int = 136
 @export var chart_scroll_width_slack: int = 48
 @export var chart_label_w: int = 152
-@export var chart_label_w_synergy: int = 464
+@export var chart_label_w_synergy: int = 600
 @export var chart_games_col_w: int = 72
 @export var chart_kda_col_w: int = 185
 @export var chart_val_col_w: int = 96
@@ -294,7 +294,7 @@ func _build_fatal_error_ui() -> void:
 	_stretch_control_to_parent_full_rect(lb)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lb.text = "Stats CSV bundle missing.\nAdd combat_stats.csv, hero_combinations.csv, role_stats.csv, summary_stats.csv\nunder res://stats_output (or run batch generator)."
+	lb.text = "Stats CSV bundle missing.\nAdd combat_stats.csv, role_combinations.csv, role_stats.csv, summary_stats.csv\nunder res://stats_output (or run batch generator)."
 	lb.add_theme_color_override("font_color", COLOR_TEXT)
 	lb.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	add_child(lb)
@@ -1166,7 +1166,7 @@ func _current_metric_label_string() -> String:
 
 func _display_name(key: String, synergy: bool) -> String:
 	if synergy:
-		var parts: PackedStringArray = key.split("\u001e")
+		var parts: PackedStringArray = key.split(" + ")
 		var s := ""
 		for i in parts.size():
 			if i > 0:
@@ -1239,6 +1239,15 @@ func _refresh_chart() -> void:
 		return
 
 	var display_data: Dictionary = data_context.duplicate(true)
+	
+	# Filter combinations with less than 5 games
+	if is_synergy:
+		var filtered: Dictionary = {}
+		for k in display_data.keys():
+			var count: int = StatsDashboardLoaderScript.get_count(display_data[k])
+			if count >= 5:
+				filtered[k] = display_data[k]
+		display_data = filtered
 	
 	# Calculate K/D/A for roles on-the-fly from champion data
 	if _view_mode == &"roles":
@@ -1382,37 +1391,57 @@ func _refresh_chart() -> void:
 
 		var name_w := Control.new()
 		name_w.custom_minimum_size.x = label_width
-		var name_lb := Label.new()
-		name_lb.text = _display_name(key_s, is_synergy)
-		name_lb.autowrap_mode = TextServer.AUTOWRAP_OFF
-		name_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
-		if not is_synergy and _view_mode == &"champions":
-			var role: String = str(_unit_roles.get(key_s, ""))
-			var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
-			name_lb.add_theme_color_override("font_color", rc)
-			var marker := ColorRect.new()
-			marker.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
-			marker.color = rc
+		if is_synergy:
+			var parts: PackedStringArray = key_s.split(" + ")
 			var name_h := HBoxContainer.new()
-			name_h.add_theme_constant_override("separation", UI_NAME_H_SEP)
-			name_h.add_child(marker)
-			name_h.add_child(name_lb)
+			name_h.add_theme_constant_override("separation", 4)
+			for i in parts.size():
+				var role: String = parts[i].strip_edges().to_lower()
+				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+				var role_lb := Label.new()
+				role_lb.text = parts[i]
+				role_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
+				role_lb.add_theme_color_override("font_color", rc)
+				name_h.add_child(role_lb)
+				if i < parts.size() - 1:
+					var sep_lb := Label.new()
+					sep_lb.text = " + "
+					sep_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
+					sep_lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+					name_h.add_child(sep_lb)
 			name_w.add_child(name_h)
-		elif not is_synergy and _view_mode == &"roles":
-			var role_key: String = str(key_s).to_lower()
-			var rc_r: Color = SimConstantsScript.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
-			name_lb.add_theme_color_override("font_color", rc_r)
-			var marker_r := ColorRect.new()
-			marker_r.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
-			marker_r.color = rc_r
-			var name_r := HBoxContainer.new()
-			name_r.add_theme_constant_override("separation", UI_NAME_H_SEP)
-			name_r.add_child(marker_r)
-			name_r.add_child(name_lb)
-			name_w.add_child(name_r)
 		else:
-			name_lb.add_theme_color_override("font_color", COLOR_TEXT)
-			name_w.add_child(name_lb)
+			var name_lb := Label.new()
+			name_lb.text = _display_name(key_s, is_synergy)
+			name_lb.autowrap_mode = TextServer.AUTOWRAP_OFF
+			name_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
+			if _view_mode == &"champions":
+				var role: String = str(_unit_roles.get(key_s, ""))
+				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+				name_lb.add_theme_color_override("font_color", rc)
+				var marker := ColorRect.new()
+				marker.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
+				marker.color = rc
+				var name_h := HBoxContainer.new()
+				name_h.add_theme_constant_override("separation", UI_NAME_H_SEP)
+				name_h.add_child(marker)
+				name_h.add_child(name_lb)
+				name_w.add_child(name_h)
+			elif _view_mode == &"roles":
+				var role_key: String = str(key_s).to_lower()
+				var rc_r: Color = SimConstantsScript.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
+				name_lb.add_theme_color_override("font_color", rc_r)
+				var marker_r := ColorRect.new()
+				marker_r.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
+				marker_r.color = rc_r
+				var name_r := HBoxContainer.new()
+				name_r.add_theme_constant_override("separation", UI_NAME_H_SEP)
+				name_r.add_child(marker_r)
+				name_r.add_child(name_lb)
+				name_w.add_child(name_r)
+			else:
+				name_lb.add_theme_color_override("font_color", COLOR_TEXT)
+				name_w.add_child(name_lb)
 		hb.add_child(name_w)
 
 		var bar_holder := StatsBarControlScript.new()

@@ -155,6 +155,8 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 
 		Dictionary heroes = Dictionary(bucket["heroes"]);
 		Dictionary roles = Dictionary(bucket["roles"]);
+		Array player_roles;
+		Array enemy_roles;
 		for (UnitState &unit : GeneratedMatchHost::units(&core)) {
 			const UnitStateCold &c = GeneratedMatchHost::uc(&core, unit);
 			if (c.role_id == StringName("minion")) {
@@ -169,21 +171,31 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			heroes[hero] = hero_entry;
 
-			const String role = String(Dictionary(c.stats).get("role", String("unknown")));
+			const String role = String(c.role_id);
 			Dictionary role_entry = Dictionary(roles.get(role, Dictionary()));
 			if (role_entry.is_empty()) {
 				role_entry = make_role_entry();
 			}
 			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			roles[role] = role_entry;
+
+			// Collect roles for matchup tracking
+			if (unit.team == sn_player()) {
+				player_roles.append(role);
+			} else {
+				enemy_roles.append(role);
+			}
 		}
 		bucket["heroes"] = heroes;
 		bucket["roles"] = roles;
 
 		if (team_size > 1) {
 			Dictionary combos = Dictionary(bucket["combos"]);
-			const String player_label = sorted_combo_label(GeneratedMatchHost::player_comp(&core));
-			Dictionary player_combo = Dictionary(combos.get(player_label, Dictionary()));
+			const String player_role_fp = sorted_role_label(player_roles);
+			const String enemy_role_fp = sorted_role_label(enemy_roles);
+
+			// Record player team fingerprint
+			Dictionary player_combo = Dictionary(combos.get(player_role_fp, Dictionary()));
 			if (player_combo.is_empty()) {
 				player_combo["w"] = int64_t(0);
 				player_combo["n"] = int64_t(0);
@@ -192,10 +204,10 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			if (player_won) {
 				player_combo["w"] = int64_t(player_combo["w"]) + 1;
 			}
-			combos[player_label] = player_combo;
+			combos[player_role_fp] = player_combo;
 
-			const String enemy_label = sorted_combo_label(GeneratedMatchHost::enemy_comp(&core));
-			Dictionary enemy_combo = Dictionary(combos.get(enemy_label, Dictionary()));
+			// Record enemy team fingerprint
+			Dictionary enemy_combo = Dictionary(combos.get(enemy_role_fp, Dictionary()));
 			if (enemy_combo.is_empty()) {
 				enemy_combo["w"] = int64_t(0);
 				enemy_combo["n"] = int64_t(0);
@@ -204,7 +216,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			if (enemy_won) {
 				enemy_combo["w"] = int64_t(enemy_combo["w"]) + 1;
 			}
-			combos[enemy_label] = enemy_combo;
+			combos[enemy_role_fp] = enemy_combo;
 			bucket["combos"] = combos;
 		}
 

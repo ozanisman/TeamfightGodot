@@ -95,7 +95,7 @@ func load_from_dir(dir_path: String) -> Error:
 	ci_stats.clear()
 
 	var hero_path: String = "%s/combat_stats.csv" % dir_path
-	var combo_path: String = "%s/hero_combinations.csv" % dir_path
+	var combo_path: String = "%s/role_combinations.csv" % dir_path
 	var role_path: String = "%s/role_stats.csv" % dir_path
 	var summary_path: String = "%s/summary_stats.csv" % dir_path
 	var ci_path: String = "%s/combat_stats_ci.csv" % dir_path
@@ -212,16 +212,8 @@ func load_from_dir(dir_path: String) -> Error:
 		var size: int = _int_cell(row, "team_size")
 		if not all_stats.has(size):
 			continue
-		var combo_cell: String = str(row["combination"])
-		var parts: PackedStringArray = PackedStringArray()
-		for seg in combo_cell.split("+"):
-			parts.append(seg.strip_edges())
-		var combo_key := ""
-		for i in parts.size():
-			if i > 0:
-				combo_key += "\u001e"
-			combo_key += parts[i]
-		all_stats[size]["combinations"][combo_key] = {
+		var role_fingerprint: String = str(row["role_fingerprint"])
+		all_stats[size]["combinations"][role_fingerprint] = {
 			"winRate": _float_cell(row, "win_rate"),
 			"wins": _int_cell(row, "wins"),
 			"total": _int_cell(row, "total_games"),

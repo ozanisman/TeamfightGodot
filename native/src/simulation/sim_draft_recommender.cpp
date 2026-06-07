@@ -158,7 +158,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	if (!_load_counter_stats(normalized + "/matchup_vs.csv", _counter_winrates)) {
 		return false;
 	}
-	_load_composition_stats(normalized + "/hero_combinations.csv"); // Optional, don't fail if missing
+	_load_composition_stats(normalized + "/role_combinations.csv"); // Optional, don't fail if missing
 	_load_champion_roles();
 	_loaded = true;
 	return true;
@@ -382,10 +382,10 @@ bool DraftStatsDatabase::_load_composition_stats(const String &path) {
 	}
 	std::vector<String> header = parse_csv_line(file->get_line());
 	int64_t team_size_col = column_index(header, "team_size");
-	int64_t combination_col = column_index(header, "combination");
+	int64_t role_fingerprint_col = column_index(header, "role_fingerprint");
 	int64_t winrate_col = column_index(header, "win_rate");
 	int64_t total_games_col = column_index(header, "total_games");
-	if (team_size_col < 0 || combination_col < 0 || winrate_col < 0) {
+	if (team_size_col < 0 || role_fingerprint_col < 0 || winrate_col < 0) {
 		return true;
 	}
 	while (!file->eof_reached()) {
@@ -395,20 +395,21 @@ bool DraftStatsDatabase::_load_composition_stats(const String &path) {
 		}
 		std::vector<String> row = parse_csv_line(line);
 		String team_size = cell_or_empty(row, team_size_col);
-		String combination = cell_or_empty(row, combination_col);
+		String role_fingerprint = cell_or_empty(row, role_fingerprint_col);
 		String winrate = cell_or_empty(row, winrate_col);
 		String total_games = total_games_col >= 0 ? cell_or_empty(row, total_games_col) : String();
-		if (team_size.is_empty() || combination.is_empty() || winrate.is_empty()) {
+		if (team_size.is_empty() || role_fingerprint.is_empty() || winrate.is_empty()) {
 			continue;
 		}
 		// Only load 5v5 compositions for now
 		if (team_size.to_int() != 5) {
 			continue;
 		}
+		// Use role_fingerprint directly as key
 		StatValue value;
 		value.winrate = winrate.to_float();
 		value.samples = total_games.is_empty() ? 0 : total_games.to_int();
-		_composition_winrates[combination] = value;
+		_composition_winrates[role_fingerprint] = value;
 	}
 	return true;
 }
@@ -455,26 +456,28 @@ double DraftStatsDatabase::apply_bayesian_smoothing(double raw_winrate, int64_t 
 
 DraftStatsDatabase::StatValue DraftStatsDatabase::composition_winrate_for(const std::vector<StringName> &team) const {
 	if (team.size() != 5) {
+		UtilityFunctions::print(vformat("DraftStatsDatabase: composition_winrate_for fallback - team size: %d", team.size()));
 		StatValue fallback;
 		fallback.winrate = 0.5;
 		fallback.samples = 0;
 		return fallback;
 	}
 
-	// Sort team to create consistent key
-	std::vector<String> sorted_team;
+	// Build role fingerprint for team
+	std::vector<String> team_roles;
 	for (const StringName &champion : team) {
-		sorted_team.push_back(String(champion));
+		StringName role = get_champion_role(champion);
+		team_roles.push_back(role != StringName() ? String(role) : String("unknown"));
 	}
-	std::sort(sorted_team.begin(), sorted_team.end());
-
-	String combination = sorted_team[0];
-	for (size_t i = 1; i < sorted_team.size(); ++i) {
-		combination += " + " + sorted_team[i];
+	std::sort(team_roles.begin(), team_roles.end());
+	String team_role_fp = team_roles[0];
+	for (size_t i = 1; i < team_roles.size(); ++i) {
+		team_role_fp += " + " + team_roles[i];
 	}
 
-	auto it = _composition_winrates.find(combination);
+	auto it = _composition_winrates.find(team_role_fp);
 	if (it == _composition_winrates.end()) {
+		UtilityFunctions::print(vformat("DraftStatsDatabase: composition_winrate_for key not found - key: %s", team_role_fp));
 		StatValue fallback;
 		fallback.winrate = 0.5;
 		fallback.samples = 0;

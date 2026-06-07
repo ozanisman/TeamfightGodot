@@ -209,8 +209,7 @@ func _consume_individual_summary_common(
 			_acc_role(bucket, role_obj, wt, uo)
 
 	if team_size > 1:
-		_acc_combo(bucket, player_comp, wt)
-		_acc_combo(bucket, enemy_comp, _flip_winner(wt))
+		_acc_combo(bucket, player_comp, enemy_comp, wt)
 
 
 func write_to_dir(dir_path: String) -> Error:
@@ -229,7 +228,7 @@ func write_to_dir(dir_path: String) -> Error:
 		["summary_stats.csv", summary_csv],
 		["combat_stats.csv", hero_csv],
 		["role_stats.csv", role_csv],
-		["hero_combinations.csv", combo_csv],
+		["role_combinations.csv", combo_csv],
 	]
 	if _write_match_log:
 		csv_files.append(["match_log.csv", _build_match_log_csv()])
@@ -482,22 +481,46 @@ func _acc_role_dict(bucket: Dictionary, role: String, wt: StringName, u: Diction
 	r["d_passive"] = float(r["d_passive"]) + _unit_float(u, "damage_dealt_passive")
 
 
-func _acc_combo(bucket: Dictionary, player_comp: Array, wt: StringName) -> void:
-	var names: Array[String] = []
+func _acc_combo(bucket: Dictionary, player_comp: Array, enemy_comp: Array, wt: StringName) -> void:
+	# Build role fingerprint for player team
+	var player_roles: Array[String] = []
 	for c in player_comp:
-		names.append(String(c))
-	names.sort()
-	var combo_label := ""
-	for i in names.size():
+		var hero: String = String(c)
+		player_roles.append(str(_role_by_hero.get(hero, "unknown")))
+	player_roles.sort()
+	var player_role_fp := ""
+	for i in player_roles.size():
 		if i > 0:
-			combo_label += " + "
-		combo_label += names[i]
+			player_role_fp += " + "
+		player_role_fp += player_roles[i]
+
+	# Build role fingerprint for enemy team
+	var enemy_roles: Array[String] = []
+	for c in enemy_comp:
+		var hero: String = String(c)
+		enemy_roles.append(str(_role_by_hero.get(hero, "unknown")))
+	enemy_roles.sort()
+	var enemy_role_fp := ""
+	for i in enemy_roles.size():
+		if i > 0:
+			enemy_role_fp += " + "
+		enemy_role_fp += enemy_roles[i]
+
 	var combos: Dictionary = bucket["combos"]
-	if not combos.has(combo_label):
-		combos[combo_label] = {"w": 0, "n": 0}
-	combos[combo_label]["n"] = int(combos[combo_label]["n"]) + 1
+
+	# Record player team fingerprint
+	if not combos.has(player_role_fp):
+		combos[player_role_fp] = {"w": 0, "n": 0}
+	combos[player_role_fp]["n"] = int(combos[player_role_fp]["n"]) + 1
 	if wt == &"player":
-		combos[combo_label]["w"] = int(combos[combo_label]["w"]) + 1
+		combos[player_role_fp]["w"] = int(combos[player_role_fp]["w"]) + 1
+
+	# Record enemy team fingerprint
+	if not combos.has(enemy_role_fp):
+		combos[enemy_role_fp] = {"w": 0, "n": 0}
+	combos[enemy_role_fp]["n"] = int(combos[enemy_role_fp]["n"]) + 1
+	if wt == &"enemy":
+		combos[enemy_role_fp]["w"] = int(combos[enemy_role_fp]["w"]) + 1
 
 
 func _flip_winner(wt: StringName) -> StringName:
@@ -680,7 +703,7 @@ func _build_role_csv() -> String:
 
 func _build_combo_csv() -> String:
 	var lines: PackedStringArray = PackedStringArray()
-	lines.append("team_size,combination,win_rate,wins,total_games")
+	lines.append("team_size,role_fingerprint,win_rate,wins,total_games")
 	var sizes: Array = _by_size.keys()
 	sizes.sort()
 	for sz in sizes:

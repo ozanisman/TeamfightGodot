@@ -111,7 +111,7 @@ func _run() -> void:
 		push_error("check_stats_aggregator_roundtrip: partial write failed %s" % error_string(partial_werr))
 		quit(1)
 		return
-	var required_files: Array[String] = ["summary_stats.csv", "combat_stats.csv", "role_stats.csv", "hero_combinations.csv"]
+	var required_files: Array[String] = ["summary_stats.csv", "combat_stats.csv", "role_stats.csv", "role_combinations.csv"]
 	for file_name in required_files:
 		if not _same_file_text("%s/%s" % [_TEST_DIR, file_name], "%s/%s" % [_TEST_DIR_PARTIAL, file_name]):
 			push_error("check_stats_aggregator_roundtrip: partial mismatch %s" % file_name)

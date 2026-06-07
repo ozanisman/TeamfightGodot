@@ -82,6 +82,7 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_periodic_aoe.cpp
     src/simulation/sim_periodic_reflect.cpp
     src/simulation/sim_channel.cpp
+    src/simulation/sim_draft_recommender.cpp
     src/simulation/sim_stats_modifiers.cpp
     src/simulation/sim_combat.cpp
     src/simulation/sim_combat_internal.cpp

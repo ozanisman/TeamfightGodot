@@ -124,6 +124,15 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("benchmark_progress_read"), &TeamfightSimulationCore::benchmark_progress_read);
 	ClassDB::bind_method(D_METHOD("sim_profile_set_enabled", "enabled"), &TeamfightSimulationCore::sim_profile_set_enabled);
 	ClassDB::bind_method(D_METHOD("targeting_profile_set_enabled", "enabled"), &TeamfightSimulationCore::targeting_profile_set_enabled);
+	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "debug_mode", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "logit_sharpness", "score_sharpness", "interaction_weight", "scoring_mode"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(1.5), DEFVAL(1.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::ScoringMode::LOGIT)));
+	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "logit_sharpness", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(1.0), DEFVAL(0));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -152,6 +161,566 @@ void TeamfightSimulationCore::sim_profile_set_enabled(bool enabled) {
 
 void TeamfightSimulationCore::targeting_profile_set_enabled(bool enabled) {
 	s_targeting_profile_force_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+namespace {
+
+std::vector<StringName> array_to_string_names(const Array &values) {
+	std::vector<StringName> out;
+	out.reserve(static_cast<size_t>(values.size()));
+	for (int64_t i = 0; i < values.size(); ++i) {
+		Variant value = values[i];
+		if (value.get_type() == Variant::STRING_NAME) {
+			out.push_back(StringName(value));
+		} else if (value.get_type() == Variant::STRING) {
+			out.push_back(StringName(String(value)));
+		}
+	}
+	return out;
+}
+
+}
+
+void TeamfightSimulationCore::debug_print_draft_recommendations(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t top_n,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		bool debug_mode,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	sim::draft::DraftRecommender recommender(evaluator, debug_mode);
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available));
+	recommender.print_top(ranked, top_n);
+	std::fflush(stdout);
+}
+
+void TeamfightSimulationCore::run_debug_draft_evaluation_batch(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t num_runs,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	sim::draft::DraftRecommender recommender(evaluator, true);
+	recommender.run_debug_evaluation_batch(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available),
+			num_runs);
+	std::fflush(stdout);
+}
+
+Array TeamfightSimulationCore::get_draft_recommendation_names(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t top_n,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return Array();
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	sim::draft::DraftRecommender recommender(evaluator, false);
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available));
+
+	Array result;
+	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	for (int64_t i = 0; i < count; ++i) {
+		result.push_back(String(ranked[static_cast<size_t>(i)].champion));
+	}
+	return result;
+}
+
+Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		int64_t top_n,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		return Array();
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = counter_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	sim::draft::DraftRecommender recommender(evaluator, false);
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+			array_to_string_names(allies),
+			array_to_string_names(enemies),
+			array_to_string_names(available));
+
+	Array result;
+	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	for (int64_t i = 0; i < count; ++i) {
+		const sim::draft::DraftEvaluation &eval = ranked[static_cast<size_t>(i)];
+		Dictionary breakdown;
+		breakdown["champion"] = String(eval.champion);
+		breakdown["base"] = eval.base_winrate;
+		breakdown["synergy"] = eval.avg_synergy;
+		breakdown["counter"] = eval.avg_counter;
+		breakdown["final"] = eval.score;
+		result.push_back(breakdown);
+	}
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::predict_draft_winner(
+		const Array &team1,
+		const Array &team2,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double counter_weight,
+		double matchup_weight,
+		double composition_weight,
+		double logistic_k,
+		bool include_breakdown,
+		double synergy_amplification,
+		double matchup_amplification,
+		double logit_sharpness,
+		double score_sharpness,
+		double interaction_weight,
+		int scoring_mode) {
+	// load_from_dir() re-reads and re-parses every stats CSV from disk, which is expensive and
+	// becomes a major bottleneck when this is called many times in a row for the same stats_dir
+	// (e.g. draft prediction-accuracy evaluation calls this once per match). Cache the loaded
+	// database per-thread, keyed by stats_dir, and only reload when the directory changes.
+	static thread_local String s_cached_stats_dir;
+	static thread_local sim::draft::DraftStatsDatabase s_cached_database;
+	static thread_local bool s_cache_loaded = false;
+	if (!s_cache_loaded || s_cached_stats_dir != stats_dir) {
+		sim::draft::DraftStatsDatabase fresh;
+		if (!fresh.load_from_dir(stats_dir)) {
+			UtilityFunctions::push_error(fresh.last_error());
+			Dictionary result;
+			result["team1_prob"] = 0.5;
+			result["team2_prob"] = 0.5;
+			return result;
+		}
+		s_cached_database = std::move(fresh);
+		s_cached_stats_dir = stats_dir;
+		s_cache_loaded = true;
+	}
+	const sim::draft::DraftStatsDatabase &database = s_cached_database;
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.composition_weight = composition_weight;
+	config.logistic_k = logistic_k;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+	config.logit_sharpness = logit_sharpness;
+	config.score_sharpness = score_sharpness;
+	config.interaction_weight = interaction_weight;
+	config.scoring_mode = static_cast<sim::draft::ScoringMode>(scoring_mode);
+
+	double team1_prob = 0.0;
+	double team2_prob = 0.0;
+	sim::draft::DraftStatsDatabase::TeamScoreBreakdown team1_breakdown;
+	sim::draft::DraftStatsDatabase::TeamScoreBreakdown team2_breakdown;
+	database.calculate_win_probability(
+			array_to_string_names(team1),
+			array_to_string_names(team2),
+			config,
+			team1_prob,
+			team2_prob,
+			team1_breakdown,
+			team2_breakdown);
+
+	Dictionary result;
+	result["team1_prob"] = team1_prob;
+	result["team2_prob"] = team2_prob;
+
+	if (include_breakdown) {
+		Dictionary team1_dict;
+		team1_dict["base"] = team1_breakdown.base;
+		team1_dict["synergy"] = team1_breakdown.synergy;
+		team1_dict["matchup"] = team1_breakdown.matchup;
+		team1_dict["composition"] = team1_breakdown.composition;
+		team1_dict["final"] = team1_breakdown.final;
+		result["team1_breakdown"] = team1_dict;
+		Dictionary team2_dict;
+		team2_dict["base"] = team2_breakdown.base;
+		team2_dict["synergy"] = team2_breakdown.synergy;
+		team2_dict["matchup"] = team2_breakdown.matchup;
+		team2_dict["composition"] = team2_breakdown.composition;
+		team2_dict["final"] = team2_breakdown.final;
+		result["team2_breakdown"] = team2_dict;
+	}
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::analyze_draft_signal_influence(
+		const Array &candidate,
+		const Array &allies,
+		const Array &enemies,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["base_only_score"] = 0.0;
+		result["synergy_removed_score"] = 0.0;
+		result["matchup_removed_score"] = 0.0;
+		result["full_score"] = 0.0;
+		result["base_only_delta"] = 0.0;
+		result["synergy_removed_delta"] = 0.0;
+		result["matchup_removed_delta"] = 0.0;
+		result["ranking_shift_synergy_removed"] = 0;
+		result["ranking_shift_matchup_removed"] = 0;
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> candidate_vec = array_to_string_names(candidate);
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	
+	if (candidate_vec.empty()) {
+		Dictionary result;
+		result["base_only_score"] = 0.0;
+		result["synergy_removed_score"] = 0.0;
+		result["matchup_removed_score"] = 0.0;
+		result["full_score"] = 0.0;
+		result["base_only_delta"] = 0.0;
+		result["synergy_removed_delta"] = 0.0;
+		result["matchup_removed_delta"] = 0.0;
+		result["ranking_shift_synergy_removed"] = 0;
+		result["ranking_shift_matchup_removed"] = 0;
+		return result;
+	}
+	
+	sim::draft::SignalInfluenceReport report = evaluator.analyze_signal_influence(
+		candidate_vec[0], allies_vec, enemies_vec);
+
+	Dictionary result;
+	result["base_only_score"] = report.base_only_score;
+	result["synergy_removed_score"] = report.synergy_removed_score;
+	result["matchup_removed_score"] = report.matchup_removed_score;
+	result["full_score"] = report.full_score;
+	result["base_only_delta"] = report.base_only_delta;
+	result["synergy_removed_delta"] = report.synergy_removed_delta;
+	result["matchup_removed_delta"] = report.matchup_removed_delta;
+	result["ranking_shift_synergy_removed"] = report.ranking_shift_synergy_removed;
+	result["ranking_shift_matchup_removed"] = report.ranking_shift_matchup_removed;
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::run_controlled_draft_evaluation(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		const String &stats_dir,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["avg_synergy_impact"] = 0.0;
+		result["avg_matchup_impact"] = 0.0;
+		result["top3_overlap_synergy_removed"] = 0;
+		result["top3_overlap_matchup_removed"] = 0;
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	std::vector<StringName> available_vec = array_to_string_names(available);
+	
+	sim::draft::ControlledEvaluationReport report = evaluator.run_controlled_evaluation(
+		allies_vec, enemies_vec, available_vec);
+
+	Dictionary result;
+	result["avg_synergy_impact"] = report.avg_synergy_impact;
+	result["avg_matchup_impact"] = report.avg_matchup_impact;
+	result["top3_overlap_synergy_removed"] = report.top3_overlap_synergy_removed;
+	result["top3_overlap_matchup_removed"] = report.top3_overlap_matchup_removed;
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::run_stress_test(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		const String &stats_dir,
+		int64_t num_iterations,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["candidate_stats"] = Array();
+		result["score_min"] = 0.0;
+		result["score_max"] = 0.0;
+		result["score_mean"] = 0.0;
+		result["score_p50"] = 0.0;
+		result["score_p90"] = 0.0;
+		result["avg_rank_change"] = 0.0;
+		result["max_rank_swing"] = 0;
+		result["context_sensitivity"] = 0.0;
+		result["top1_stability_rate"] = 0.0;
+		result["top3_stability_rate"] = 0.0;
+		result["baseline_top3"] = Array();
+		result["baseline_top1"] = String();
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	std::vector<StringName> available_vec = array_to_string_names(available);
+	
+	sim::draft::StressTestReport report = evaluator.run_stress_test(
+		allies_vec, enemies_vec, available_vec, num_iterations);
+
+	// Convert candidate stats to Array of Dictionaries
+	Array candidate_stats_array;
+	for (const auto &stats : report.candidate_stats) {
+		Dictionary candidate_dict;
+		candidate_dict["champion"] = String(stats.champion);
+		candidate_dict["mean_score"] = stats.mean_score;
+		candidate_dict["score_stddev"] = stats.score_stddev;
+		candidate_dict["mean_rank"] = stats.mean_rank;
+		candidate_dict["rank_stddev"] = stats.rank_stddev;
+		candidate_dict["max_rank_swing"] = stats.max_rank_swing;
+		candidate_dict["baseline_score"] = stats.baseline_score;
+		candidate_dict["baseline_rank"] = stats.baseline_rank;
+		candidate_stats_array.push_back(candidate_dict);
+	}
+
+	Dictionary result;
+	result["candidate_stats"] = candidate_stats_array;
+	result["score_min"] = report.score_min;
+	result["score_max"] = report.score_max;
+	result["score_mean"] = report.score_mean;
+	result["score_p50"] = report.score_p50;
+	result["score_p90"] = report.score_p90;
+	result["avg_rank_change"] = report.avg_rank_change;
+	result["max_rank_swing"] = report.max_rank_swing;
+	result["context_sensitivity"] = report.context_sensitivity;
+	result["top1_stability_rate"] = report.top1_stability_rate;
+	result["top3_stability_rate"] = report.top3_stability_rate;
+	
+	// Convert baseline top-3 to Array
+	Array baseline_top3_array;
+	for (const StringName &champ : report.baseline_top3) {
+		baseline_top3_array.push_back(String(champ));
+	}
+	result["baseline_top3"] = baseline_top3_array;
+	result["baseline_top1"] = String(report.baseline_top1);
+
+	return result;
+}
+
+Dictionary TeamfightSimulationCore::run_stress_test_with_perturbations(
+		const Array &allies,
+		const Array &enemies,
+		const Array &available,
+		const String &stats_dir,
+		int64_t seed,
+		int64_t scenario_count,
+		double base_weight,
+		double synergy_weight,
+		double matchup_weight,
+		double synergy_amplification,
+		double matchup_amplification,
+		int64_t scoring_mode,
+		double logit_sharpness,
+		int64_t smoothing_mode) {
+	sim::draft::DraftStatsDatabase database;
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(database.last_error());
+		Dictionary result;
+		result["candidate_stats"] = Array();
+		result["score_min"] = 0.0;
+		result["score_max"] = 0.0;
+		result["score_mean"] = 0.0;
+		result["score_p50"] = 0.0;
+		result["score_p90"] = 0.0;
+		result["avg_rank_change"] = 0.0;
+		result["max_rank_swing"] = 0;
+		result["context_sensitivity"] = 0.0;
+		result["top1_stability_rate"] = 0.0;
+		result["top3_stability_rate"] = 0.0;
+		result["baseline_top3"] = Array();
+		result["baseline_top1"] = String();
+		return result;
+	}
+
+	sim::draft::PredictionConfig config;
+	config.base_weight = base_weight;
+	config.synergy_weight = synergy_weight;
+	config.matchup_weight = matchup_weight;
+	config.synergy_amplification = synergy_amplification;
+	config.matchup_amplification = matchup_amplification;
+	config.logit_sharpness = logit_sharpness;
+	config.smoothing_mode = static_cast<sim::draft::SmoothingMode>(smoothing_mode);
+
+	// Convert int to ScoringMode enum
+	config.scoring_mode = static_cast<sim::draft::ScoringMode>(scoring_mode);
+
+	sim::draft::DraftEvaluator evaluator(database, config);
+	
+	std::vector<StringName> allies_vec = array_to_string_names(allies);
+	std::vector<StringName> enemies_vec = array_to_string_names(enemies);
+	std::vector<StringName> available_vec = array_to_string_names(available);
+	
+	sim::draft::StressTestReport report = evaluator.run_stress_test_with_perturbations(
+		allies_vec, enemies_vec, available_vec, static_cast<uint64_t>(seed), scenario_count);
+
+	// Convert candidate stats to Array of Dictionaries
+	Array candidate_stats_array;
+	for (const auto &stats : report.candidate_stats) {
+		Dictionary candidate_dict;
+		candidate_dict["champion"] = String(stats.champion);
+		candidate_dict["mean_score"] = stats.mean_score;
+		candidate_dict["score_stddev"] = stats.score_stddev;
+		candidate_dict["mean_rank"] = stats.mean_rank;
+		candidate_dict["rank_stddev"] = stats.rank_stddev;
+		candidate_dict["max_rank_swing"] = stats.max_rank_swing;
+		candidate_dict["baseline_score"] = stats.baseline_score;
+		candidate_dict["baseline_rank"] = stats.baseline_rank;
+		candidate_stats_array.push_back(candidate_dict);
+	}
+
+	Dictionary result;
+	result["candidate_stats"] = candidate_stats_array;
+	result["score_min"] = report.score_min;
+	result["score_max"] = report.score_max;
+	result["score_mean"] = report.score_mean;
+	result["score_p50"] = report.score_p50;
+	result["score_p90"] = report.score_p90;
+	result["avg_rank_change"] = report.avg_rank_change;
+	result["max_rank_swing"] = report.max_rank_swing;
+	result["context_sensitivity"] = report.context_sensitivity;
+	result["mean_inter_rank_margin"] = report.mean_inter_rank_margin;
+	result["median_inter_rank_margin"] = report.median_inter_rank_margin;
+	result["top1_stability_rate"] = report.top1_stability_rate;
+	result["top3_stability_rate"] = report.top3_stability_rate;
+	
+	// Convert baseline top-3 to Array
+	Array baseline_top3_array;
+	for (const StringName &champ : report.baseline_top3) {
+		baseline_top3_array.push_back(String(champ));
+	}
+	result["baseline_top3"] = baseline_top3_array;
+	result["baseline_top1"] = String(report.baseline_top1);
+
+	return result;
 }
 
 double TeamfightSimulationCore::_randf() {

@@ -1,30 +1,55 @@
-# Wiki Guidance
+# AGENTS.md
 
-This project uses a lightweight wiki as shared memory.
+## Change Discipline
 
-## Purpose
-The wiki contains evolving understanding of the project:
-- notes → atomic observations and ideas
-- concepts → stable definitions of systems
-- projects → high-level system organization
+- Make the smallest complete change that resolves the request.
+- Do not modify unrelated code.
+- Do not introduce abstractions, refactors, or dependencies unless required for correctness.
+- Treat new headers, libraries, or build system changes as dependencies and avoid unless required.
+- Preserve existing behavior unless explicitly changed.
+- Do not implement speculative changes.
+- Ask questions when implementation details are unclear.
+- List all behavior changes explicitly in the response.
+- Ensure no unrelated modifications.
+- Ensure checks pass.
 
-## Usage
+## Execution Modes
 
-Use the wiki to understand existing ideas before working on the codebase.
+- `/caveman full` is the default mode.
+- Apply `/caveman full` automatically unless explicitly overridden.
+- It does not override Change Discipline constraints.
 
-**Native C++ simulation (refactored layout):** read [`wiki/notes/native_agent_guide.md`](wiki/notes/native_agent_guide.md) first, then [`wiki/notes/simulation_module_map.md`](wiki/notes/simulation_module_map.md). Do not use `wiki/projects/core-refactor-2026-05/` for current file paths.
+## Output
 
-Prefer:
-- reusing existing concepts
-- extending existing ideas
-- updating understanding through new notes
+- Be concise.
+- Output code by default.
+- Use minimal diffs unless full file is necessary.
+- No emojis.
+- Explanations only when required.
 
-Avoid:
-- duplicating ideas already represented in the wiki
-- introducing conflicting terminology without reflection
+## Codebase
 
-## Update Behavior
+Use the wiki before modifying code.
 
-When new insights emerge:
-- add them to wiki/notes
-- if they stabilize over time, promote them to wiki/concepts
+- Consult relevant wiki notes before modifying simulation logic.
+- Code is the source of truth if it conflicts with wiki.
+- Do not update wiki unless introducing or invalidating stable concepts.
+
+**Native C++ simulation:**
+- Read `wiki/notes/native_agent_guide.md`
+- Then `wiki/notes/simulation_module_map.md`
+- Ignore `wiki/projects/core-refactor-2026-05/`
+
+## Wiki
+
+- notes → observations
+- concepts → definitions
+- projects → organization
+
+## Done
+
+- Minimal complete change applied.
+- No unrelated modifications.
+- Behavior changes explicitly listed.
+- Checks pass.
+- Wiki updated only for stable concept changes.

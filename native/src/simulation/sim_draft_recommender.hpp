@@ -53,7 +53,7 @@ struct PredictionConfig {
 
 	// Scoring sensitivity parameters
 	float score_sharpness = 1.0f;
-	float logit_sharpness = 1.0f;  // sharpness applied in logit space before sigmoid
+	float logit_sharpness = 1.5f;  // sharpness applied in logit space before sigmoid
 	float interaction_weight = 0.0f;  // only used in additive/logit modes
 };
 

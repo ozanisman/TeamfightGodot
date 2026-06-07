@@ -13,10 +13,11 @@ extends SceneTree
 ## Prediction tuning overrides (optional; each defaults to predict_draft_winner's own default —
 ## i.e. omitting all of them reproduces today's exact behavior). Recognized override keys:
 ## logistic_k, logit_sharpness, score_sharpness, interaction_weight, synergy_amplification,
-## matchup_amplification.
+## matchup_amplification, scoring_mode.
 ##   --prediction-logistic-k=, --prediction-logit-sharpness=, --prediction-score-sharpness=,
 ##   --prediction-interaction-weight=, --prediction-synergy-amplification=,
-##   --prediction-matchup-amplification=
+##   --prediction-matchup-amplification=, --prediction-scoring-mode=
+## scoring_mode is the ScoringMode enum ordinal: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2 (default).
 ##
 ## Sweep mode (A/B compare a single override key across several values in ONE report instead of
 ## re-running the batch per value): --prediction-sweep-param=<override key>
@@ -80,6 +81,7 @@ func _run() -> void:
 		"interaction_weight": "--prediction-interaction-weight=",
 		"synergy_amplification": "--prediction-synergy-amplification=",
 		"matchup_amplification": "--prediction-matchup-amplification=",
+		"scoring_mode": "--prediction-scoring-mode=",
 	}
 	var prediction_config_overrides: Dictionary = {}
 	for override_key in prediction_override_flags:

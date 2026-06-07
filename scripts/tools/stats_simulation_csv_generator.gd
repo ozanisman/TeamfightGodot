@@ -33,13 +33,17 @@ const PREDICTION_CONFIDENCE_BUCKETS: Array[Dictionary] = [
 ## defaults below, which match predict_draft_winner's own — so an empty override dict
 ## reproduces today's exact evaluation behavior). Also doubles as the whitelist for
 ## prediction_sweep_param validation.
+## scoring_mode is an enum ordinal (ScoringMode: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2) passed
+## as a float here for uniformity with the other sweepable knobs; _score_prediction_config casts
+## it to int before forwarding to predict_draft_winner.
 const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
 	"logistic_k": 10.0,
-	"logit_sharpness": 1.0,
+	"logit_sharpness": 1.5,
 	"score_sharpness": 1.0,
 	"interaction_weight": 0.0,
 	"synergy_amplification": 1.2,
 	"matchup_amplification": 1.2,
+	"scoring_mode": 2.0,
 }
 
 ## Minimum number of evaluated-match appearances before a champion is surfaced in the
@@ -372,7 +376,7 @@ static func _confidence_bucket_index(confidence: float) -> int:
 ##
 ## prediction_config_overrides may override any subset of PREDICTION_OVERRIDE_DEFAULTS' keys
 ## (logistic_k / logit_sharpness / score_sharpness / interaction_weight / synergy_amplification /
-## matchup_amplification) — e.g. to evaluate a candidate tuning instead of predict_draft_winner's
+## matchup_amplification / scoring_mode) — e.g. to evaluate a candidate tuning instead of predict_draft_winner's
 ## own defaults. If prediction_sweep_param + prediction_sweep_values are both non-empty, runs the
 ## evaluation once per swept value (varying only that one key on top of the base overrides) and
 ## emits a single comparison report instead of a single-config report — letting you A/B candidate
@@ -448,7 +452,8 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 			0.50, 0.25, 0.25, 0.25, 0.0,
 			float(ov["logistic_k"]), false,
 			float(ov["synergy_amplification"]), float(ov["matchup_amplification"]),
-			float(ov["logit_sharpness"]), float(ov["score_sharpness"]), float(ov["interaction_weight"])
+			float(ov["logit_sharpness"]), float(ov["score_sharpness"]), float(ov["interaction_weight"]),
+			int(ov["scoring_mode"])
 		)
 		var team1_prob: float = clampf(float(prediction.get("team1_prob", 0.5)), 0.0, 1.0)
 		var actual_player_win: bool = winner == "player"

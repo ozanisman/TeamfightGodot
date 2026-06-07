@@ -75,6 +75,68 @@ bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a,
 	return true;
 }
 
+// Combines a set of base/synergy/matchup signals (plus an optional composition bonus) into a
+// single score according to config.scoring_mode and its associated sharpening/interaction knobs.
+// Shared by DraftEvaluator::evaluate (per-candidate recommendation scoring) and
+// DraftStatsDatabase::calculate_team_score (whole-team win-probability scoring) so the two
+// scorers cannot silently disagree about what "scoring_mode" means.
+double score_from_signals(double base_winrate, double avg_synergy, double avg_counter, double composition_bonus, const PredictionConfig &config) {
+	double effective_synergy = avg_synergy * config.synergy_amplification;
+	double effective_matchup = avg_counter * config.matchup_amplification;
+
+	double score = 0.0;
+	switch (config.scoring_mode) {
+		case ScoringMode::MULTIPLICATIVE: {
+			// Multiplicative model: product of components
+			score = base_winrate * effective_synergy * effective_matchup;
+			// Normalize by expected max (1.0 * 1.0 * 1.0 = 1.0)
+			score = std::clamp(score, 0.0, 1.0);
+			// No interaction term in multiplicative mode
+			break;
+		}
+		case ScoringMode::LOGIT: {
+			// Logit-space model
+			auto logit_transform = [](double p) -> double {
+				p = std::clamp(p, 1e-6, 1.0 - 1e-6);
+				return std::log(p / (1.0 - p));
+			};
+			auto sigmoid = [](double x) -> double {
+				return 1.0 / (1.0 + std::exp(-x));
+			};
+
+			double logit_base = logit_transform(base_winrate);
+			double logit_synergy = logit_transform(avg_synergy) + std::log(config.synergy_amplification);
+			double logit_matchup = logit_transform(avg_counter) + std::log(config.matchup_amplification);
+
+			double combined = config.logit_sharpness * (
+				config.base_weight * logit_base +
+				config.synergy_weight * logit_synergy +
+				config.matchup_weight * logit_matchup
+			);
+
+			score = sigmoid(combined);
+			// Add interaction term (only in logit mode)
+			score += config.interaction_weight * (effective_synergy * effective_matchup);
+			score = std::clamp(score, 0.0, 1.0);
+			break;
+		}
+		case ScoringMode::ADDITIVE:
+		default: {
+			// Additive model (default)
+			score = (config.base_weight * base_winrate) +
+					(config.synergy_weight * effective_synergy) +
+					(config.matchup_weight * effective_matchup) +
+					composition_bonus;
+			// Add interaction term (only in additive mode)
+			score += config.interaction_weight * (effective_synergy * effective_matchup);
+			// Apply score sharpening
+			score = std::pow(score, config.score_sharpness);
+			break;
+		}
+	}
+	return score;
+}
+
 } // namespace
 
 bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
@@ -179,10 +241,9 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 		double avg_matchup = matchup_samples > 0 ? matchup_total / double(matchup_samples) : 0.5; // Neutral fallback
 		total_matchup += avg_matchup;
 
-		// Combine components
-		double champion_score = (config.base_weight * base_adjusted) +
-							   (config.synergy_weight * avg_synergy) +
-							   (config.matchup_weight * avg_matchup);
+		// Combine components according to scoring_mode (no per-champion composition heuristic
+		// here — composition is handled below as a whole-team blend via composition_winrate_for).
+		double champion_score = score_from_signals(base_adjusted, avg_synergy, avg_matchup, 0.0, config);
 		total_score += champion_score;
 	}
 
@@ -475,63 +536,10 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.counter_stat_samples = counter_stat_samples;
 	result.counter_relationships = counter_relationships;
 
-	// Apply signal amplification
-	double effective_synergy = result.avg_synergy * _config.synergy_amplification;
-	double effective_matchup = result.avg_counter * _config.matchup_amplification;
-
 	// Calculate composition bonus
 	double composition_bonus = calculate_composition_bonus(allies, candidate);
 
-	// Calculate score based on scoring mode
-	switch (_config.scoring_mode) {
-		case ScoringMode::MULTIPLICATIVE: {
-			// Multiplicative model: product of components
-			result.score = result.base_winrate * effective_synergy * effective_matchup;
-			// Normalize by expected max (1.0 * 1.0 * 1.0 = 1.0)
-			result.score = std::clamp(result.score, 0.0, 1.0);
-			// No interaction term in multiplicative mode
-			break;
-		}
-		case ScoringMode::LOGIT: {
-			// Logit-space model
-			auto logit_transform = [](double p) -> double {
-				p = std::clamp(p, 1e-6, 1.0 - 1e-6);
-				return std::log(p / (1.0 - p));
-			};
-			auto sigmoid = [](double x) -> double {
-				return 1.0 / (1.0 + std::exp(-x));
-			};
-
-			double logit_base = logit_transform(result.base_winrate);
-			double logit_synergy = logit_transform(result.avg_synergy) + std::log(_config.synergy_amplification);
-			double logit_matchup = logit_transform(result.avg_counter) + std::log(_config.matchup_amplification);
-
-			double combined = _config.logit_sharpness * (
-				_config.base_weight * logit_base +
-				_config.synergy_weight * logit_synergy +
-				_config.matchup_weight * logit_matchup
-			);
-
-			result.score = sigmoid(combined);
-			// Add interaction term (only in logit mode)
-			result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
-			result.score = std::clamp(result.score, 0.0, 1.0);
-			break;
-		}
-		case ScoringMode::ADDITIVE:
-		default: {
-			// Additive model (default)
-			result.score = (_config.base_weight * result.base_winrate) +
-						  (_config.synergy_weight * effective_synergy) +
-						  (_config.matchup_weight * effective_matchup) +
-						  composition_bonus;
-			// Add interaction term (only in additive mode)
-			result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
-			// Apply score sharpening
-			result.score = std::pow(result.score, _config.score_sharpness);
-			break;
-		}
-	}
+	result.score = score_from_signals(result.base_winrate, result.avg_synergy, result.avg_counter, composition_bonus, _config);
 
 	return result;
 }

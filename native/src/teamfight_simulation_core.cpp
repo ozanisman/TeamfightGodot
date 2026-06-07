@@ -128,7 +128,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
-	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2));
+	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "logit_sharpness", "score_sharpness", "interaction_weight"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(1.0), DEFVAL(1.0), DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
@@ -347,15 +347,31 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 		double logistic_k,
 		bool include_breakdown,
 		double synergy_amplification,
-		double matchup_amplification) {
-	sim::draft::DraftStatsDatabase database;
-	if (!database.load_from_dir(stats_dir)) {
-		UtilityFunctions::push_error(database.last_error());
-		Dictionary result;
-		result["team1_prob"] = 0.5;
-		result["team2_prob"] = 0.5;
-		return result;
+		double matchup_amplification,
+		double logit_sharpness,
+		double score_sharpness,
+		double interaction_weight) {
+	// load_from_dir() re-reads and re-parses every stats CSV from disk, which is expensive and
+	// becomes a major bottleneck when this is called many times in a row for the same stats_dir
+	// (e.g. draft prediction-accuracy evaluation calls this once per match). Cache the loaded
+	// database per-thread, keyed by stats_dir, and only reload when the directory changes.
+	static thread_local String s_cached_stats_dir;
+	static thread_local sim::draft::DraftStatsDatabase s_cached_database;
+	static thread_local bool s_cache_loaded = false;
+	if (!s_cache_loaded || s_cached_stats_dir != stats_dir) {
+		sim::draft::DraftStatsDatabase fresh;
+		if (!fresh.load_from_dir(stats_dir)) {
+			UtilityFunctions::push_error(fresh.last_error());
+			Dictionary result;
+			result["team1_prob"] = 0.5;
+			result["team2_prob"] = 0.5;
+			return result;
+		}
+		s_cached_database = std::move(fresh);
+		s_cached_stats_dir = stats_dir;
+		s_cache_loaded = true;
 	}
+	const sim::draft::DraftStatsDatabase &database = s_cached_database;
 
 	sim::draft::PredictionConfig config;
 	config.base_weight = base_weight;
@@ -365,6 +381,9 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 	config.logistic_k = logistic_k;
 	config.synergy_amplification = synergy_amplification;
 	config.matchup_amplification = matchup_amplification;
+	config.logit_sharpness = logit_sharpness;
+	config.score_sharpness = score_sharpness;
+	config.interaction_weight = interaction_weight;
 
 	double team1_prob = 0.0;
 	double team2_prob = 0.0;

@@ -3,6 +3,25 @@ extends SceneTree
 ## Headless CSV export for stats dashboard. Run via run_godot.ps1 --generate-stats (forwards args after --).
 ## Throughput: [SimulationBatchWorker] batches each worker chunk via native `run_matches_stats` when available,
 ## avoiding per-match GDExtension round-trips. Raise `--export-workers=` (or leave 0 for CPU auto-cap) for parallelism across chunks.
+##
+## --evaluate-draft-predictions: after the batch completes, runs predict_draft_winner on each
+## completed-draft match's final comp and prints one accuracy report comparing predicted vs actual
+## winner. Requires --prediction-stats-dir= to point at a stats snapshot OTHER than --out-dir
+## (predicting against stats derived from the very matches being predicted is circular/in-sample).
+## --prediction-team-sizes= filters which matches count as a "completed draft" (default: 5).
+##
+## Prediction tuning overrides (optional; each defaults to predict_draft_winner's own default —
+## i.e. omitting all of them reproduces today's exact behavior). Recognized override keys:
+## logistic_k, logit_sharpness, score_sharpness, interaction_weight, synergy_amplification,
+## matchup_amplification.
+##   --prediction-logistic-k=, --prediction-logit-sharpness=, --prediction-score-sharpness=,
+##   --prediction-interaction-weight=, --prediction-synergy-amplification=,
+##   --prediction-matchup-amplification=
+##
+## Sweep mode (A/B compare a single override key across several values in ONE report instead of
+## re-running the batch per value): --prediction-sweep-param=<override key>
+## --prediction-sweep-values=<comma-separated floats>, e.g.
+##   --prediction-sweep-param=logistic_k --prediction-sweep-values=10,12,15,20,25
 
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
@@ -49,6 +68,63 @@ func _run() -> void:
 	var write_match_log := _flag_enabled("--write-match-log")
 	var aggregate_stats_in_worker := not _flag_enabled("--no-worker-aggregate")
 	var use_native_generated_stats := not _flag_enabled("--no-native-generated-stats")
+	var evaluate_draft_predictions := _flag_enabled("--evaluate-draft-predictions")
+	var prediction_stats_dir := _extract_argument("--prediction-stats-dir=", "res://stats_output")
+	var prediction_sizes_raw := _extract_argument("--prediction-team-sizes=", "5")
+
+	# Recognized prediction tuning override keys -> their CLI flag prefixes.
+	var prediction_override_flags: Dictionary = {
+		"logistic_k": "--prediction-logistic-k=",
+		"logit_sharpness": "--prediction-logit-sharpness=",
+		"score_sharpness": "--prediction-score-sharpness=",
+		"interaction_weight": "--prediction-interaction-weight=",
+		"synergy_amplification": "--prediction-synergy-amplification=",
+		"matchup_amplification": "--prediction-matchup-amplification=",
+	}
+	var prediction_config_overrides: Dictionary = {}
+	for override_key in prediction_override_flags:
+		var flag_prefix: String = prediction_override_flags[override_key]
+		var raw_value := _extract_argument(flag_prefix, "")
+		if raw_value.is_empty():
+			continue
+		if not raw_value.is_valid_float():
+			push_error("generate_simulation_stats: %s%s is not a valid number" % [flag_prefix, raw_value])
+			quit(1)
+			return
+		prediction_config_overrides[override_key] = raw_value.to_float()
+
+	var prediction_sweep_param := _extract_argument("--prediction-sweep-param=", "")
+	var prediction_sweep_values_raw := _extract_argument("--prediction-sweep-values=", "")
+	var prediction_sweep_values: Array[float] = []
+	if not prediction_sweep_param.is_empty():
+		if not prediction_override_flags.has(prediction_sweep_param):
+			push_error("generate_simulation_stats: --prediction-sweep-param=%s is not a recognized override key (expected one of: %s)" % [
+				prediction_sweep_param, ", ".join(prediction_override_flags.keys())
+			])
+			quit(1)
+			return
+		if prediction_sweep_values_raw.is_empty():
+			push_error("generate_simulation_stats: --prediction-sweep-param set but --prediction-sweep-values is empty")
+			quit(1)
+			return
+		for part in prediction_sweep_values_raw.split(","):
+			var t: String = part.strip_edges()
+			if t.is_empty():
+				continue
+			if not t.is_valid_float():
+				push_error("generate_simulation_stats: --prediction-sweep-values contains invalid number '%s'" % t)
+				quit(1)
+				return
+			prediction_sweep_values.append(t.to_float())
+		if prediction_sweep_values.is_empty():
+			push_error("generate_simulation_stats: --prediction-sweep-param set but --prediction-sweep-values has no valid numbers")
+			quit(1)
+			return
+	elif not prediction_sweep_values_raw.is_empty():
+		push_error("generate_simulation_stats: --prediction-sweep-values set but --prediction-sweep-param is empty")
+		quit(1)
+		return
+
 	var arr: Array[int] = []
 	for part in sizes_raw.split(","):
 		var t: String = part.strip_edges()
@@ -57,6 +133,16 @@ func _run() -> void:
 		arr.append(int(t))
 	if arr.is_empty():
 		push_error("generate_simulation_stats: no team sizes")
+		quit(1)
+		return
+	var prediction_sizes: Array[int] = []
+	for part in prediction_sizes_raw.split(","):
+		var t: String = part.strip_edges()
+		if t.is_empty():
+			continue
+		prediction_sizes.append(int(t))
+	if evaluate_draft_predictions and prediction_sizes.is_empty():
+		push_error("generate_simulation_stats: --evaluate-draft-predictions set but --prediction-team-sizes is empty")
 		quit(1)
 		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
@@ -70,7 +156,13 @@ func _run() -> void:
 		write_match_log,
 		aggregate_stats_in_worker,
 		{},
-		use_native_generated_stats
+		use_native_generated_stats,
+		evaluate_draft_predictions,
+		prediction_stats_dir,
+		prediction_sizes,
+		prediction_config_overrides,
+		prediction_sweep_param,
+		prediction_sweep_values
 	)
 	if err != OK:
 		push_error("generate_simulation_stats failed: %s" % error_string(err))

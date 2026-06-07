@@ -12,6 +12,45 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 ## Upper bound on parallel export workers (avoids huge thread counts on high-core CPUs).
 const DEFAULT_EXPORT_MAX_WORKER_THREADS: int = 16
 
+## "Completed draft" for prediction-accuracy evaluation means a full 5-champion comp per side —
+## the shape draft_testing.gd / predict_draft_winner are actually used with. Other team sizes in
+## the batch (1-4) are partial comps that the draft model wasn't built to evaluate, so the
+## current implementation only records team size 5 by default. The team-size filter is exposed
+## as a parameter (prediction_team_sizes) so this can be expanded later without code changes.
+const DEFAULT_PREDICTION_TEAM_SIZE: int = 5
+
+## Confidence buckets for the draft-prediction calibration table, keyed on the model's predicted
+## win-probability for whichever side it picked (i.e. how sure it was about its own pick).
+const PREDICTION_CONFIDENCE_BUCKETS: Array[Dictionary] = [
+	{"label": "50-55%", "min": 0.50, "max": 0.55},
+	{"label": "55-60%", "min": 0.55, "max": 0.60},
+	{"label": "60-70%", "min": 0.60, "max": 0.70},
+	{"label": "70%+", "min": 0.70, "max": 1.001},
+]
+
+## predict_draft_winner's tunable scoring-sensitivity surface, mapped to its own defaults.
+## prediction_config_overrides may set any subset of these keys (others fall back to the
+## defaults below, which match predict_draft_winner's own — so an empty override dict
+## reproduces today's exact evaluation behavior). Also doubles as the whitelist for
+## prediction_sweep_param validation.
+const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
+	"logistic_k": 10.0,
+	"logit_sharpness": 1.0,
+	"score_sharpness": 1.0,
+	"interaction_weight": 0.0,
+	"synergy_amplification": 1.2,
+	"matchup_amplification": 1.2,
+}
+
+## Minimum number of evaluated-match appearances before a champion is surfaced in the
+## "Misclassification hotspots" section of the report — filters out noisy small-sample miss rates.
+const MISCLASSIFICATION_MIN_APPEARANCES: int = 20
+
+## Set by [method _evaluate_draft_predictions] to the full report text it pushed to the
+## terminal — lets callers (e.g. the stats dashboard, running this on a background thread)
+## surface the same report in their own UI after [method run]/[method run_packed] returns.
+var last_prediction_report: String = ""
+
 
 static func _now_ns() -> int:
 	return Time.get_ticks_usec() * 1000
@@ -148,6 +187,19 @@ func run_packed(p: Dictionary) -> int:
 	var role_dict: Dictionary = {}
 	if role_override is Dictionary:
 		role_dict = Dictionary(role_override)
+	var raw_prediction_sizes: Array = Array(p.get("prediction_team_sizes", [DEFAULT_PREDICTION_TEAM_SIZE]))
+	var prediction_sizes: Array[int] = []
+	for x in raw_prediction_sizes:
+		prediction_sizes.append(int(x))
+	var prediction_config_overrides: Dictionary = {}
+	var raw_overrides: Variant = p.get("prediction_config_overrides", {})
+	if raw_overrides is Dictionary:
+		prediction_config_overrides = Dictionary(raw_overrides).duplicate()
+	var prediction_sweep_param: String = str(p.get("prediction_sweep_param", ""))
+	var raw_sweep_values: Array = Array(p.get("prediction_sweep_values", []))
+	var prediction_sweep_values: Array[float] = []
+	for x in raw_sweep_values:
+		prediction_sweep_values.append(float(x))
 	return run(
 		str(p.get("output_dir", "")),
 		arr,
@@ -158,7 +210,13 @@ func run_packed(p: Dictionary) -> int:
 		bool(p.get("write_match_log", false)),
 		bool(p.get("aggregate_stats_in_worker", true)),
 		role_dict,
-		bool(p.get("use_native_generated_stats", true))
+		bool(p.get("use_native_generated_stats", true)),
+		bool(p.get("evaluate_draft_predictions", false)),
+		str(p.get("prediction_stats_dir", "res://stats_output")),
+		prediction_sizes,
+		prediction_config_overrides,
+		prediction_sweep_param,
+		prediction_sweep_values
 	)
 
 
@@ -172,7 +230,13 @@ func run(
 	write_match_log: bool = false,
 	aggregate_stats_in_worker: bool = true,
 	role_by_hero_map_override: Dictionary = {},
-	use_native_generated_stats: bool = true
+	use_native_generated_stats: bool = true,
+	evaluate_draft_predictions: bool = false,
+	prediction_stats_dir: String = "res://stats_output",
+	prediction_team_sizes: Array[int] = [DEFAULT_PREDICTION_TEAM_SIZE],
+	prediction_config_overrides: Dictionary = {},
+	prediction_sweep_param: String = "",
+	prediction_sweep_values: Array[float] = []
 ) -> Error:
 	if output_dir.is_empty():
 		return ERR_INVALID_PARAMETER
@@ -180,6 +244,9 @@ func run(
 		return ERR_INVALID_PARAMETER
 	if matches_per_size < 1:
 		return ERR_INVALID_PARAMETER
+	if evaluate_draft_predictions and not write_match_log:
+		push_warning("StatsSimulationCsvGenerator: evaluate_draft_predictions requires write_match_log (final comps are read from match logs); enabling it.")
+		write_match_log = true
 	var roles_for_workers: Dictionary = {}
 	if aggregate_stats_in_worker:
 		if not role_by_hero_map_override.is_empty():
@@ -275,8 +342,326 @@ func run(
 			"stats_profile": profile_state,
 			"stats_profile_summary": _build_profile_summary(profile_state),
 		})
-	
+
+	if evaluate_draft_predictions:
+		_evaluate_draft_predictions(
+			aggregator.get_match_logs(),
+			prediction_team_sizes,
+			prediction_stats_dir,
+			prediction_config_overrides,
+			prediction_sweep_param,
+			prediction_sweep_values
+		)
+
 	return OK
+
+
+static func _confidence_bucket_index(confidence: float) -> int:
+	for i in range(PREDICTION_CONFIDENCE_BUCKETS.size()):
+		var bucket: Dictionary = PREDICTION_CONFIDENCE_BUCKETS[i]
+		if confidence >= float(bucket["min"]) and confidence < float(bucket["max"]):
+			return i
+	return PREDICTION_CONFIDENCE_BUCKETS.size() - 1
+
+
+## Runs predict_draft_winner on the final comp of every "completed draft" match (per
+## prediction_team_sizes, default [5] — see DEFAULT_PREDICTION_TEAM_SIZE), scores predictions
+## against actual outcomes, and pushes ONE consolidated report. prediction_stats_dir should point
+## at a stats snapshot that is NOT the one this run just (re)generated — predicting against stats
+## derived from the very matches being predicted would be in-sample/circular and inflate accuracy.
+##
+## prediction_config_overrides may override any subset of PREDICTION_OVERRIDE_DEFAULTS' keys
+## (logistic_k / logit_sharpness / score_sharpness / interaction_weight / synergy_amplification /
+## matchup_amplification) — e.g. to evaluate a candidate tuning instead of predict_draft_winner's
+## own defaults. If prediction_sweep_param + prediction_sweep_values are both non-empty, runs the
+## evaluation once per swept value (varying only that one key on top of the base overrides) and
+## emits a single comparison report instead of a single-config report — letting you A/B candidate
+## tunings (e.g. for the "underconfident" calibration issue) without re-running the batch each time.
+func _evaluate_draft_predictions(match_logs: Array, eval_team_sizes: Array[int], prediction_stats_dir: String, config_overrides: Dictionary = {}, sweep_param: String = "", sweep_values: Array[float] = []) -> void:
+	var backend := NativeSimulationBackendScript.new()
+	if not backend.is_available():
+		push_error("draft_prediction_eval: native simulation backend unavailable; skipping accuracy report")
+		return
+
+	var report: String
+	if not sweep_param.is_empty() and not sweep_values.is_empty():
+		var metrics_list: Array[Dictionary] = []
+		for value in sweep_values:
+			var overrides: Dictionary = config_overrides.duplicate()
+			overrides[sweep_param] = value
+			metrics_list.append(_score_prediction_config(backend, match_logs, eval_team_sizes, prediction_stats_dir, overrides))
+		report = _build_sweep_report(sweep_param, sweep_values, metrics_list, eval_team_sizes, prediction_stats_dir)
+	else:
+		var metrics: Dictionary = _score_prediction_config(backend, match_logs, eval_team_sizes, prediction_stats_dir, config_overrides)
+		report = _build_single_config_report(metrics, eval_team_sizes, prediction_stats_dir)
+
+	last_prediction_report = report
+	push_warning(report)
+
+
+## Runs predict_draft_winner (with config_overrides layered onto PREDICTION_OVERRIDE_DEFAULTS)
+## against every eligible match in match_logs and scores the predictions against actual outcomes.
+## Returns a metrics dict consumed by the report builders below; pushes nothing itself, so it can
+## be reused for both single-config and per-sweep-value runs.
+func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_sizes: Array[int], prediction_stats_dir: String, config_overrides: Dictionary) -> Dictionary:
+	var ov: Dictionary = PREDICTION_OVERRIDE_DEFAULTS.duplicate()
+	for key in config_overrides:
+		ov[key] = config_overrides[key]
+
+	var total: int = 0
+	var correct: int = 0
+	var draws_skipped: int = 0
+	var missing_comp_skipped: int = 0
+	var brier_sum: float = 0.0
+	var log_loss_sum: float = 0.0
+	var confidence_correct_sum: float = 0.0
+	var confidence_incorrect_sum: float = 0.0
+	var bucket_count := PREDICTION_CONFIDENCE_BUCKETS.size()
+	var bucket_n: Array[int] = []
+	var bucket_correct_n: Array[int] = []
+	var bucket_confidence_sum: Array[float] = []
+	for _i in range(bucket_count):
+		bucket_n.append(0)
+		bucket_correct_n.append(0)
+		bucket_confidence_sum.append(0.0)
+	# Per-champion misclassification tallies (see MISCLASSIFICATION_MIN_APPEARANCES / hotspot report).
+	var champ_total: Dictionary = {}
+	var champ_miss_count: Dictionary = {}
+	var champ_miss_confidence_sum: Dictionary = {}
+
+	for log_entry in match_logs:
+		var log: Dictionary = Dictionary(log_entry)
+		if int(log.get("team_size", 0)) not in eval_team_sizes:
+			continue
+		var winner: String = String(log.get("winner", ""))
+		if winner != "player" and winner != "enemy":
+			draws_skipped += 1
+			continue
+		var player_comp: Array = Array(log.get("player_comp", []))
+		var enemy_comp: Array = Array(log.get("enemy_comp", []))
+		if player_comp.is_empty() or enemy_comp.is_empty():
+			missing_comp_skipped += 1
+			continue
+
+		var prediction: Dictionary = backend.predict_draft_winner(
+			player_comp, enemy_comp, prediction_stats_dir,
+			0.50, 0.25, 0.25, 0.25, 0.0,
+			float(ov["logistic_k"]), false,
+			float(ov["synergy_amplification"]), float(ov["matchup_amplification"]),
+			float(ov["logit_sharpness"]), float(ov["score_sharpness"]), float(ov["interaction_weight"])
+		)
+		var team1_prob: float = clampf(float(prediction.get("team1_prob", 0.5)), 0.0, 1.0)
+		var actual_player_win: bool = winner == "player"
+		var predicted_player_win: bool = team1_prob >= 0.5
+		var is_correct: bool = predicted_player_win == actual_player_win
+		# "Confidence" = probability the model assigned to whichever side it actually picked.
+		var confidence: float = team1_prob if predicted_player_win else (1.0 - team1_prob)
+		var p_actual: float = team1_prob if actual_player_win else (1.0 - team1_prob)
+		var actual_outcome: float = 1.0 if actual_player_win else 0.0
+
+		total += 1
+		if is_correct:
+			correct += 1
+			confidence_correct_sum += confidence
+		else:
+			confidence_incorrect_sum += confidence
+		# Brier score and log loss are proper scoring rules: they reward both picking the right
+		# side AND being well-calibrated about how confident to be (unlike raw accuracy).
+		brier_sum += (team1_prob - actual_outcome) * (team1_prob - actual_outcome)
+		log_loss_sum += -log(maxf(p_actual, 1e-9))
+
+		var bucket_index: int = _confidence_bucket_index(confidence)
+		bucket_n[bucket_index] += 1
+		bucket_confidence_sum[bucket_index] += confidence
+		if is_correct:
+			bucket_correct_n[bucket_index] += 1
+
+		for champ_variant in (player_comp + enemy_comp):
+			var champ := String(champ_variant)
+			champ_total[champ] = int(champ_total.get(champ, 0)) + 1
+			if not is_correct:
+				champ_miss_count[champ] = int(champ_miss_count.get(champ, 0)) + 1
+				champ_miss_confidence_sum[champ] = float(champ_miss_confidence_sum.get(champ, 0.0)) + confidence
+
+	return {
+		"total": total,
+		"correct": correct,
+		"draws_skipped": draws_skipped,
+		"missing_comp_skipped": missing_comp_skipped,
+		"brier_sum": brier_sum,
+		"log_loss_sum": log_loss_sum,
+		"confidence_correct_sum": confidence_correct_sum,
+		"confidence_incorrect_sum": confidence_incorrect_sum,
+		"bucket_n": bucket_n,
+		"bucket_correct_n": bucket_correct_n,
+		"bucket_confidence_sum": bucket_confidence_sum,
+		"champ_total": champ_total,
+		"champ_miss_count": champ_miss_count,
+		"champ_miss_confidence_sum": champ_miss_confidence_sum,
+	}
+
+
+## Mean of (actual-correct% − predicted-confidence%) across non-empty calibration buckets.
+## Positive = model underconfident (actual beats stated confidence, as observed); negative =
+## overconfident; closer to 0 = better-calibrated. Used to compare configs at a glance in sweeps.
+func _mean_calibration_gap(metrics: Dictionary) -> float:
+	var bucket_n: Array = metrics["bucket_n"]
+	var bucket_correct_n: Array = metrics["bucket_correct_n"]
+	var bucket_confidence_sum: Array = metrics["bucket_confidence_sum"]
+	var gap_sum: float = 0.0
+	var gap_count: int = 0
+	for i in range(PREDICTION_CONFIDENCE_BUCKETS.size()):
+		var n: int = int(bucket_n[i])
+		if n == 0:
+			continue
+		var avg_confidence: float = float(bucket_confidence_sum[i]) / float(n)
+		var bucket_accuracy: float = float(bucket_correct_n[i]) / float(n)
+		gap_sum += (bucket_accuracy - avg_confidence) * 100.0
+		gap_count += 1
+	return (gap_sum / float(gap_count)) if gap_count > 0 else 0.0
+
+
+## Builds the "Misclassification hotspots" lines: champions appearing in at least
+## MISCLASSIFICATION_MIN_APPEARANCES evaluated matches, sorted by miss-rate descending, top 10.
+func _build_misclassification_hotspot_lines(metrics: Dictionary) -> Array[String]:
+	var champ_total: Dictionary = metrics["champ_total"]
+	var champ_miss_count: Dictionary = metrics["champ_miss_count"]
+	var champ_miss_confidence_sum: Dictionary = metrics["champ_miss_confidence_sum"]
+
+	var entries: Array[Dictionary] = []
+	for champ in champ_total:
+		var n: int = int(champ_total[champ])
+		if n < MISCLASSIFICATION_MIN_APPEARANCES:
+			continue
+		var miss_n: int = int(champ_miss_count.get(champ, 0))
+		var mean_conf_when_wrong: float = (float(champ_miss_confidence_sum.get(champ, 0.0)) / float(miss_n)) if miss_n > 0 else 0.0
+		entries.append({
+			"champion": champ,
+			"n": n,
+			"miss_n": miss_n,
+			"miss_rate": 100.0 * float(miss_n) / float(n),
+			"mean_conf_when_wrong": mean_conf_when_wrong,
+		})
+	entries.sort_custom(func(a, b): return float(a["miss_rate"]) > float(b["miss_rate"]))
+
+	var lines: Array[String] = []
+	for i in range(mini(10, entries.size())):
+		var e: Dictionary = entries[i]
+		lines.append("    %-24s  %.1f%% miss rate (%d/%d matches), mean confidence when wrong: %.1f%%" % [
+			String(e["champion"]), float(e["miss_rate"]), int(e["miss_n"]), int(e["n"]), float(e["mean_conf_when_wrong"]) * 100.0
+		])
+	return lines
+
+
+func _build_single_config_report(metrics: Dictionary, eval_team_sizes: Array[int], prediction_stats_dir: String) -> String:
+	var total: int = int(metrics["total"])
+	var draws_skipped: int = int(metrics["draws_skipped"])
+	var missing_comp_skipped: int = int(metrics["missing_comp_skipped"])
+
+	var lines: Array[String] = []
+	lines.append("=== Draft Prediction Accuracy (predicted winner vs actual match outcome) ===")
+	lines.append("  Stats source: %s  (held out from this run's freshly-generated stats; out-of-sample)" % prediction_stats_dir)
+	lines.append("  Team sizes evaluated: %s  (\"completed draft\" = full comp; see DEFAULT_PREDICTION_TEAM_SIZE)" % [str(eval_team_sizes)])
+	if total == 0:
+		lines.append("  No eligible matches found. (draws skipped: %d, missing comp data: %d)" % [draws_skipped, missing_comp_skipped])
+		lines.append("=== End Draft Prediction Accuracy ===")
+		return "\n" + "\n".join(lines) + "\n"
+
+	var correct: int = int(metrics["correct"])
+	var incorrect: int = total - correct
+	var accuracy_pct: float = 100.0 * float(correct) / float(total)
+	var brier_score: float = float(metrics["brier_sum"]) / float(total)
+	var log_loss: float = float(metrics["log_loss_sum"]) / float(total)
+	var mean_conf_correct: float = (float(metrics["confidence_correct_sum"]) / float(correct)) if correct > 0 else 0.0
+	var mean_conf_incorrect: float = (float(metrics["confidence_incorrect_sum"]) / float(incorrect)) if incorrect > 0 else 0.0
+	var coin_flip_brier: float = 0.25
+	var coin_flip_log_loss: float = log(2.0)
+
+	lines.append("  Matches evaluated: %d   (draws skipped: %d, missing comp data: %d)" % [total, draws_skipped, missing_comp_skipped])
+	lines.append("")
+	lines.append("  Accuracy:    %.1f%%  (%d/%d correct)" % [accuracy_pct, correct, total])
+	lines.append("  Brier score: %.4f   (lower is better; %.4f = always-predict-50%% baseline)" % [brier_score, coin_flip_brier])
+	lines.append("  Log loss:    %.4f   (lower is better; %.4f = always-predict-50%% baseline)" % [log_loss, coin_flip_log_loss])
+	lines.append("  Mean confidence on correct picks:   %.1f%%" % (mean_conf_correct * 100.0))
+	lines.append("  Mean confidence on incorrect picks: %.1f%%" % (mean_conf_incorrect * 100.0))
+	lines.append("")
+	lines.append("  Calibration (model's confidence in its pick -> how often that pick was actually right):")
+	var bucket_n: Array = metrics["bucket_n"]
+	var bucket_correct_n: Array = metrics["bucket_correct_n"]
+	var bucket_confidence_sum: Array = metrics["bucket_confidence_sum"]
+	for i in range(PREDICTION_CONFIDENCE_BUCKETS.size()):
+		var n: int = int(bucket_n[i])
+		if n == 0:
+			continue
+		var bucket: Dictionary = PREDICTION_CONFIDENCE_BUCKETS[i]
+		var avg_confidence: float = float(bucket_confidence_sum[i]) / float(n)
+		var bucket_accuracy: float = 100.0 * float(bucket_correct_n[i]) / float(n)
+		lines.append("    %-7s  predicted ~%.1f%% confident  ->  actually correct %.1f%%  (n=%d)" % [
+			String(bucket["label"]), avg_confidence * 100.0, bucket_accuracy, n
+		])
+	lines.append("  (A well-calibrated model's \"actually correct %\" should track its stated confidence per bucket.)")
+
+	lines.append("")
+	lines.append("  Misclassification hotspots (champions appearing in >= %d evaluated matches, sorted by miss rate):" % MISCLASSIFICATION_MIN_APPEARANCES)
+	var hotspot_lines: Array[String] = _build_misclassification_hotspot_lines(metrics)
+	if hotspot_lines.is_empty():
+		lines.append("    (no champion reached the minimum sample threshold)")
+	else:
+		for hotspot_line in hotspot_lines:
+			lines.append(hotspot_line)
+
+	lines.append("=== End Draft Prediction Accuracy ===")
+	return "\n" + "\n".join(lines) + "\n"
+
+
+static func _format_sweep_value(value: float) -> String:
+	var text := "%.4f" % value
+	if text.contains("."):
+		text = text.rstrip("0").rstrip(".")
+	return text
+
+
+func _build_sweep_report(sweep_param: String, sweep_values: Array[float], metrics_list: Array[Dictionary], eval_team_sizes: Array[int], prediction_stats_dir: String) -> String:
+	var lines: Array[String] = []
+	lines.append("=== Draft Prediction Accuracy Sweep (param: %s) ===" % sweep_param)
+	lines.append("  Stats source: %s  (held out from this run's freshly-generated stats; out-of-sample)" % prediction_stats_dir)
+	lines.append("  Team sizes evaluated: %s  (\"completed draft\" = full comp; see DEFAULT_PREDICTION_TEAM_SIZE)" % [str(eval_team_sizes)])
+	lines.append("")
+	lines.append("  %-10s %10s %10s %10s %16s %18s %14s" % [
+		sweep_param, "Accuracy", "Brier", "LogLoss", "Conf(correct)", "Conf(incorrect)", "Calib gap"
+	])
+	for i in range(sweep_values.size()):
+		var value: float = sweep_values[i]
+		var metrics: Dictionary = metrics_list[i]
+		var total: int = int(metrics["total"])
+		var value_label := _format_sweep_value(value)
+		if total == 0:
+			lines.append("  %-10s   (no eligible matches — draws skipped: %d, missing comp data: %d)" % [
+				value_label, int(metrics["draws_skipped"]), int(metrics["missing_comp_skipped"])
+			])
+			continue
+		var correct: int = int(metrics["correct"])
+		var incorrect: int = total - correct
+		var accuracy_pct: float = 100.0 * float(correct) / float(total)
+		var brier_score: float = float(metrics["brier_sum"]) / float(total)
+		var log_loss: float = float(metrics["log_loss_sum"]) / float(total)
+		var mean_conf_correct: float = (float(metrics["confidence_correct_sum"]) / float(correct)) if correct > 0 else 0.0
+		var mean_conf_incorrect: float = (float(metrics["confidence_incorrect_sum"]) / float(incorrect)) if incorrect > 0 else 0.0
+		var calibration_gap: float = _mean_calibration_gap(metrics)
+		lines.append("  %-10s %9.1f%% %10.4f %10.4f %15.1f%% %17.1f%% %+13.1f%%" % [
+			value_label, accuracy_pct, brier_score, log_loss,
+			mean_conf_correct * 100.0, mean_conf_incorrect * 100.0, calibration_gap
+		])
+	lines.append("")
+	lines.append("  Matches evaluated per row: %d   (draws skipped: %d, missing comp data: %d — same eligible set for every value)" % [
+		int(metrics_list[0].get("total", 0)) if not metrics_list.is_empty() else 0,
+		int(metrics_list[0].get("draws_skipped", 0)) if not metrics_list.is_empty() else 0,
+		int(metrics_list[0].get("missing_comp_skipped", 0)) if not metrics_list.is_empty() else 0,
+	])
+	lines.append("  Calib gap = mean(actual-correct% − predicted-confidence%) across non-empty calibration buckets.")
+	lines.append("  Positive = underconfident (actual beats stated confidence); negative = overconfident; closer to 0 = better calibrated.")
+	lines.append("=== End Draft Prediction Accuracy Sweep ===")
+	return "\n" + "\n".join(lines) + "\n"
 
 
 func _worker_count_for_export(matches_per_size: int, max_worker_threads: int) -> int:

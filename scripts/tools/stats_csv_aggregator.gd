@@ -53,6 +53,10 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 		_consume_individual_summary(team_size, summary_value)
 
 
+func get_match_logs() -> Array:
+	return _match_logs.duplicate(true)
+
+
 func to_partial_dict(include_match_log: bool = true) -> Dictionary:
 	return {
 		"by_size": _by_size.duplicate(true),
@@ -161,6 +165,8 @@ func _consume_individual_summary_common(
 			"winner": String(winner_team),
 			"sudden_death_ticks": sudden_death_ticks,
 			"duration": duration,
+			"player_comp": player_comp.duplicate(),
+			"enemy_comp": enemy_comp.duplicate(),
 		})
 
 	_ensure_roles()

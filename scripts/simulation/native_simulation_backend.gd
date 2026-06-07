@@ -374,3 +374,53 @@ func get_trace_events() -> Array:
 	if trace_events is Array:
 		return trace_events
 	return []
+
+
+func get_draft_recommendation_names(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> Array:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return []
+	if _backend.has_method("get_draft_recommendation_names"):
+		return _backend.call("get_draft_recommendation_names", allies, enemies, available, top_n, stats_dir, base_weight, synergy_weight, counter_weight)
+	push_error("Native simulation backend is missing get_draft_recommendation_names().")
+	return []
+
+
+func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> Array:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return []
+	if _backend.has_method("get_draft_recommendations_with_breakdowns"):
+		return _backend.call("get_draft_recommendations_with_breakdowns", allies, enemies, available, top_n, stats_dir, base_weight, synergy_weight, counter_weight)
+	push_error("Native simulation backend is missing get_draft_recommendations_with_breakdowns().")
+	return []
+
+
+func debug_print_draft_recommendations(allies: Array, enemies: Array, available: Array, top_n: int = 5, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, debug_mode: bool = false) -> void:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return
+	if _backend.has_method("debug_print_draft_recommendations"):
+		_backend.call("debug_print_draft_recommendations", allies, enemies, available, top_n, stats_dir, base_weight, synergy_weight, counter_weight, debug_mode)
+		return
+	push_error("Native simulation backend is missing debug_print_draft_recommendations().")
+
+
+func run_debug_draft_evaluation_batch(allies: Array, enemies: Array, available: Array, num_runs: int = 50, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> void:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return
+	if _backend.has_method("run_debug_draft_evaluation_batch"):
+		_backend.call("run_debug_draft_evaluation_batch", allies, enemies, available, num_runs, stats_dir, base_weight, synergy_weight, counter_weight)
+		return
+	push_error("Native simulation backend is missing run_debug_draft_evaluation_batch().")
+
+
+func predict_draft_winner(team1: Array, team2: Array, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, matchup_weight: float = 0.25, composition_weight: float = 0.0, logistic_k: float = 10.0, include_breakdown: bool = false, synergy_amplification: float = 1.2, matchup_amplification: float = 1.2, logit_sharpness: float = 1.5, score_sharpness: float = 1.0, interaction_weight: float = 0.0, scoring_mode: int = 2) -> Dictionary:
+	if not _ensure_native_backend():
+		push_error("Simulation backend is not available.")
+		return {"team1_prob": 0.5, "team2_prob": 0.5}
+	if _backend.has_method("predict_draft_winner"):
+		return _backend.call("predict_draft_winner", team1, team2, stats_dir, base_weight, synergy_weight, counter_weight, matchup_weight, composition_weight, logistic_k, include_breakdown, synergy_amplification, matchup_amplification, logit_sharpness, score_sharpness, interaction_weight, scoring_mode)
+	push_error("Native simulation backend is missing predict_draft_winner().")
+	return {"team1_prob": 0.5, "team2_prob": 0.5}

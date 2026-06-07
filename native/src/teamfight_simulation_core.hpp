@@ -16,6 +16,7 @@
 #include "simulation/sim_channel.hpp"
 #include "simulation/sim_combat.hpp"
 #include "simulation/sim_constants.hpp"
+#include "simulation/sim_draft_recommender.hpp"
 #include "simulation/sim_effects_exec.hpp"
 #include "simulation/sim_effects_host.hpp"
 #include "simulation/sim_match.hpp"
@@ -268,6 +269,15 @@ public:
 	/// When true (or env TEAMFIGHT_SIM_PROFILE), _simulate emits one stderr JSON line per match with per-section tick timings.
 	void sim_profile_set_enabled(bool enabled);
 	void targeting_profile_set_enabled(bool enabled);
+	void debug_print_draft_recommendations(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 5, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, bool debug_mode = false, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	void run_debug_draft_evaluation_batch(const Array &allies, const Array &enemies, const Array &available, int64_t num_runs = 50, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Array get_draft_recommendation_names(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 3, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Array get_draft_recommendations_with_breakdowns(const Array &allies, const Array &enemies, const Array &available, int64_t top_n = 3, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Dictionary predict_draft_winner(const Array &team1, const Array &team2, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double counter_weight = 0.25, double matchup_weight = 0.25, double composition_weight = 0.0, double logistic_k = 10.0, bool include_breakdown = false, double synergy_amplification = 1.2, double matchup_amplification = 1.2, double logit_sharpness = 1.5, double score_sharpness = 1.0, double interaction_weight = 0.0, int scoring_mode = 2);
+	Dictionary analyze_draft_signal_influence(const Array &candidate, const Array &allies, const Array &enemies, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Dictionary run_controlled_draft_evaluation(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Dictionary run_stress_test(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", int64_t num_iterations = 50, double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
+	Dictionary run_stress_test_with_perturbations(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", int64_t seed = 42, int64_t scenario_count = 30, double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2, int64_t scoring_mode = 0, double logit_sharpness = 1.0, int64_t smoothing_mode = 0);
 };
 
 #endif

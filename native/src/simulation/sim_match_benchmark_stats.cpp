@@ -148,6 +148,8 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			row["winner"] = String(GeneratedMatchHost::winner_team(&core));
 			row["sudden_death_ticks"] = int64_t(GeneratedMatchHost::sudden_death_ticks(&core));
 			row["duration"] = GeneratedMatchHost::time(&core);
+			row["player_comp"] = GeneratedMatchHost::player_comp(&core).duplicate();
+			row["enemy_comp"] = GeneratedMatchHost::enemy_comp(&core).duplicate();
 			match_logs.append(row);
 		}
 

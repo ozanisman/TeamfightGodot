@@ -159,6 +159,8 @@ var _team_size_buttons: Dictionary = {}
 var _regen_checks: Dictionary = {}
 var _regen_sample_edit: LineEdit
 var _regen_worker_edit: LineEdit
+var _regen_eval_predictions_check: CheckBox
+var _regen_prediction_dir_edit: LineEdit
 var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
@@ -178,6 +180,7 @@ var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
 var _regen_thread: Thread
 var _regen_runner: RefCounted
+var _regen_prediction_report: String = ""
 var _regen_poll_timer: Timer
 var _regen_total_matches: int = 0
 var _regen_wall_start_msec: int = 0
@@ -857,6 +860,11 @@ func _dir_probe_write(dir: String) -> bool:
 	return true
 
 
+func _on_regen_eval_predictions_toggled(enabled: bool) -> void:
+	if _regen_prediction_dir_edit != null:
+		_regen_prediction_dir_edit.editable = enabled
+
+
 func _read_regen_export_params() -> Variant:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
@@ -892,12 +900,28 @@ func _read_regen_export_params() -> Variant:
 		_regen_status.text = "Worker count must be >= 1."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return null
+	var output_dir: String = _resolve_writable_stats_dir()
+	var evaluate_draft_predictions: bool = _regen_eval_predictions_check != null and _regen_eval_predictions_check.button_pressed
+	var prediction_stats_dir: String = ""
+	if evaluate_draft_predictions:
+		prediction_stats_dir = _regen_prediction_dir_edit.text.strip_edges()
+		if prediction_stats_dir.is_empty():
+			_regen_status.text = "Prediction evaluation needs an out-of-sample stats dir (separate from the output dir)."
+			_regen_status.add_theme_color_override("font_color", COLOR_RED)
+			return null
+		if prediction_stats_dir == output_dir:
+			_regen_status.text = "Prediction stats dir must differ from the output dir — predicting against stats this run just (re)generated is circular/in-sample."
+			_regen_status.add_theme_color_override("font_color", COLOR_RED)
+			return null
 	return {
-		"output_dir": _resolve_writable_stats_dir(),
+		"output_dir": output_dir,
 		"team_sizes": selected_sizes,
 		"matches_per_size": n,
 		"base_seed": int(Time.get_ticks_msec() & 0x7FFFFFFF),
 		"max_worker_threads": max_worker_threads,
+		"write_match_log": evaluate_draft_predictions,
+		"evaluate_draft_predictions": evaluate_draft_predictions,
+		"prediction_stats_dir": prediction_stats_dir,
 	}
 
 
@@ -914,7 +938,9 @@ func _run_regen_export_thread(params: Dictionary) -> void:
 	
 	# Now run the actual simulations
 	var runner := StatsSimulationCsvGeneratorScript.new()
+	_regen_runner = runner
 	var err: Error = runner.run_packed(params)
+	_regen_prediction_report = runner.last_prediction_report
 	if err != OK:
 		push_error("Simulation generation failed: %s" % error_string(err))
 
@@ -1036,10 +1062,14 @@ func _finish_regen_completed(err: int) -> void:
 	_sync_team_size_buttons()
 	var elapsed_s: float = (Time.get_ticks_msec() - _regen_wall_start_msec) / 1000.0
 	var mps: float = float(_regen_total_matches) / maxf(elapsed_s, 0.0001)
-	_regen_status.text = (
+	var status_text := (
 		"Reloaded data from %s — %d matches in %.2f s (%.0f matches/s)"
 		% [_stats_path, _regen_total_matches, elapsed_s, mps]
 	)
+	if not _regen_prediction_report.is_empty():
+		status_text += "\n" + _regen_prediction_report
+	_regen_prediction_report = ""
+	_regen_status.text = status_text
 	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_refresh_all()
 
@@ -1739,32 +1769,42 @@ func _on_new_data_pressed() -> void:
 	if _export_popup == null:
 		_build_export_popup()
 		add_child(_export_popup)  # Add to scene tree before showing
-	_export_popup.popup_centered(Vector2i(500, 900))
+	_export_popup.popup_centered(Vector2i(1000, 900))
 
 
 func _build_export_popup() -> void:
 	_export_popup = Window.new()
 	_export_popup.title = "Generate New Data"
-	_export_popup.min_size = Vector2i(500, 900)
+	_export_popup.min_size = Vector2i(1000, 900)
 	_export_popup.unresizable = false
 	_export_popup.close_requested.connect(func(): _export_popup.hide())
-	
+
 	var main_vb := VBoxContainer.new()
-	main_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_vb.add_theme_constant_override("separation", 20)
 	_export_popup.add_child(main_vb)
-	
+	# Window does not auto-layout Control children; stretch to fill or the VBox collapses to its
+	# (now tiny, post-ScrollContainer) minimum size and only the close button remains visible.
+	_stretch_control_to_parent_full_rect(main_vb)
+
+	# Scrollable area so the panel remains usable when its content (export card + status/report
+	# text) is taller than the window.
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	main_vb.add_child(scroll)
+
 	# Add export content
 	_export_popup_content = VBoxContainer.new()
 	_export_popup_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_export_popup_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_export_popup_content.add_theme_constant_override("separation", 18)
-	main_vb.add_child(_export_popup_content)
-	
+	scroll.add_child(_export_popup_content)
+
 	# Build export UI (moved from Matchups tab)
 	_build_export_ui_content()
-	
+
 	# Close button
 	var close_button := Button.new()
 	close_button.text = "Close"
@@ -1867,6 +1907,29 @@ func _build_export_ui_content() -> void:
 	_regen_worker_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	worker_block.add_child(_regen_worker_edit)
 	export_inner.add_child(worker_block)
+
+	var prediction_block := VBoxContainer.new()
+	prediction_block.add_theme_constant_override("separation", 8)
+	_regen_eval_predictions_check = CheckBox.new()
+	_regen_eval_predictions_check.text = "Evaluate draft prediction accuracy after generating"
+	_regen_eval_predictions_check.custom_minimum_size.y = 56
+	_regen_eval_predictions_check.button_pressed = false
+	_regen_eval_predictions_check.tooltip_text = "Runs predict_draft_winner on each completed-draft (5v5) match and prints one accuracy report comparing predicted vs actual winner."
+	_regen_eval_predictions_check.toggled.connect(_on_regen_eval_predictions_toggled)
+	prediction_block.add_child(_regen_eval_predictions_check)
+	var prediction_dir_lbl := Label.new()
+	prediction_dir_lbl.text = "Out-of-sample stats dir for predictions (must differ from output above)"
+	prediction_dir_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	prediction_dir_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
+	prediction_block.add_child(prediction_dir_lbl)
+	_regen_prediction_dir_edit = LineEdit.new()
+	_regen_prediction_dir_edit.text = "res://stats_output_baseline"
+	_regen_prediction_dir_edit.placeholder_text = "e.g. res://stats_output_baseline"
+	_regen_prediction_dir_edit.custom_minimum_size = Vector2(0, 56)
+	_regen_prediction_dir_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_regen_prediction_dir_edit.editable = false
+	prediction_block.add_child(_regen_prediction_dir_edit)
+	export_inner.add_child(prediction_block)
 
 	_regen_button = Button.new()
 	_regen_button.text = "Generate"

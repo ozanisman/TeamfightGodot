@@ -21,9 +21,8 @@
 
 ## Output
 
-- Be concise.
-- Output code by default.
-- Use minimal diffs unless full file is necessary.
+- Be concise unless more detail is explicitly requested.
+- When proposing changes, prefer minimal diffs over prose.
 - No emojis.
 - Explanations only when required.
 

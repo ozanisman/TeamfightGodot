@@ -503,8 +503,8 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 			};
 
 			double logit_base = logit_transform(result.base_winrate);
-			double logit_synergy = logit_transform(effective_synergy);
-			double logit_matchup = logit_transform(effective_matchup);
+			double logit_synergy = logit_transform(result.avg_synergy) + std::log(_config.synergy_amplification);
+			double logit_matchup = logit_transform(result.avg_counter) + std::log(_config.matchup_amplification);
 
 			double combined = _config.logit_sharpness * (
 				_config.base_weight * logit_base +
@@ -515,6 +515,7 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 			result.score = sigmoid(combined);
 			// Add interaction term (only in logit mode)
 			result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
+			result.score = std::clamp(result.score, 0.0, 1.0);
 			break;
 		}
 		case ScoringMode::ADDITIVE:

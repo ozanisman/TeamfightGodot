@@ -132,7 +132,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
-	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "logit_sharpness"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(1.0));
+	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "logit_sharpness", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(1.0), DEFVAL(0));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -618,7 +618,8 @@ Dictionary TeamfightSimulationCore::run_stress_test_with_perturbations(
 		double synergy_amplification,
 		double matchup_amplification,
 		int64_t scoring_mode,
-		double logit_sharpness) {
+		double logit_sharpness,
+		int64_t smoothing_mode) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
 		UtilityFunctions::push_error(database.last_error());
@@ -646,6 +647,7 @@ Dictionary TeamfightSimulationCore::run_stress_test_with_perturbations(
 	config.synergy_amplification = synergy_amplification;
 	config.matchup_amplification = matchup_amplification;
 	config.logit_sharpness = logit_sharpness;
+	config.smoothing_mode = static_cast<sim::draft::SmoothingMode>(smoothing_mode);
 
 	// Convert int to ScoringMode enum
 	config.scoring_mode = static_cast<sim::draft::ScoringMode>(scoring_mode);

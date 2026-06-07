@@ -12,6 +12,17 @@ using namespace godot;
 namespace sim {
 namespace draft {
 
+enum class ScoringMode {
+	ADDITIVE,
+	MULTIPLICATIVE,
+	LOGIT
+};
+
+enum class SmoothingMode {
+	LEGACY,
+	CONFIDENCE_WEIGHTED
+};
+
 struct PredictionConfig {
 	double base_weight = 0.50;
 	double synergy_weight = 0.25;
@@ -31,12 +42,19 @@ struct PredictionConfig {
 
 	double logistic_k = 10.0;
 
-	// Scoring sensitivity parameters (opt-in)
+	// Scoring mode
+	ScoringMode scoring_mode = ScoringMode::ADDITIVE;
+	SmoothingMode smoothing_mode = SmoothingMode::LEGACY;
+
+	// Smoothing parameters
+	float smoothing_k = 100.0f;  // for confidence-weighted smoothing
 	float smoothing_strength = 1.0f;
 	int64_t smoothing_threshold_samples = 250;
+
+	// Scoring sensitivity parameters
 	float score_sharpness = 1.0f;
-	bool use_multiplicative_model = false;
-	float interaction_weight = 0.0f;
+	float logit_sharpness = 1.0f;  // sharpness applied in logit space before sigmoid
+	float interaction_weight = 0.0f;  // only used in additive/logit modes
 };
 
 struct DraftScoreWeights {
@@ -124,6 +142,10 @@ struct StressTestReport {
 	
 	// Context sensitivity
 	double context_sensitivity = 0.0;  // avg absolute delta from baseline
+	
+	// Inter-rank margin metrics
+	double mean_inter_rank_margin = 0.0;
+	double median_inter_rank_margin = 0.0;
 	
 	// Winner stability
 	double top1_stability_rate = 0.0;  // % runs where top-1 unchanged

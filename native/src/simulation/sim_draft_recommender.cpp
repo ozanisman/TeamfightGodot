@@ -370,14 +370,23 @@ double DraftStatsDatabase::apply_bayesian_smoothing(double raw_winrate, int64_t 
 		return config.prior_winrate;
 	}
 	
-	double prior = config.prior_winrate;
-	int64_t N = config.confidence_prior_samples;
-	double adjusted = (raw_winrate * samples + prior * N) / (samples + N);
+	double adjusted;
 	
-	// Apply threshold-based smoothing strength adjustment
-	if (samples < config.smoothing_threshold_samples) {
-		adjusted = config.smoothing_strength * adjusted +
-		           (1.0f - config.smoothing_strength) * 0.5f;
+	if (config.smoothing_mode == SmoothingMode::CONFIDENCE_WEIGHTED) {
+		// Confidence-weighted smoothing
+		double w = std::clamp(double(samples) / (double(samples) + config.smoothing_k), 0.0, 1.0);
+		adjusted = w * raw_winrate + (1.0 - w) * config.prior_winrate;
+	} else {
+		// Legacy Bayesian smoothing
+		double prior = config.prior_winrate;
+		int64_t N = config.confidence_prior_samples;
+		adjusted = (raw_winrate * samples + prior * N) / (samples + N);
+		
+		// Apply threshold-based smoothing strength adjustment
+		if (samples < config.smoothing_threshold_samples) {
+			adjusted = config.smoothing_strength * adjusted +
+			           (1.0f - config.smoothing_strength) * 0.5f;
+		}
 	}
 	
 	return adjusted;
@@ -473,28 +482,55 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	// Calculate composition bonus
 	double composition_bonus = calculate_composition_bonus(allies, candidate);
 
-	// Calculate score based on model type
-	if (_config.use_multiplicative_model) {
-		// Multiplicative model: base modulated by context
-		double w_synergy = _config.synergy_weight;
-		double w_counter = _config.matchup_weight;
-		result.score = result.base_winrate
-			* std::pow(std::max(effective_synergy, 1e-4), w_synergy)
-			* std::pow(std::max(effective_matchup, 1e-4), w_counter);
-		result.score = std::clamp(result.score, 0.0, 1.0);
-	} else {
-		// Additive model (default)
-		result.score = (_config.base_weight * result.base_winrate) +
-					  (_config.synergy_weight * effective_synergy) +
-					  (_config.matchup_weight * effective_matchup) +
-					  composition_bonus;
+	// Calculate score based on scoring mode
+	switch (_config.scoring_mode) {
+		case ScoringMode::MULTIPLICATIVE: {
+			// Multiplicative model: product of components
+			result.score = result.base_winrate * effective_synergy * effective_matchup;
+			// Normalize by expected max (1.0 * 1.0 * 1.0 = 1.0)
+			result.score = std::clamp(result.score, 0.0, 1.0);
+			// No interaction term in multiplicative mode
+			break;
+		}
+		case ScoringMode::LOGIT: {
+			// Logit-space model
+			auto logit_transform = [](double p) -> double {
+				p = std::clamp(p, 1e-6, 1.0 - 1e-6);
+				return std::log(p / (1.0 - p));
+			};
+			auto sigmoid = [](double x) -> double {
+				return 1.0 / (1.0 + std::exp(-x));
+			};
+
+			double logit_base = logit_transform(result.base_winrate);
+			double logit_synergy = logit_transform(effective_synergy);
+			double logit_matchup = logit_transform(effective_matchup);
+
+			double combined = _config.logit_sharpness * (
+				_config.base_weight * logit_base +
+				_config.synergy_weight * logit_synergy +
+				_config.matchup_weight * logit_matchup
+			);
+
+			result.score = sigmoid(combined);
+			// Add interaction term (only in logit mode)
+			result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
+			break;
+		}
+		case ScoringMode::ADDITIVE:
+		default: {
+			// Additive model (default)
+			result.score = (_config.base_weight * result.base_winrate) +
+						  (_config.synergy_weight * effective_synergy) +
+						  (_config.matchup_weight * effective_matchup) +
+						  composition_bonus;
+			// Add interaction term (only in additive mode)
+			result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
+			// Apply score sharpening
+			result.score = std::pow(result.score, _config.score_sharpness);
+			break;
+		}
 	}
-
-	// Add interaction term
-	result.score += _config.interaction_weight * (effective_synergy * effective_matchup);
-
-	// Apply score sharpening
-	result.score = std::pow(result.score, _config.score_sharpness);
 
 	return result;
 }
@@ -1274,6 +1310,25 @@ StressTestReport DraftEvaluator::run_stress_test_with_perturbations(
 		total_score_delta += std::abs(stats.mean_score - stats.baseline_score);
 	}
 	report.context_sensitivity = total_score_delta / report.candidate_stats.size();
+	
+	// Compute inter-rank margins (from baseline ranking)
+	std::vector<double> margins;
+	for (size_t i = 0; i < baseline_ranked.size() - 1; ++i) {
+		margins.push_back(baseline_ranked[i].score - baseline_ranked[i + 1].score);
+	}
+	if (!margins.empty()) {
+		// Mean margin
+		double margin_sum = 0.0;
+		for (double m : margins) {
+			margin_sum += m;
+		}
+		report.mean_inter_rank_margin = margin_sum / margins.size();
+		
+		// Median margin
+		std::sort(margins.begin(), margins.end());
+		size_t median_idx = margins.size() / 2;
+		report.median_inter_rank_margin = margins[median_idx];
+	}
 	
 	// Compute winner stability rates
 	int64_t valid_scenarios = 0;

@@ -1365,7 +1365,13 @@ std::vector<DraftEvaluation> DraftRecommender::recommend(const std::vector<Strin
 		ranked.push_back(_evaluator.evaluate(candidate, allies, enemies));
 	}
 	std::sort(ranked.begin(), ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
-		if (a.score == b.score) {
+		constexpr double kTieEpsilon = 0.005;
+		if (std::abs(a.score - b.score) < kTieEpsilon) {
+			int64_t a_rels = a.synergy_relationships + a.counter_relationships;
+			int64_t b_rels = b.synergy_relationships + b.counter_relationships;
+			if (a_rels != b_rels) {
+				return a_rels > b_rels;  // More data = more reliable pick
+			}
 			return String(a.champion) < String(b.champion);
 		}
 		return a.score > b.score;

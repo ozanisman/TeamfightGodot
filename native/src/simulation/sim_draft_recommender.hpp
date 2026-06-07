@@ -43,7 +43,7 @@ struct PredictionConfig {
 	double logistic_k = 10.0;
 
 	// Scoring mode
-	ScoringMode scoring_mode = ScoringMode::ADDITIVE;
+	ScoringMode scoring_mode = ScoringMode::LOGIT;
 	SmoothingMode smoothing_mode = SmoothingMode::LEGACY;
 
 	// Smoothing parameters

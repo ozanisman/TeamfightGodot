@@ -251,12 +251,8 @@ func run(
 	if evaluate_draft_predictions and not write_match_log:
 		push_warning("StatsSimulationCsvGenerator: evaluate_draft_predictions requires write_match_log (final comps are read from match logs); enabling it.")
 		write_match_log = true
-	var roles_for_workers: Dictionary = {}
-	if aggregate_stats_in_worker:
-		if not role_by_hero_map_override.is_empty():
-			roles_for_workers = role_by_hero_map_override.duplicate()
-		else:
-			roles_for_workers = ChampionCatalogScript.build_role_by_hero_map()
+	var role_by_hero_map: Dictionary = role_by_hero_map_override if not role_by_hero_map_override.is_empty() else ChampionCatalogScript.build_role_by_hero_map()
+	var roles_for_workers: Dictionary = role_by_hero_map.duplicate() if aggregate_stats_in_worker else {}
 	var run_start_ns: int = _now_ns()
 	var profile_state: Dictionary = {}
 	if profile_stats:
@@ -303,6 +299,7 @@ func run(
 	var aggregator := StatsCsvAggregatorScript.new()
 	aggregator.set_write_match_log(write_match_log)
 	aggregator.reset()
+	aggregator.preload_roles(role_by_hero_map)
 	for sz in team_sizes:
 		var size_start_ns: int = _now_ns()
 		var per_size_seed: int = base_seed + int(sz) * 1_009_033

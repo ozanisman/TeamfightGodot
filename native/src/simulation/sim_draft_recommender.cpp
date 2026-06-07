@@ -75,6 +75,56 @@ bool lookup_pair(const DraftStatsDatabase::MatchupMap &map, const StringName &a,
 	return true;
 }
 
+enum class RelationshipKind {
+	SYNERGY,
+	COUNTER
+};
+
+struct RelationshipAggregate {
+	double adjusted_average = 0.5; // flat average of smoothed winrates (neutral fallback)
+	double raw_average = 0.5; // flat average of raw winrates — kept for diagnostics/debug output
+	int64_t relationships = 0;
+	int64_t stat_samples = 0;
+};
+
+// Aggregates a champion's pairwise winrates against a set of others (allies for synergy, enemies
+// for counter/matchup) into a flat average of their (Bayesian-smoothed) values, falling back to
+// the neutral 0.5 default when nothing resolves. Shared by DraftEvaluator::evaluate (per-candidate
+// recommendation scoring) and DraftStatsDatabase::calculate_team_score (whole-team win-probability
+// scoring) so the two scorers cannot silently disagree about how relationship signals aggregate.
+RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &database, const StringName &champion, const std::vector<StringName> &others, RelationshipKind kind, const PredictionConfig &config) {
+	RelationshipAggregate result;
+
+	double adjusted_sum = 0.0;
+	double raw_sum = 0.0;
+
+	for (const StringName &other : others) {
+		if (other == champion) {
+			continue;
+		}
+		DraftStatsDatabase::StatValue stat;
+		bool found = (kind == RelationshipKind::SYNERGY)
+				? database.synergy_winrate_for(champion, other, stat)
+				: database.counter_winrate_for(champion, other, stat);
+		if (!found) {
+			continue;
+		}
+		adjusted_sum += database.apply_bayesian_smoothing(stat.winrate, stat.samples, config);
+		raw_sum += stat.winrate;
+		result.stat_samples += stat.samples;
+		++result.relationships;
+	}
+
+	if (result.relationships == 0) {
+		return result; // neutral 0.5 defaults
+	}
+
+	result.raw_average = raw_sum / double(result.relationships);
+	result.adjusted_average = adjusted_sum / double(result.relationships);
+
+	return result;
+}
+
 // Combines a set of base/synergy/matchup signals (plus an optional composition bonus) into a
 // single score according to config.scoring_mode and its associated sharpening/interaction knobs.
 // Shared by DraftEvaluator::evaluate (per-candidate recommendation scoring) and
@@ -212,33 +262,12 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 		double base_adjusted = apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, config);
 		total_base += base_adjusted;
 
-		// Synergy component with confidence weighting
-		double synergy_total = 0.0;
-		int64_t synergy_samples = 0;
-		for (const StringName &teammate : team) {
-			if (champion == teammate) {
-				continue;
-			}
-			StatValue synergy_stat;
-			if (synergy_winrate_for(champion, teammate, synergy_stat)) {
-				synergy_total += apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, config);
-				++synergy_samples;
-			}
-		}
-		double avg_synergy = synergy_samples > 0 ? synergy_total / double(synergy_samples) : 0.5; // Neutral fallback
+		// Synergy component: flat average vs. teammates (see aggregate_relationship_signal).
+		double avg_synergy = aggregate_relationship_signal(*this, champion, team, RelationshipKind::SYNERGY, config).adjusted_average;
 		total_synergy += avg_synergy;
 
-		// Matchup component with confidence weighting
-		double matchup_total = 0.0;
-		int64_t matchup_samples = 0;
-		for (const StringName &enemy : enemies) {
-			StatValue matchup_stat;
-			if (counter_winrate_for(champion, enemy, matchup_stat)) {
-				matchup_total += apply_bayesian_smoothing(matchup_stat.winrate, matchup_stat.samples, config);
-				++matchup_samples;
-			}
-		}
-		double avg_matchup = matchup_samples > 0 ? matchup_total / double(matchup_samples) : 0.5; // Neutral fallback
+		// Matchup component: flat average vs. enemies (see aggregate_relationship_signal).
+		double avg_matchup = aggregate_relationship_signal(*this, champion, enemies, RelationshipKind::COUNTER, config).adjusted_average;
 		total_matchup += avg_matchup;
 
 		// Combine components according to scoring_mode (no per-champion composition heuristic
@@ -501,43 +530,19 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.base_samples = base_stat.samples;
 	result.base_winrate = _database.apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, _config);
 
-	// Synergy component with confidence weighting
-	double synergy_total = 0.0;
-	double synergy_raw_total = 0.0;
-	int64_t synergy_relationships = 0;
-	int64_t synergy_stat_samples = 0;
-	for (const StringName &ally : allies) {
-		DraftStatsDatabase::StatValue synergy_stat;
-		if (_database.synergy_winrate_for(candidate, ally, synergy_stat)) {
-			synergy_total += _database.apply_bayesian_smoothing(synergy_stat.winrate, synergy_stat.samples, _config);
-			synergy_raw_total += synergy_stat.winrate;
-			synergy_stat_samples += synergy_stat.samples;
-			++synergy_relationships;
-		}
-	}
-	result.avg_synergy = synergy_relationships > 0 ? synergy_total / double(synergy_relationships) : 0.5; // Neutral fallback
-	result.synergy_raw = synergy_relationships > 0 ? synergy_raw_total / double(synergy_relationships) : 0.5;
-	result.synergy_stat_samples = synergy_stat_samples;
-	result.synergy_relationships = synergy_relationships;
+	// Synergy component: flat average vs. allies (see aggregate_relationship_signal).
+	RelationshipAggregate synergy_agg = aggregate_relationship_signal(_database, candidate, allies, RelationshipKind::SYNERGY, _config);
+	result.avg_synergy = synergy_agg.adjusted_average;
+	result.synergy_raw = synergy_agg.raw_average;
+	result.synergy_stat_samples = synergy_agg.stat_samples;
+	result.synergy_relationships = synergy_agg.relationships;
 
-	// Counter component with confidence weighting
-	double counter_total = 0.0;
-	double counter_raw_total = 0.0;
-	int64_t counter_relationships = 0;
-	int64_t counter_stat_samples = 0;
-	for (const StringName &enemy : enemies) {
-		DraftStatsDatabase::StatValue counter_stat;
-		if (_database.counter_winrate_for(candidate, enemy, counter_stat)) {
-			counter_total += _database.apply_bayesian_smoothing(counter_stat.winrate, counter_stat.samples, _config);
-			counter_raw_total += counter_stat.winrate;
-			counter_stat_samples += counter_stat.samples;
-			++counter_relationships;
-		}
-	}
-	result.avg_counter = counter_relationships > 0 ? counter_total / double(counter_relationships) : 0.5; // Neutral fallback
-	result.counter_raw = counter_relationships > 0 ? counter_raw_total / double(counter_relationships) : 0.5;
-	result.counter_stat_samples = counter_stat_samples;
-	result.counter_relationships = counter_relationships;
+	// Counter component: flat average vs. enemies (see aggregate_relationship_signal).
+	RelationshipAggregate counter_agg = aggregate_relationship_signal(_database, candidate, enemies, RelationshipKind::COUNTER, _config);
+	result.avg_counter = counter_agg.adjusted_average;
+	result.counter_raw = counter_agg.raw_average;
+	result.counter_stat_samples = counter_agg.stat_samples;
+	result.counter_relationships = counter_agg.relationships;
 
 	// Calculate composition bonus
 	double composition_bonus = calculate_composition_bonus(allies, candidate);

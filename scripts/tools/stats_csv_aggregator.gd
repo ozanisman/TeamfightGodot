@@ -590,7 +590,7 @@ func _build_summary_csv() -> String:
 func _build_combat_csv() -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(
-		"team_size,hero,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_healing_passive,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_shielding_passive,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate,avg_dmg_passive,avg_minion_dmg_dealt,avg_minion_dmg_received,avg_minion_dmg_mitigated"
+		"team_size,hero,role,wins,losses,draws,total_games,win_rate,avg_dmg_dealt,avg_dmg_received,avg_dmg_mitigated,avg_healing,avg_healing_auto,avg_healing_ability,avg_healing_ultimate,avg_healing_passive,avg_shielding,avg_shielding_auto,avg_shielding_ability,avg_shielding_ultimate,avg_shielding_passive,avg_stuns,avg_kills,avg_deaths,avg_assists,kda,avg_dmg_auto,avg_dmg_ability,avg_dmg_ultimate,avg_dmg_passive,avg_minion_dmg_dealt,avg_minion_dmg_received,avg_minion_dmg_mitigated"
 	)
 	var sizes: Array = _by_size.keys()
 	sizes.sort()
@@ -609,10 +609,11 @@ func _build_combat_csv() -> String:
 			var wr: float = float(w) / float(tg)
 			var kda: float = (float(h["kills"]) + float(h["assists"])) / maxf(1.0, float(h["deaths"]))
 			lines.append(
-				"%d,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+				"%d,%s,%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
 				% [
 					int(sz),
 					_csv_cell(String(hero)),
+					_csv_cell(str(_role_by_hero.get(hero, "unknown"))),
 					w,
 					l,
 					d,

@@ -432,6 +432,11 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 	var champ_total: Dictionary = {}
 	var champ_miss_count: Dictionary = {}
 	var champ_miss_confidence_sum: Dictionary = {}
+	# Per-role misclassification tallies (mirrors champion tracking for role-level hotspot report).
+	var role_total: Dictionary = {}
+	var role_miss_count: Dictionary = {}
+	var role_miss_confidence_sum: Dictionary = {}
+	var role_by_hero: Dictionary = ChampionCatalogScript.build_role_by_hero_map()
 
 	for log_entry in match_logs:
 		var log: Dictionary = Dictionary(log_entry)
@@ -487,6 +492,12 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 			if not is_correct:
 				champ_miss_count[champ] = int(champ_miss_count.get(champ, 0)) + 1
 				champ_miss_confidence_sum[champ] = float(champ_miss_confidence_sum.get(champ, 0.0)) + confidence
+			# Aggregate role data (mirrors champion tracking)
+			var role: String = String(role_by_hero.get(champ, "unknown"))
+			role_total[role] = int(role_total.get(role, 0)) + 1
+			if not is_correct:
+				role_miss_count[role] = int(role_miss_count.get(role, 0)) + 1
+				role_miss_confidence_sum[role] = float(role_miss_confidence_sum.get(role, 0.0)) + confidence
 
 	return {
 		"total": total,
@@ -503,6 +514,9 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 		"champ_total": champ_total,
 		"champ_miss_count": champ_miss_count,
 		"champ_miss_confidence_sum": champ_miss_confidence_sum,
+		"role_total": role_total,
+		"role_miss_count": role_miss_count,
+		"role_miss_confidence_sum": role_miss_confidence_sum,
 	}
 
 
@@ -527,7 +541,7 @@ func _mean_calibration_gap(metrics: Dictionary) -> float:
 
 
 ## Builds the "Misclassification hotspots" lines: champions appearing in at least
-## MISCLASSIFICATION_MIN_APPEARANCES evaluated matches, sorted by miss-rate descending, top 10.
+## MISCLASSIFICATION_MIN_APPEARANCES evaluated matches, sorted by miss-rate descending, top 5.
 func _build_misclassification_hotspot_lines(metrics: Dictionary) -> Array[String]:
 	var champ_total: Dictionary = metrics["champ_total"]
 	var champ_miss_count: Dictionary = metrics["champ_miss_count"]
@@ -550,10 +564,70 @@ func _build_misclassification_hotspot_lines(metrics: Dictionary) -> Array[String
 	entries.sort_custom(func(a, b): return float(a["miss_rate"]) > float(b["miss_rate"]))
 
 	var lines: Array[String] = []
-	for i in range(mini(10, entries.size())):
+	for i in range(mini(5, entries.size())):
 		var e: Dictionary = entries[i]
 		lines.append("    %-24s  %.1f%% miss rate (%d/%d matches), mean confidence when wrong: %.1f%%" % [
 			String(e["champion"]), float(e["miss_rate"]), int(e["miss_n"]), int(e["n"]), float(e["mean_conf_when_wrong"]) * 100.0
+		])
+	return lines
+
+
+## Builds the "Least misclassified champions" lines: champions appearing in at least
+## MISCLASSIFICATION_MIN_APPEARANCES evaluated matches, sorted by miss-rate ascending, top 5.
+func _build_least_misclassified_lines(metrics: Dictionary) -> Array[String]:
+	var champ_total: Dictionary = metrics["champ_total"]
+	var champ_miss_count: Dictionary = metrics["champ_miss_count"]
+	var champ_miss_confidence_sum: Dictionary = metrics["champ_miss_confidence_sum"]
+
+	var entries: Array[Dictionary] = []
+	for champ in champ_total:
+		var n: int = int(champ_total[champ])
+		if n < MISCLASSIFICATION_MIN_APPEARANCES:
+			continue
+		var miss_n: int = int(champ_miss_count.get(champ, 0))
+		var mean_conf_when_wrong: float = (float(champ_miss_confidence_sum.get(champ, 0.0)) / float(miss_n)) if miss_n > 0 else 0.0
+		entries.append({
+			"champion": champ,
+			"n": n,
+			"miss_n": miss_n,
+			"miss_rate": 100.0 * float(miss_n) / float(n),
+			"mean_conf_when_wrong": mean_conf_when_wrong,
+		})
+	entries.sort_custom(func(a, b): return float(a["miss_rate"]) < float(b["miss_rate"]))
+
+	var lines: Array[String] = []
+	for i in range(mini(5, entries.size())):
+		var e: Dictionary = entries[i]
+		lines.append("    %-24s  %.1f%% miss rate (%d/%d matches), mean confidence when wrong: %.1f%%" % [
+			String(e["champion"]), float(e["miss_rate"]), int(e["miss_n"]), int(e["n"]), float(e["mean_conf_when_wrong"]) * 100.0
+		])
+	return lines
+
+
+## Builds the "Misclassification hotspots by role" lines: all 6 roles, sorted by miss-rate descending.
+func _build_role_misclassification_hotspot_lines(metrics: Dictionary) -> Array[String]:
+	var role_total: Dictionary = metrics["role_total"]
+	var role_miss_count: Dictionary = metrics["role_miss_count"]
+	var role_miss_confidence_sum: Dictionary = metrics["role_miss_confidence_sum"]
+
+	var entries: Array[Dictionary] = []
+	for role in role_total:
+		var n: int = int(role_total[role])
+		var miss_n: int = int(role_miss_count.get(role, 0))
+		var mean_conf_when_wrong: float = (float(role_miss_confidence_sum.get(role, 0.0)) / float(miss_n)) if miss_n > 0 else 0.0
+		entries.append({
+			"role": role,
+			"n": n,
+			"miss_n": miss_n,
+			"miss_rate": 100.0 * float(miss_n) / float(n),
+			"mean_conf_when_wrong": mean_conf_when_wrong,
+		})
+	entries.sort_custom(func(a, b): return float(a["miss_rate"]) > float(b["miss_rate"]))
+
+	var lines: Array[String] = []
+	for e in entries:
+		lines.append("    %-16s  %.1f%% miss rate (%d/%d matches), mean confidence when wrong: %.1f%%" % [
+			String(e["role"]).capitalize(), float(e["miss_rate"]), int(e["miss_n"]), int(e["n"]), float(e["mean_conf_when_wrong"]) * 100.0
 		])
 	return lines
 
@@ -614,6 +688,21 @@ func _build_single_config_report(metrics: Dictionary, eval_team_sizes: Array[int
 	else:
 		for hotspot_line in hotspot_lines:
 			lines.append(hotspot_line)
+
+	lines.append("")
+	lines.append("  Least misclassified champions (champions appearing in >= %d evaluated matches, sorted by miss rate):" % MISCLASSIFICATION_MIN_APPEARANCES)
+	var least_lines: Array[String] = _build_least_misclassified_lines(metrics)
+	if least_lines.is_empty():
+		lines.append("    (no champion reached the minimum sample threshold)")
+	else:
+		for least_line in least_lines:
+			lines.append(least_line)
+
+	lines.append("")
+	lines.append("  Misclassification hotspots by role:")
+	var role_hotspot_lines: Array[String] = _build_role_misclassification_hotspot_lines(metrics)
+	for role_hotspot_line in role_hotspot_lines:
+		lines.append(role_hotspot_line)
 
 	lines.append("=== End Draft Prediction Accuracy ===")
 	return "\n" + "\n".join(lines) + "\n"

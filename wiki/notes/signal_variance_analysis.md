@@ -179,6 +179,202 @@ Skipped evaluation of:
 
 **Recommendation:** Focus on signal aggregation methods (not champion balance). Replace flat averages with context-aware aggregation that captures specific matchup/synergy opportunities rather than collapsing to overall win tendency.
 
+## Implementation Specifics
+
+### Fix Issue 1: Context-Aware Aggregation
+
+**Current Implementation** (`sim_draft_recommender.cpp:98-140`):
+```cpp
+result.adjusted_average = adjusted_sum / double(result.relationships);
+```
+Flat average over all partners/enemies causes collapse to base winrate.
+
+**Proposed Aggregation Modes:**
+
+1. **Sample-Weighted Average** (immediate fix):
+   - Weight each pairwise winrate by its sample count
+   - High-sample pairs get more influence
+   - Already have `stat_samples` in `RelationshipAggregate`
+   - Implementation:
+     ```cpp
+     double weighted_sum = 0.0;
+     double total_weight = 0.0;
+     for (const StringName &other : others) {
+         // ... get stat and smoothed value ...
+         double weight = stat.samples;
+         weighted_sum += weight * smoothed;
+         total_weight += weight;
+     }
+     result.adjusted_average = weighted_sum / total_weight;
+     ```
+
+2. **Median Aggregation** (robust to outliers):
+   - Use median instead of mean
+   - Less sensitive to extreme values
+   - Implementation: collect values in vector, sort, take middle
+
+3. **Top-K/Bottom-K Aggregation** (focus on extreme matchups):
+   - For counter: only consider worst K enemies (threats)
+   - For synergy: only consider best K allies (core synergies)
+   - Configurable K parameter
+   - Implementation: sort values, take first/last K
+
+4. **Percentile-Based Aggregation**:
+   - Use 25th/75th percentiles instead of mean
+   - Captures distribution shape
+   - Implementation: sort, take percentile positions
+
+**Add to `PredictionConfig`:**
+```cpp
+enum class AggregationMode {
+    FLAT_AVERAGE,        // current (baseline)
+    SAMPLE_WEIGHTED,     // weight by sample count
+    MEDIAN,              // median of pairwise values
+    TOP_K,               // best K for synergy, worst K for counter
+    PERCENTILE_25,       // 25th percentile
+    PERCENTILE_75        // 75th percentile
+};
+AggregationMode synergy_aggregation = AggregationMode::FLAT_AVERAGE;
+AggregationMode counter_aggregation = AggregationMode::FLAT_AVERAGE;
+int top_k = 3;  // for TOP_K mode
+```
+
+### Fix Issue 2: Smoothing Mismatch
+
+**Current Implementation** (`sim_draft_recommender.hpp:41`):
+```cpp
+int confidence_prior_samples = 100;  // C++ legacy
+```
+
+**Fix:** Change to match GDScript analysis:
+```cpp
+int confidence_prior_samples = 10;  // match SMOOTHING_K
+```
+
+**Impact:** Will increase signal variance in C++ by ~3.5× (as seen in GDScript analysis).
+
+### Fix Issue 3: Scoring Mode for Correlated Signals
+
+**Current Issue:** Scoring modes assume signal independence.
+
+**Proposed: Decorrelated Scoring Mode**
+- Subtract base component from synergy/counter before scoring
+- Use residuals (synergy - base, counter - base) instead of raw values
+- Implementation in `score_from_signals()`:
+  ```cpp
+  double synergy_residual = avg_synergy - base_winrate;
+  double counter_residual = avg_counter - base_winrate;
+  // Use residuals in scoring instead of raw values
+  ```
+
+**Add to `PredictionConfig`:**
+```cpp
+bool use_decorrelated_scoring = false;  // opt-in
+```
+
+### Fix Issue 4: Sparse Pairwise Data
+
+**Current Issue:** Average 15 samples per pair, below 20-sample threshold.
+
+**Proposed: Hierarchical Smoothing**
+- First smooth individual pairs with Bayesian smoothing
+- Then smooth across similar champions (by role, kit similarity)
+- Borrow strength from related champions
+- Implementation: add champion-level priors based on role averages
+
+**Add to `PredictionConfig`:**
+```cpp
+bool use_hierarchical_smoothing = false;
+double role_prior_weight = 0.1;  // weight for role-level prior
+```
+
+### Fix Issue 5: Random Draft Context
+
+**Current Issue:** No sequential decision-making context.
+
+**Proposed: Draft-Aware Scoring**
+- Track draft order (pick number)
+- Adjust weights based on draft position (early vs late)
+- Early picks: weight base winrate higher
+- Late picks: weight counter/synergy higher
+- Implementation: pass draft_order to evaluation
+
+**Add to `PredictionConfig`:**
+```cpp
+int draft_position = 0;  // 0 = not specified, 1-5 = pick order
+double early_pick_base_weight = 0.7;  // for picks 1-2
+double late_pick_counter_weight = 0.4;  // for picks 4-5
+```
+
+### Fix Issue 6: Composition Signal Underutilized
+
+**Current Issue:** `composition_weight` defaults to 0.0, role-based only.
+
+**Proposed: Archetype-Based Composition**
+- Define composition archetypes (e.g., "protect carry", "all-in dive", "control")
+- Compute archetype winrates from historical data
+- Match current team to nearest archetype
+- Use archetype winrate as composition signal
+- Implementation: add archetype clustering to stats generation
+
+**Add to `PredictionConfig`:**
+```cpp
+bool use_archetype_composition = false;
+```
+
+**Implementation Priority:**
+1. Fix smoothing mismatch (Issue 2) - trivial, high impact
+2. Add sample-weighted aggregation (Issue 1) - medium effort, high impact
+3. Add decorrelated scoring mode (Issue 3) - medium effort, medium impact
+4. Add draft-aware scoring (Issue 5) - medium effort, medium impact
+5. Add hierarchical smoothing (Issue 4) - high effort, medium impact
+6. Add archetype composition (Issue 6) - high effort, unknown impact
+
+## Implementation Results
+
+All four structural fixes were implemented and evaluated with 10,000 matches each. Results show **no meaningful improvement**:
+
+### Phase 1: Smoothing Mismatch Fix
+- **Change**: `confidence_prior_samples` 100 → 10
+- **Result**: 63.5% accuracy (+0.05%), Brier 0.2226 (-0.0004), Log-loss 0.6352 (-0.0010)
+- **Impact**: Minimal - expected ~3.5× variance increase did not translate to prediction improvement
+
+### Phase 2: Sample-Weighted Aggregation
+- **Change**: Weight pairwise winrates by sample count instead of flat average
+- **Synergy-only**: 63.6% accuracy (+0.1%), Brier 0.2226, Log-loss 0.6352
+- **Counter-only**: 63.5% accuracy (no change), Brier 0.2226, Log-loss 0.6352
+- **Both enabled**: 63.6% accuracy (+0.1%), Brier 0.2226, Log-loss 0.6352
+- **Impact**: Minimal - high-sample pairs get more influence but overall prediction unchanged
+
+### Phase 3: Decorrelated Scoring
+- **Change**: Use residuals (synergy - base, counter - base) to remove structural correlation
+- **Result**: 63.5% accuracy (identical to baseline), Brier 0.2226, Log-loss 0.6352
+- **Impact**: Zero - decorrelation did not improve predictions
+
+### Phase 4: Draft-Aware Scoring
+- **Change**: Position-based weight adjustment (early picks: higher base weight, late picks: higher counter weight)
+- **Position 1 (early)**: 63.4% accuracy (-0.1%), Brier 0.2232 (+0.0006), Log-loss 0.6368 (+0.0016)
+- **Position 5 (late)**: 63.7% accuracy (+0.2%), Brier 0.2219 (-0.0007), Log-loss 0.6336 (-0.0016)
+- **Impact**: Mixed - late picks show slight improvement, early picks show slight degradation
+
+## Conclusion
+
+**None of the structural aggregation fixes produced meaningful improvement.** The root cause is deeper than aggregation methods:
+
+1. **Signal variance is fundamentally limited** by champion balance (all champions winrate ~50%)
+2. **Pairwise data is sparse** (average 15 samples per pair, below 20-sample threshold)
+3. **Random draft context** - simulations use random draft order, not strategic counter-picking
+4. **Missing strategic context** - no archetype modeling, no composition archetypes
+
+The draft recommender's accuracy ceiling (~63.5%) appears to be a fundamental limit given the current data structure and champion balance. Further improvements require:
+
+- **More data**: Increase sample count per pairwise matchup (need 10× more matches)
+- **Strategic context**: Implement real sequential drafting with counter-pick decisions
+- **Alternative signals**: Move beyond winrate-based signals to kit-derived strategic signals
+- **Archetype modeling**: Define and compute composition archetype winrates
+
+The implemented aggregation modes (sample-weighted, decorrelated, draft-aware) are now available as config options for future use if data quality improves or strategic context is added.
+
 ## variance_weight Sweep Results (2000 matches, hold-out stats)
 
 | variance_weight | Accuracy | Brier | Log-loss | Calib gap |

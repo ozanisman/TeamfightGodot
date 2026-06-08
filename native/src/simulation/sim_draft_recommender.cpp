@@ -104,6 +104,12 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 	double min_val = 1.0;
 	double max_val = 0.0;
 
+	// For sample-weighted aggregation
+	double weighted_sum = 0.0;
+	double total_weight = 0.0;
+
+	AggregationMode agg_mode = (kind == RelationshipKind::SYNERGY) ? config.synergy_aggregation : config.counter_aggregation;
+
 	for (const StringName &other : others) {
 		if (other == champion) {
 			continue;
@@ -123,6 +129,13 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 		++result.relationships;
 		min_val = std::min(min_val, smoothed);
 		max_val = std::max(max_val, smoothed);
+
+		// Sample-weighted aggregation
+		if (agg_mode == AggregationMode::SAMPLE_WEIGHTED) {
+			double weight = double(stat.samples);
+			weighted_sum += weight * smoothed;
+			total_weight += weight;
+		}
 	}
 
 	if (result.relationships == 0) {
@@ -130,7 +143,14 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 	}
 
 	result.raw_average = raw_sum / double(result.relationships);
-	result.adjusted_average = adjusted_sum / double(result.relationships);
+
+	// Use weighted average if sample-weighted mode is enabled
+	if (agg_mode == AggregationMode::SAMPLE_WEIGHTED && total_weight > 0.0) {
+		result.adjusted_average = weighted_sum / total_weight;
+	} else {
+		result.adjusted_average = adjusted_sum / double(result.relationships);
+	}
+
 	// Population variance: E[x²] - E[x]²
 	result.variance = (adjusted_sum_sq / double(result.relationships)) - (result.adjusted_average * result.adjusted_average);
 	result.min_adjusted = min_val;
@@ -145,8 +165,35 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 // DraftStatsDatabase::calculate_team_score (whole-team win-probability scoring) so the two
 // scorers cannot silently disagree about what "scoring_mode" means.
 double score_from_signals(double base_winrate, double avg_synergy, double avg_counter, double composition_bonus, const PredictionConfig &config) {
-	double effective_synergy = avg_synergy * config.synergy_amplification;
-	double effective_matchup = avg_counter * config.matchup_amplification;
+	// Decorrelated scoring: use residuals (synergy - base, counter - base) to remove structural correlation
+	double effective_synergy = config.use_decorrelated_scoring
+		? (avg_synergy - base_winrate + 0.5) * config.synergy_amplification  // center around 0.5
+		: avg_synergy * config.synergy_amplification;
+	double effective_matchup = config.use_decorrelated_scoring
+		? (avg_counter - base_winrate + 0.5) * config.matchup_amplification
+		: avg_counter * config.matchup_amplification;
+
+	// Draft-aware scoring: adjust weights based on draft position
+	double effective_base_weight = config.base_weight;
+	double effective_synergy_weight = config.synergy_weight;
+	double effective_matchup_weight = config.matchup_weight;
+
+	if (config.draft_position > 0) {
+		if (config.draft_position <= 2) {
+			// Early picks: weight base winrate higher
+			effective_base_weight = config.early_pick_base_weight;
+		} else if (config.draft_position >= 4) {
+			// Late picks: weight counter/synergy higher
+			effective_matchup_weight = config.late_pick_counter_weight;
+		}
+		// Renormalize weights to sum to 1.0
+		double total_weight = effective_base_weight + effective_synergy_weight + effective_matchup_weight;
+		if (total_weight > 0.0) {
+			effective_base_weight /= total_weight;
+			effective_synergy_weight /= total_weight;
+			effective_matchup_weight /= total_weight;
+		}
+	}
 
 	double score = 0.0;
 	switch (config.scoring_mode) {
@@ -173,9 +220,9 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 			double logit_matchup = logit_transform(avg_counter) + std::log(config.matchup_amplification);
 
 			double combined = config.logit_sharpness * (
-				config.base_weight * logit_base +
-				config.synergy_weight * logit_synergy +
-				config.matchup_weight * logit_matchup
+				effective_base_weight * logit_base +
+				effective_synergy_weight * logit_synergy +
+				effective_matchup_weight * logit_matchup
 			);
 
 			score = sigmoid(combined);
@@ -187,9 +234,9 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 		case ScoringMode::ADDITIVE:
 		default: {
 			// Additive model (default)
-			score = (config.base_weight * base_winrate) +
-					(config.synergy_weight * effective_synergy) +
-					(config.matchup_weight * effective_matchup) +
+			score = (effective_base_weight * base_winrate) +
+					(effective_synergy_weight * effective_synergy) +
+					(effective_matchup_weight * effective_matchup) +
 					composition_bonus;
 			// Add interaction term (only in additive mode)
 			score += config.interaction_weight * (effective_synergy * effective_matchup);

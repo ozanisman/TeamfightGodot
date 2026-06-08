@@ -52,6 +52,12 @@ const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
 	"worst_counter_weight": 0.0,
 	"best_synergy_weight": 0.0,
 	"worst_synergy_weight": 0.0,
+	"synergy_aggregation": 0.0,
+	"counter_aggregation": 0.0,
+	"use_decorrelated_scoring": false,
+	"draft_position": 0.0,
+	"early_pick_base_weight": 0.7,
+	"late_pick_counter_weight": 0.4,
 }
 
 ## Minimum number of evaluated-match appearances before a champion is surfaced in the
@@ -466,7 +472,10 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 			int(ov["scoring_mode"]), float(ov["variance_weight"]),
 			float(ov["cc_weight"]), float(ov["mobility_weight"]), float(ov["sustain_weight"]),
 			float(ov["best_counter_weight"]), float(ov["worst_counter_weight"]),
-			float(ov["best_synergy_weight"]), float(ov["worst_synergy_weight"])
+			float(ov["best_synergy_weight"]), float(ov["worst_synergy_weight"]),
+			int(ov["synergy_aggregation"]), int(ov["counter_aggregation"]),
+			bool(ov["use_decorrelated_scoring"]),
+			int(ov["draft_position"]), float(ov["early_pick_base_weight"]), float(ov["late_pick_counter_weight"])
 		)
 		var team1_prob: float = clampf(float(prediction.get("team1_prob", 0.5)), 0.0, 1.0)
 		var actual_player_win: bool = winner == "player"

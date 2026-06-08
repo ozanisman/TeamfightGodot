@@ -23,6 +23,11 @@ enum class SmoothingMode {
 	CONFIDENCE_WEIGHTED
 };
 
+enum class AggregationMode {
+	FLAT_AVERAGE,        // current baseline
+	SAMPLE_WEIGHTED      // weight by sample count
+};
+
 struct PredictionConfig {
 	double base_weight = 0.50;
 	double synergy_weight = 0.25;
@@ -38,7 +43,7 @@ struct PredictionConfig {
 	double composition_unbalance_penalty = 0.1;
 
 	double prior_winrate = 0.5;
-	int confidence_prior_samples = 100;
+	int confidence_prior_samples = 10;
 
 	double logistic_k = 10.0;
 
@@ -73,6 +78,18 @@ struct PredictionConfig {
 	// Synergy specificity weights
 	double best_synergy_weight = 0.0;
 	double worst_synergy_weight = 0.0;
+
+	// Aggregation mode for synergy/counter signals
+	AggregationMode synergy_aggregation = AggregationMode::FLAT_AVERAGE;
+	AggregationMode counter_aggregation = AggregationMode::FLAT_AVERAGE;
+
+	// Decorrelated scoring mode: use residuals (synergy - base, counter - base)
+	bool use_decorrelated_scoring = false;
+
+	// Draft-aware scoring: position-based weight adjustment
+	int draft_position = 0;  // 0 = not specified, 1-5 = pick order
+	double early_pick_base_weight = 0.7;  // for picks 1-2
+	double late_pick_counter_weight = 0.4;  // for picks 4-5
 };
 
 struct DraftScoreWeights {

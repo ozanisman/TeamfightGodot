@@ -97,6 +97,12 @@ func _run() -> void:
 		"worst_counter_weight": "--prediction-worst-counter-weight=",
 		"best_synergy_weight": "--prediction-best-synergy-weight=",
 		"worst_synergy_weight": "--prediction-worst-synergy-weight=",
+		"synergy_aggregation": "--prediction-synergy-aggregation=",
+		"counter_aggregation": "--prediction-counter-aggregation=",
+		"use_decorrelated_scoring": "--prediction-use-decorrelated-scoring",
+		"draft_position": "--prediction-draft-position=",
+		"early_pick_base_weight": "--prediction-early-pick-base-weight=",
+		"late_pick_counter_weight": "--prediction-late-pick-counter-weight=",
 	}
 	var prediction_config_overrides: Dictionary = {}
 	for override_key in prediction_override_flags:

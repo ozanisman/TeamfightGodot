@@ -15,8 +15,8 @@
 
 ## Execution Modes
 
-- `/caveman full` is the default mode.
-- Apply `/caveman full` automatically unless explicitly overridden.
+- `/caveman ultra` is the default mode.
+- Apply `/caveman ultra` automatically unless explicitly overridden.
 - It does not override Change Discipline constraints.
 
 ## Output
@@ -35,9 +35,9 @@ Use the wiki before modifying code.
 - Do not update wiki unless introducing or invalidating stable concepts.
 
 **Native C++ simulation:**
+- Read `wiki/README.md`
 - Read `wiki/notes/native_agent_guide.md`
 - Then `wiki/notes/simulation_module_map.md`
-- Ignore `wiki/projects/core-refactor-2026-05/`
 
 ## Wiki
 
@@ -51,4 +51,4 @@ Use the wiki before modifying code.
 - No unrelated modifications.
 - Behavior changes explicitly listed.
 - Checks pass.
-- Wiki updated only for stable concept changes.
+- Update wiki

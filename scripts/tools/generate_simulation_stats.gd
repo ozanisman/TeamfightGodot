@@ -23,6 +23,11 @@ extends SceneTree
 ## re-running the batch per value): --prediction-sweep-param=<override key>
 ## --prediction-sweep-values=<comma-separated floats>, e.g.
 ##   --prediction-sweep-param=logistic_k --prediction-sweep-values=10,12,15,20,25
+##
+## --analyze-signal-variance: after the batch completes, analyzes signal variance across champions
+## from the generated stats and prints a comprehensive report. Requires --signal-variance-output=
+## to specify CSV output path (e.g. res://stats_output/signal_variance.csv). Uses the same
+## --team-sizes= and --matches-per-size= parameters as the main batch.
 
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
@@ -72,6 +77,8 @@ func _run() -> void:
 	var evaluate_draft_predictions := _flag_enabled("--evaluate-draft-predictions")
 	var prediction_stats_dir := _extract_argument("--prediction-stats-dir=", "res://stats_output")
 	var prediction_sizes_raw := _extract_argument("--prediction-team-sizes=", "5")
+	var analyze_signal_variance := _flag_enabled("--analyze-signal-variance")
+	var signal_variance_output_path := _extract_argument("--signal-variance-output=", "")
 
 	# Recognized prediction tuning override keys -> their CLI flag prefixes.
 	var prediction_override_flags: Dictionary = {
@@ -147,6 +154,10 @@ func _run() -> void:
 		push_error("generate_simulation_stats: --evaluate-draft-predictions set but --prediction-team-sizes is empty")
 		quit(1)
 		return
+	if analyze_signal_variance and signal_variance_output_path.is_empty():
+		push_error("generate_simulation_stats: --analyze-signal-variance set but --signal-variance-output is empty")
+		quit(1)
+		return
 	var gen := StatsSimulationCsvGeneratorScript.new()
 	var err: Error = gen.run(
 		out_dir,
@@ -171,4 +182,16 @@ func _run() -> void:
 		quit(1)
 		return
 	print("generate_simulation_stats: wrote CSVs to ", out_dir)
+
+	if analyze_signal_variance:
+		print()
+		print("Running signal variance analysis...")
+		var analyzer_script := load("res://scripts/tools/analyze_signal_variance.gd")
+		if analyzer_script == null:
+			push_error("Failed to load analyze_signal_variance.gd")
+			quit(1)
+			return
+		var analyzer: RefCounted = analyzer_script.new()
+		analyzer.analyze(out_dir, arr, 20, signal_variance_output_path)
+
 	quit(0)

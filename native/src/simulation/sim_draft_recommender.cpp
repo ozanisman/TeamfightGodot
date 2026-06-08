@@ -83,6 +83,7 @@ enum class RelationshipKind {
 struct RelationshipAggregate {
 	double adjusted_average = 0.5; // flat average of smoothed winrates (neutral fallback)
 	double raw_average = 0.5; // flat average of raw winrates — kept for diagnostics/debug output
+	double variance = 0.0; // population variance of smoothed winrates across the relationship set
 	int64_t relationships = 0;
 	int64_t stat_samples = 0;
 };
@@ -96,6 +97,7 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 	RelationshipAggregate result;
 
 	double adjusted_sum = 0.0;
+	double adjusted_sum_sq = 0.0;
 	double raw_sum = 0.0;
 
 	for (const StringName &other : others) {
@@ -109,7 +111,9 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 		if (!found) {
 			continue;
 		}
-		adjusted_sum += database.apply_bayesian_smoothing(stat.winrate, stat.samples, config);
+		double smoothed = database.apply_bayesian_smoothing(stat.winrate, stat.samples, config);
+		adjusted_sum += smoothed;
+		adjusted_sum_sq += smoothed * smoothed;
 		raw_sum += stat.winrate;
 		result.stat_samples += stat.samples;
 		++result.relationships;
@@ -121,6 +125,8 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 
 	result.raw_average = raw_sum / double(result.relationships);
 	result.adjusted_average = adjusted_sum / double(result.relationships);
+	// Population variance: E[x²] - E[x]²
+	result.variance = (adjusted_sum_sq / double(result.relationships)) - (result.adjusted_average * result.adjusted_average);
 
 	return result;
 }
@@ -534,6 +540,7 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	RelationshipAggregate synergy_agg = aggregate_relationship_signal(_database, candidate, allies, RelationshipKind::SYNERGY, _config);
 	result.avg_synergy = synergy_agg.adjusted_average;
 	result.synergy_raw = synergy_agg.raw_average;
+	result.synergy_variance = synergy_agg.variance;
 	result.synergy_stat_samples = synergy_agg.stat_samples;
 	result.synergy_relationships = synergy_agg.relationships;
 
@@ -541,6 +548,7 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	RelationshipAggregate counter_agg = aggregate_relationship_signal(_database, candidate, enemies, RelationshipKind::COUNTER, _config);
 	result.avg_counter = counter_agg.adjusted_average;
 	result.counter_raw = counter_agg.raw_average;
+	result.counter_variance = counter_agg.variance;
 	result.counter_stat_samples = counter_agg.stat_samples;
 	result.counter_relationships = counter_agg.relationships;
 

@@ -82,6 +82,10 @@ struct DraftEvaluation {
 	int64_t synergy_stat_samples = 0;
 	int64_t counter_stat_samples = 0;
 	
+	// Population variance of smoothed winrates across the evaluated relationship set
+	double synergy_variance = 0.0;
+	double counter_variance = 0.0;
+
 	// Relationship counts (number of allies/enemies evaluated)
 	int64_t synergy_relationships = 0;
 	int64_t counter_relationships = 0;

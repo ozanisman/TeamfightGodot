@@ -328,7 +328,9 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		breakdown["champion"] = String(eval.champion);
 		breakdown["base"] = eval.base_winrate;
 		breakdown["synergy"] = eval.avg_synergy;
+		breakdown["synergy_variance"] = eval.synergy_variance;
 		breakdown["counter"] = eval.avg_counter;
+		breakdown["counter_variance"] = eval.counter_variance;
 		breakdown["final"] = eval.score;
 		result.push_back(breakdown);
 	}

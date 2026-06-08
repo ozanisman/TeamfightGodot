@@ -15,9 +15,8 @@
 
 ## Execution Modes
 
-- `/caveman ultra` is the default mode.
 - Apply `/caveman ultra` automatically unless explicitly overridden.
-- It does not override Change Discipline constraints.
+- `/caveman ultra` does not override Change Discipline constraints.
 
 ## Output
 

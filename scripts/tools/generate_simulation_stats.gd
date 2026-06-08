@@ -89,6 +89,7 @@ func _run() -> void:
 		"synergy_amplification": "--prediction-synergy-amplification=",
 		"matchup_amplification": "--prediction-matchup-amplification=",
 		"scoring_mode": "--prediction-scoring-mode=",
+		"variance_weight": "--prediction-variance-weight=",
 	}
 	var prediction_config_overrides: Dictionary = {}
 	for override_key in prediction_override_flags:

@@ -55,6 +55,11 @@ struct PredictionConfig {
 	float score_sharpness = 1.0f;
 	float logit_sharpness = 1.5f;  // sharpness applied in logit space before sigmoid
 	float interaction_weight = 0.0f;  // only used in additive/logit modes
+
+	// Additive adjustment on synergy_variance per champion (default 0.0 = disabled).
+	// Positive = reward high-variance picks (context-sensitive, high ceiling).
+	// Negative = penalize high-variance picks (risky/unpredictable).
+	double variance_weight = 0.0;
 };
 
 struct DraftScoreWeights {

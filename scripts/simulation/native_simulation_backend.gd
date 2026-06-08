@@ -416,11 +416,11 @@ func run_debug_draft_evaluation_batch(allies: Array, enemies: Array, available: 
 	push_error("Native simulation backend is missing run_debug_draft_evaluation_batch().")
 
 
-func predict_draft_winner(team1: Array, team2: Array, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, matchup_weight: float = 0.25, composition_weight: float = 0.0, logistic_k: float = 10.0, include_breakdown: bool = false, synergy_amplification: float = 1.2, matchup_amplification: float = 1.2, logit_sharpness: float = 1.5, score_sharpness: float = 1.0, interaction_weight: float = 0.0, scoring_mode: int = 2) -> Dictionary:
+func predict_draft_winner(team1: Array, team2: Array, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, matchup_weight: float = 0.25, composition_weight: float = 0.0, logistic_k: float = 10.0, include_breakdown: bool = false, synergy_amplification: float = 1.2, matchup_amplification: float = 1.2, logit_sharpness: float = 1.5, score_sharpness: float = 1.0, interaction_weight: float = 0.0, scoring_mode: int = 2, variance_weight: float = 0.0) -> Dictionary:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return {"team1_prob": 0.5, "team2_prob": 0.5}
 	if _backend.has_method("predict_draft_winner"):
-		return _backend.call("predict_draft_winner", team1, team2, stats_dir, base_weight, synergy_weight, counter_weight, matchup_weight, composition_weight, logistic_k, include_breakdown, synergy_amplification, matchup_amplification, logit_sharpness, score_sharpness, interaction_weight, scoring_mode)
+		return _backend.call("predict_draft_winner", team1, team2, stats_dir, base_weight, synergy_weight, counter_weight, matchup_weight, composition_weight, logistic_k, include_breakdown, synergy_amplification, matchup_amplification, logit_sharpness, score_sharpness, interaction_weight, scoring_mode, variance_weight)
 	push_error("Native simulation backend is missing predict_draft_winner().")
 	return {"team1_prob": 0.5, "team2_prob": 0.5}

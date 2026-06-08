@@ -61,7 +61,7 @@ K=10 increased synergy/counter stddev ~3.5× vs K=100. Smoothing was suppressing
   - Included in the GDScript correlation matrix
   - Computed per-draft-state in `sim_draft_recommender.cpp` (`aggregate_relationship_signal()`)
   - Exposed in `DraftEvaluation` struct fields and `get_draft_recommendations_with_breakdowns()` dict
-  - **Not yet weighted in scoring** — available for future use
+  - **Wired into scoring** via `variance_weight` in `PredictionConfig` (default 0.0). Sweep below shows no reliable gain at any positive value; default stays 0.0.
 
 C++ recommender uses LEGACY Bayesian smoothing (`confidence_prior_samples = 100`), independent of the GDScript `SMOOTHING_K`.
 
@@ -85,13 +85,24 @@ All < 0.5 → independent signals confirmed. `cc_score` vs `avg_synergy_smoothed
 
 **Not yet in C++ scoring** — same as `synergy_variance`/`counter_variance`.
 
+## variance_weight Sweep Results (2000 matches, hold-out stats)
+
+| variance_weight | Accuracy | Brier | Log-loss | Calib gap |
+|---|---|---|---|---|
+| 0 (baseline) | 64.8% | 0.2243 | 0.6403 | +8.1% |
+| 5 | 64.9% | 0.2247 | 0.6412 | +8.9% |
+| 10 | 65.0% | 0.2252 | 0.6422 | +8.8% |
+| 20 | 64.0% | 0.2265 | 0.6450 | +8.5% |
+| 50 | 62.3% | 0.2329 | 0.6582 | +3.8% |
+| 100 | 56.8% | 0.2502 | 0.6957 | -5.8% |
+
+**Conclusion:** Accuracy nudges +0.2% at w=10 but Brier/log-loss worsen consistently throughout. Variance signal is not informative at this sample size/champion diversity. `variance_weight` default stays 0.0.
+
 ## Next Steps (Priority Order)
 
-1. **Factor variance + mechanical signals into scoring** — Add `variance_weight` and `cc_weight` to `PredictionConfig`. Requires empirical tuning against ground truth.
+1. **Improve champion balance** — 77% flat-profile champions indicates homogeneous kit design. Real variance in base winrate is a prerequisite for meaningful synergy/counter signal.
 
-2. **Improve champion balance** — 77% flat-profile champions indicates homogeneous kit design. Real variance in base winrate is a prerequisite for meaningful synergy/counter signal.
-
-3. **Wire mechanical signals into C++ recommender** — Load tag data from catalog or a sidecar CSV, expose in `DraftEvaluation`, add to scoring.
+2. **Wire mechanical signals into C++ recommender** — Load tag data from catalog or a sidecar CSV, expose in `DraftEvaluation`, add to scoring (cc_weight in PredictionConfig).
 
 ## Parameters
 - `SMOOTHING_K`: 10.0 in GDScript analysis tool (was 100)

@@ -269,7 +269,8 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 		total_base += base_adjusted;
 
 		// Synergy component: flat average vs. teammates (see aggregate_relationship_signal).
-		double avg_synergy = aggregate_relationship_signal(*this, champion, team, RelationshipKind::SYNERGY, config).adjusted_average;
+		RelationshipAggregate synergy_agg = aggregate_relationship_signal(*this, champion, team, RelationshipKind::SYNERGY, config);
+		double avg_synergy = synergy_agg.adjusted_average;
 		total_synergy += avg_synergy;
 
 		// Matchup component: flat average vs. enemies (see aggregate_relationship_signal).
@@ -279,6 +280,10 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 		// Combine components according to scoring_mode (no per-champion composition heuristic
 		// here — composition is handled below as a whole-team blend via composition_winrate_for).
 		double champion_score = score_from_signals(base_adjusted, avg_synergy, avg_matchup, 0.0, config);
+		if (config.variance_weight != 0.0) {
+			champion_score += config.variance_weight * synergy_agg.variance;
+			champion_score = std::clamp(champion_score, 0.0, 1.0);
+		}
 		total_score += champion_score;
 	}
 
@@ -556,6 +561,10 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	double composition_bonus = calculate_composition_bonus(allies, candidate);
 
 	result.score = score_from_signals(result.base_winrate, result.avg_synergy, result.avg_counter, composition_bonus, _config);
+	if (_config.variance_weight != 0.0) {
+		result.score += _config.variance_weight * result.synergy_variance;
+		result.score = std::clamp(result.score, 0.0, 1.0);
+	}
 
 	return result;
 }

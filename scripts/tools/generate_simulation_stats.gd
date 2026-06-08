@@ -90,6 +90,9 @@ func _run() -> void:
 		"matchup_amplification": "--prediction-matchup-amplification=",
 		"scoring_mode": "--prediction-scoring-mode=",
 		"variance_weight": "--prediction-variance-weight=",
+		"cc_weight": "--prediction-cc-weight=",
+		"mobility_weight": "--prediction-mobility-weight=",
+		"sustain_weight": "--prediction-sustain-weight=",
 	}
 	var prediction_config_overrides: Dictionary = {}
 	for override_key in prediction_override_flags:

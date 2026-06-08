@@ -201,6 +201,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	_counter_winrates.clear();
 	_composition_winrates.clear();
 	_champion_roles.clear();
+	_mechanical_signals.clear();
 	_loaded = false;
 	_last_error = String();
 
@@ -215,6 +216,7 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 		return false;
 	}
 	_load_composition_stats(normalized + "/role_combinations.csv"); // Optional, don't fail if missing
+	_load_mechanical_signals(normalized + "/mechanical_signals.csv"); // Optional, don't fail if missing
 	_load_champion_roles();
 	_loaded = true;
 	return true;
@@ -277,11 +279,20 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 		double avg_matchup = aggregate_relationship_signal(*this, champion, enemies, RelationshipKind::COUNTER, config).adjusted_average;
 		total_matchup += avg_matchup;
 
+		// Mechanical signals (kit-derived, independent of match outcomes)
+		MechanicalSignals mech = mechanical_signals_for(champion);
+
 		// Combine components according to scoring_mode (no per-champion composition heuristic
 		// here — composition is handled below as a whole-team blend via composition_winrate_for).
 		double champion_score = score_from_signals(base_adjusted, avg_synergy, avg_matchup, 0.0, config);
 		if (config.variance_weight != 0.0) {
 			champion_score += config.variance_weight * synergy_agg.variance;
+			champion_score = std::clamp(champion_score, 0.0, 1.0);
+		}
+		if (config.cc_weight != 0.0 || config.mobility_weight != 0.0 || config.sustain_weight != 0.0) {
+			champion_score += config.cc_weight * mech.cc_score;
+			champion_score += config.mobility_weight * mech.mobility_score;
+			champion_score += config.sustain_weight * mech.sustain_score;
 			champion_score = std::clamp(champion_score, 0.0, 1.0);
 		}
 		total_score += champion_score;
@@ -459,6 +470,58 @@ void DraftStatsDatabase::_load_champion_roles() {
 	// This is a placeholder for future role-specific loading if needed
 }
 
+bool DraftStatsDatabase::_load_mechanical_signals(const String &path) {
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		// Mechanical signals are optional, don't fail if missing
+		return true;
+	}
+	if (file->eof_reached()) {
+		return true;
+	}
+	std::vector<String> header = parse_csv_line(file->get_line());
+	int64_t champion_col = column_index(header, "champion");
+	int64_t cc_col = column_index(header, "cc_score");
+	int64_t mobility_col = column_index(header, "mobility_score");
+	int64_t sustain_col = column_index(header, "sustain_score");
+	if (champion_col < 0 || cc_col < 0 || mobility_col < 0 || sustain_col < 0) {
+		// Missing columns, skip loading
+		return true;
+	}
+	while (!file->eof_reached()) {
+		String line = file->get_line();
+		if (line.strip_edges().is_empty()) {
+			continue;
+		}
+		std::vector<String> row = parse_csv_line(line);
+		String champion = cell_or_empty(row, champion_col);
+		String cc_score = cell_or_empty(row, cc_col);
+		String mobility_score = cell_or_empty(row, mobility_col);
+		String sustain_score = cell_or_empty(row, sustain_col);
+		if (champion.is_empty()) {
+			continue;
+		}
+		MechanicalSignals sigs;
+		sigs.cc_score = cc_score.to_float();
+		sigs.mobility_score = mobility_score.to_float();
+		sigs.sustain_score = sustain_score.to_float();
+		_mechanical_signals[StringName(champion)] = sigs;
+	}
+	return true;
+}
+
+MechanicalSignals DraftStatsDatabase::mechanical_signals_for(const StringName &champion) const {
+	auto it = _mechanical_signals.find(champion);
+	if (it != _mechanical_signals.end()) {
+		return it->second;
+	}
+	MechanicalSignals fallback;
+	fallback.cc_score = 0.0;
+	fallback.mobility_score = 0.0;
+	fallback.sustain_score = 0.0;
+	return fallback;
+}
+
 StringName DraftStatsDatabase::get_champion_role(const StringName &champion) const {
 	auto it = _champion_roles.find(champion);
 	if (it != _champion_roles.end()) {
@@ -557,12 +620,24 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.counter_stat_samples = counter_agg.stat_samples;
 	result.counter_relationships = counter_agg.relationships;
 
+	// Mechanical signals (kit-derived, independent of match outcomes)
+	MechanicalSignals mech = _database.mechanical_signals_for(candidate);
+	result.cc_score = mech.cc_score;
+	result.mobility_score = mech.mobility_score;
+	result.sustain_score = mech.sustain_score;
+
 	// Calculate composition bonus
 	double composition_bonus = calculate_composition_bonus(allies, candidate);
 
 	result.score = score_from_signals(result.base_winrate, result.avg_synergy, result.avg_counter, composition_bonus, _config);
 	if (_config.variance_weight != 0.0) {
 		result.score += _config.variance_weight * result.synergy_variance;
+		result.score = std::clamp(result.score, 0.0, 1.0);
+	}
+	if (_config.cc_weight != 0.0 || _config.mobility_weight != 0.0 || _config.sustain_weight != 0.0) {
+		result.score += _config.cc_weight * result.cc_score;
+		result.score += _config.mobility_weight * result.mobility_score;
+		result.score += _config.sustain_weight * result.sustain_score;
 		result.score = std::clamp(result.score, 0.0, 1.0);
 	}
 

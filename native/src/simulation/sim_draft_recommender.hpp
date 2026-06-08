@@ -60,12 +60,23 @@ struct PredictionConfig {
 	// Positive = reward high-variance picks (context-sensitive, high ceiling).
 	// Negative = penalize high-variance picks (risky/unpredictable).
 	double variance_weight = 0.0;
+
+	// Mechanical signal weights (kit-derived, independent of match outcomes)
+	double cc_weight = 0.0;
+	double mobility_weight = 0.0;
+	double sustain_weight = 0.0;
 };
 
 struct DraftScoreWeights {
 	double base = 0.50;
 	double synergy = 0.25;
 	double counter = 0.25;
+};
+
+struct MechanicalSignals {
+	double cc_score = 0.0;
+	double mobility_score = 0.0;
+	double sustain_score = 0.0;
 };
 
 struct DraftEvaluation {
@@ -90,6 +101,11 @@ struct DraftEvaluation {
 	// Population variance of smoothed winrates across the evaluated relationship set
 	double synergy_variance = 0.0;
 	double counter_variance = 0.0;
+
+	// Mechanical signals (kit-derived, independent of match outcomes)
+	double cc_score = 0.0;
+	double mobility_score = 0.0;
+	double sustain_score = 0.0;
 
 	// Relationship counts (number of allies/enemies evaluated)
 	int64_t synergy_relationships = 0;
@@ -174,6 +190,7 @@ public:
 
 	using MatchupMap = std::map<String, std::map<String, StatValue>>;
 	using CompositionMap = std::map<String, StatValue>;
+	using MechanicalSignalMap = std::map<StringName, MechanicalSignals>;
 
 	bool load_from_dir(const String &dir_path);
 	bool is_loaded() const;
@@ -184,6 +201,7 @@ public:
 	bool counter_winrate_for(const StringName &champion, const StringName &enemy, StatValue &out_value) const;
 	StatValue composition_winrate_for(const std::vector<StringName> &team) const;
 	StringName get_champion_role(const StringName &champion) const;
+	MechanicalSignals mechanical_signals_for(const StringName &champion) const;
 
 	struct TeamScoreBreakdown {
 		double base = 0.5;
@@ -203,12 +221,14 @@ private:
 	MatchupMap _counter_winrates;
 	CompositionMap _composition_winrates;
 	std::map<StringName, StringName> _champion_roles;  // champion -> role mapping
+	MechanicalSignalMap _mechanical_signals;  // champion -> mechanical signals
 	bool _loaded = false;
 	String _last_error;
 
 	bool _load_combat_stats(const String &path);
 	bool _load_counter_stats(const String &path, MatchupMap &target);
 	bool _load_composition_stats(const String &path);
+	bool _load_mechanical_signals(const String &path);
 	void _load_champion_roles();
 };
 

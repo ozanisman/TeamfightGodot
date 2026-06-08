@@ -83,7 +83,21 @@ All < 0.5 → independent signals confirmed. `cc_score` vs `avg_synergy_smoothed
 - Constants: `CC_KINDS`, `MOBILITY_KINDS`, `SUSTAIN_KINDS`
 - Added to profile dict, correlation matrix, and CSV output
 
-**Not yet in C++ scoring** — same as `synergy_variance`/`counter_variance`.
+**Now in C++ scoring** — loaded from `mechanical_signals.csv`, exposed in `DraftEvaluation`, added to scoring via `cc_weight`, `mobility_weight`, `sustain_weight` in `PredictionConfig` (all default 0.0).
+
+## Mechanical Signal Sweep Results (10000 matches, hold-out stats)
+
+| Signal | Weight | Accuracy | Brier | Log-loss | vs Baseline |
+|--------|--------|----------|-------|----------|-------------|
+| Baseline | 0.0 | 63.5% | 0.2230 | 0.6362 | — |
+| cc_weight | 0.05 | 63.3% | 0.2235 | 0.6374 | -0.2% |
+| cc_weight | 0.1 | 63.0% | 0.2251 | 0.6411 | -0.5% |
+| cc_weight | 0.2 | 61.3% | 0.2318 | 0.6559 | -2.2% |
+| mobility_weight | 0.05 | 63.6% | 0.2231 | 0.6366 | +0.1% |
+| mobility_weight | 0.1 | 63.0% | 0.2237 | 0.6379 | -0.5% |
+| sustain_weight | 0.05 | 63.0% | 0.2239 | 0.6382 | -0.5% |
+
+**Conclusion:** No mechanical signal shows meaningful improvement. Best result is `mobility_weight=0.05` with +0.1% accuracy gain, but Brier/log-loss are slightly worse. CC signal degrades accuracy significantly at higher weights. All mechanical signal weights should remain at 0.0 (disabled).
 
 ## variance_weight Sweep Results (2000 matches, hold-out stats)
 
@@ -102,7 +116,7 @@ All < 0.5 → independent signals confirmed. `cc_score` vs `avg_synergy_smoothed
 
 1. **Improve champion balance** — 77% flat-profile champions indicates homogeneous kit design. Real variance in base winrate is a prerequisite for meaningful synergy/counter signal.
 
-2. **Wire mechanical signals into C++ recommender** — Load tag data from catalog or a sidecar CSV, expose in `DraftEvaluation`, add to scoring (cc_weight in PredictionConfig).
+2. ~~Wire mechanical signals into C++ recommender~~ — **COMPLETED**. Mechanical signals (cc, mobility, sustain) were integrated into C++ scoring and evaluated. No meaningful improvement found; all weights remain at 0.0 (disabled).
 
 ## Parameters
 - `SMOOTHING_K`: 10.0 in GDScript analysis tool (was 100)

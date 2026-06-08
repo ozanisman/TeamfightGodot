@@ -45,6 +45,9 @@ const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
 	"matchup_amplification": 1.2,
 	"scoring_mode": 2.0,
 	"variance_weight": 0.0,
+	"cc_weight": 0.0,
+	"mobility_weight": 0.0,
+	"sustain_weight": 0.0,
 }
 
 ## Minimum number of evaluated-match appearances before a champion is surfaced in the
@@ -456,7 +459,8 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 			float(ov["logistic_k"]), false,
 			float(ov["synergy_amplification"]), float(ov["matchup_amplification"]),
 			float(ov["logit_sharpness"]), float(ov["score_sharpness"]), float(ov["interaction_weight"]),
-			int(ov["scoring_mode"]), float(ov["variance_weight"])
+			int(ov["scoring_mode"]), float(ov["variance_weight"]),
+			float(ov["cc_weight"]), float(ov["mobility_weight"]), float(ov["sustain_weight"])
 		)
 		var team1_prob: float = clampf(float(prediction.get("team1_prob", 0.5)), 0.0, 1.0)
 		var actual_player_win: bool = winner == "player"

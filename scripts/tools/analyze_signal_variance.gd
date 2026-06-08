@@ -102,6 +102,11 @@ func analyze(stats_dir: String, team_sizes: Array = [5], min_samples: int = 20, 
 		_write_csv(profiles, csv_output_path)
 		log_lines.append("Wrote CSV to %s" % csv_output_path)
 
+	# Write mechanical signals CSV (for C++ loading)
+	var mechanical_csv_path: String = csv_output_path.get_base_dir() + "/mechanical_signals.csv"
+	_write_mechanical_csv(mechanical_signals, mechanical_csv_path)
+	log_lines.append("Wrote mechanical signals to %s" % mechanical_csv_path)
+
 	# Write log file if requested
 	if not log_path.is_empty():
 		_write_log(log_lines, log_path)
@@ -687,6 +692,31 @@ func _write_csv(profiles: Array, output_path: String) -> void:
 		push_error("Failed to open %s for writing" % output_path)
 		return
 
+	f.store_string(content)
+	f.flush()
+	f.close()
+
+
+## Write mechanical signals CSV (for C++ loading)
+func _write_mechanical_csv(mechanical_signals: Dictionary, output_path: String) -> void:
+	var lines: Array = []
+	lines.append("champion,cc_score,mobility_score,sustain_score")
+
+	for champion in mechanical_signals:
+		var sigs: Dictionary = mechanical_signals[champion]
+		lines.append("%s,%.4f,%.4f,%.4f" % [
+			champion,
+			sigs["cc_score"],
+			sigs["mobility_score"],
+			sigs["sustain_score"]
+		])
+
+	var content: String = "\n".join(lines) + "\n"
+	var abs_path: String = ProjectSettings.globalize_path(output_path)
+	var f := FileAccess.open(abs_path, FileAccess.WRITE)
+	if f == null:
+		push_error("Failed to open %s for writing" % output_path)
+		return
 	f.store_string(content)
 	f.flush()
 	f.close()

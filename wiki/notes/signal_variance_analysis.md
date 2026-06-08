@@ -99,6 +99,86 @@ All < 0.5 → independent signals confirmed. `cc_score` vs `avg_synergy_smoothed
 
 **Conclusion:** No mechanical signal shows meaningful improvement. Best result is `mobility_weight=0.05` with +0.1% accuracy gain, but Brier/log-loss are slightly worse. CC signal degrades accuracy significantly at higher weights. All mechanical signal weights should remain at 0.0 (disabled).
 
+## Counter-Pick Specificity (Added)
+
+Min/max winrates vs enemy team to capture specific counter-pick opportunities instead of flat averages.
+
+**Implementation:** Added `best_counter`, `worst_counter` to `DraftEvaluation` and `best_counter_weight`, `worst_counter_weight` to `PredictionConfig`. Modified `RelationshipAggregate` to track min/max smoothed values.
+
+**Evaluation Results (10000 matches, hold-out stats):**
+
+| Signal | Weight | Accuracy | Brier | Log-loss | vs Baseline |
+|--------|--------|----------|-------|----------|-------------|
+| Baseline | 0.0 | 63.5% | 0.2230 | 0.6362 | — |
+| best_counter_weight | 0.05 | 63.5% | 0.2230 | 0.6362 | 0.0% |
+| best_counter_weight | 0.2 | 63.5% | 0.2230 | 0.6362 | 0.0% |
+| worst_counter_weight | 0.2 | 63.5% | 0.2230 | 0.6362 | 0.0% |
+
+**Conclusion:** Zero impact. Metrics identical to baseline at all weights. Root cause: flat champion profiles mean min/max/avg are all similar.
+
+## Synergy Specificity (Added)
+
+Min/max winrates vs ally team to capture specific synergy opportunities instead of flat averages.
+
+**Implementation:** Added `best_synergy`, `worst_synergy` to `DraftEvaluation` and `best_synergy_weight`, `worst_synergy_weight` to `PredictionConfig`.
+
+**Evaluation Results (10000 matches, hold-out stats):**
+
+| Signal | Weight | Accuracy | Brier | Log-loss | vs Baseline |
+|--------|--------|----------|-------|----------|-------------|
+| Baseline | 0.0 | 63.5% | 0.2230 | 0.6362 | — |
+| best_synergy_weight | 0.2 | 63.5% | 0.2230 | 0.6362 | 0.0% |
+
+**Conclusion:** Zero impact. Same root cause as counter-pick specificity.
+
+## Remaining Signals (Skipped)
+
+Skipped evaluation of:
+- Team composition archetypes
+- Draft phase advantage signals
+- Historical performance trends
+
+**Rationale:** ~~All three would suffer from the same root cause: flat champion profiles (77% of champions have all smoothed signals within ±0.05 of 0.5). Without meaningful variance in base winrates, no signal can provide meaningful differentiation. The bottleneck is champion balance, not signal design.~~
+
+**Updated Rationale:** Champion balance is by design (champions are supposed to be relatively equal). The real bottleneck is structural signal redundancy, not flat profiles.
+
+## Root Cause Analysis (Updated)
+
+**Issue 1: Structural Signal Redundancy**
+- `avg_synergy` and `avg_counter` are perfectly correlated (1.0) with `base_winrate`
+- This is by construction: averaging pairwise winrates over all partners collapses toward overall win tendency
+- The aggregation method (flat average) is the problem, not the data
+- Synergy/counter signals provide no independent information beyond base winrate
+
+**Issue 2: Smoothing Mismatch**
+- C++ recommender uses `confidence_prior_samples = 100` (legacy)
+- GDScript analysis uses `SMOOTHING_K = 10.0`
+- This mismatch means C++ signals are more heavily smoothed than analysis suggests
+- C++ synergy/counter variance is suppressed further than GDScript shows
+
+**Issue 3: Scoring Mode Limitations**
+- Current scoring modes (multiplicative, logit, additive) all assume independence between signals
+- With perfect correlation, these modes don't capture real synergistic/counter effects
+- The interaction_weight in logit mode is insufficient to compensate for structural redundancy
+
+**Issue 4: Sparse Pairwise Data**
+- 26 champions × 26 champions = 676 possible pairwise matchups
+- With 10,000 matches, average samples per pair is ~15 (assuming uniform distribution)
+- Below the 20-sample threshold used in analysis
+- Many pairs have insufficient data to reliably estimate true effects
+
+**Issue 5: Random Draft Context**
+- Simulation uses random draft order, not strategic drafting
+- Real drafting involves counter-picking and synergy-building based on opponent picks
+- The model doesn't see the sequential decision-making context that creates true counter-pick value
+
+**Issue 6: Composition Signal Underutilized**
+- Role fingerprint winrates exist but composition_weight defaults to 0.0
+- Team composition archetypes (e.g., "protect the carry", "all-in dive") are not modeled
+- Current role-based composition may not capture strategic archetypes
+
+**Recommendation:** Focus on signal aggregation methods (not champion balance). Replace flat averages with context-aware aggregation that captures specific matchup/synergy opportunities rather than collapsing to overall win tendency.
+
 ## variance_weight Sweep Results (2000 matches, hold-out stats)
 
 | variance_weight | Accuracy | Brier | Log-loss | Calib gap |

@@ -65,6 +65,14 @@ struct PredictionConfig {
 	double cc_weight = 0.0;
 	double mobility_weight = 0.0;
 	double sustain_weight = 0.0;
+
+	// Counter-pick specificity weights
+	double best_counter_weight = 0.0;
+	double worst_counter_weight = 0.0;
+
+	// Synergy specificity weights
+	double best_synergy_weight = 0.0;
+	double worst_synergy_weight = 0.0;
 };
 
 struct DraftScoreWeights {
@@ -87,20 +95,28 @@ struct DraftEvaluation {
 	double base_winrate = 0.5;
 	double avg_synergy = 0.5;
 	double avg_counter = 0.5;
-	
+
 	// Raw values (before Bayesian smoothing)
 	double base_raw = 0.5;
 	double synergy_raw = 0.5;
 	double counter_raw = 0.5;
-	
+
 	// Statistical sample counts (from CSV, used in Bayesian smoothing)
 	int64_t base_samples = 0;
 	int64_t synergy_stat_samples = 0;
 	int64_t counter_stat_samples = 0;
-	
+
 	// Population variance of smoothed winrates across the evaluated relationship set
 	double synergy_variance = 0.0;
 	double counter_variance = 0.0;
+
+	// Counter-pick specificity (min/max winrates vs enemy team)
+	double best_counter = 0.5;
+	double worst_counter = 0.5;
+
+	// Synergy specificity (min/max winrates vs ally team)
+	double best_synergy = 0.5;
+	double worst_synergy = 0.5;
 
 	// Mechanical signals (kit-derived, independent of match outcomes)
 	double cc_score = 0.0;

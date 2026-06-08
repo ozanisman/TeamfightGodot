@@ -84,6 +84,8 @@ struct RelationshipAggregate {
 	double adjusted_average = 0.5; // flat average of smoothed winrates (neutral fallback)
 	double raw_average = 0.5; // flat average of raw winrates — kept for diagnostics/debug output
 	double variance = 0.0; // population variance of smoothed winrates across the relationship set
+	double min_adjusted = 0.5; // minimum smoothed winrate (worst matchup)
+	double max_adjusted = 0.5; // maximum smoothed winrate (best matchup)
 	int64_t relationships = 0;
 	int64_t stat_samples = 0;
 };
@@ -99,6 +101,8 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 	double adjusted_sum = 0.0;
 	double adjusted_sum_sq = 0.0;
 	double raw_sum = 0.0;
+	double min_val = 1.0;
+	double max_val = 0.0;
 
 	for (const StringName &other : others) {
 		if (other == champion) {
@@ -117,6 +121,8 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 		raw_sum += stat.winrate;
 		result.stat_samples += stat.samples;
 		++result.relationships;
+		min_val = std::min(min_val, smoothed);
+		max_val = std::max(max_val, smoothed);
 	}
 
 	if (result.relationships == 0) {
@@ -127,6 +133,8 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 	result.adjusted_average = adjusted_sum / double(result.relationships);
 	// Population variance: E[x²] - E[x]²
 	result.variance = (adjusted_sum_sq / double(result.relationships)) - (result.adjusted_average * result.adjusted_average);
+	result.min_adjusted = min_val;
+	result.max_adjusted = max_val;
 
 	return result;
 }
@@ -611,6 +619,8 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.synergy_variance = synergy_agg.variance;
 	result.synergy_stat_samples = synergy_agg.stat_samples;
 	result.synergy_relationships = synergy_agg.relationships;
+	result.best_synergy = synergy_agg.max_adjusted;
+	result.worst_synergy = synergy_agg.min_adjusted;
 
 	// Counter component: flat average vs. enemies (see aggregate_relationship_signal).
 	RelationshipAggregate counter_agg = aggregate_relationship_signal(_database, candidate, enemies, RelationshipKind::COUNTER, _config);
@@ -619,6 +629,8 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	result.counter_variance = counter_agg.variance;
 	result.counter_stat_samples = counter_agg.stat_samples;
 	result.counter_relationships = counter_agg.relationships;
+	result.best_counter = counter_agg.max_adjusted;
+	result.worst_counter = counter_agg.min_adjusted;
 
 	// Mechanical signals (kit-derived, independent of match outcomes)
 	MechanicalSignals mech = _database.mechanical_signals_for(candidate);
@@ -638,6 +650,16 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 		result.score += _config.cc_weight * result.cc_score;
 		result.score += _config.mobility_weight * result.mobility_score;
 		result.score += _config.sustain_weight * result.sustain_score;
+		result.score = std::clamp(result.score, 0.0, 1.0);
+	}
+	if (_config.best_counter_weight != 0.0 || _config.worst_counter_weight != 0.0) {
+		result.score += _config.best_counter_weight * result.best_counter;
+		result.score += _config.worst_counter_weight * result.worst_counter;
+		result.score = std::clamp(result.score, 0.0, 1.0);
+	}
+	if (_config.best_synergy_weight != 0.0 || _config.worst_synergy_weight != 0.0) {
+		result.score += _config.best_synergy_weight * result.best_synergy;
+		result.score += _config.worst_synergy_weight * result.worst_synergy;
 		result.score = std::clamp(result.score, 0.0, 1.0);
 	}
 

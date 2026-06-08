@@ -93,6 +93,10 @@ func _run() -> void:
 		"cc_weight": "--prediction-cc-weight=",
 		"mobility_weight": "--prediction-mobility-weight=",
 		"sustain_weight": "--prediction-sustain-weight=",
+		"best_counter_weight": "--prediction-best-counter-weight=",
+		"worst_counter_weight": "--prediction-worst-counter-weight=",
+		"best_synergy_weight": "--prediction-best-synergy-weight=",
+		"worst_synergy_weight": "--prediction-worst-synergy-weight=",
 	}
 	var prediction_config_overrides: Dictionary = {}
 	for override_key in prediction_override_flags:

@@ -20,6 +20,15 @@ const PRIOR_WINRATE: float = 0.5
 ## Flat-profile threshold: signals within ±0.05 of 0.5 are considered flat
 const FLAT_PROFILE_THRESHOLD: float = 0.05
 
+## Mechanical signal kind sets (for kit-derived CC/mobility/sustain signals)
+const CC_KINDS: Array = [
+	&"stun", &"root", &"slow", &"silence", &"disarm", &"knockback",
+	&"aoe_stun", &"aoe_root", &"aoe_slow", &"aoe_silence", &"aoe_disarm",
+	&"aoe_knockback", &"aoe_taunt", &"every_n_attacks_stun"
+]
+const MOBILITY_KINDS: Array = [&"self_dash", &"auto_dodge"]
+const SUSTAIN_KINDS: Array = [&"heal", &"heal_over_time", &"aoe_heal_over_time", &"damage_based_heal"]
+
 
 ## Main analysis function
 ## stats_dir: Path to stats directory containing CSV files
@@ -59,9 +68,14 @@ func analyze(stats_dir: String, team_sizes: Array = [5], min_samples: int = 20, 
 	log_lines.append("Loaded %d composition fingerprints from role_combinations.csv" % composition_stats.size())
 	log_lines.append("")
 
+	log_lines.append("Computing mechanical signals from champion catalog...")
+	var mechanical_signals: Dictionary = _load_mechanical_signals()
+	log_lines.append("Computed mechanical signals for %d champions" % mechanical_signals.size())
+	log_lines.append("")
+
 	log_lines.append("Computing champion profiles...")
 	# Compute champion profiles
-	var profiles: Array = _compute_champion_profiles(combat_stats, synergy_stats, counter_stats, composition_stats)
+	var profiles: Array = _compute_champion_profiles(combat_stats, synergy_stats, counter_stats, composition_stats, mechanical_signals)
 	log_lines.append("Computed profiles for %d champions" % profiles.size())
 	log_lines.append("")
 
@@ -258,7 +272,7 @@ func _load_composition_stats(path: String, team_sizes: Array, min_samples: int) 
 
 
 ## Compute per-champion signal profiles
-func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, composition_stats: Dictionary) -> Array:
+func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, composition_stats: Dictionary, mechanical_signals: Dictionary = {}) -> Array:
 	var profiles: Array = []
 
 	for champion in combat_stats:
@@ -302,6 +316,7 @@ func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Diction
 		var composition_raw: float = 0.5
 		var composition_smoothed: float = 0.5
 
+		var mech: Dictionary = mechanical_signals.get(champion, {"cc_score": 0.0, "mobility_score": 0.0, "sustain_score": 0.0})
 		profiles.append({
 			"champion": champion,
 			"role": role,
@@ -316,9 +331,92 @@ func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Diction
 			"counter_variance": counter_variance,
 			"composition_raw": composition_raw,
 			"composition_smoothed": composition_smoothed,
+			"cc_score": mech["cc_score"],
+			"mobility_score": mech["mobility_score"],
+			"sustain_score": mech["sustain_score"],
 		})
 
 	return profiles
+
+
+## Load mechanical signals derived from champion kit properties (independent of match outcomes)
+func _load_mechanical_signals() -> Dictionary:
+	var catalog: Dictionary = ChampionCatalogScript.build_catalog()
+	var raw: Dictionary = {}
+	var max_cc: int = 0
+
+	for unit_id in catalog:
+		var spec = catalog[unit_id]
+		var cc_count: int = 0
+		var has_mobility: bool = false
+		var has_sustain: bool = false
+
+		if spec.ability != null:
+			cc_count += _count_cc_in_effect(spec.ability)
+			has_mobility = has_mobility or _has_mobility_in_effect(spec.ability)
+			has_sustain = has_sustain or _has_sustain_in_effect(spec.ability)
+		if spec.ultimate != null:
+			cc_count += _count_cc_in_effect(spec.ultimate)
+			has_mobility = has_mobility or _has_mobility_in_effect(spec.ultimate)
+			has_sustain = has_sustain or _has_sustain_in_effect(spec.ultimate)
+		if spec.stats.life_steal > 0.0:
+			has_sustain = true
+
+		max_cc = max(max_cc, cc_count)
+		raw[String(unit_id)] = {"cc_count": cc_count, "has_mobility": has_mobility, "has_sustain": has_sustain}
+
+	var result: Dictionary = {}
+	for id in raw:
+		var s: Dictionary = raw[id]
+		result[id] = {
+			"cc_score": float(s["cc_count"]) / float(max_cc) if max_cc > 0 else 0.0,
+			"mobility_score": 1.0 if s["has_mobility"] else 0.0,
+			"sustain_score": 1.0 if s["has_sustain"] else 0.0,
+		}
+	return result
+
+
+## Count CC effects recursively in an effect tree
+func _count_cc_in_effect(effect) -> int:
+	if effect == null:
+		return 0
+	var count: int = int(effect.kind in CC_KINDS)
+	for sub in effect.params.get("effects", []):
+		count += _count_cc_in_effect(sub)
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		count += _count_cc_in_effect(splash)
+	return count
+
+
+## Check if an effect tree contains a mobility effect
+func _has_mobility_in_effect(effect) -> bool:
+	if effect == null:
+		return false
+	if effect.kind in MOBILITY_KINDS:
+		return true
+	for sub in effect.params.get("effects", []):
+		if _has_mobility_in_effect(sub):
+			return true
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		return _has_mobility_in_effect(splash)
+	return false
+
+
+## Check if an effect tree contains a sustain effect
+func _has_sustain_in_effect(effect) -> bool:
+	if effect == null:
+		return false
+	if effect.kind in SUSTAIN_KINDS:
+		return true
+	for sub in effect.params.get("effects", []):
+		if _has_sustain_in_effect(sub):
+			return true
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		return _has_sustain_in_effect(splash)
+	return false
 
 
 ## Compute global statistics
@@ -358,7 +456,11 @@ func _compute_correlations(profiles: Array) -> Dictionary:
 		["avg_synergy_smoothed", "avg_counter_smoothed"],
 		["base_smoothed", "synergy_variance"],
 		["base_smoothed", "counter_variance"],
-		["synergy_variance", "counter_variance"]
+		["synergy_variance", "counter_variance"],
+		["base_smoothed", "cc_score"],
+		["avg_synergy_smoothed", "cc_score"],
+		["base_smoothed", "mobility_score"],
+		["base_smoothed", "sustain_score"],
 	]
 
 	var result: Dictionary = {}
@@ -554,11 +656,11 @@ func _build_terminal_report(global_stats: Dictionary, correlations: Dictionary, 
 ## Write CSV output
 func _write_csv(profiles: Array, output_path: String) -> void:
 	var lines: Array = []
-	lines.append("champion,role,samples,base_raw,base_smoothed,avg_synergy_raw,avg_synergy_smoothed,synergy_variance,avg_counter_raw,avg_counter_smoothed,counter_variance,composition_raw,composition_smoothed,is_flat_profile")
+	lines.append("champion,role,samples,base_raw,base_smoothed,avg_synergy_raw,avg_synergy_smoothed,synergy_variance,avg_counter_raw,avg_counter_smoothed,counter_variance,composition_raw,composition_smoothed,cc_score,mobility_score,sustain_score,is_flat_profile")
 
 	for profile in profiles:
 		var is_flat: int = 1 if profile.get("is_flat_profile", false) else 0
-		lines.append("%s,%s,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d" % [
+		lines.append("%s,%s,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d" % [
 			profile["champion"],
 			profile["role"],
 			profile["samples"],
@@ -572,6 +674,9 @@ func _write_csv(profiles: Array, output_path: String) -> void:
 			profile["counter_variance"],
 			profile["composition_raw"],
 			profile["composition_smoothed"],
+			profile.get("cc_score", 0.0),
+			profile.get("mobility_score", 0.0),
+			profile.get("sustain_score", 0.0),
 			is_flat
 		])
 

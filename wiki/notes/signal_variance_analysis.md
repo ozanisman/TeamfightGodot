@@ -20,35 +20,82 @@ Tests the hypothesis that limited signal variance is the bottleneck preventing d
 ## Implementation
 - `scripts/tools/analyze_signal_variance.gd` - Main analysis script
 - `scripts/tools/generate_simulation_stats.gd` - CLI integration (lines 186-195)
+- `native/src/simulation/sim_draft_recommender.cpp` - C++ recommender (variance computed live per draft state)
 
-## Current Findings (10,000 matches)
-**Signal Variance:**
-- Base winrate: 0.0477 (medium) - meaningful differentiation
-- Synergy: 0.0098 (low) - nearly flat
-- Counter: 0.0098 (low) - nearly flat
+## Findings (10,000 matches, K=10)
+
+**Signal Variance (stddev):**
+
+| Signal | K=100 | K=10 | Level |
+|--------|-------|------|-------|
+| base_smoothed | 0.0488 | 0.0488 | medium |
+| avg_synergy_smoothed | ~0.0099 | 0.0349 | medium |
+| avg_counter_smoothed | ~0.0099 | 0.0349 | medium |
+
+K=10 increased synergy/counter stddev ~3.5× vs K=100. Smoothing was suppressing signal magnitude.
 
 **Signal Correlations:**
-- Base vs Synergy: 1.0 (perfect redundancy)
-- Base vs Counter: 1.0 (perfect redundancy)
-- Synergy vs Counter: 1.0 (perfect redundancy)
 
-**Flat Profiles:** 20/26 champions (77%) have all signals within ±0.05 of 0.5
+| Pair | Correlation |
+|------|------------|
+| base vs avg_synergy | 1.0 |
+| base vs avg_counter | 1.0 |
+| synergy vs counter | 1.0 |
+| base vs synergy_variance | 0.30 |
+| base vs counter_variance | -0.07 |
+| synergy_variance vs counter_variance | 0.05 |
 
-**Conclusion:** Historical signals (base/synergy/counter winrates) provide minimal differentiation. Synergy and counter signals are perfectly correlated with base winrate and have extremely low variance. The draft recommender is essentially operating on a single signal with minimal champion differentiation.
+**Flat Profiles:** 20/26 champions (77%) have all smoothed signals within ±0.05 of 0.5
+
+## Root Cause (Confirmed Structural)
+
+`avg_synergy ≈ base_winrate` by construction: averaging pairwise winrates over all partners collapses toward overall win tendency. Same for `avg_counter`. Reducing K does not fix the 1.0 correlation — it only changes the magnitude. More data also does not fix this.
+
+**Variance signals are independent:** `synergy_variance` (corr 0.30 with base) and `counter_variance` (corr -0.07) measure context-dependence, not win tendency. These are orthogonal to base and to each other.
+
+## Current State
+
+- `SMOOTHING_K = 10.0` in `analyze_signal_variance.gd` (changed from 100, better calibrated)
+- `synergy_variance` and `counter_variance` are:
+  - Computed globally in the GDScript analysis tool
+  - Included in the GDScript correlation matrix
+  - Computed per-draft-state in `sim_draft_recommender.cpp` (`aggregate_relationship_signal()`)
+  - Exposed in `DraftEvaluation` struct fields and `get_draft_recommendations_with_breakdowns()` dict
+  - **Not yet weighted in scoring** — available for future use
+
+C++ recommender uses LEGACY Bayesian smoothing (`confidence_prior_samples = 100`), independent of the GDScript `SMOOTHING_K`.
+
+## Mechanical Signals (Added)
+
+Kit-derived signals extracted from ability/ultimate effect trees in `champion_catalog.gd`. Independent of historical match outcomes by construction.
+
+| Signal | Source | Corr with base_smoothed |
+|--------|--------|------------------------|
+| `cc_score` | CC effect count (normalized), recursive over multi_effect/splash | **-0.133** |
+| `mobility_score` | Has self_dash or auto_dodge | 0.027 |
+| `sustain_score` | Has heal/heal_over_time/damage_based_heal or life_steal > 0 | 0.167 |
+
+All < 0.5 → independent signals confirmed. `cc_score` vs `avg_synergy_smoothed` = -0.123.
+
+**Implementation:** `scripts/tools/analyze_signal_variance.gd`
+- `_load_mechanical_signals()` — loads catalog, counts CC/mobility/sustain per champion
+- `_count_cc_in_effect()`, `_has_mobility_in_effect()`, `_has_sustain_in_effect()` — recursive effect tree traversal
+- Constants: `CC_KINDS`, `MOBILITY_KINDS`, `SUSTAIN_KINDS`
+- Added to profile dict, correlation matrix, and CSV output
+
+**Not yet in C++ scoring** — same as `synergy_variance`/`counter_variance`.
 
 ## Next Steps (Priority Order)
-1. **Reduce Bayesian smoothing** - Lower k from 100 to 10-20 in `analyze_signal_variance.gd` (line 17) to see if real differences emerge. This is the easiest change and quick to test.
 
-2. **Increase sample size** - Generate 50,000+ matches for more reliable pairwise statistics.
+1. **Factor variance + mechanical signals into scoring** — Add `variance_weight` and `cc_weight` to `PredictionConfig`. Requires empirical tuning against ground truth.
 
-3. **Add draft-state awareness** - Implement signals that depend on current draft state (role balance, team composition needs, counter-pick availability). This would be a new signal type not based on historical data.
+2. **Improve champion balance** — 77% flat-profile champions indicates homogeneous kit design. Real variance in base winrate is a prerequisite for meaningful synergy/counter signal.
 
-4. **Improve champion balance** - Review champion kits to create more meaningful power differentiation.
-
-5. **Add mechanical counter signals** - Use champion ability interactions (CC vs immobile, burst vs sustain) instead of historical winrates.
+3. **Wire mechanical signals into C++ recommender** — Load tag data from catalog or a sidecar CSV, expose in `DraftEvaluation`, add to scoring.
 
 ## Parameters
-- `SMOOTHING_K`: 100.0 (Bayesian smoothing parameter)
-- `PRIOR_WINRATE`: 0.5 (Prior winrate for Bayesian smoothing)
-- `FLAT_PROFILE_THRESHOLD`: 0.05 (Signals within ±0.05 of 0.5 are considered flat)
-- Minimum samples: 20 (Champions with fewer than 20 matches are filtered out)
+- `SMOOTHING_K`: 10.0 in GDScript analysis tool (was 100)
+- `PRIOR_WINRATE`: 0.5
+- `FLAT_PROFILE_THRESHOLD`: 0.05
+- Minimum samples: 20
+- C++ `confidence_prior_samples`: 100 (LEGACY smoothing, separate from GDScript K)

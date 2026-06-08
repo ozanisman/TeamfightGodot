@@ -11,12 +11,6 @@
 | 3 | Relevant `wiki/concepts/*.md` | Opcode behavior, targeting rules, etc. |
 | 4 | [performance_optimization_status.md](performance_optimization_status.md) | Validation commands and benchmark numbers |
 
-## Do not use for current layout
-
-| Path | Why |
-|------|-----|
-| `wiki/projects/core-refactor-2026-05/**` | Historical iteration snapshots; obsolete paths (`sim_damage.cpp`, monolithic `sim_periodic.cpp`, etc.) |
-
 ## Canonical paths (repo root)
 
 | Area | Path |

@@ -5,7 +5,7 @@ A living knowledge base.
 ## Agents (read this first for native C++)
 
 **[native_agent_guide.md](notes/native_agent_guide.md)** — canonical routing, task→file map, invariants, denylists, validation commands.  
-Then [simulation_module_map.md](notes/simulation_module_map.md). Do **not** infer file paths from `projects/core-refactor-2026-05/`.
+Then [simulation_module_map.md](notes/simulation_module_map.md).
 
 ## Structure
 
@@ -23,8 +23,6 @@ Then [simulation_module_map.md](notes/simulation_module_map.md). Do **not** infe
 | [algorithmic_optimization_analysis.md](notes/algorithmic_optimization_analysis.md) | Deferred perf ideas (profiling backlog) |
 
 **Coordinator:** [`native/src/teamfight_simulation_core.{hpp,cpp}`](../native/src/teamfight_simulation_core.hpp) (~270 / ~293 lines) plus `sim_coordinator_{match,state,catalog,targeting,viewer,tick,bindings,host}.cpp`. Shared host API: [`sim_coordinator_host.hpp`](../native/src/simulation/sim_coordinator_host.hpp) only (no per-TU empty coordinator headers).
-
-**Historical:** [core refactor iterations (May 2026)](projects/core-refactor-2026-05/) — exit snapshots only; prefer the notes above for current paths and layout.
 
 ## Principles
 

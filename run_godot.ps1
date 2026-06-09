@@ -28,6 +28,7 @@ $verifyPartialDraftSignal = $Arguments -contains "--verify-partial-draft-signal"
 $evaluatePartialDraftModel = $Arguments -contains "--evaluate-partial-draft-model"
 $testHybridModel = $Arguments -contains "--test-hybrid-model"
 $testRolloutCounts = $Arguments -contains "--test-rollout-counts"
+$abTestDraftStrategies = $Arguments -contains "--ab-test-draft-strategies"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
 $checkProjectilePayloads = $Arguments -contains "--check-projectile-payloads"
@@ -67,6 +68,9 @@ elseif ($checkBenchmarkSharded) {
 }
 elseif ($checkStatsCsvDeterminism) {
 	$timeoutSeconds = 240
+}
+elseif ($abTestDraftStrategies) {
+	$timeoutSeconds = 1800
 }
 elseif ($measureDraftCeiling) {
 	$timeoutSeconds = 900
@@ -240,6 +244,9 @@ elseif ($testHybridModel) {
 }
 elseif ($testRolloutCounts) {
 	$godotArgs += @("--script", "res://scripts/tools/test_rollout_counts.gd")
+}
+elseif ($abTestDraftStrategies) {
+	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

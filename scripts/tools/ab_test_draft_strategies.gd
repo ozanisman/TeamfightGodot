@@ -16,6 +16,7 @@ const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyLogitPath := "res://scripts/tools/draft_strategy_logit.gd"
 const DraftStrategyHybridPath := "res://scripts/tools/draft_strategy_hybrid.gd"
+const DraftStrategyCertifiedPath := "res://scripts/tools/draft_strategy_certified.gd"
 
 const TEAM_SIZE: int = 5
 
@@ -90,6 +91,8 @@ func _run() -> void:
 				strategies[name] = load(DraftStrategyLogitPath).new(stats_dir)
 			"hybrid":
 				strategies[name] = load(DraftStrategyHybridPath).new(stats_dir)
+			"certified":
+				strategies[name] = load(DraftStrategyCertifiedPath).new(stats_dir)
 			_:
 				push_error("ab_test_draft_strategies: unknown strategy '%s'" % name)
 				quit(1)
@@ -125,14 +128,33 @@ func _run() -> void:
 				var strat_a = strategies[name_a]
 				var strat_b = strategies[name_b]
 
-				var pick_a: StringName = strat_a.recommend_next_pick(allies, enemies, available)
-				var pick_b: StringName = strat_b.recommend_next_pick(allies, enemies, available)
+				var pick_a: StringName
+				var pick_b: StringName
+				var winrate_a := 0.5
+				var winrate_b := 0.5
 
-				var winrate_a := _evaluate_pick(
+				if strat_a == null:
+					push_error("strat_a is null for %s" % name_a)
+					continue
+				if strat_b == null:
+					push_error("strat_b is null for %s" % name_b)
+					continue
+
+				pick_a = strat_a.recommend_next_pick(allies, enemies, available)
+				pick_b = strat_b.recommend_next_pick(allies, enemies, available)
+
+				if pick_a.is_empty():
+					push_error("pick_a is empty for %s" % name_a)
+					continue
+				if pick_b.is_empty():
+					push_error("pick_b is empty for %s" % name_b)
+					continue
+
+				winrate_a = _evaluate_pick(
 					backend, allies, enemies, available, pick_a, sims_per_trial,
 					base_seed + trial * 10000 + 0
 				)
-				var winrate_b := _evaluate_pick(
+				winrate_b = _evaluate_pick(
 					backend, allies, enemies, available, pick_b, sims_per_trial,
 					base_seed + trial * 10000 + 1
 				)
@@ -148,7 +170,7 @@ func _run() -> void:
 
 				completed += 1
 				if completed % 10 == 0:
-					print("  ... %d/%d trials done" % [completed, total_trials])
+					print("  ... %d/%d trials done (depth=%d trial=%d %s vs %s)" % [completed, total_trials, depth, trial, name_a, name_b])
 
 	# Write CSV
 	var f := FileAccess.open(ProjectSettings.globalize_path(output_path), FileAccess.WRITE)

@@ -70,7 +70,7 @@ elseif ($checkStatsCsvDeterminism) {
 	$timeoutSeconds = 240
 }
 elseif ($abTestDraftStrategies) {
-	$timeoutSeconds = 1800
+	$timeoutSeconds = 7200
 }
 elseif ($measureDraftCeiling) {
 	$timeoutSeconds = 900

@@ -2424,34 +2424,7 @@ func _update_draft_recommendations() -> void:
 	prediction_label.add_theme_font_size_override("normal_font_size", 24)
 	prediction_label.fit_content = true
 	_recommendation_list.add_child(prediction_label)
-
-	# Display team breakdowns
-	var team1_breakdown: Dictionary = prediction.get("team1_breakdown", {})
-	var team2_breakdown: Dictionary = prediction.get("team2_breakdown", {})
-
-	if not team1_breakdown.is_empty():
-		var p1_label := Label.new()
-		p1_label.text = "Player 1: base=%.3f, synergy=%.3f, matchup=%.3f, comp=%.3f, final=%.3f" % [
-			team1_breakdown.get("base", 0.5),
-			team1_breakdown.get("synergy", 0.5),
-			team1_breakdown.get("matchup", 0.5),
-			team1_breakdown.get("composition", 0.5),
-			team1_breakdown.get("final", 0.5)
-		]
-		p1_label.add_theme_font_size_override("font_size", 20)
-		_recommendation_list.add_child(p1_label)
-
-	if not team2_breakdown.is_empty():
-		var p2_label := Label.new()
-		p2_label.text = "Player 2: base=%.3f, synergy=%.3f, matchup=%.3f, comp=%.3f, final=%.3f" % [
-			team2_breakdown.get("base", 0.5),
-			team2_breakdown.get("synergy", 0.5),
-			team2_breakdown.get("matchup", 0.5),
-			team2_breakdown.get("composition", 0.5),
-			team2_breakdown.get("final", 0.5)
-		]
-		p2_label.add_theme_font_size_override("font_size", 20)
-		_recommendation_list.add_child(p2_label)
+	_add_prediction_model_label(prediction)
 
 
 func _get_available_champions() -> Array[StringName]:
@@ -2559,6 +2532,17 @@ func _shuffle_recommendation_pool(values: Array[StringName], rng: RandomNumberGe
 		values[j] = tmp
 
 
+func _add_prediction_model_label(prediction: Dictionary) -> void:
+	var model_label := Label.new()
+	if int(prediction.get("scoring_mode", -1)) == 3:
+		model_label.text = "Prediction model: certified pairwise probability"
+	else:
+		model_label.text = "Prediction model: legacy scorer"
+	model_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+	model_label.add_theme_font_size_override("font_size", 18)
+	_recommendation_list.add_child(model_label)
+
+
 func _show_final_prediction() -> void:
 	var title_label := Label.new()
 	title_label.text = "Final 5v5 Prediction"
@@ -2592,34 +2576,7 @@ func _show_final_prediction() -> void:
 	prediction_label.add_theme_font_size_override("normal_font_size", 24)
 	prediction_label.fit_content = true
 	_recommendation_list.add_child(prediction_label)
-
-	# Display team breakdowns
-	var team1_breakdown: Dictionary = prediction.get("team1_breakdown", {})
-	var team2_breakdown: Dictionary = prediction.get("team2_breakdown", {})
-
-	if not team1_breakdown.is_empty():
-		var p1_label := Label.new()
-		p1_label.text = "Player 1: base=%.3f, synergy=%.3f, matchup=%.3f, comp=%.3f, final=%.3f" % [
-			team1_breakdown.get("base", 0.5),
-			team1_breakdown.get("synergy", 0.5),
-			team1_breakdown.get("matchup", 0.5),
-			team1_breakdown.get("composition", 0.5),
-			team1_breakdown.get("final", 0.5)
-		]
-		p1_label.add_theme_font_size_override("font_size", 20)
-		_recommendation_list.add_child(p1_label)
-
-	if not team2_breakdown.is_empty():
-		var p2_label := Label.new()
-		p2_label.text = "Player 2: base=%.3f, synergy=%.3f, matchup=%.3f, comp=%.3f, final=%.3f" % [
-			team2_breakdown.get("base", 0.5),
-			team2_breakdown.get("synergy", 0.5),
-			team2_breakdown.get("matchup", 0.5),
-			team2_breakdown.get("composition", 0.5),
-			team2_breakdown.get("final", 0.5)
-		]
-		p2_label.add_theme_font_size_override("font_size", 20)
-		_recommendation_list.add_child(p2_label)
+	_add_prediction_model_label(prediction)
 
 
 func _toggle_pause() -> void:

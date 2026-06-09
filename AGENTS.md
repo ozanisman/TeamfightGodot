@@ -18,7 +18,7 @@
 
 ## Wiki
 
-- Code is the source of truth if it conflicts with wiki.
+- Code is the source of truth. If code conflicts with wiki, prefer code and flag the inconsistency.
 - Consult the wiki when relevant context is needed.
   - `wiki/README.md`
   - `wiki/notes/native_agent_guide.md`
@@ -26,7 +26,6 @@
 
 ## Done
 
-- Minimal complete change applied.
-- No unrelated modifications.
+- Change is minimal and complete.
 - Behavior changes explicitly listed.
-- Wiki updated if stable concepts were introduced or invalidated.
+- Wiki updated if stable concepts were introduced, removed, or invalidated.

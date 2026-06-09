@@ -2370,6 +2370,7 @@ func _update_draft_recommendations() -> void:
 	var recommendations: Array[Dictionary] = _rollout_recommendations(allies, enemies, available)
 	var using_rollout := not recommendations.is_empty()
 	if not using_rollout:
+		push_error("Draft recommendations: rollout scorer failed, falling back to legacy recommender")
 		recommendations = _legacy_recommendations(allies, enemies, available)
 
 	for i in range(mini(5, recommendations.size())):

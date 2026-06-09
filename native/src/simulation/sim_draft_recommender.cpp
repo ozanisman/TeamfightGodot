@@ -515,7 +515,7 @@ double DraftStatsDatabase::calculate_certified_pairwise_probability(const std::v
 double DraftStatsDatabase::calculate_partial_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
 	// Depth-specific partial draft models trained on rollout-labeled data.
 	// Uses extended feature set with variance metrics.
-	// Weights from verify_partial_draft_signal.gd on partial_draft_training_full_50.csv (50 rollouts per state).
+	// Weights from verify_partial_draft_signal.gd on partial_draft_training_full_100.csv (100 rollouts per state).
 
 	int depth = static_cast<int>(std::min(team1.size(), team2.size()));
 
@@ -524,33 +524,34 @@ double DraftStatsDatabase::calculate_partial_draft_probability(const std::vector
 		return calculate_certified_pairwise_probability(team1, team2);
 	}
 
-	// Depth-specific weights (depths 1-3) - trained with 50 rollouts per state
+	// Depth-specific weights (depths 1-3) - trained with 100 rollouts per state
 	// Uses winrate features (not raw win counts).
+	// Training: 500 states/depth, 100 rollouts/state on stats_output_baseline
 	static constexpr double k_weights_by_depth[3][7] = {
 		// Depth 1
-		{-0.016666, 0.0, 0.0, 0.156551, 0.0, 0.0, 0.156551},
+		{-0.0096083821675, 0.0, 0.0, 0.14477605497875, 0.0, 0.0, 0.14477605497875},
 		// Depth 2
-		{-0.048146, 0.0, 0.009256, 0.208430, 0.0, 0.000795, 0.208430},
+		{-0.0522595284664, 0.0, 0.01220137858638, 0.22318795670981, 0.0, 0.00084124137806, 0.22318795670981},
 		// Depth 3
-		{-0.024253, 0.0, -0.012751, 0.278801, 0.009018, -0.009498, 0.278801},
+		{-0.00393922710409, 0.0, -0.01352852690117, 0.28868438646139, 0.00954263968602, -0.02001948619958, 0.28868438646139},
 	};
 
 	static constexpr double k_means_by_depth[3][6] = {
 		// Depth 1
-		{0.5, 0.5, 0.500209, 0.0, 0.0, 0.500209},
+		{0.5, 0.5, 0.50464629, 0.0, 0.0, 0.50464629},
 		// Depth 2
-		{0.5, 0.499004, 0.497677, 0.0, 0.002841, 0.497677},
+		{0.5, 0.49712602, 0.497747459375, 0.0, 0.00265671631763, 0.497747459375},
 		// Depth 3
-		{0.5, 0.499598, 0.500600, 0.002010, 0.003824, 0.500600},
+		{0.5, 0.50333743083333, 0.50142263972222, 0.00192810542264, 0.00366372981816, 0.50142263972222},
 	};
 
 	static constexpr double k_stddevs_by_depth[3][6] = {
 		// Depth 1
-		{1.0, 1.0, 0.077515, 1.0, 1.0, 0.077515},
+		{1.0, 1.0, 0.07204785517003, 1.0, 1.0, 0.07204785517003},
 		// Depth 2
-		{1.0, 0.069751, 0.047972, 1.0, 0.003327, 0.047972},
+		{1.0, 0.07808808380835, 0.05142584834701, 1.0, 0.00285537866722, 0.05142584834701},
 		// Depth 3
-		{1.0, 0.055962, 0.038710, 0.002777, 0.003106, 0.038710},
+		{1.0, 0.05439008104955, 0.0404045196498, 0.00267635215947, 0.00323725595998, 0.0404045196498},
 	};
 
 	if (depth < 1 || depth > 3) {

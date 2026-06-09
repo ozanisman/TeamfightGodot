@@ -104,6 +104,14 @@ func _run() -> void:
 		var train_mse := _compute_mse(train_preds, train_labels)
 		var test_mse := _compute_mse(test_preds, test_labels)
 
+		# Output weights for native baking
+		var weights_str := ",".join(weights.map(func(x): return str(x)))
+		var means_str := ",".join(train_mean.map(func(x): return str(x)))
+		var stddevs_str := ",".join(train_std.map(func(x): return str(x)))
+		print("Depth %d weights: %s" % [depth, weights_str])
+		print("Depth %d means: %s" % [depth, means_str])
+		print("Depth %d stddevs: %s" % [depth, stddevs_str])
+
 		csv_lines.append("%d,%d,%d,%.4f,%.4f,%.6f,%.6f" % [
 			depth, train_features.size(), test_features.size(), train_acc, test_acc, train_mse, test_mse
 		])

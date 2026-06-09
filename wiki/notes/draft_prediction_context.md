@@ -93,7 +93,26 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - Model sequential decision-making (counter-pick timing, synergy building)
 - Requires draft simulation framework, not static comp evaluation
 
-**7. Learned embeddings (exploratory)**
+**7. Partial draft model (COMPLETED)**
+- Training data generated: 500 states/depth, 100 rollouts/state on `stats_output_baseline`
+- Verification results (depth-specific logistic models):
+  - Depth 1: 87.0% test accuracy, MSE 0.000465
+  - Depth 2: 97.0% test accuracy, MSE 0.000199
+  - Depth 3: 90.0% test accuracy, MSE 0.000500
+  - Depth 4: 94.0% test accuracy, MSE 0.001864
+- Evaluation vs certified extrapolation:
+  - Depth 1: +70.00 pp improvement (hybrid 85.0% vs certified 15.0%)
+  - Depth 2: +75.00 pp improvement (hybrid 97.0% vs certified 22.0%)
+  - Depth 3: +43.00 pp improvement (hybrid 91.0% vs certified 48.0%)
+  - Depth 4: 0.00 pp (both use certified model)
+- Old vs new weights comparison: Identical results (both produce same accuracy/MSE)
+  - Old weights were functional despite missing training data reference
+  - New weights have provenance from fresh training data
+  - Decision: Keep new weights for audit trail and reproducibility
+- Native implementation updated in `sim_draft_recommender.cpp` with new weights baked
+- Runtime: `calculate_partial_draft_probability()` uses depth-specific models for depths 1-3, certified for depth 4+
+
+**8. Learned embeddings (exploratory)**
 - Train embeddings from simulation trajectories (state → action → outcome)
 - Requires trajectory collection and ML infrastructure
 

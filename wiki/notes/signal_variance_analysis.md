@@ -505,19 +505,27 @@ labeled data to train and evaluate models.
 - Complete-draft `predict_draft_winner` now uses the 5000-comp holdout-certified pairwise probability logistic model by default (`ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY`)
 - Certified mode has baked logistic constants, but reads base/synergy/counter feature inputs from the active stats directory; keep `combat_stats.csv`, `matchup_with.csv`, and `matchup_vs.csv` fresh after balance/catalog/simulation changes
 
-**2. Archived/unused: expanded mechanical features**
+**2. Recommended next candidate: rollout-based pick recommendations**
+- Tool: `scripts/tools/validate_pick_recommendations.gd`
+- Method: rank each available candidate by deterministic sampled 5v5 continuations scored with certified `predict_draft_winner`
+- Smoke: 25 states x 20 rollouts/candidate at draft depth 4, deterministic CSV, +2.45 pp expected win over current recommender top-1
+- Full depth 4: 500 states x 100 rollouts/candidate, current top-1 expected win 58.06%, rollout top-1 60.13%, regret +2.07 pp
+- Full depth 3: 500 states x 100 rollouts/candidate, current top-1 expected win 58.93%, rollout top-1 60.23%, regret +1.30 pp
+- Result: clears +1.0 pp validation gate; next step is runtime wiring plan with cost/caching constraints
+
+**3. Archived/unused: expanded mechanical features**
 - Latest label-model gate: pairwise 80.0% test vs combined 67.5% test
 - Latest probability-model gate: pairwise 80.0% test vs combined 70.0% test
 - Mechanical-only label model: 60.0% test
 - Combined model overfits train and hurts test accuracy
 
-**3. Archived/unused: composition archetype features**
+**4. Archived/unused: composition archetype features**
 - Validation-only archetypes are fitted inside `scripts/tools/verify_pairwise_signal.gd`
 - Method: deterministic k-means over train-split team profiles, train-only smoothed archetype matchup table, then held-out verifier evaluation
 - Gate failed: pairwise label 80.0% test vs pairwise+archetype label 75.0% test
 - Archetype-only reached 65.0% test; useful structure exists but does not beat pairwise baseline
 
-**4. Archived/unused: simulation-derived probe features**
+**5. Archived/unused: simulation-derived probe features**
 - Tool: `scripts/tools/generate_draft_probe_signals.gd`
 - Smoke: 4 templates x 20 seeds x mirror wrote one row per champion and verifier probe sets ran without prediction collapse
 - Full: 12 templates x 100 seeds x mirror wrote `res://stats_output/draft_probe_signals.csv`
@@ -525,7 +533,7 @@ labeled data to train and evaluate models.
 - 5000-comp non-mirror holdout: pairwise label 75.4% test; pairwise+probe label 76.8% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe probability 76.6% test / MSE 0.0479
 - Result: probe features contain mild incremental signal at larger scale, but the label gain is +1.4 pp, below the +2 pp wiring gate; keep tooling, do not feed recommender yet
 
-**5. Next practical direction: improve validation scale before adding more feature families**
+**6. Validation scale notes**
 - Current 200-comp ceiling set is too small for high-dimensional probe/archetype validation; train overfit is visible in every added feature family
 - Verifier supports optional repeated split reporting via `--split-repeats=N`; default is 0 because repeat training exceeds the normal runner timeout
 - A 3-repeat check showed pairwise remains strongest on average: pairwise probability 81.7% mean test accuracy vs pairwise+archetype 75.0%, pairwise+probe 75.8%, combined_all 73.3%
@@ -537,12 +545,12 @@ labeled data to train and evaluate models.
 - Runtime status: pairwise probability logistic is certified as the modern default for complete-draft winner prediction. Incomplete-draft probabilities are UI extrapolations, and partial-draft pick recommendations remain on the existing recommender scorer.
 - Verifier-only combined sets (`combined`, `combined_all`, `mechanical_probe`, `pairwise_archetype`, `pairwise_probe`) are archived experiment surfaces, not runtime defaults.
 
-**6. Draft-state context (lower priority)**
+**7. Draft-state context (lower priority)**
 - Model sequential decision-making (counter-pick timing, synergy building)
 - Requires draft simulation framework, not static comp evaluation
 - Significant engineering effort, defer until feature space validated
 
-**7. Learned embeddings (exploratory)**
+**8. Learned embeddings (exploratory)**
 - Train embeddings from simulation trajectories (state → action → outcome)
 - Requires trajectory collection and ML infrastructure
 - Long-term research direction, not immediate fix

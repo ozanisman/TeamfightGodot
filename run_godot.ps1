@@ -22,6 +22,7 @@ $generateStats = $Arguments -contains "--generate-stats"
 $measureDraftCeiling = $Arguments -contains "--measure-draft-ceiling"
 $verifyPairwiseSignal = $Arguments -contains "--verify-pairwise-signal"
 $generateDraftProbeSignals = $Arguments -contains "--generate-draft-probe-signals"
+$validatePickRecommendations = $Arguments -contains "--validate-pick-recommendations"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
 $checkProjectilePayloads = $Arguments -contains "--check-projectile-payloads"
@@ -69,6 +70,9 @@ elseif ($verifyPairwiseSignal) {
 	$timeoutSeconds = 300
 }
 elseif ($generateDraftProbeSignals) {
+	$timeoutSeconds = 900
+}
+elseif ($validatePickRecommendations) {
 	$timeoutSeconds = 900
 }
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
@@ -198,6 +202,9 @@ elseif ($verifyPairwiseSignal) {
 }
 elseif ($generateDraftProbeSignals) {
 	$godotArgs += @("--script", "res://scripts/tools/generate_draft_probe_signals.gd")
+}
+elseif ($validatePickRecommendations) {
+	$godotArgs += @("--script", "res://scripts/tools/validate_pick_recommendations.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

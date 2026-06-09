@@ -40,6 +40,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - `scripts/tools/verify_pairwise_signal.gd` - Tests whether pairwise features contain predictive signal
 - `scripts/tools/analyze_signal_variance.gd` - Analyzes signal variance and correlations
 - `scripts/tools/generate_draft_probe_signals.gd` - Generates simulation-derived probe features from fixed templates
+- `scripts/tools/validate_pick_recommendations.gd` - Validation-only rollout scorer for partial-draft pick recommendations
 
 **Data sources:**
 - `scripts/simulation/champion_catalog.gd` - Champion definitions with effect trees and stats
@@ -65,27 +66,34 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - Runtime shape: logistic weights/means/stddevs are baked into native code, but feature inputs still come from the active `stats_dir` CSVs (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`)
 - Scope: complete-team win prediction is certified; incomplete-draft probabilities are allowed in the UI but are extrapolated; partial-draft pick recommendation ranking still uses the existing recommender scorer
 
-**2. Archived/unused: expanded mechanical features**
+**2. Recommended next candidate: rollout-based pick recommendations**
+- Validation-only tool ranks each candidate by sampled complete-draft continuations scored with certified `predict_draft_winner`
+- Smoke passed: 25 states x 20 rollouts/candidate at draft depth 4, deterministic output, +2.45 pp expected win over current top-1
+- Full depth 4: 500 states x 100 rollouts/candidate, current top-1 expected win 58.06%, rollout top-1 60.13%, regret +2.07 pp
+- Full depth 3: 500 states x 100 rollouts/candidate, current top-1 expected win 58.93%, rollout top-1 60.23%, regret +1.30 pp
+- Result: clears +1.0 pp gate; plan runtime wiring as an opt-in or replacement pick recommender after UI/runtime cost review
+
+**3. Archived/unused: expanded mechanical features**
 - Latest verifier: mechanical-only 60.0% test; combined label model 67.5% test vs pairwise label 80.0% test
 - Mechanical features overfit train and hurt test accuracy in this sample
 
-**3. Archived/unused: simulation-derived probes**
+**4. Archived/unused: simulation-derived probes**
 - Smoke run passed functionality: 4 templates x 20 seeds x mirror wrote one row per champion and verifier reported probe feature sets
 - Full run: 12 templates x 100 seeds x mirror
 - Gate failed: pairwise label 80.0% test vs pairwise+probe label 60.0% test; pairwise+probe probability 72.5% test with worse MSE than pairwise probability
 - 5000-comp non-mirror holdout: pairwise label 75.4% test; pairwise+probe label 76.8% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe probability 76.6% test / MSE 0.0479
 - Interpretation: probe vectors show mild incremental signal at larger scale, but label delta is +1.4 pp, below the +2 pp wiring gate
 
-**4. Archived/unused: composition archetypes**
+**5. Archived/unused: composition archetypes**
 - Verifier now fits deterministic train-split k-means archetypes and train-only smoothed archetype matchup rates
 - Gate failed: pairwise label 80.0% test vs pairwise+archetype label 75.0% test
 - Archetype-only reached 65.0% test
 
-**5. Draft-state context**
+**6. Draft-state context**
 - Model sequential decision-making (counter-pick timing, synergy building)
 - Requires draft simulation framework, not static comp evaluation
 
-**6. Learned embeddings (exploratory)**
+**7. Learned embeddings (exploratory)**
 - Train embeddings from simulation trajectories (state → action → outcome)
 - Requires trajectory collection and ML infrastructure
 
@@ -113,6 +121,7 @@ These paths are intentionally recorded but not active defaults:
 - 5000-comp non-mirror holdout: pairwise label 75.4% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe label 76.8% test; pairwise+probe probability 76.6% test / MSE 0.0479
 - Native certified default: pairwise probability logistic (`ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY`)
 - Required runtime stats: fresh, sufficiently large `res://stats_output` with `combat_stats.csv`, `matchup_with.csv`, and `matchup_vs.csv`
+- Rollout pick validation: depth 4 +2.07 pp expected win; depth 3 +1.30 pp expected win vs current recommender top-1
 - Correlation (current vs true p after latest stats regen): 0.5578
 
 ## Implementation Notes
@@ -125,6 +134,7 @@ These paths are intentionally recorded but not active defaults:
 - Run smoke probe: `.\run_godot.ps1 --generate-draft-probe-signals -- --templates=4 --seeds-per-template=20 --mirror --output=res://stats_output/draft_probe_signals_smoke.csv`
 - Run full probe: `.\run_godot.ps1 --generate-draft-probe-signals -- --templates=12 --seeds-per-template=100 --mirror --output=res://stats_output/draft_probe_signals.csv`
 - Run archetype validation through verifier: `.\run_godot.ps1 --verify-pairwise-signal -- --ceiling-input=res://stats_output/draft_ceiling.csv --stats-dir=res://stats_output --probe-input=res://stats_output/draft_probe_signals.csv --output=res://stats_output/pairwise_verification.csv`
+- Run rollout pick validation: `.\run_godot.ps1 --validate-pick-recommendations -- --states=500 --rollouts-per-candidate=100 --draft-depth=4 --base-seed=70000 --stats-dir=res://stats_output_baseline --output=res://stats_output/pick_recommendation_validation_depth4.csv`
 - Mechanical signals are extracted in `analyze_signal_variance.gd` via `_load_mechanical_signals()` and written to `mechanical_signals.csv` for C++ loading
 - C++ recommender loads mechanical signals via `_load_mechanical_signals()` in `sim_draft_recommender.cpp`
 

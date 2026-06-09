@@ -28,6 +28,7 @@ $verifyPartialDraftSignal = $Arguments -contains "--verify-partial-draft-signal"
 $evaluatePartialDraftModel = $Arguments -contains "--evaluate-partial-draft-model"
 $testHybridModel = $Arguments -contains "--test-hybrid-model"
 $testRolloutCounts = $Arguments -contains "--test-rollout-counts"
+$validateRolloutConvergence = $Arguments -contains "--validate-rollout-convergence"
 $abTestDraftStrategies = $Arguments -contains "--ab-test-draft-strategies"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
@@ -38,6 +39,16 @@ foreach ($argument in $Arguments) {
 		$checkFixtureFile = $true
 		break
 	}
+}
+
+# Helper functions for argument parsing
+function Get-ArgString([string]$Prefix, [string]$DefaultValue) {
+	foreach ($a in $Arguments) {
+		if ($a -like "$Prefix*") {
+			return $a.Substring($Prefix.Length)
+		}
+	}
+	return $DefaultValue
 }
 if ($checkOnly) {
 	$timeoutSeconds = 15
@@ -98,6 +109,9 @@ elseif ($testHybridModel) {
 }
 elseif ($testRolloutCounts) {
 	$timeoutSeconds = 1800
+}
+elseif ($validateRolloutConvergence) {
+	$timeoutSeconds = 600
 }
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
@@ -244,6 +258,12 @@ elseif ($testHybridModel) {
 }
 elseif ($testRolloutCounts) {
 	$godotArgs += @("--script", "res://scripts/tools/test_rollout_counts.gd")
+}
+elseif ($validateRolloutConvergence) {
+	$godotArgs += @("--script", "res://scripts/tools/validate_rollout_convergence.gd")
+	$rolloutCountsArg = Get-ArgString "--rollout-counts=" "10,25,50,100,200,500"
+	$godotArgs += "--rollout-counts=$rolloutCountsArg"
+	$Arguments = $Arguments | Where-Object { $_ -notlike "--rollout-counts=*" }
 }
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")

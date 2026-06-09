@@ -107,6 +107,19 @@ double mean_or_zero(const std::vector<double> &values) {
 	return sum / double(values.size());
 }
 
+double calculate_variance(const std::vector<double> &values) {
+	if (values.empty()) {
+		return 0.0;
+	}
+	double mean = mean_or_zero(values);
+	double sum_sq = 0.0;
+	for (double v : values) {
+		double diff = v - mean;
+		sum_sq += diff * diff;
+	}
+	return sum_sq / double(values.size());
+}
+
 // Aggregates a champion's pairwise winrates against a set of others (allies for synergy, enemies
 // for counter/matchup) into a flat average of their (Bayesian-smoothed) values, falling back to
 // the neutral 0.5 default when nothing resolves. Shared by DraftEvaluator::evaluate (per-candidate
@@ -497,6 +510,139 @@ double DraftStatsDatabase::calculate_certified_pairwise_probability(const std::v
 		z += k_weights[i] * ((raw[i] - k_means[i]) / k_stddevs[i]);
 	}
 	return 1.0 / (1.0 + std::exp(-z));
+}
+
+double DraftStatsDatabase::calculate_partial_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
+	// Depth-specific partial draft models trained on rollout-labeled data.
+	// Uses extended feature set with variance metrics.
+	// Weights from verify_partial_draft_signal.gd on partial_draft_training_full_50.csv (50 rollouts per state).
+
+	int depth = static_cast<int>(std::min(team1.size(), team2.size()));
+
+	// Use certified model for depth 4 (near-complete drafts)
+	if (depth >= 4) {
+		return calculate_certified_pairwise_probability(team1, team2);
+	}
+
+	// Depth-specific weights (depths 1-3) - trained with 50 rollouts per state
+	// Uses winrate features (not raw win counts).
+	static constexpr double k_weights_by_depth[3][7] = {
+		// Depth 1
+		{-0.016666, 0.0, 0.0, 0.156551, 0.0, 0.0, 0.156551},
+		// Depth 2
+		{-0.048146, 0.0, 0.009256, 0.208430, 0.0, 0.000795, 0.208430},
+		// Depth 3
+		{-0.024253, 0.0, -0.012751, 0.278801, 0.009018, -0.009498, 0.278801},
+	};
+
+	static constexpr double k_means_by_depth[3][6] = {
+		// Depth 1
+		{0.5, 0.5, 0.500209, 0.0, 0.0, 0.500209},
+		// Depth 2
+		{0.5, 0.499004, 0.497677, 0.0, 0.002841, 0.497677},
+		// Depth 3
+		{0.5, 0.499598, 0.500600, 0.002010, 0.003824, 0.500600},
+	};
+
+	static constexpr double k_stddevs_by_depth[3][6] = {
+		// Depth 1
+		{1.0, 1.0, 0.077515, 1.0, 1.0, 0.077515},
+		// Depth 2
+		{1.0, 0.069751, 0.047972, 1.0, 0.003327, 0.047972},
+		// Depth 3
+		{1.0, 0.055962, 0.038710, 0.002777, 0.003106, 0.038710},
+	};
+
+	if (depth < 1 || depth > 3) {
+		return 0.5;
+	}
+
+	const double *weights = k_weights_by_depth[depth - 1];
+	const double *means = k_means_by_depth[depth - 1];
+	const double *stddevs = k_stddevs_by_depth[depth - 1];
+
+	PredictionConfig smoothing_config;
+	smoothing_config.confidence_prior_samples = 10;
+
+	auto extract_extended = [&](const std::vector<StringName> &team, const std::vector<StringName> &opponents) -> std::vector<double> {
+		std::vector<double> features(6, 0.5);
+
+		if (team.empty()) {
+			return features;
+		}
+
+		double base_sum = 0.0;
+		double synergy_sum = 0.0;
+		double counter_sum = 0.0;
+		std::vector<double> synergy_values;
+		std::vector<double> counter_values;
+		double matchup_sum = 0.0;
+
+		for (const StringName &champion : team) {
+			StatValue base_stat = base_winrate_for(champion);
+			base_sum += apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, smoothing_config);
+
+			for (const StringName &ally : team) {
+				if (ally == champion) {
+					continue;
+				}
+				StatValue stat;
+				double syn = lookup_pair(_synergy_winrates, champion, ally, stat) ? stat.winrate : 0.5;
+				synergy_sum += syn;
+				synergy_values.push_back(syn);
+			}
+
+			for (const StringName &enemy : opponents) {
+				StatValue stat;
+				double cnt = counter_winrate_for(champion, enemy, stat) ? stat.winrate : 0.5;
+				counter_sum += cnt;
+				counter_values.push_back(cnt);
+				matchup_sum += cnt;
+			}
+		}
+
+		double n_allies = static_cast<double>(team.size());
+		double n_enemies = static_cast<double>(opponents.size());
+
+		features[0] = base_sum / n_allies;
+		if (n_allies > 1) {
+			features[1] = synergy_sum / (n_allies * (n_allies - 1));
+		} else {
+			features[1] = 0.5;
+		}
+		if (n_allies > 0 && n_enemies > 0) {
+			features[2] = counter_sum / (n_allies * n_enemies);
+		} else {
+			features[2] = 0.5;
+		}
+		features[3] = calculate_variance(synergy_values);
+		features[4] = calculate_variance(counter_values);
+		if (n_allies > 0 && n_enemies > 0) {
+			features[5] = matchup_sum / (n_allies * n_enemies);
+		} else {
+			features[5] = 0.5;
+		}
+
+		return features;
+	};
+
+	std::vector<double> a = extract_extended(team1, team2);
+	std::vector<double> b = extract_extended(team2, team1);
+
+	// Features: [base_winrate, avg_synergy, avg_counter, synergy_variance, counter_variance, net_matchup]
+	const double raw[6] = {a[0], a[1], a[2], a[3], a[4], a[5]};
+
+	double z = weights[0]; // intercept
+	for (int i = 0; i < 6; ++i) {
+		z += weights[i + 1] * ((raw[i] - means[i]) / stddevs[i]);
+	}
+
+	return 1.0 / (1.0 + std::exp(-z));
+}
+
+double DraftStatsDatabase::calculate_hybrid_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
+	// Hybrid approach: partial model for depths 1-3, certified for depth 4+
+	return calculate_partial_draft_probability(team1, team2);
 }
 
 bool DraftStatsDatabase::_load_combat_stats(const String &path) {

@@ -23,6 +23,11 @@ $measureDraftCeiling = $Arguments -contains "--measure-draft-ceiling"
 $verifyPairwiseSignal = $Arguments -contains "--verify-pairwise-signal"
 $generateDraftProbeSignals = $Arguments -contains "--generate-draft-probe-signals"
 $validatePickRecommendations = $Arguments -contains "--validate-pick-recommendations"
+$generatePartialDraftTrainingData = $Arguments -contains "--generate-partial-draft-training-data"
+$verifyPartialDraftSignal = $Arguments -contains "--verify-partial-draft-signal"
+$evaluatePartialDraftModel = $Arguments -contains "--evaluate-partial-draft-model"
+$testHybridModel = $Arguments -contains "--test-hybrid-model"
+$testRolloutCounts = $Arguments -contains "--test-rollout-counts"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
 $checkProjectilePayloads = $Arguments -contains "--check-projectile-payloads"
@@ -74,6 +79,21 @@ elseif ($generateDraftProbeSignals) {
 }
 elseif ($validatePickRecommendations) {
 	$timeoutSeconds = 900
+}
+elseif ($generatePartialDraftTrainingData) {
+	$timeoutSeconds = 900
+}
+elseif ($verifyPartialDraftSignal) {
+	$timeoutSeconds = 300
+}
+elseif ($evaluatePartialDraftModel) {
+	$timeoutSeconds = 300
+}
+elseif ($testHybridModel) {
+	$timeoutSeconds = 60
+}
+elseif ($testRolloutCounts) {
+	$timeoutSeconds = 1800
 }
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
@@ -205,6 +225,21 @@ elseif ($generateDraftProbeSignals) {
 }
 elseif ($validatePickRecommendations) {
 	$godotArgs += @("--script", "res://scripts/tools/validate_pick_recommendations.gd")
+}
+elseif ($generatePartialDraftTrainingData) {
+	$godotArgs += @("--script", "res://scripts/tools/generate_partial_draft_training_data.gd")
+}
+elseif ($verifyPartialDraftSignal) {
+	$godotArgs += @("--script", "res://scripts/tools/verify_partial_draft_signal.gd")
+}
+elseif ($evaluatePartialDraftModel) {
+	$godotArgs += @("--script", "res://scripts/tools/evaluate_partial_draft_model.gd")
+}
+elseif ($testHybridModel) {
+	$godotArgs += @("--script", "res://scripts/tools/test_hybrid_model.gd")
+}
+elseif ($testRolloutCounts) {
+	$godotArgs += @("--script", "res://scripts/tools/test_rollout_counts.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

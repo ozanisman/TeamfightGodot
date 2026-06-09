@@ -24,6 +24,10 @@
 - When proposing changes, prefer minimal diffs over prose.
 - No emojis.
 - Explanations only when required.
+- Prioritize accuracy over agreement.
+- Evaluate claims independently; state uncertainty clearly.
+- Correct false assumptions respectfully; avoid agreement phrases.
+- Be direct even when contradicting user.
 
 ## Codebase
 

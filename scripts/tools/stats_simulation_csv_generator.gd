@@ -33,7 +33,8 @@ const PREDICTION_CONFIDENCE_BUCKETS: Array[Dictionary] = [
 ## defaults below, which match predict_draft_winner's own — so an empty override dict
 ## reproduces today's exact evaluation behavior). Also doubles as the whitelist for
 ## prediction_sweep_param validation.
-## scoring_mode is an enum ordinal (ScoringMode: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2) passed
+## scoring_mode is an enum ordinal (ScoringMode: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2,
+## CERTIFIED_PAIRWISE_PROBABILITY=3) passed
 ## as a float here for uniformity with the other sweepable knobs; _score_prediction_config casts
 ## it to int before forwarding to predict_draft_winner.
 const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
@@ -43,7 +44,7 @@ const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
 	"interaction_weight": 0.0,
 	"synergy_amplification": 1.2,
 	"matchup_amplification": 1.2,
-	"scoring_mode": 2.0,
+	"scoring_mode": 3.0,
 	"variance_weight": 0.0,
 	"cc_weight": 0.0,
 	"mobility_weight": 0.0,

@@ -90,6 +90,23 @@ struct RelationshipAggregate {
 	int64_t stat_samples = 0;
 };
 
+struct CertifiedPairwiseFeatures {
+	double base = 0.5;
+	double synergy = 0.5;
+	double counter = 0.5;
+};
+
+double mean_or_zero(const std::vector<double> &values) {
+	if (values.empty()) {
+		return 0.0;
+	}
+	double sum = 0.0;
+	for (double value : values) {
+		sum += value;
+	}
+	return sum / double(values.size());
+}
+
 // Aggregates a champion's pairwise winrates against a set of others (allies for synergy, enemies
 // for counter/matchup) into a flat average of their (Bayesian-smoothed) values, falling back to
 // the neutral 0.5 default when nothing resolves. Shared by DraftEvaluator::evaluate (per-candidate
@@ -375,6 +392,22 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 }
 
 void DraftStatsDatabase::calculate_win_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, const PredictionConfig &config, double &out_team1_prob, double &out_team2_prob, TeamScoreBreakdown &out_team1_breakdown, TeamScoreBreakdown &out_team2_breakdown) const {
+	if (config.scoring_mode == ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY) {
+		out_team1_prob = calculate_certified_pairwise_probability(team1, team2);
+		out_team2_prob = 1.0 - out_team1_prob;
+		out_team1_breakdown.base = 0.5;
+		out_team1_breakdown.synergy = 0.5;
+		out_team1_breakdown.matchup = 0.5;
+		out_team1_breakdown.composition = 0.5;
+		out_team1_breakdown.final = out_team1_prob;
+		out_team2_breakdown.base = 0.5;
+		out_team2_breakdown.synergy = 0.5;
+		out_team2_breakdown.matchup = 0.5;
+		out_team2_breakdown.composition = 0.5;
+		out_team2_breakdown.final = out_team2_prob;
+		return;
+	}
+
 	double score1 = calculate_team_score(team1, team2, config, out_team1_breakdown);
 	double score2 = calculate_team_score(team2, team1, config, out_team2_breakdown);
 
@@ -385,6 +418,85 @@ void DraftStatsDatabase::calculate_win_probability(const std::vector<StringName>
 
 	out_team1_prob = logistic;
 	out_team2_prob = 1.0 - logistic;
+}
+
+double DraftStatsDatabase::calculate_certified_pairwise_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
+	// Pairwise probability logistic fitted by verify_pairwise_signal.gd on
+	// draft_ceiling_holdout_5000.csv. Runtime still loads feature inputs from stats_dir.
+	static constexpr double k_weights[6] = {
+		-1.431640,
+		0.224893,
+		1.361544,
+		1.491399,
+		-0.259811,
+		-1.361542,
+	};
+	static constexpr double k_means[6] = {
+		0.499869,
+		0.499912,
+		0.499880,
+		0.500286,
+		0.500188,
+		0.500120,
+	};
+	static constexpr double k_stddevs[6] = {
+		0.020055,
+		0.012098,
+		0.010396,
+		0.020156,
+		0.012149,
+		0.010396,
+	};
+	static constexpr double k_bias = -0.035751;
+
+	PredictionConfig smoothing_config;
+	smoothing_config.confidence_prior_samples = 10;
+
+	auto extract = [&](const std::vector<StringName> &team, const std::vector<StringName> &opponents) -> CertifiedPairwiseFeatures {
+		CertifiedPairwiseFeatures features;
+		if (team.empty()) {
+			return features;
+		}
+
+		double base_sum = 0.0;
+		double synergy_sum = 0.0;
+		double counter_sum = 0.0;
+		for (const StringName &champion : team) {
+			StatValue base_stat = base_winrate_for(champion);
+			base_sum += apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, smoothing_config);
+
+			std::vector<double> synergy_values;
+			for (const StringName &ally : team) {
+				if (ally == champion) {
+					continue;
+				}
+				StatValue stat;
+				synergy_values.push_back(lookup_pair(_synergy_winrates, champion, ally, stat) ? stat.winrate : 0.5);
+			}
+			synergy_sum += apply_bayesian_smoothing(mean_or_zero(synergy_values), int64_t(synergy_values.size()), smoothing_config);
+
+			std::vector<double> counter_values;
+			for (const StringName &enemy : opponents) {
+				StatValue stat;
+				counter_values.push_back(counter_winrate_for(champion, enemy, stat) ? stat.winrate : 0.5);
+			}
+			counter_sum += apply_bayesian_smoothing(mean_or_zero(counter_values), int64_t(counter_values.size()), smoothing_config);
+		}
+
+		features.base = base_sum / double(team.size());
+		features.synergy = synergy_sum / double(team.size());
+		features.counter = counter_sum / double(team.size());
+		return features;
+	};
+
+	CertifiedPairwiseFeatures a = extract(team1, team2);
+	CertifiedPairwiseFeatures b = extract(team2, team1);
+	const double raw[6] = { a.base, a.synergy, a.counter, b.base, b.synergy, b.counter };
+	double z = k_bias;
+	for (int i = 0; i < 6; ++i) {
+		z += k_weights[i] * ((raw[i] - k_means[i]) / k_stddevs[i]);
+	}
+	return 1.0 / (1.0 + std::exp(-z));
 }
 
 bool DraftStatsDatabase::_load_combat_stats(const String &path) {

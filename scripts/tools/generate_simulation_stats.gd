@@ -17,7 +17,8 @@ extends SceneTree
 ##   --prediction-logistic-k=, --prediction-logit-sharpness=, --prediction-score-sharpness=,
 ##   --prediction-interaction-weight=, --prediction-synergy-amplification=,
 ##   --prediction-matchup-amplification=, --prediction-scoring-mode=
-## scoring_mode is the ScoringMode enum ordinal: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2 (default).
+## scoring_mode is the ScoringMode enum ordinal: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2,
+## CERTIFIED_PAIRWISE_PROBABILITY=3 (default).
 ##
 ## Sweep mode (A/B compare a single override key across several values in ONE report instead of
 ## re-running the batch per value): --prediction-sweep-param=<override key>

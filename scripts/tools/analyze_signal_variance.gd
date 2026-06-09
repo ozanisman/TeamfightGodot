@@ -28,6 +28,7 @@ const CC_KINDS: Array = [
 ]
 const MOBILITY_KINDS: Array = [&"self_dash", &"auto_dodge"]
 const SUSTAIN_KINDS: Array = [&"heal", &"heal_over_time", &"aoe_heal_over_time", &"damage_based_heal"]
+const DAMAGE_KINDS: Array = [&"damage", &"aoe_damage", &"damage_over_time", &"conditional_damage", &"consume_stacks_damage"]
 
 
 ## Main analysis function
@@ -321,7 +322,7 @@ func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Diction
 		var composition_raw: float = 0.5
 		var composition_smoothed: float = 0.5
 
-		var mech: Dictionary = mechanical_signals.get(champion, {"cc_score": 0.0, "mobility_score": 0.0, "sustain_score": 0.0})
+		var mech: Dictionary = mechanical_signals.get(champion, _neutral_mechanical_signals())
 		profiles.append({
 			"champion": champion,
 			"role": role,
@@ -339,6 +340,14 @@ func _compute_champion_profiles(combat_stats: Dictionary, synergy_stats: Diction
 			"cc_score": mech["cc_score"],
 			"mobility_score": mech["mobility_score"],
 			"sustain_score": mech["sustain_score"],
+			"estimated_dps": mech["estimated_dps"],
+			"effective_hp": mech["effective_hp"],
+			"burst_estimate": mech["burst_estimate"],
+			"sustain_per_sec": mech["sustain_per_sec"],
+			"cc_per_sec": mech["cc_per_sec"],
+			"attack_range": mech["attack_range"],
+			"max_aoe_radius": mech["max_aoe_radius"],
+			"ability_uptime": mech["ability_uptime"],
 		})
 
 	return profiles
@@ -349,26 +358,78 @@ func _load_mechanical_signals() -> Dictionary:
 	var catalog: Dictionary = ChampionCatalogScript.build_catalog()
 	var raw: Dictionary = {}
 	var max_cc: int = 0
+	var max_dps: float = 0.0
+	var max_ehp: float = 0.0
+	var max_burst: float = 0.0
+	var max_sustain: float = 0.0
+	var max_cc_per_sec: float = 0.0
+	var max_range: float = 0.0
+	var max_aoe_radius: float = 0.0
+	var max_uptime: float = 0.0
 
 	for unit_id in catalog:
 		var spec = catalog[unit_id]
 		var cc_count: int = 0
 		var has_mobility: bool = false
 		var has_sustain: bool = false
+		var damage_ratio_sum: float = 0.0
+		var sustain_ratio_sum: float = 0.0
+		var cc_duration_sum: float = 0.0
+		var max_radius: float = 0.0
 
 		if spec.ability != null:
 			cc_count += _count_cc_in_effect(spec.ability)
 			has_mobility = has_mobility or _has_mobility_in_effect(spec.ability)
 			has_sustain = has_sustain or _has_sustain_in_effect(spec.ability)
+			damage_ratio_sum += _sum_damage_ratio_in_effect(spec.ability)
+			sustain_ratio_sum += _sum_sustain_ratio_in_effect(spec.ability)
+			cc_duration_sum += _sum_cc_duration_in_effect(spec.ability)
+			max_radius = maxf(max_radius, _max_radius_in_effect(spec.ability))
 		if spec.ultimate != null:
 			cc_count += _count_cc_in_effect(spec.ultimate)
 			has_mobility = has_mobility or _has_mobility_in_effect(spec.ultimate)
 			has_sustain = has_sustain or _has_sustain_in_effect(spec.ultimate)
+			damage_ratio_sum += _sum_damage_ratio_in_effect(spec.ultimate)
+			sustain_ratio_sum += _sum_sustain_ratio_in_effect(spec.ultimate)
+			cc_duration_sum += _sum_cc_duration_in_effect(spec.ultimate)
+			max_radius = maxf(max_radius, _max_radius_in_effect(spec.ultimate))
 		if spec.stats.life_steal > 0.0:
 			has_sustain = true
 
+		var stats = spec.stats
+		var attack_dps: float = stats.attack_damage * stats.attack_speed
+		var ability_cycle: float = maxf(stats.ability_cd, stats.mana_cost / maxf(stats.mana_per_attack * stats.attack_speed, 0.001))
+		var ability_dps: float = (damage_ratio_sum * stats.attack_damage) / maxf(ability_cycle, 0.001)
+		var estimated_dps: float = attack_dps + ability_dps
+		var avg_resist: float = (stats.armor + stats.magic_resist) * 0.5
+		var effective_hp: float = stats.max_hp * (1.0 + maxf(avg_resist, 0.0) / 100.0)
+		var burst_estimate: float = stats.attack_damage * (1.0 + damage_ratio_sum)
+		var sustain_per_sec: float = (attack_dps * stats.life_steal) + ((sustain_ratio_sum * stats.max_hp) / maxf(ability_cycle, 0.001))
+		var cc_per_sec: float = cc_duration_sum / maxf(ability_cycle, 0.001)
+		var ability_uptime: float = clampf((cc_duration_sum + sustain_ratio_sum) / maxf(ability_cycle, 0.001), 0.0, 1.0)
+
 		max_cc = max(max_cc, cc_count)
-		raw[String(unit_id)] = {"cc_count": cc_count, "has_mobility": has_mobility, "has_sustain": has_sustain}
+		max_dps = maxf(max_dps, estimated_dps)
+		max_ehp = maxf(max_ehp, effective_hp)
+		max_burst = maxf(max_burst, burst_estimate)
+		max_sustain = maxf(max_sustain, sustain_per_sec)
+		max_cc_per_sec = maxf(max_cc_per_sec, cc_per_sec)
+		max_range = maxf(max_range, stats.attack_range)
+		max_aoe_radius = maxf(max_aoe_radius, max_radius)
+		max_uptime = maxf(max_uptime, ability_uptime)
+		raw[String(unit_id)] = {
+			"cc_count": cc_count,
+			"has_mobility": has_mobility,
+			"has_sustain": has_sustain,
+			"estimated_dps": estimated_dps,
+			"effective_hp": effective_hp,
+			"burst_estimate": burst_estimate,
+			"sustain_per_sec": sustain_per_sec,
+			"cc_per_sec": cc_per_sec,
+			"attack_range": stats.attack_range,
+			"max_aoe_radius": max_radius,
+			"ability_uptime": ability_uptime,
+		}
 
 	var result: Dictionary = {}
 	for id in raw:
@@ -377,8 +438,32 @@ func _load_mechanical_signals() -> Dictionary:
 			"cc_score": float(s["cc_count"]) / float(max_cc) if max_cc > 0 else 0.0,
 			"mobility_score": 1.0 if s["has_mobility"] else 0.0,
 			"sustain_score": 1.0 if s["has_sustain"] else 0.0,
+			"estimated_dps": float(s["estimated_dps"]) / max_dps if max_dps > 0.0 else 0.0,
+			"effective_hp": float(s["effective_hp"]) / max_ehp if max_ehp > 0.0 else 0.0,
+			"burst_estimate": float(s["burst_estimate"]) / max_burst if max_burst > 0.0 else 0.0,
+			"sustain_per_sec": float(s["sustain_per_sec"]) / max_sustain if max_sustain > 0.0 else 0.0,
+			"cc_per_sec": float(s["cc_per_sec"]) / max_cc_per_sec if max_cc_per_sec > 0.0 else 0.0,
+			"attack_range": float(s["attack_range"]) / max_range if max_range > 0.0 else 0.0,
+			"max_aoe_radius": float(s["max_aoe_radius"]) / max_aoe_radius if max_aoe_radius > 0.0 else 0.0,
+			"ability_uptime": float(s["ability_uptime"]) / max_uptime if max_uptime > 0.0 else 0.0,
 		}
 	return result
+
+
+func _neutral_mechanical_signals() -> Dictionary:
+	return {
+		"cc_score": 0.0,
+		"mobility_score": 0.0,
+		"sustain_score": 0.0,
+		"estimated_dps": 0.0,
+		"effective_hp": 0.0,
+		"burst_estimate": 0.0,
+		"sustain_per_sec": 0.0,
+		"cc_per_sec": 0.0,
+		"attack_range": 0.0,
+		"max_aoe_radius": 0.0,
+		"ability_uptime": 0.0,
+	}
 
 
 ## Count CC effects recursively in an effect tree
@@ -422,6 +507,58 @@ func _has_sustain_in_effect(effect) -> bool:
 	if splash != null:
 		return _has_sustain_in_effect(splash)
 	return false
+
+
+func _sum_damage_ratio_in_effect(effect) -> float:
+	if effect == null:
+		return 0.0
+	var sum: float = 0.0
+	if effect.kind in DAMAGE_KINDS:
+		sum += float(effect.params.get("damage_ratio", effect.params.get("base_damage_ratio", 0.0)))
+	for sub in effect.params.get("effects", []):
+		sum += _sum_damage_ratio_in_effect(sub)
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		sum += _sum_damage_ratio_in_effect(splash)
+	return sum
+
+
+func _sum_sustain_ratio_in_effect(effect) -> float:
+	if effect == null:
+		return 0.0
+	var sum: float = 0.0
+	if effect.kind in SUSTAIN_KINDS:
+		sum += float(effect.params.get("max_hp_ratio", effect.params.get("missing_hp_ratio", 0.0)))
+	for sub in effect.params.get("effects", []):
+		sum += _sum_sustain_ratio_in_effect(sub)
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		sum += _sum_sustain_ratio_in_effect(splash)
+	return sum
+
+
+func _sum_cc_duration_in_effect(effect) -> float:
+	if effect == null:
+		return 0.0
+	var sum: float = float(effect.params.get("duration", effect.params.get("stun_duration", 0.0))) if effect.kind in CC_KINDS else 0.0
+	for sub in effect.params.get("effects", []):
+		sum += _sum_cc_duration_in_effect(sub)
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		sum += _sum_cc_duration_in_effect(splash)
+	return sum
+
+
+func _max_radius_in_effect(effect) -> float:
+	if effect == null:
+		return 0.0
+	var max_radius: float = float(effect.params.get("radius", 0.0))
+	for sub in effect.params.get("effects", []):
+		max_radius = maxf(max_radius, _max_radius_in_effect(sub))
+	var splash = effect.params.get("splash", null)
+	if splash != null:
+		max_radius = maxf(max_radius, _max_radius_in_effect(splash))
+	return max_radius
 
 
 ## Compute global statistics
@@ -661,11 +798,11 @@ func _build_terminal_report(global_stats: Dictionary, correlations: Dictionary, 
 ## Write CSV output
 func _write_csv(profiles: Array, output_path: String) -> void:
 	var lines: Array = []
-	lines.append("champion,role,samples,base_raw,base_smoothed,avg_synergy_raw,avg_synergy_smoothed,synergy_variance,avg_counter_raw,avg_counter_smoothed,counter_variance,composition_raw,composition_smoothed,cc_score,mobility_score,sustain_score,is_flat_profile")
+	lines.append("champion,role,samples,base_raw,base_smoothed,avg_synergy_raw,avg_synergy_smoothed,synergy_variance,avg_counter_raw,avg_counter_smoothed,counter_variance,composition_raw,composition_smoothed,cc_score,mobility_score,sustain_score,estimated_dps,effective_hp,burst_estimate,sustain_per_sec,cc_per_sec,attack_range,max_aoe_radius,ability_uptime,is_flat_profile")
 
 	for profile in profiles:
 		var is_flat: int = 1 if profile.get("is_flat_profile", false) else 0
-		lines.append("%s,%s,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d" % [
+		lines.append("%s,%s,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d" % [
 			profile["champion"],
 			profile["role"],
 			profile["samples"],
@@ -682,6 +819,14 @@ func _write_csv(profiles: Array, output_path: String) -> void:
 			profile.get("cc_score", 0.0),
 			profile.get("mobility_score", 0.0),
 			profile.get("sustain_score", 0.0),
+			profile.get("estimated_dps", 0.0),
+			profile.get("effective_hp", 0.0),
+			profile.get("burst_estimate", 0.0),
+			profile.get("sustain_per_sec", 0.0),
+			profile.get("cc_per_sec", 0.0),
+			profile.get("attack_range", 0.0),
+			profile.get("max_aoe_radius", 0.0),
+			profile.get("ability_uptime", 0.0),
 			is_flat
 		])
 
@@ -700,15 +845,23 @@ func _write_csv(profiles: Array, output_path: String) -> void:
 ## Write mechanical signals CSV (for C++ loading)
 func _write_mechanical_csv(mechanical_signals: Dictionary, output_path: String) -> void:
 	var lines: Array = []
-	lines.append("champion,cc_score,mobility_score,sustain_score")
+	lines.append("champion,cc_score,mobility_score,sustain_score,estimated_dps,effective_hp,burst_estimate,sustain_per_sec,cc_per_sec,attack_range,max_aoe_radius,ability_uptime")
 
 	for champion in mechanical_signals:
 		var sigs: Dictionary = mechanical_signals[champion]
-		lines.append("%s,%.4f,%.4f,%.4f" % [
+		lines.append("%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f" % [
 			champion,
 			sigs["cc_score"],
 			sigs["mobility_score"],
-			sigs["sustain_score"]
+			sigs["sustain_score"],
+			sigs["estimated_dps"],
+			sigs["effective_hp"],
+			sigs["burst_estimate"],
+			sigs["sustain_per_sec"],
+			sigs["cc_per_sec"],
+			sigs["attack_range"],
+			sigs["max_aoe_radius"],
+			sigs["ability_uptime"],
 		])
 
 	var content: String = "\n".join(lines) + "\n"

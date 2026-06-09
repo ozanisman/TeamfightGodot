@@ -366,7 +366,7 @@ All four structural fixes were implemented and evaluated with 10,000 matches eac
 3. **Random draft context** - simulations use random draft order, not strategic counter-picking
 4. **Missing strategic context** - no archetype modeling, no composition archetypes
 
-The draft recommender's accuracy ceiling (~63.5%) appears to be a fundamental limit given the current data structure and champion balance. Further improvements require:
+**Superseded:** later ceiling/verifier work showed that ~63.5% was the old scorer plateau, not the fundamental ceiling. See "Theoretical Ceiling Experiment" and "Pairwise Feature Verification (Corrected)" below. Further improvements at that point were expected to require:
 
 - **More data**: Increase sample count per pairwise matchup (need 10× more matches)
 - **Strategic context**: Implement real sequential drafting with counter-pick decisions
@@ -393,6 +393,164 @@ The implemented aggregation modes (sample-weighted, decorrelated, draft-aware) a
 1. **Improve champion balance** — 77% flat-profile champions indicates homogeneous kit design. Real variance in base winrate is a prerequisite for meaningful synergy/counter signal.
 
 2. ~~Wire mechanical signals into C++ recommender~~ — **COMPLETED**. Mechanical signals (cc, mobility, sustain) were integrated into C++ scoring and evaluated. No meaningful improvement found; all weights remain at 0.0 (disabled).
+
+## Theoretical Ceiling Experiment
+
+Tests whether 63.5% is the Bayes-optimal limit for the single-match prediction metric. The accuracy
+metric (`stats_simulation_csv_generator.gd::_score_prediction_config`) predicts the winner of ONE
+match = one comp + one seed = a single Bernoulli draw of that comp's true win-probability `p` over
+seeds. A perfect predictor knows `p` and picks the favored side, but the outcome is still random, so
+the ceiling = `E[max(p, 1-p)]` over the comp distribution.
+
+**Tool:** `scripts/tools/measure_draft_ceiling.gd`, run via `run_godot.ps1 --measure-draft-ceiling`.
+It samples comps with the SAME uniform-random distinct-5v5 shuffle as
+`simulation_batch_worker.gd::_build_batch_input_for_seed`, then DECOUPLES comp from sim RNG (holds
+the comp fixed, varies only the sim seed). Reports a split-half ceiling (unbiased: favored side from
+the first half of seeds, scored on the second half), a raw-max cross-check, the `|p-0.5|` imbalance
+distribution, and a player-side bias check. Per-comp CSV → `res://stats_output/draft_ceiling.csv`.
+
+`--mirror` runs each comp on BOTH sides (same seeds, sides swapped) and averages the comp's winrate
+across orientations, cancelling any engine player-side bias so the ceiling is comp-signal only.
+
+```powershell
+.\run_godot.ps1 --measure-draft-ceiling -- --num-comps=200 --seeds-per-comp=200 --mirror --ceiling-output=res://stats_output/draft_ceiling.csv
+```
+
+**Result (side-debiased, mirror mode, 100 comps x 100 seeds = 20k matches):**
+
+| Metric | Value |
+|--------|-------|
+| Split-half ceiling (side-debiased) | **75.4%** (95% CI +/- 0.8%, n=10000 held-out matches) |
+| Raw-max ceiling | 75.3% |
+| Noise-bias gap (raw-max - split-half) | -0.1 pp |
+| vs 63.5% baseline | **+11.9 pp** |
+| Comps within +/-0.05 of 50/50 | 11.0% |
+| Player-side win rate (engine side bias) | **49.5%** (i.e. ~zero) |
+
+(Non-mirror 30x500 probe agreed: 75.6% +/- 1.0%. Throughput ~64 matches/sec single-threaded.)
+
+**Conclusion (overturns prior "fundamental limit" claim):** 63.5% is NOT the ceiling. There is
+~12 pp of recoverable signal between the current recommender and the Bayes-optimal comp-lookup
+predictor. The earlier "63.5% is a fundamental limit" conclusion (above) was wrong — it conflated
+the *current model's* plateau with the *information-theoretic* ceiling. Comps are meaningfully
+imbalanced (60% have `|p-0.5| > 0.20`), so composition genuinely predicts outcome; the recommender
+is failing to extract it.
+
+## Pairwise Feature Verification (Corrected)
+
+**Purpose:** Test whether pairwise interaction data (base/synergy/counter winrates) contains sufficient
+signal to reach the 75.4% Bayes ceiling. Uses per-comp true winrates from the ceiling experiment as
+labeled data to train and evaluate models.
+
+**Tool:** `scripts/tools/verify_pairwise_signal.gd`, run via `run_godot.ps1 --verify-pairwise-signal`.
+
+**Method:**
+- Load `draft_ceiling.csv` (200 comps x 100 seeds, mirror mode)
+- Extract current pairwise features for each comp:
+  - `base_smoothed` per champion (from combat_stats.csv)
+  - `avg_synergy_smoothed` per champion (flat average vs allies)
+  - `avg_counter_smoothed` per champion (flat average vs enemies)
+  - Aggregate to team-level features (6 features total: team_a base/synergy/counter, team_b base/synergy/counter)
+- Deterministically shuffle before the train/test split
+- Standardize features from train mean/std
+- Train logistic regression in both label mode (`true_p > 0.5`) and probability mode (`true_p`)
+- Report current heuristic, logistic train/test/all, prediction range, and overfit sanity
+
+**Old result invalidated:** The earlier 37.5% logistic test accuracy was a verifier artifact. The model collapsed to a near-constant prediction because raw probability-scale features were not standardized and the split was a file-order slice.
+
+**Corrected results (200 comps, mirror mode, latest stats regen):**
+
+| Metric | Value |
+|--------|-------|
+| Correlation (current vs true p) | 0.5578 |
+| Current pairwise heuristic | 69.0% all / 67.5% test |
+| Pairwise logistic label mode | 77.5% all / **80.0% test** |
+| Pairwise logistic probability mode | 77.5% all / **80.0% test** |
+| Pairwise overfit sanity | 78.0% all |
+
+**Conclusion:** Pairwise features contain meaningful predictive signal. The current recommender is leaving signal on the table, but the feature space should not be discarded based on the old 37.5% result.
+
+**Implication:** Future work should preserve the pairwise baseline and compare any new features against pairwise logistic / current heuristic on the same split. New feature families must prove incremental value, not merely beat the old 63.5% batch number.
+
+## Feature Space Limitations Analysis
+
+**Current Feature Space:**
+1. **Historical pairwise winrates** (base/synergy/counter) - useful after corrected validation (80.0% test for pairwise logistic on current split)
+2. **Mechanical signals** (CC/mobility/sustain + compact power/range/economy metrics) - weak alone and overfit when combined in this validation set
+3. **Role fingerprints** - used for composition, limited granularity
+
+**Catalog Data Now Extracted:**
+- **Compact power/range/economy:** estimated DPS, effective HP, burst estimate, sustain/sec, CC/sec, attack range, max AOE radius, ability uptime
+
+**Catalog Data Available (Not Fully Modeled):**
+- **Effect kinds:** 50+ effect types (damage, CC, mobility, sustain, defense, utility, advanced triggers)
+- **Champion stats:** max_hp, attack_damage, attack_range, attack_speed, move_speed, armor, magic_resist, tenacity, life_steal, mana_cost, ability_cd, projectile_speed, projectile_radius
+- **Advanced mechanics:** hp_threshold_damage_multiplier, distance_threshold_multiplier, target_status_multiplier, every_n_attacks_stun, stealth, summon_ally, redirect_damage, reflect_damage
+- **Effect parameters:** radius, duration, damage_ratio, cooldown, mana cost, conditionals (requires_result_from, requires_field)
+
+**Missing Feature Categories:**
+1. **Statistical power metrics** - DPS, effective HP, burst damage, sustain rate
+2. **Range/positioning profile** - attack range distribution, engagement range, AOE coverage
+3. **Cooldown/mana economy** - ability uptime, mana sustainability, resource efficiency
+4. **Conditional triggers** - threshold-based effects, combo chains, reaction windows
+5. **Team-level synergies** - AOE overlap, CC chain potential, burst coordination
+6. **Counter-specific interactions** - projectile vs dodge, sustain vs burst, stealth vs reveal
+7. **Win condition archetypes** - poke comp, dive comp, protect-the-carry, control comp
+
+## Revised Next Steps (Priority Order)
+
+**1. Keep corrected verifier as the acceptance gate**
+- Compare current heuristic, pairwise logistic, mechanical-only, and pairwise+mechanical on the same shuffled split
+- Use pairwise logistic as the feature-space baseline for experiments
+- Complete-draft `predict_draft_winner` now uses the 5000-comp holdout-certified pairwise probability logistic model by default (`ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY`)
+- Certified mode has baked logistic constants, but reads base/synergy/counter feature inputs from the active stats directory; keep `combat_stats.csv`, `matchup_with.csv`, and `matchup_vs.csv` fresh after balance/catalog/simulation changes
+
+**2. Archived/unused: expanded mechanical features**
+- Latest label-model gate: pairwise 80.0% test vs combined 67.5% test
+- Latest probability-model gate: pairwise 80.0% test vs combined 70.0% test
+- Mechanical-only label model: 60.0% test
+- Combined model overfits train and hurts test accuracy
+
+**3. Archived/unused: composition archetype features**
+- Validation-only archetypes are fitted inside `scripts/tools/verify_pairwise_signal.gd`
+- Method: deterministic k-means over train-split team profiles, train-only smoothed archetype matchup table, then held-out verifier evaluation
+- Gate failed: pairwise label 80.0% test vs pairwise+archetype label 75.0% test
+- Archetype-only reached 65.0% test; useful structure exists but does not beat pairwise baseline
+
+**4. Archived/unused: simulation-derived probe features**
+- Tool: `scripts/tools/generate_draft_probe_signals.gd`
+- Smoke: 4 templates x 20 seeds x mirror wrote one row per champion and verifier probe sets ran without prediction collapse
+- Full: 12 templates x 100 seeds x mirror wrote `res://stats_output/draft_probe_signals.csv`
+- Full gate failed: pairwise label 80.0% test vs pairwise+probe label 60.0% test; pairwise+probe probability 72.5% test with worse MSE than pairwise probability
+- 5000-comp non-mirror holdout: pairwise label 75.4% test; pairwise+probe label 76.8% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe probability 76.6% test / MSE 0.0479
+- Result: probe features contain mild incremental signal at larger scale, but the label gain is +1.4 pp, below the +2 pp wiring gate; keep tooling, do not feed recommender yet
+
+**5. Next practical direction: improve validation scale before adding more feature families**
+- Current 200-comp ceiling set is too small for high-dimensional probe/archetype validation; train overfit is visible in every added feature family
+- Verifier supports optional repeated split reporting via `--split-repeats=N`; default is 0 because repeat training exceeds the normal runner timeout
+- A 3-repeat check showed pairwise remains strongest on average: pairwise probability 81.7% mean test accuracy vs pairwise+archetype 75.0%, pairwise+probe 75.8%, combined_all 73.3%
+- Larger label check: `draft_ceiling_large.csv` (300 comps x 100 seeds x mirror, 60k decisive matches) measured split-half ceiling 75.8% +/- 0.5%; side bias 49.6%
+- Large verifier result: pairwise label 76.7% test, pairwise+archetype label 76.7% test, pairwise+probe label 65.0% test, combined_all label 70.0% test
+- Large verifier probability result: pairwise 75.0% test (MSE 0.0426), pairwise+archetype 75.0% (MSE 0.0446), pairwise+probe 73.3% (MSE 0.0510), combined_all 71.7% (MSE 0.0534)
+- 5000-comp non-mirror holdout result: current heuristic 68.6% test / 67.7% all; pairwise label 75.4% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe label 76.8% test; pairwise+probe probability 76.6% test / MSE 0.0479
+- Conclusion: larger labels reduce the apparent single-split pairwise overperformance. Probe features improve slightly on the 5000-comp holdout, but not enough to justify native recommender wiring yet.
+- Runtime status: pairwise probability logistic is certified as the modern default for complete-draft winner prediction. Incomplete-draft probabilities are UI extrapolations, and partial-draft pick recommendations remain on the existing recommender scorer.
+- Verifier-only combined sets (`combined`, `combined_all`, `mechanical_probe`, `pairwise_archetype`, `pairwise_probe`) are archived experiment surfaces, not runtime defaults.
+
+**6. Draft-state context (lower priority)**
+- Model sequential decision-making (counter-pick timing, synergy building)
+- Requires draft simulation framework, not static comp evaluation
+- Significant engineering effort, defer until feature space validated
+
+**7. Learned embeddings (exploratory)**
+- Train embeddings from simulation trajectories (state → action → outcome)
+- Requires trajectory collection and ML infrastructure
+- Long-term research direction, not immediate fix
+
+**Side-bias myth busted:** the apparent 54.1% player-side win rate in the small non-mirror probe was
+comp-sampling noise (only 30 comps), NOT a first-side/positioning advantage. Mirror mode shows the
+true engine side bias is 49.5% (~zero). Spawn geometry is already a perfect mirror
+(`SimConstants.spawn_position`). No snake-draft / pick-order fix is warranted.
 
 ## Parameters
 - `SMOOTHING_K`: 10.0 in GDScript analysis tool (was 100)

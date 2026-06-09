@@ -19,6 +19,9 @@ $checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
 $checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
 $checkStatsCsvDeterminism = $Arguments -contains "--check-stats-csv-determinism"
 $generateStats = $Arguments -contains "--generate-stats"
+$measureDraftCeiling = $Arguments -contains "--measure-draft-ceiling"
+$verifyPairwiseSignal = $Arguments -contains "--verify-pairwise-signal"
+$generateDraftProbeSignals = $Arguments -contains "--generate-draft-probe-signals"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
 $checkProjectilePayloads = $Arguments -contains "--check-projectile-payloads"
@@ -58,6 +61,15 @@ elseif ($checkBenchmarkSharded) {
 }
 elseif ($checkStatsCsvDeterminism) {
 	$timeoutSeconds = 240
+}
+elseif ($measureDraftCeiling) {
+	$timeoutSeconds = 900
+}
+elseif ($verifyPairwiseSignal) {
+	$timeoutSeconds = 300
+}
+elseif ($generateDraftProbeSignals) {
+	$timeoutSeconds = 900
 }
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
@@ -177,6 +189,15 @@ elseif ($checkStatsCsvDeterminism) {
 }
 elseif ($generateStats) {
 	$godotArgs += @("--script", "res://scripts/tools/generate_simulation_stats.gd")
+}
+elseif ($measureDraftCeiling) {
+	$godotArgs += @("--script", "res://scripts/tools/measure_draft_ceiling.gd")
+}
+elseif ($verifyPairwiseSignal) {
+	$godotArgs += @("--script", "res://scripts/tools/verify_pairwise_signal.gd")
+}
+elseif ($generateDraftProbeSignals) {
+	$godotArgs += @("--script", "res://scripts/tools/generate_draft_probe_signals.gd")
 }
 elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")

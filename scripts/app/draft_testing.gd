@@ -394,7 +394,11 @@ func _create_ui_structure() -> void:
 
 	_recommendation_list = VBoxContainer.new()
 	_recommendation_list.name = "RecommendationList"
-	_recommendation_list.position = Vector2(20.0, 60.0)
+	_recommendation_list.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_recommendation_list.offset_left = 20.0
+	_recommendation_list.offset_top = 60.0
+	_recommendation_list.offset_right = -20.0
+	_recommendation_list.offset_bottom = -20.0
 	_recommendation_list.add_theme_constant_override("separation", 8)
 	_recommendation_panel.add_child(_recommendation_list)
 

@@ -16,19 +16,13 @@
 - Prioritize accuracy over agreement.
 - Be direct and candid even when contradicting user.
 
-## Codebase
+## Wiki
 
 - Code is the source of truth if it conflicts with wiki.
 - Consult the wiki when relevant context is needed.
   - `wiki/README.md`
   - `wiki/notes/native_agent_guide.md`
   - `wiki/notes/simulation_module_map.md`
-
-## Wiki
-
-- notes → observations
-- concepts → definitions
-- projects → organization
 
 ## Done
 

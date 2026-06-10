@@ -9,9 +9,9 @@ const SimulationViewerArenaScript := preload("res://scripts/app/simulation_viewe
 const AoeRingNodeScript := preload("res://scripts/app/aoe_ring_node.gd")
 const RosterChampionCardScript := preload("res://scripts/app/roster_champion_card.gd")
 const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
-const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
 const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const DraftChampionTileScene := preload("res://scenes/components/draft_champion_tile.tscn")
+const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
 
 # Colors from Python pygame_viewer.py
 const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
@@ -32,8 +32,6 @@ const COLOR_BUTTON_TEXT := Color(0.941, 0.941, 0.941, 1.0)
 const COLOR_WARNING := Color(0.922, 0.667, 0.392, 1.0)
 const COLOR_SUCCESS := Color(0.196, 0.902, 0.196, 1.0)
 const COLOR_HIGHLIGHT := Color(0.471, 0.863, 0.549, 1.0)
-const COLOR_SECTION_BG := Color(0.133, 0.133, 0.18, 1.0)
-const COLOR_SECTION_BORDER := Color(0.275, 0.275, 0.353, 1.0)
 ## World units map to this fraction of min(viewport) for a consistent projectile read.
 const VIEWER_BASE_MIN_AXIS: float = 720.0
 ## Screen-space radius for projectiles (scales slightly with window).
@@ -142,6 +140,7 @@ var _p2_roster_labels: VBoxContainer
 var _overtime_border: Panel
 var _draft_action_box: VBoxContainer
 var _champion_scroll: ScrollContainer
+var _draft_shell: Control
 
 
 func _ready() -> void:
@@ -242,182 +241,11 @@ func _create_ui_structure() -> void:
 	_ui_layer.size = get_viewport_rect().size
 	_init_champion_catalog_tooltip()
 
-	# Create DraftPanel (full screen for drafting)
-	_header_panel = Panel.new()
-	_header_panel.name = "DraftPanel"
-	DraftLayoutScript.apply_full_rect(_header_panel)
-	_header_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui_layer.add_child(_header_panel)
-	
-	# Add back to menu button to draft panel
-	var menu_button := Button.new()
-	menu_button.text = "Back to Menu"
-	DraftLayoutScript.apply_back_button_layout(menu_button)
-	menu_button.pressed.connect(_on_back_to_menu)
-	_style_button(menu_button)
-	_header_panel.add_child(menu_button)
+	_create_draft_shell(screen_size)
 
 	# Connect to window resize signal
 	get_tree().root.connect("size_changed", _on_window_resized)
 	_update_battle_layer_layout()
-
-	# Create TitleLabel (centered at top)
-	_title_label = Label.new()
-	_title_label.name = "TitleLabel"
-	_title_label.text = "MANUAL TEAM SELECTION"
-	DraftLayoutScript.apply_title_layout(_title_label)
-	_header_panel.add_child(_title_label)
-
-	# Create TurnLabel (centered below title)
-	_turn_label = Label.new()
-	_turn_label.name = "TurnLabel"
-	_turn_label.text = "TURN: P1_PICK"
-	DraftLayoutScript.apply_turn_layout(_turn_label)
-	_header_panel.add_child(_turn_label)
-
-	# Create DebugLabel (top-right)
-	var debug_label := Label.new()
-	debug_label.name = "DebugLabel"
-	
-	# Show debug status with stack debugging info
-	if _debug_mode:
-		debug_label.text = "DEBUG: ON | STACK: ON"
-	else:
-		debug_label.text = "DEBUG MODE: OFF"
-	
-	DraftLayoutScript.apply_debug_label_layout(debug_label)
-	debug_label.visible = true
-	debug_label.add_theme_color_override("font_color", COLOR_WARNING)
-	_header_panel.add_child(debug_label)
-
-	# Create PlayerTeamPanel (background for player team section)
-	_player_team_panel = Panel.new()
-	_player_team_panel.name = "PlayerTeamPanel"
-	DraftLayoutScript.apply_section_panel_layout(_player_team_panel, &"left", 0)
-	_player_team_panel.add_theme_stylebox_override("panel", UiStylesScript.panel(COLOR_SECTION_BG, COLOR_SECTION_BORDER))
-	_header_panel.add_child(_player_team_panel)
-
-	# Create PlayerTeamLabel (top-left)
-	_player_team_label = Label.new()
-	_player_team_label.name = "PlayerTeamLabel"
-	_player_team_label.text = "PLAYER 1"
-	DraftLayoutScript.apply_section_header_layout(_player_team_label)
-	_player_team_label.add_theme_font_size_override("font_size", 16)
-	_player_team_panel.add_child(_player_team_label)
-
-	# Create PlayerTeamList (below player team label)
-	_player_team_list = VBoxContainer.new()
-	_player_team_list.name = "PlayerTeamList"
-	DraftLayoutScript.apply_section_list_layout(_player_team_list)
-	_player_team_panel.add_child(_player_team_list)
-
-	# Create PlayerBansPanel (background for player bans section)
-	_player_bans_panel = Panel.new()
-	_player_bans_panel.name = "PlayerBansPanel"
-	DraftLayoutScript.apply_section_panel_layout(_player_bans_panel, &"left", 1)
-	_player_bans_panel.add_theme_stylebox_override("panel", UiStylesScript.panel(COLOR_SECTION_BG, COLOR_SECTION_BORDER))
-	_header_panel.add_child(_player_bans_panel)
-
-	# Create PlayerBansLabel (next to player team)
-	_player_bans_label = Label.new()
-	_player_bans_label.name = "PlayerBansLabel"
-	_player_bans_label.text = "BANS"
-	DraftLayoutScript.apply_section_header_layout(_player_bans_label)
-	_player_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-	_player_bans_label.add_theme_font_size_override("font_size", 16)
-	_player_bans_panel.add_child(_player_bans_label)
-
-	# Create PlayerBansList (below player bans label)
-	_player_bans_list = VBoxContainer.new()
-	_player_bans_list.name = "PlayerBansList"
-	DraftLayoutScript.apply_section_list_layout(_player_bans_list)
-	_player_bans_panel.add_child(_player_bans_list)
-
-	# Create EnemyTeamPanel (background for enemy team section)
-	_enemy_team_panel = Panel.new()
-	_enemy_team_panel.name = "EnemyTeamPanel"
-	DraftLayoutScript.apply_section_panel_layout(_enemy_team_panel, &"right", 0)
-	_enemy_team_panel.add_theme_stylebox_override("panel", UiStylesScript.panel(COLOR_SECTION_BG, COLOR_SECTION_BORDER))
-	_header_panel.add_child(_enemy_team_panel)
-
-	# Create EnemyTeamLabel (top-right)
-	_enemy_team_label = Label.new()
-	_enemy_team_label.name = "EnemyTeamLabel"
-	_enemy_team_label.text = "PLAYER 2"
-	DraftLayoutScript.apply_section_header_layout(_enemy_team_label)
-	_enemy_team_label.add_theme_font_size_override("font_size", 16)
-	_enemy_team_panel.add_child(_enemy_team_label)
-
-	# Create EnemyTeamList (below enemy team label)
-	_enemy_team_list = VBoxContainer.new()
-	_enemy_team_list.name = "EnemyTeamList"
-	DraftLayoutScript.apply_section_list_layout(_enemy_team_list)
-	_enemy_team_panel.add_child(_enemy_team_list)
-
-	# Create EnemyBansPanel (background for enemy bans section)
-	_enemy_bans_panel = Panel.new()
-	_enemy_bans_panel.name = "EnemyBansPanel"
-	DraftLayoutScript.apply_section_panel_layout(_enemy_bans_panel, &"right", 1)
-	_enemy_bans_panel.add_theme_stylebox_override("panel", UiStylesScript.panel(COLOR_SECTION_BG, COLOR_SECTION_BORDER))
-	_header_panel.add_child(_enemy_bans_panel)
-
-	# Create EnemyBansLabel (next to enemy team)
-	_enemy_bans_label = Label.new()
-	_enemy_bans_label.name = "EnemyBansLabel"
-	_enemy_bans_label.text = "BANS"
-	DraftLayoutScript.apply_section_header_layout(_enemy_bans_label)
-	_enemy_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-	_enemy_bans_label.add_theme_font_size_override("font_size", 16)
-	_enemy_bans_panel.add_child(_enemy_bans_label)
-
-	# Create EnemyBansList (below enemy bans label)
-	_enemy_bans_list = VBoxContainer.new()
-	_enemy_bans_list.name = "EnemyBansList"
-	DraftLayoutScript.apply_section_list_layout(_enemy_bans_list)
-	_enemy_bans_panel.add_child(_enemy_bans_list)
-
-	# Role filter buttons will be created in _setup_draft_ui
-	_role_filter_container = HBoxContainer.new()
-	_role_filter_container.name = "RoleFilterContainer"
-	DraftLayoutScript.apply_role_filter_layout(_role_filter_container)
-	_role_filter_container.visible = false
-	_header_panel.add_child(_role_filter_container)
-
-	_draft_action_box = VBoxContainer.new()
-	_draft_action_box.name = "DraftActionBox"
-	DraftLayoutScript.apply_action_box_layout(_draft_action_box, screen_size)
-	_header_panel.add_child(_draft_action_box)
-
-	# RandomDraftButton (centered)
-	_random_draft_button = Button.new()
-	_random_draft_button.name = "RandomDraftButton"
-	_random_draft_button.text = "RANDOM DRAFT"
-	_random_draft_button.custom_minimum_size = Vector2(UiTokensScript.DRAFT_ACTION_W_PX, UiTokensScript.DRAFT_ACTION_H_PX)
-	_draft_action_box.add_child(_random_draft_button)
-
-	# StartMatchButton (centered)
-	_start_match_button = Button.new()
-	_start_match_button.name = "StartMatchButton"
-	_start_match_button.text = "START MATCH"
-	_start_match_button.custom_minimum_size = Vector2(UiTokensScript.DRAFT_ACTION_W_PX, UiTokensScript.DRAFT_ACTION_H_PX)
-	_draft_action_box.add_child(_start_match_button)
-
-	_champion_scroll = ScrollContainer.new()
-	_champion_scroll.name = "ChampionScroll"
-	DraftLayoutScript.apply_champion_scroll_layout(_champion_scroll, screen_size)
-	_champion_scroll.visible = false
-	_header_panel.add_child(_champion_scroll)
-
-	# ChampionGrid (will be populated manually)
-	_champion_grid = GridContainer.new()
-	_champion_grid.name = "ChampionGrid"
-	_champion_grid.add_theme_constant_override("h_separation", UiTokensScript.DRAFT_CHAMPION_GAP_PX)
-	_champion_grid.add_theme_constant_override("v_separation", UiTokensScript.DRAFT_CHAMPION_GAP_PX)
-	_champion_grid.visible = true
-	_champion_scroll.add_child(_champion_grid)
-
-	# Store champion grid reference for manual positioning
-	_champion_grid_ref = _champion_grid
 
 	# Combat HUD elements (hidden initially)
 	_control_panel = Panel.new()
@@ -444,6 +272,43 @@ func _create_ui_structure() -> void:
 	_build_preparation_controls()
 	if _battle_letterbox != null and is_instance_valid(_battle_letterbox) and is_instance_valid(self):
 		move_child(_battle_letterbox, 0)
+
+
+func _create_draft_shell(screen_size: Vector2) -> void:
+	_draft_shell = DraftScreenShellScene.instantiate() as Control
+	if _draft_shell == null:
+		push_error("DraftScreenShell instantiate failed")
+		return
+	_ui_layer.add_child(_draft_shell)
+	_draft_shell.apply_layout(screen_size)
+	_draft_shell.back_pressed.connect(_on_back_to_menu)
+	_draft_shell.auto_fill_pressed.connect(_on_random_draft_clicked)
+	_draft_shell.start_battle_pressed.connect(_on_start_match_clicked)
+
+	_header_panel = _draft_shell.draft_panel
+	_title_label = _draft_shell.title_label
+	_turn_label = _draft_shell.turn_label
+	if _draft_shell.debug_label != null:
+		_draft_shell.debug_label.text = "DEBUG: ON | STACK: ON" if _debug_mode else "DEBUG MODE: OFF"
+	_player_team_panel = _draft_shell.player_team_panel
+	_player_team_label = _draft_shell.player_team_label
+	_player_team_list = _draft_shell.player_team_list
+	_player_bans_panel = _draft_shell.player_bans_panel
+	_player_bans_label = _draft_shell.player_bans_label
+	_player_bans_list = _draft_shell.player_bans_list
+	_enemy_team_panel = _draft_shell.enemy_team_panel
+	_enemy_team_label = _draft_shell.enemy_team_label
+	_enemy_team_list = _draft_shell.enemy_team_list
+	_enemy_bans_panel = _draft_shell.enemy_bans_panel
+	_enemy_bans_label = _draft_shell.enemy_bans_label
+	_enemy_bans_list = _draft_shell.enemy_bans_list
+	_role_filter_container = _draft_shell.get_role_filter_container()
+	_draft_action_box = _draft_shell.draft_action_box
+	_random_draft_button = _draft_shell.auto_fill_button
+	_start_match_button = _draft_shell.start_battle_button
+	_champion_scroll = _draft_shell.champion_scroll
+	_champion_grid = _draft_shell.get_champion_grid()
+	_champion_grid_ref = _champion_grid
 
 
 ## Viewer Control space (same as get_viewport); centered square, letterbox outside.
@@ -682,10 +547,8 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 
 
 func _update_draft_layout(screen_size: Vector2) -> void:
-	if _draft_action_box != null:
-		DraftLayoutScript.apply_action_box_layout(_draft_action_box, screen_size)
-	if _champion_scroll != null:
-		DraftLayoutScript.apply_champion_scroll_layout(_champion_scroll, screen_size)
+	if _draft_shell != null:
+		_draft_shell.apply_layout(screen_size)
 	if _champion_grid != null:
 		_champion_grid.columns = DraftLayoutScript.calculate_grid_columns(screen_size.x, UiTokensScript.DRAFT_CHAMPION_TILE_PX)
 
@@ -1712,12 +1575,6 @@ func _setup_draft_ui() -> void:
 		# Don't add to active filters initially - all roles should be visible (see all)
 		_update_role_filter_button_style(filter_button, role, false)
 
-	# Connect action buttons
-	if _random_draft_button != null:
-		_random_draft_button.pressed.connect(_on_random_draft_clicked)
-	if _start_match_button != null:
-		_start_match_button.pressed.connect(_on_start_match_clicked)
-
 	# Populate champion grid with proportional sizing
 	_populate_champion_grid()
 	if _role_filter_container != null:
@@ -2265,18 +2122,10 @@ func _on_back_to_menu() -> void:
 
 
 func _show_world_and_hud_for_battle() -> void:
-	var screen_size := get_viewport_rect().size
 	_update_battle_layer_layout()
-	if _header_panel != null:
-		_header_panel.visible = false
-	if _role_filter_container != null:
-		_role_filter_container.visible = false
-	if _champion_scroll != null:
-		_champion_scroll.visible = false
-	if _random_draft_button != null:
-		_random_draft_button.visible = false
-	if _start_match_button != null:
-		_start_match_button.visible = false
+	if _draft_shell != null:
+		_draft_shell.set_draft_visible(false)
+		_draft_shell.set_battle_actions_visible(false)
 	if _world_layer != null:
 		_world_layer.visible = true
 	if _aoe_fx_layer != null:
@@ -2410,16 +2259,9 @@ func _reset_to_draft() -> void:
 		_commence_button.visible = false
 	if _arena_layer != null:
 		_arena_layer.show_preparation_zones = false
-	if _header_panel != null:
-		_header_panel.visible = true
-	if _role_filter_container != null:
-		_role_filter_container.visible = true
-	if _champion_scroll != null:
-		_champion_scroll.visible = true
-	if _random_draft_button != null:
-		_random_draft_button.visible = true
-	if _start_match_button != null:
-		_start_match_button.visible = true
+	if _draft_shell != null:
+		_draft_shell.set_draft_visible(true)
+		_draft_shell.set_battle_actions_visible(true)
 	if _world_layer != null:
 		_world_layer.visible = false
 	if _aoe_fx_layer != null:

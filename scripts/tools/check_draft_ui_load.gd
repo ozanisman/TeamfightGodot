@@ -30,7 +30,12 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
-	var draft_panel := inst.find_child("DraftPanel", true, false) as Control
+	var shell := inst.find_child("DraftScreenShell", true, false) as Control
+	if shell == null:
+		_fail(inst, "draft_ui: DraftScreenShell missing")
+		return
+
+	var draft_panel := shell.find_child("DraftPanel", true, false) as Control
 	if draft_panel == null:
 		_fail(inst, "draft_ui: DraftPanel missing")
 		return
@@ -40,6 +45,15 @@ func _run() -> void:
 		return
 	if draft_panel.find_child("ChampionScroll", true, false) == null:
 		_fail(inst, "draft_ui: ChampionScroll missing")
+		return
+	if draft_panel.find_child("RandomDraftButton", true, false) == null:
+		_fail(inst, "draft_ui: RandomDraftButton missing")
+		return
+	if draft_panel.find_child("StartMatchButton", true, false) == null:
+		_fail(inst, "draft_ui: StartMatchButton missing")
+		return
+	if shell.find_child("RecommendationPanel", true, false) == null:
+		_fail(inst, "draft_ui: RecommendationPanel missing")
 		return
 
 	var champion_grid := draft_panel.find_child("ChampionGrid", true, false) as GridContainer

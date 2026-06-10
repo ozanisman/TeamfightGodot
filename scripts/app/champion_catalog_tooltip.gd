@@ -26,7 +26,7 @@ var _ui_parent: Control
 var _tt_style: StyleBoxFlat
 var _tt_panel: PanelContainer
 var _tt_rich: RichTextLabel
-var _active_hero: StringName = StringName()
+var _active_champion: StringName = StringName()
 var _active_unit_data: Dictionary = {}
 var _satellite_manager
 var _active_satellite_specs: Array = []
@@ -74,10 +74,10 @@ func setup(ui_layer: Control) -> void:
 
 
 
-func register_source(ctl: Control, hero_id: StringName, unit_data: Dictionary = {}, satellite_specs: Array = []) -> void:
+func register_source(ctl: Control, champion_id: StringName, unit_data: Dictionary = {}, satellite_specs: Array = []) -> void:
 	if not is_instance_valid(ctl) or not is_instance_valid(self):
 		return
-	ctl.set_meta(&"champ_tt_hero", hero_id)
+	ctl.set_meta(&"champ_tt_champion", champion_id)
 	ctl.set_meta(&"champ_tt_unit_data", unit_data)
 	ctl.set_meta(&"champ_tt_satellite_specs", satellite_specs)
 	if bool(ctl.get_meta(&"champ_tt_wired", false)):
@@ -89,23 +89,23 @@ func register_source(ctl: Control, hero_id: StringName, unit_data: Dictionary = 
 
 
 func _on_tt_enter(ctl: Control) -> void:
-	var hero_id: StringName = ctl.get_meta(&"champ_tt_hero", StringName()) as StringName
+	var champion_id: StringName = ctl.get_meta(&"champ_tt_champion", StringName()) as StringName
 	var unit_data: Dictionary = ctl.get_meta(&"champ_tt_unit_data", {}) as Dictionary
 	var satellite_specs: Array = ctl.get_meta(&"champ_tt_satellite_specs", []) as Array
-	_active_hero = hero_id
+	_active_champion = champion_id
 	_active_unit_data = unit_data
 	
 	# Auto-generate satellite specs if not provided
 	if satellite_specs.is_empty():
-		satellite_specs = ChampionSatelliteGeneratorScript.generate_satellites.call(hero_id, unit_data)
+		satellite_specs = ChampionSatelliteGeneratorScript.generate_satellites.call(champion_id, unit_data)
 	
 	_active_satellite_specs = satellite_specs
-	_show_for_hero(hero_id, unit_data)
+	_show_for_champion(champion_id, unit_data)
 	_position_panel()
 
 
 func _on_tt_exit(_ctl: Control) -> void:
-	_active_hero = StringName()
+	_active_champion = StringName()
 	_active_satellite_specs.clear()
 	_hide()
 
@@ -132,16 +132,16 @@ func _position_panel() -> void:
 	_tt_panel.global_position = g
 
 
-func _show_for_hero(hero_id: StringName, unit_data: Dictionary = {}) -> void:
-	_tt_rich.text = _build_champion_bbcode(hero_id, unit_data)
-	_tt_style.border_color = _border_color_for_hero(hero_id)
+func _show_for_champion(champion_id: StringName, unit_data: Dictionary = {}) -> void:
+	_tt_rich.text = _build_champion_bbcode(champion_id, unit_data)
+	_tt_style.border_color = _border_color_for_champion(champion_id)
 	_tt_panel.visible = true
 	_tt_panel.reset_size()
 	_position_panel()
 	
 	# Show satellites
 	if _satellite_manager != null and not _active_satellite_specs.is_empty():
-		var context = _create_satellite_context(hero_id, unit_data)
+		var context = _create_satellite_context(champion_id, unit_data)
 		_satellite_manager.show_satellites(_active_satellite_specs, _tt_panel.global_position, context, _tt_panel.size)
 
 
@@ -154,36 +154,36 @@ func _hide() -> void:
 
 ## Update tooltip content with fresh unit data (called every tick during simulation)
 func update_with_unit_data(unit_data: Dictionary) -> void:
-	if not _tt_panel.visible or _active_hero.is_empty():
+	if not _tt_panel.visible or _active_champion.is_empty():
 		return
 	_active_unit_data = unit_data
-	_tt_rich.text = _build_champion_bbcode(_active_hero, _active_unit_data)
+	_tt_rich.text = _build_champion_bbcode(_active_champion, _active_unit_data)
 	_tt_panel.reset_size()
 	_position_panel()
 	
 	# Update satellites
 	if _satellite_manager != null and not _active_satellite_specs.is_empty():
-		var context = _create_satellite_context(_active_hero, unit_data)
+		var context = _create_satellite_context(_active_champion, unit_data)
 		_satellite_manager.update_satellites(context)
 
 
-## Get the currently active hero (for tooltip updates)
-func get_active_hero() -> StringName:
-	return _active_hero
+## Get the currently active champion (for tooltip updates)
+func get_active_champion() -> StringName:
+	return _active_champion
 
 
 ## Create a SatelliteContext for the current tooltip state.
-func _create_satellite_context(hero_id: StringName, unit_data: Dictionary):
+func _create_satellite_context(champion_id: StringName, unit_data: Dictionary):
 	var main_data: Dictionary = {
-		&"hero_id": hero_id,
+		&"champion_id": champion_id,
 		&"unit_data": unit_data,
 		&"tooltip_position": _tt_panel.global_position if _tt_panel else Vector2.ZERO
 	}
 	return SatelliteContextScript.new(main_data, {}, {})
 
 
-func _border_color_for_hero(hero_id: StringName) -> Color:
-	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
+func _border_color_for_champion(champion_id: StringName) -> Color:
+	var ch: Variant = ChampionCatalogScript.get_champion(champion_id)
 	if ch == null:
 		return COLOR_SUBTLE
 	var d: Dictionary = ch.to_dict()
@@ -216,8 +216,8 @@ static func _color_keywords_in_text(text: String) -> String:
 
 
 ## BBCode: title line in role color; rest escaped plain.
-func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> String:
-	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
+func _build_champion_bbcode(champion_id: StringName, unit_data: Dictionary = {}) -> String:
+	var ch: Variant = ChampionCatalogScript.get_champion(champion_id)
 	if ch == null:
 		return ""
 	var d: Dictionary = ch.to_dict()
@@ -225,15 +225,15 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 	var base_stats: Dictionary
 	
 	# Always get base stats for comparison
-	base_stats = ChampionCatalogScript.get_effective_stats(hero_id)
+	base_stats = ChampionCatalogScript.get_effective_stats(champion_id)
 	
 	# Use unit data stats if provided (in-game with modifiers), otherwise use catalog stats (draft phase)
 	if not unit_data.is_empty():
-		st = _build_effective_stats_from_unit_data(unit_data, hero_id)
+		st = _build_effective_stats_from_unit_data(unit_data, champion_id)
 	else:
 		st = base_stats
 	
-	var name: String = str(st.get("name", hero_id))
+	var name: String = str(st.get("name", champion_id))
 	var display_name: String = _escape_bbcode_plain(name)
 	var br_col: Color = _border_for_dict(st)
 	var title_line: String = (
@@ -277,8 +277,8 @@ func _build_champion_bbcode(hero_id: StringName, unit_data: Dictionary = {}) -> 
 
 
 ## Build effective stats dictionary from unit data (in-game with modifiers)
-func _build_effective_stats_from_unit_data(unit_data: Dictionary, hero_id: StringName) -> Dictionary:
-	var catalog_stats: Dictionary = ChampionCatalogScript.get_effective_stats(hero_id)
+func _build_effective_stats_from_unit_data(unit_data: Dictionary, champion_id: StringName) -> Dictionary:
+	var catalog_stats: Dictionary = ChampionCatalogScript.get_effective_stats(champion_id)
 	var effective_stats: Dictionary = catalog_stats.duplicate(true)
 	
 	# Override with effective stats from unit data if available

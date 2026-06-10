@@ -19,6 +19,7 @@ const REPEATED_SPLIT_FEATURE_SETS: Array[String] = [
 	"pairwise",
 	"pairwise_extended",
 	"pairwise_extended_roles",
+	"pairwise_lean",
 	"pairwise_phase1",
 	"pairwise_archetype",
 	"pairwise_probe",
@@ -118,7 +119,7 @@ func _run() -> void:
 	var model_reports: Array[Dictionary] = []
 	var feature_sets: Array[String] = ["pairwise", "mechanical", "combined"]
 	if _feature_set_available(feature_data, "pairwise_extended"):
-		feature_sets.append_array(["pairwise_extended", "pairwise_extended_roles", "pairwise_phase1"])
+		feature_sets.append_array(["pairwise_extended", "pairwise_extended_roles", "pairwise_lean", "pairwise_phase1"])
 	if _feature_set_available(feature_data, "archetype"):
 		feature_sets.append_array(["archetype", "pairwise_archetype"])
 	if _feature_set_available(feature_data, "probe"):
@@ -134,6 +135,11 @@ func _run() -> void:
 
 	_write_results(output_path, feature_data, model_reports)
 	_print_report(baseline, model_reports, repeat_reports, current_corr, output_path)
+	# Dump best model weights for native baking
+	for report in model_reports:
+		if report["feature_set"] == "pairwise_lean" and report["target_mode"] == MODEL_PROBABILITY and not report["overfit"]:
+			_dump_model_json(report, "res://stats_output/pairwise_lean_model.json")
+			break
 	quit(0)
 
 
@@ -327,6 +333,12 @@ func _extract_features(ceiling_data: Array, combat_stats: Dictionary, synergy_st
 			pairwise_extended_roles.append(pairwise_a[i])
 		for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]:
 			pairwise_extended_roles.append(pairwise_b[i])
+		# pairwise_lean: only signal-carrying features (base, synergy, counter, 3 interactions)
+		var pairwise_lean := PackedFloat32Array()
+		for i in [0, 1, 2, 3, 4, 5]:
+			pairwise_lean.append(pairwise_a[i])
+		for i in [0, 1, 2, 3, 4, 5]:
+			pairwise_lean.append(pairwise_b[i])
 		# pairwise_phase1: all features per team
 		var pairwise_phase1 := PackedFloat32Array()
 		pairwise_phase1.append_array(pairwise_a)
@@ -366,6 +378,7 @@ func _extract_features(ceiling_data: Array, combat_stats: Dictionary, synergy_st
 			"pairwise": pairwise_features,
 			"pairwise_extended": pairwise_extended,
 			"pairwise_extended_roles": pairwise_extended_roles,
+			"pairwise_lean": pairwise_lean,
 			"pairwise_phase1": pairwise_phase1,
 			"mechanical": mechanical_features,
 			"combined": combined_features,
@@ -941,6 +954,7 @@ func _print_report(baseline: Dictionary, model_reports: Array[Dictionary], repea
 	var pairwise := _find_report(model_reports, "pairwise", MODEL_LABEL, false)
 	var pairwise_extended := _find_report(model_reports, "pairwise_extended", MODEL_LABEL, false)
 	var pairwise_extended_roles := _find_report(model_reports, "pairwise_extended_roles", MODEL_LABEL, false)
+	var pairwise_lean := _find_report(model_reports, "pairwise_lean", MODEL_LABEL, false)
 	var pairwise_phase1 := _find_report(model_reports, "pairwise_phase1", MODEL_LABEL, false)
 	var combined := _find_report(model_reports, "combined", MODEL_LABEL, false)
 	var pairwise_archetype := _find_report(model_reports, "pairwise_archetype", MODEL_LABEL, false)
@@ -951,6 +965,11 @@ func _print_report(baseline: Dictionary, model_reports: Array[Dictionary], repea
 	if not pairwise_extended.is_empty() and not pairwise_extended_roles.is_empty():
 		var roles_delta_pp: float = (pairwise_extended_roles["test"]["accuracy"] - pairwise_extended["test"]["accuracy"]) * 100.0
 		lines.append("  pairwise_extended_roles vs pairwise_extended test delta: %+.1f pp" % roles_delta_pp)
+	if not pairwise.is_empty() and not pairwise_lean.is_empty():
+		var lean_delta_pp: float = (pairwise_lean["test"]["accuracy"] - pairwise["test"]["accuracy"]) * 100.0
+		lines.append("  pairwise_lean vs pairwise test delta: %+.1f pp" % lean_delta_pp)
+		if lean_delta_pp >= 2.0 or (pairwise_lean["test"]["accuracy"] >= pairwise["test"]["accuracy"] and pairwise_lean["test"]["mse"] < pairwise["test"]["mse"]):
+			lines.append("  recommendation: proceed with lean feature set for native wiring")
 	if not pairwise.is_empty() and not pairwise_phase1.is_empty():
 		var phase1_delta_pp: float = (pairwise_phase1["test"]["accuracy"] - pairwise["test"]["accuracy"]) * 100.0
 		lines.append("  pairwise_phase1 vs pairwise test delta: %+.1f pp" % phase1_delta_pp)
@@ -1102,6 +1121,34 @@ func _compute_min(values: Array) -> float:
 	for v in values:
 		min_val = minf(min_val, float(v))
 	return min_val
+
+
+func _dump_model_json(report: Dictionary, path: String) -> void:
+	var scaler: Dictionary = report["scaler"]
+	var weights: PackedFloat32Array = report["weights"]
+	var means: PackedFloat32Array = scaler["means"]
+	var stddevs: PackedFloat32Array = scaler["stddevs"]
+	var lines: Array[String] = ["{"]
+	lines.append('\t"feature_count": %d,' % weights.size())
+	lines.append('\t"bias": %f,' % report["bias"])
+	var weight_strs: Array[String] = []
+	for w in weights:
+		weight_strs.append("%f" % w)
+	lines.append('\t"weights": [%s],' % ", ".join(weight_strs))
+	var mean_strs: Array[String] = []
+	for m in means:
+		mean_strs.append("%f" % m)
+	lines.append('\t"means": [%s],' % ", ".join(mean_strs))
+	var stddev_strs: Array[String] = []
+	for s in stddevs:
+		stddev_strs.append("%f" % s)
+	lines.append('\t"stddevs": [%s]' % ", ".join(stddev_strs))
+	lines.append("}")
+	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.WRITE)
+	if f != null:
+		f.store_string("\n".join(lines) + "\n")
+		f.close()
+		print("verify_pairwise_signal: wrote model to %s" % path)
 
 
 func _compute_correlation(feature_data: Array, x_key: String, y_key: String) -> float:

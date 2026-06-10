@@ -23,3 +23,14 @@ func get_strategy_name() -> String:
 func recommend_next_pick(allies: Array, enemies: Array, available: Array) -> StringName:
 	push_error("DraftStrategy.recommend_next_pick() not implemented")
 	return StringName("")
+
+
+## Select the next champion to ban.
+## allies: Array[StringName] — already-picked champions on our team
+## enemies: Array[StringName] — already-picked champions on opponent team
+## available: Array[StringName] — champions still in the pool
+## Returns: StringName of the selected champion to ban.
+## TODO: Currently returns random - needs strategy implementation for intelligent bans.
+func recommend_next_ban(allies: Array, enemies: Array, available: Array) -> StringName:
+	push_error("DraftStrategy.recommend_next_ban() not implemented")
+	return StringName("")

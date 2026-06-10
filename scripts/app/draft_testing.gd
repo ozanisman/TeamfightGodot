@@ -58,11 +58,10 @@ const MATCH_OVER := "MATCH_OVER"
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
 const DRAFT_SEQUENCE := [
-	"P1_PICK", "P2_PICK",
-	"P1_PICK", "P2_PICK",
-	"P1_PICK", "P2_PICK",
-	"P1_PICK", "P2_PICK",
-	"P1_PICK", "P2_PICK"
+	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
+	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK",
+	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
+	"R_PICK", "B_PICK", "R_PICK", "B_PICK", "R_PICK"
 ]
 const RECOMMENDATION_STATS_DIR := "res://stats_output"
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
@@ -97,7 +96,7 @@ var _debug_mode: bool = true
 
 # Draft filtering
 var _active_role_filters: Array[StringName] = []
-var _banned_heroes: Array[StringName] = []
+var _banned_champions: Array[StringName] = []
 
 # UI references
 var _world_layer: Node2D
@@ -715,12 +714,12 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 	_remove_champion_buttons_from_header()
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var visible_heroes: Array[StringName] = []
+	var visible_champions: Array[StringName] = []
 
 	# Filter by role
 	for champion_id in champion_ids:
 		if _active_role_filters.is_empty():
-			visible_heroes.append(champion_id)
+			visible_champions.append(champion_id)
 		else:
 			var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 			if champion != null:
@@ -728,15 +727,15 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 				var stats_dict: Dictionary = champion_dict.get("stats", {})
 				var role: StringName = StringName(stats_dict.get("role", ""))
 				if _active_role_filters.has(role):
-					visible_heroes.append(champion_id)
+					visible_champions.append(champion_id)
 
 
 	# Sort by name
-	visible_heroes.sort_custom(func(a, b): return String(a) < String(b))
+	visible_champions.sort_custom(func(a, b): return String(a) < String(b))
 
 	# Create buttons with proportional sizing (manual positioning)
-	for i in range(visible_heroes.size()):
-		var champion_id: StringName = visible_heroes[i]
+	for i in range(visible_champions.size()):
+		var champion_id: StringName = visible_champions[i]
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 		if champion == null:
 			continue
@@ -744,7 +743,7 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		var champion_dict: Dictionary = champion.to_dict()
 		var stats_dict: Dictionary = champion_dict.get("stats", {})
 		var role: StringName = StringName(stats_dict.get("role", ""))
-		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
 
 		var row := i / cols
 		var col := i % cols
@@ -790,10 +789,10 @@ func _init_champion_catalog_tooltip() -> void:
 	_champ_catalog_tt.call("setup", _ui_layer)
 
 
-func _register_champ_tooltip(ctl: Control, hero_id: StringName, unit_data: Dictionary = {}) -> void:
+func _register_champ_tooltip(ctl: Control, champion_id: StringName, unit_data: Dictionary = {}) -> void:
 	if _champ_catalog_tt == null or not is_instance_valid(ctl):
 		return
-	_champ_catalog_tt.call("register_source", ctl, hero_id, unit_data)
+	_champ_catalog_tt.call("register_source", ctl, champion_id, unit_data)
 
 
 func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
@@ -908,17 +907,17 @@ func _update_active_tooltip_from_snapshot() -> void:
 	if units.is_empty():
 		return
 	
-	# Get the active hero from the tooltip
-	var active_hero: StringName = _champ_catalog_tt.call("get_active_hero")
-	if active_hero.is_empty():
+	# Get the active champion from the tooltip
+	var active_champion: StringName = _champ_catalog_tt.call("get_active_champion")
+	if active_champion.is_empty():
 		return
 	
-	# Find the unit data for the active hero
+	# Find the unit data for the active champion
 	for unit_data in units:
 		if unit_data is not Dictionary:
 			continue
 		var unit_dict: Dictionary = unit_data as Dictionary
-		if String(unit_dict.get("unit_id", "")) == String(active_hero):
+		if String(unit_dict.get("unit_id", "")) == String(active_champion):
 			_champ_catalog_tt.call("update_with_unit_data", unit_dict)
 			break
 
@@ -1837,12 +1836,12 @@ func _populate_champion_grid() -> void:
 	_remove_champion_buttons_from_header()
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var visible_heroes: Array[StringName] = []
+	var visible_champions: Array[StringName] = []
 
 	# Filter by role
 	for champion_id in champion_ids:
 		if _active_role_filters.is_empty():
-			visible_heroes.append(champion_id)
+			visible_champions.append(champion_id)
 		else:
 			var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 			if champion != null:
@@ -1850,14 +1849,14 @@ func _populate_champion_grid() -> void:
 				var stats_dict: Dictionary = champion_dict.get("stats", {})
 				var role: StringName = StringName(stats_dict.get("role", ""))
 				if _active_role_filters.has(role):
-					visible_heroes.append(champion_id)
+					visible_champions.append(champion_id)
 
 	# Sort by name
-	visible_heroes.sort_custom(func(a, b): return String(a) < String(b))
+	visible_champions.sort_custom(func(a, b): return String(a) < String(b))
 
 	# Create buttons with proportional sizing (manual positioning)
-	for i in range(visible_heroes.size()):
-		var champion_id: StringName = visible_heroes[i]
+	for i in range(visible_champions.size()):
+		var champion_id: StringName = visible_champions[i]
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 		if champion == null:
 			continue
@@ -1866,7 +1865,7 @@ func _populate_champion_grid() -> void:
 		var stats_dict: Dictionary = champion_dict.get("stats", {})
 		var role: StringName = StringName(stats_dict.get("role", ""))
 
-		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
 
 		var row := i / cols
 		var col := i % cols
@@ -1979,10 +1978,14 @@ func _update_turn_display() -> void:
 
 	if _draft_step_index < DRAFT_SEQUENCE.size():
 		var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
-		if current_turn == "P1_PICK":
-			_turn_label.text = "SELECT PLAYER 1 CHAMPION (%d/%d)" % [_player_picks.size() + 1, MAX_TEAM_SIZE]
-		elif current_turn == "P2_PICK":
-			_turn_label.text = "SELECT PLAYER 2 CHAMPION (%d/%d)" % [_enemy_picks.size() + 1, MAX_TEAM_SIZE]
+		var phase := "BAN PHASE" if current_turn.ends_with("_BAN") else "PICK PHASE"
+		var team := "BLUE" if current_turn.begins_with("B_") else "RED"
+		
+		if current_turn.ends_with("_BAN"):
+			_turn_label.text = "%s - %s BAN" % [phase, team]
+		elif current_turn.ends_with("_PICK"):
+			var pick_count := _player_picks.size() if current_turn.begins_with("B_") else _enemy_picks.size()
+			_turn_label.text = "%s - %s PICK (%d/%d)" % [phase, team, pick_count + 1, MAX_TEAM_SIZE]
 		else:
 			_turn_label.text = "TURN: %s" % current_turn.replace("_", " ")
 	else:
@@ -2024,7 +2027,7 @@ func _update_team_rosters() -> void:
 		_enemy_team_list.add_child(label2)
 
 	if _banned_list != null:
-		var sorted_banned: Array[StringName] = _banned_heroes.duplicate()
+		var sorted_banned: Array[StringName] = _banned_champions.duplicate()
 		sorted_banned.sort_custom(func(a, b): return String(a) < String(b))
 		for j in range(sorted_banned.size()):
 			var b_id: StringName = sorted_banned[j]
@@ -2041,8 +2044,8 @@ func _update_start_match_enabled() -> void:
 	_start_match_button.disabled = not can
 
 
-func _power_score_for_pick(hero_id: StringName) -> float:
-	var ch: Variant = ChampionCatalogScript.get_champion(hero_id)
+func _power_score_for_pick(champion_id: StringName) -> float:
+	var ch: Variant = ChampionCatalogScript.get_champion(champion_id)
 	if ch == null:
 		return 0.0
 	var d: Dictionary = ch.to_dict()
@@ -2059,7 +2062,7 @@ func _try_enemy_draft_ai() -> void:
 	pass
 
 
-func _pick_p2_hero(available: Array[StringName]) -> StringName:
+func _pick_p2_champion(available: Array[StringName]) -> StringName:
 	if available.is_empty():
 		return StringName()
 	var enemy_roles: Array[StringName] = []
@@ -2116,7 +2119,7 @@ func _pick_p2_hero(available: Array[StringName]) -> StringName:
 
 func _on_random_draft_clicked() -> void:
 	while _draft_step_index < DRAFT_SEQUENCE.size():
-		var taken: Array[StringName] = _player_picks + _enemy_picks + _banned_heroes
+		var taken: Array[StringName] = _player_picks + _enemy_picks + _banned_champions
 		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 		var available: Array[StringName] = []
 		for cid in champion_ids:
@@ -2249,12 +2252,18 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 
 	var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
 
-	if current_turn == "P1_PICK":
-		if _player_picks.size() < MAX_TEAM_SIZE:
-			_player_picks.append(champion_id)
-	elif current_turn == "P2_PICK":
-		if _enemy_picks.size() < MAX_TEAM_SIZE:
-			_enemy_picks.append(champion_id)
+	# Handle ban phases
+	if current_turn.ends_with("_BAN"):
+		if champion_id not in _banned_champions and champion_id not in _player_picks and champion_id not in _enemy_picks:
+			_banned_champions.append(champion_id)
+	# Handle pick phases
+	elif current_turn.ends_with("_PICK"):
+		if current_turn.begins_with("B_"):
+			if _player_picks.size() < MAX_TEAM_SIZE:
+				_player_picks.append(champion_id)
+		elif current_turn.begins_with("R_"):
+			if _enemy_picks.size() < MAX_TEAM_SIZE:
+				_enemy_picks.append(champion_id)
 
 	_draft_step_index += 1
 	_update_turn_display()
@@ -2281,7 +2290,7 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 	var stats_dict: Dictionary = champion_dict.get("stats", {})
 	var role: StringName = StringName(stats_dict.get("role", ""))
 	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
-	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_heroes
+	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
 	
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
@@ -2436,7 +2445,7 @@ func _get_available_champions() -> Array[StringName]:
 	var all_champions: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var available: Array[StringName] = []
 	for champion_id in all_champions:
-		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _banned_heroes:
+		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _banned_champions:
 			available.append(champion_id)
 	return available
 
@@ -2805,7 +2814,7 @@ func _reset_to_draft() -> void:
 	_draft_step_index = 0
 	_player_picks.clear()
 	_enemy_picks.clear()
-	_banned_heroes.clear()
+	_banned_champions.clear()
 	_sim_time_accumulator = 0.0
 	_selected_unit_id = 0
 	if _commence_button != null:

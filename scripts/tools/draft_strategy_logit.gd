@@ -31,3 +31,11 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array) -> Str
 
 	var top := Dictionary(rows[0])
 	return StringName(top.get("champion", available[0]))
+
+
+func recommend_next_ban(allies: Array, enemies: Array, available: Array) -> StringName:
+	# TODO: Implement intelligent ban strategy - currently random
+	if available.is_empty():
+		return StringName("")
+	var idx := randi() % available.size()
+	return StringName(available[idx])

@@ -457,7 +457,7 @@ func _build_ui() -> void:
 	filter_vb.add_child(_section_label("FILTER"))
 	_search = LineEdit.new()
 	_search.custom_minimum_size.y = UI_MIN_CONTROL_H
-	_search.placeholder_text = "Search hero..."
+	_search.placeholder_text = "Search champion..."
 	filter_vb.add_child(_search)
 
 	filter_vb.add_child(_section_label("ROLES"))
@@ -1294,10 +1294,10 @@ func _refresh_chart() -> void:
 
 	if not _active_role_filters.is_empty() and not is_synergy and _view_mode == &"champions":
 		var filtered2: Dictionary = {}
-		for hero in display_data.keys():
-			var role: String = str(_unit_roles.get(String(hero), ""))
+		for champion in display_data.keys():
+			var role: String = str(_unit_roles.get(String(champion), ""))
 			if _active_role_filters.has(role):
-				filtered2[hero] = display_data[hero]
+				filtered2[champion] = display_data[champion]
 		display_data = filtered2
 
 	var keys: Array = display_data.keys()

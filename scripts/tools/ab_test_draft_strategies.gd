@@ -20,6 +20,14 @@ const DraftStrategyCertifiedPath := "res://scripts/tools/draft_strategy_certifie
 
 const TEAM_SIZE: int = 5
 
+# New snake draft sequence with bans
+const DRAFT_SEQUENCE := [
+	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
+	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK",
+	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
+	"R_PICK", "B_PICK", "R_PICK", "B_PICK", "R_PICK"
+]
+
 
 func _extract_argument(prefix: String, default_value: String) -> String:
 	for a in OS.get_cmdline_user_args():
@@ -106,7 +114,7 @@ func _run() -> void:
 				pairs.append([strategy_names[i], strategy_names[j]])
 
 	var csv_lines: Array[String] = [
-		"trial_id,depth,allies,enemies,available_n,strategy_a,pick_a,winrate_a,strategy_b,pick_b,winrate_b,delta"
+		"trial_id,depth,allies,enemies,banned,available_n,strategy_a,pick_a,winrate_a,strategy_b,pick_b,winrate_b,delta"
 	]
 
 	var rng := RandomNumberGenerator.new()
@@ -121,6 +129,7 @@ func _run() -> void:
 			var allies: Array[StringName] = state["allies"]
 			var enemies: Array[StringName] = state["enemies"]
 			var available: Array[StringName] = state["available"]
+			var banned: Array[StringName] = state["banned"]
 
 			for pair in pairs:
 				var name_a: String = pair[0]
@@ -160,9 +169,9 @@ func _run() -> void:
 				)
 
 				var delta := winrate_b - winrate_a
-				csv_lines.append("%d,%d,%s,%s,%d,%s,%s,%.6f,%s,%s,%.6f,%.6f" % [
+				csv_lines.append("%d,%d,%s,%s,%s,%d,%s,%s,%.6f,%s,%s,%.6f,%.6f" % [
 					trial, depth,
-					"|".join(allies), "|".join(enemies), available.size(),
+					"|".join(allies), "|".join(enemies), "|".join(banned), available.size(),
 					name_a, pick_a, winrate_a,
 					name_b, pick_b, winrate_b,
 					delta
@@ -200,14 +209,32 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 	_shuffle(pool, rng)
 	var player: Array[StringName] = []
 	var enemy: Array[StringName] = []
-	for i in range(draft_depth):
-		player.append(pool.pop_back())
-		enemy.append(pool.pop_back())
+	var banned: Array[StringName] = []
+	
+	# Simulate draft sequence up to draft_depth steps
+	var steps_to_simulate := mini(draft_depth, DRAFT_SEQUENCE.size())
+	for i in range(steps_to_simulate):
+		var turn := DRAFT_SEQUENCE[i]
+		if pool.is_empty():
+			break
+		
+		if turn.ends_with("_BAN"):
+			var ban_champion := pool.pop_back()
+			banned.append(ban_champion)
+		elif turn.ends_with("_PICK"):
+			if turn.begins_with("B_"):
+				if player.size() < TEAM_SIZE:
+					player.append(pool.pop_back())
+			elif turn.begins_with("R_"):
+				if enemy.size() < TEAM_SIZE:
+					enemy.append(pool.pop_back())
+	
 	var picking_player := (seed % 2) == 0
 	return {
 		"allies": player if picking_player else enemy,
 		"enemies": enemy if picking_player else player,
 		"available": pool,
+		"banned": banned,
 		"picking_team": "player" if picking_player else "enemy",
 	}
 

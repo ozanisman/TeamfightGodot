@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://stats_dashboard_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://stats_dashboard_scene"]
 
 [ext_resource type="Script" path="res://scripts/app/stats_dashboard.gd" id="1_stats_dash"]
+[ext_resource type="Theme" path="res://assets/theme/theme.tres" id="2_theme"]
 
 [node name="StatsDashboard" type="Control"]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_stats_dash")
 
 [node name="Background" type="ColorRect" parent="."]

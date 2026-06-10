@@ -98,12 +98,15 @@ static func apply_action_box_layout(box: VBoxContainer, screen_size: Vector2) ->
 	box.add_theme_constant_override("separation", Tokens.DRAFT_ACTION_GAP_PX)
 
 
-static func apply_champion_scroll_layout(scroll: ScrollContainer, screen_size: Vector2) -> void:
+static func apply_champion_scroll_layout(scroll: ScrollContainer, screen_size: Vector2, has_recommendation_panel: bool = false) -> void:
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.offset_left = Tokens.DRAFT_EDGE_MARGIN_PX
 	scroll.offset_top = Tokens.DRAFT_CHAMPION_SCROLL_TOP_PX
 	scroll.offset_right = -Tokens.DRAFT_EDGE_MARGIN_PX
-	scroll.offset_bottom = -screen_size.y * Tokens.DRAFT_RECOMMENDATION_HEIGHT_RATIO - 12.0
+	if has_recommendation_panel:
+		scroll.offset_bottom = -screen_size.y * Tokens.DRAFT_RECOMMENDATION_HEIGHT_RATIO - 12.0
+	else:
+		scroll.offset_bottom = -12.0
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
 

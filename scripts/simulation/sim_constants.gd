@@ -38,6 +38,14 @@ const STAT_MOD_TYPES: Dictionary = {
 ## Source of truth for role colors used across all UI components
 ## Color8 format (0-255 RGB values)
 const ROLE_COLORS: Dictionary = {
+	"tank": Color8(215, 64, 64),
+	"fighter": Color8(238, 132, 42),
+	"assassin": Color8(180, 82, 220),
+	"marksman": Color8(54, 168, 72),
+	"mage": Color8(82, 170, 225),
+	"support": Color8(226, 188, 66)
+}
+const ROLE_COLORS_OLD: Dictionary = {
 	"tank": Color8(204, 51, 51),
 	"fighter": Color8(210, 105, 30),
 	"assassin": Color8(153, 50, 204),

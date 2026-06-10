@@ -43,7 +43,7 @@ func _ready() -> void:
 	apply_layout(get_viewport_rect().size)
 
 
-func apply_layout(screen_size: Vector2) -> void:
+func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) -> void:
 	DraftLayoutScript.apply_full_rect(self)
 	DraftLayoutScript.apply_full_rect(draft_panel)
 	DraftLayoutScript.apply_back_button_layout(back_button)
@@ -60,9 +60,10 @@ func apply_layout(screen_size: Vector2) -> void:
 		DraftLayoutScript.apply_section_list_layout(list as Control)
 	DraftLayoutScript.apply_role_filter_layout(role_filter_container)
 	DraftLayoutScript.apply_action_box_layout(draft_action_box, screen_size)
-	DraftLayoutScript.apply_champion_scroll_layout(champion_scroll, screen_size)
-	DraftLayoutScript.apply_recommendation_panel_layout(recommendation_panel, screen_size)
-	champion_grid.columns = DraftLayoutScript.calculate_grid_columns(screen_size.x, Tokens.DRAFT_CHAMPION_TILE_PX)
+	DraftLayoutScript.apply_champion_scroll_layout(champion_scroll, screen_size, has_recommendation_panel)
+	if has_recommendation_panel:
+		DraftLayoutScript.apply_recommendation_panel_layout(recommendation_panel, screen_size)
+	champion_grid.columns = 12
 
 
 func set_draft_visible(is_visible: bool) -> void:
@@ -80,6 +81,14 @@ func set_battle_actions_visible(is_visible: bool) -> void:
 
 func get_champion_grid() -> GridContainer:
 	return champion_grid
+
+
+func center_champion_grid() -> void:
+	await get_tree().process_frame
+	var grid_width: float = champion_grid.size.x
+	var scroll_width: float = champion_scroll.size.x
+	var horizontal_offset: float = (scroll_width - grid_width) / 2.0
+	champion_grid.position.x = horizontal_offset
 
 
 func get_role_filter_container() -> HBoxContainer:

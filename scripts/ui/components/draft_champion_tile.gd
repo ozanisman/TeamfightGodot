@@ -39,7 +39,9 @@ func refresh_state(is_taken: bool, is_banned: bool, team_owner: StringName) -> v
 	_team_owner = team_owner
 	text = _champion_display_name(champion_id)
 	add_theme_font_size_override("font_size", Tokens.DRAFT_CHAMPION_FONT_SIZE_PX)
-	add_theme_color_override("font_color", Tokens.COLOR_TEXT)
+	add_theme_color_override("font_color", Color.WHITE)
+	add_theme_color_override("font_outline_color", Color.BLACK)
+	add_theme_constant_override("outline_size", 1)
 	text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	modulate = Color.WHITE
 
@@ -50,10 +52,13 @@ func refresh_state(is_taken: bool, is_banned: bool, team_owner: StringName) -> v
 			border_color = Tokens.COLOR_PLAYER
 		elif _team_owner == &"enemy":
 			border_color = Tokens.COLOR_ENEMY
-		_apply_style(Styles.bordered(dimmed_color, border_color, 3))
+		_apply_style(Styles.bordered(dimmed_color, border_color, 8))
 		disabled = true
 	else:
-		_apply_style(Styles.solid(_role_color))
+		var pastel_bg := _get_fill_color(_role_color)
+		var style := Styles.panel(pastel_bg, _role_color, 6)
+		style.set_corner_radius_all(4)
+		_apply_style(style)
 		disabled = false
 	queue_redraw()
 
@@ -65,6 +70,35 @@ func _apply_square_size(tile_size: int) -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
+
+func _get_fill_color(role_color: Color) -> Color:
+	var h := role_color.h
+
+	# Preserve more color identity.
+	var s := clampf(role_color.s * 0.90, 0.52, 0.82)
+	var v := clampf(role_color.v * 0.88, 0.56, 0.82)
+
+	# Hue compensation:
+	# yellows/golds get capped harder because they visually flare in dark mode.
+	var yellow_bias := -0.06 * cos(TAU * (h - 0.16))
+	v = clampf(v + yellow_bias, 0.52, 0.84)
+
+	var fill := Color.from_hsv(h, s, v, role_color.a)
+
+	# Instead of blending heavily into the background, blend lightly.
+	# This keeps the color cleaner and less muddy.
+	var bg := Color("#171821")
+	fill = bg.lerp(fill, 0.90)
+
+	# Soft luminance ceiling: prevents overexposed yellow/cyan cards.
+	var max_lum := 0.30
+	var lum := fill.get_luminance()
+
+	if lum > max_lum:
+		var excess := lum - max_lum
+		fill = fill.darkened(clampf(excess * 1.4, 0.02, 0.16))
+
+	return fill
 
 func _apply_style(style: StyleBoxFlat) -> void:
 	add_theme_stylebox_override("normal", style)

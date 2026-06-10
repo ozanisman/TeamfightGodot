@@ -11,16 +11,14 @@ const NativeSimulationBackendScript := preload("res://scripts/simulation/native_
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_simulation_csv_generator.gd")
 const MatchupDataLoaderScript := preload("res://scripts/tools/matchup_data_loader.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
+const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
 
-const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
-const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
-const COLOR_TEXT := Color(0.9, 0.9, 0.9, 1.0)
-const COLOR_HIGHLIGHT := Color(0.47, 0.86, 0.55, 1.0)
-const COLOR_SUBTLE := Color(0.71, 0.71, 0.75, 1.0)
+# Local color constants for stats dashboard visualization (winrate gradients, error labels, section headers).
+# These differ from general UI tokens and should remain local to this script.
 const COLOR_RED := Color(0.88, 0.31, 0.31, 1.0)
 const COLOR_GREEN := Color(0.47, 0.86, 0.55, 1.0)
 const COLOR_BLUE := Color(0.275, 0.51, 1.0)
-const COLOR_SECTION_BG := Color(0.133, 0.133, 0.18, 1.0)
 
 ## Larger UI; theme default_font_size drives most controls.
 const UI_FONT_BODY := 20
@@ -288,14 +286,14 @@ func _try_load_stats() -> bool:
 func _build_fatal_error_ui() -> void:
 	var bg := ColorRect.new()
 	_stretch_control_to_parent_full_rect(bg)
-	bg.color = COLOR_BG
+	bg.color = UiTokensScript.COLOR_BG
 	add_child(bg)
 	var lb := Label.new()
 	_stretch_control_to_parent_full_rect(lb)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lb.text = "Stats CSV bundle missing.\nAdd combat_stats.csv, role_combinations.csv, role_stats.csv, summary_stats.csv\nunder res://stats_output (or run batch generator)."
-	lb.add_theme_color_override("font_color", COLOR_TEXT)
+	lb.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	lb.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	add_child(lb)
 
@@ -309,25 +307,13 @@ func _build_ui() -> void:
 	# When no data available, highlight Generate Stats button in bright red
 	if _regen_button != null and _stats_path.is_empty():
 		_regen_button.add_theme_color_override("font_color", Color.RED)
-		_regen_button.add_theme_stylebox_override("normal", StyleBoxFlat.new())
-		var red_border_style := _regen_button.get_theme_stylebox("normal") as StyleBoxFlat
-		red_border_style.border_color = Color.RED
-		red_border_style.border_width_left = 2
-		red_border_style.border_width_right = 2
-		red_border_style.border_width_top = 2
-		red_border_style.border_width_bottom = 2
+		var red_border_style := UiStylesScript.bordered(UiTokensScript.COLOR_BUTTON, Color.RED, 2)
 		_regen_button.add_theme_stylebox_override("normal", red_border_style)
 	
 	# When no data available, highlight Generate Stats button in bright red
 	if _regen_button != null and _stats_path.is_empty():
 		_regen_button.add_theme_color_override("font_color", Color.RED)
-		_regen_button.add_theme_stylebox_override("normal", StyleBoxFlat.new())
-		var red_border_style := _regen_button.get_theme_stylebox("normal") as StyleBoxFlat
-		red_border_style.border_color = Color.RED
-		red_border_style.border_width_left = 2
-		red_border_style.border_width_right = 2
-		red_border_style.border_width_top = 2
-		red_border_style.border_width_bottom = 2
+		var red_border_style := UiStylesScript.bordered(UiTokensScript.COLOR_BUTTON, Color.RED, 2)
 		_regen_button.add_theme_stylebox_override("normal", red_border_style)
 
 	var top := HBoxContainer.new()
@@ -468,9 +454,17 @@ func _build_ui() -> void:
 	for role_key in SimConstantsScript.ROLE_COLORS.keys():
 		var tb := Button.new()
 		tb.toggle_mode = true
-		tb.custom_minimum_size.y = UI_MIN_CONTROL_H
+		tb.custom_minimum_size.y = UI_MIN_CONTROL_H * 1.5
+		tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tb.text = str(role_key).to_upper()
 		var rk := str(role_key)
+		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(rk, UiTokensScript.COLOR_TEXT) as Color
+		var style := UiStylesScript.panel(UiTokensScript.COLOR_PANEL, role_color, 2)
+		style.set_corner_radius_all(4)
+		tb.add_theme_stylebox_override("normal", style)
+		tb.add_theme_stylebox_override("hovered", style)
+		tb.add_theme_stylebox_override("pressed", style)
+		tb.add_theme_color_override("font_color", role_color)
 		tb.toggled.connect(func(on: bool): _on_role_toggled(rk, on))
 		_role_grid.add_child(tb)
 	filter_vb.add_child(_role_grid)
@@ -495,7 +489,7 @@ func _build_ui() -> void:
 	_right_panel = right_vb  # Store reference for tab switching
 
 	_title_label = Label.new()
-	_title_label.add_theme_color_override("font_color", COLOR_TEXT)
+	_title_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	_title_label.add_theme_font_size_override("font_size", UI_FONT_SECTION + 2)
 	right_vb.add_child(_title_label)
 
@@ -532,7 +526,7 @@ func _build_ui() -> void:
 	_hdr_pct_l50.text = "50%"
 	_hdr_pct_l50.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hdr_pct_l50.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_hdr_pct_l50.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_hdr_pct_l50.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_hdr_pct_l50.add_theme_font_size_override("font_size", UI_HEADER_SUB_FONT)
 	_hdr_pct_spacer_mid = Control.new()
 	_hdr_pct_spacer_mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -541,7 +535,7 @@ func _build_ui() -> void:
 	_hdr_pct_l100.text = "100%"
 	_hdr_pct_l100.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hdr_pct_l100.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_hdr_pct_l100.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_hdr_pct_l100.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_hdr_pct_l100.add_theme_font_size_override("font_size", UI_HEADER_SUB_FONT)
 	_hdr_bar_pct_axis.add_child(_hdr_pct_spacer_left)
 	_hdr_bar_pct_axis.add_child(_hdr_pct_l50)
@@ -646,22 +640,19 @@ func _section_label(text: String) -> Label:
 	lb.text = text
 	lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lb.add_theme_color_override("font_color", COLOR_HIGHLIGHT)
+	lb.add_theme_color_override("font_color", UiTokensScript.COLOR_HIGHLIGHT)
 	lb.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	return lb
 
 
 func _style_header_sub_label(lb: Label) -> void:
-	lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+	lb.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	lb.add_theme_font_size_override("font_size", UI_HEADER_SUB_FONT)
 	lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _build_chart_tooltip_overlay() -> void:
-	_tt_style = StyleBoxFlat.new()
-	_tt_style.bg_color = COLOR_PANEL
-	_tt_style.set_border_width_all(2)
-	_tt_style.border_color = COLOR_SUBTLE
+	_tt_style = UiStylesScript.panel(UiTokensScript.COLOR_PANEL, UiTokensScript.COLOR_SUBTLE, 2)
 	_tt_style.set_corner_radius_all(4)
 	_tt_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)
 	_tt_panel = PanelContainer.new()
@@ -674,7 +665,7 @@ func _build_chart_tooltip_overlay() -> void:
 	_tt_label.scroll_active = false
 	_tt_label.fit_content = true
 	_tt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tt_label.add_theme_color_override("default_color", COLOR_TEXT)
+	_tt_label.add_theme_color_override("default_color", UiTokensScript.COLOR_TEXT)
 	_tt_label.add_theme_font_size_override("normal_font_size", UI_TOOLTIP_FONT_SIZE)
 	_tt_label.add_theme_font_size_override("bold_font_size", UI_TOOLTIP_FONT_SIZE)
 	_tt_label.add_theme_font_size_override("italics_font_size", UI_TOOLTIP_FONT_SIZE)
@@ -705,7 +696,7 @@ func _chart_row_tt_enter(row: PanelContainer) -> void:
 	if _tt_panel == null:
 		return
 	_tt_label.text = str(row.get_meta(&"tt", ""))
-	_tt_style.border_color = row.get_meta(&"tt_border", COLOR_SUBTLE) as Color
+	_tt_style.border_color = row.get_meta(&"tt_border", UiTokensScript.COLOR_SUBTLE) as Color
 	_tt_panel.visible = true
 	_tt_panel.reset_size()
 	_position_chart_tooltip()
@@ -722,13 +713,13 @@ func _chart_row_tt_motion(event: InputEvent) -> void:
 
 func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
 	if is_synergy:
-		return COLOR_SUBTLE
+		return UiTokensScript.COLOR_SUBTLE
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key_s, ""))
-		return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+		return SimConstantsScript.ROLE_COLORS.get(rk, UiTokensScript.COLOR_SUBTLE) as Color
 	if _view_mode == &"roles":
-		return SimConstantsScript.ROLE_COLORS.get(str(key_s).to_lower(), COLOR_SUBTLE) as Color
-	return COLOR_SUBTLE
+		return SimConstantsScript.ROLE_COLORS.get(str(key_s).to_lower(), UiTokensScript.COLOR_SUBTLE) as Color
+	return UiTokensScript.COLOR_SUBTLE
 
 
 func _sync_chart_table_headers(label_width: float, is_synergy: bool) -> void:
@@ -1070,7 +1061,7 @@ func _finish_regen_completed(err: int) -> void:
 		status_text += "\n" + _regen_prediction_report
 	_regen_prediction_report = ""
 	_regen_status.text = status_text
-	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_refresh_all()
 
 
@@ -1142,7 +1133,7 @@ func _update_sidebar_buttons() -> void:
 	_color_button.text = "Mode: Absolute" if _absolute_colors else "Mode: Relative"
 	if not _stats_path.is_empty():
 		_error_label.text = "Data: %s" % _stats_path
-		_error_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		_error_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 
 
 func _ci_mode_active() -> bool:
@@ -1207,7 +1198,7 @@ func _refresh_chart() -> void:
 		_hide_chart_chrome()
 		var lb := Label.new()
 		lb.text = "Synergies N/A for 1v1"
-		lb.add_theme_color_override("font_color", COLOR_TEXT)
+		lb.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 		lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		_chart_vbox.add_child(lb)
 		_title_label.text = ""
@@ -1227,7 +1218,7 @@ func _refresh_chart() -> void:
 		_hide_chart_chrome()
 		var lb2 := Label.new()
 		lb2.text = "No Data for this team size"
-		lb2.add_theme_color_override("font_color", COLOR_TEXT)
+		lb2.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 		lb2.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		_chart_vbox.add_child(lb2)
 		_title_label.text = "%s — %dv%d%s" % [
@@ -1379,8 +1370,7 @@ func _refresh_chart() -> void:
 		)
 		var row := PanelContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
-		var sb_row := StyleBoxFlat.new()
-		sb_row.bg_color = COLOR_SECTION_BG if row_idx % 2 == 0 else Color(0, 0, 0, 0)
+		var sb_row := UiStylesScript.solid(UiTokensScript.COLOR_SECTION_BG if row_idx % 2 == 0 else Color(0, 0, 0, 0))
 		sb_row.set_content_margin_all(UI_ROW_MARGIN)
 		row.add_theme_stylebox_override("panel", sb_row)
 
@@ -1397,7 +1387,7 @@ func _refresh_chart() -> void:
 			name_h.add_theme_constant_override("separation", 4)
 			for i in parts.size():
 				var role: String = parts[i].strip_edges().to_lower()
-				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
 				var role_lb := Label.new()
 				role_lb.text = parts[i]
 				role_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
@@ -1407,7 +1397,7 @@ func _refresh_chart() -> void:
 					var sep_lb := Label.new()
 					sep_lb.text = " + "
 					sep_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
-					sep_lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+					sep_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 					name_h.add_child(sep_lb)
 			name_w.add_child(name_h)
 		else:
@@ -1417,7 +1407,7 @@ func _refresh_chart() -> void:
 			name_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 			if _view_mode == &"champions":
 				var role: String = str(_unit_roles.get(key_s, ""))
-				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+				var rc: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
 				name_lb.add_theme_color_override("font_color", rc)
 				var marker := ColorRect.new()
 				marker.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1429,7 +1419,7 @@ func _refresh_chart() -> void:
 				name_w.add_child(name_h)
 			elif _view_mode == &"roles":
 				var role_key: String = str(key_s).to_lower()
-				var rc_r: Color = SimConstantsScript.ROLE_COLORS.get(role_key, COLOR_TEXT) as Color
+				var rc_r: Color = SimConstantsScript.ROLE_COLORS.get(role_key, UiTokensScript.COLOR_TEXT) as Color
 				name_lb.add_theme_color_override("font_color", rc_r)
 				var marker_r := ColorRect.new()
 				marker_r.custom_minimum_size = Vector2(UI_ROLE_MARKER_S, UI_ROLE_MARKER_S)
@@ -1440,7 +1430,7 @@ func _refresh_chart() -> void:
 				name_r.add_child(name_lb)
 				name_w.add_child(name_r)
 			else:
-				name_lb.add_theme_color_override("font_color", COLOR_TEXT)
+				name_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 				name_w.add_child(name_lb)
 		hb.add_child(name_w)
 
@@ -1486,7 +1476,7 @@ func _refresh_chart() -> void:
 			val_lb.text = "%.2f" % val
 		else:
 			val_lb.text = "%.0f" % val
-		val_lb.add_theme_color_override("font_color", COLOR_TEXT)
+		val_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 		hb.add_child(val_lb)
 
 		var games_lb := Label.new()
@@ -1494,7 +1484,7 @@ func _refresh_chart() -> void:
 		games_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		games_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		games_lb.text = str(count)
-		games_lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+		games_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		hb.add_child(games_lb)
 
 		var kda_lb := Label.new()
@@ -1502,7 +1492,7 @@ func _refresh_chart() -> void:
 		kda_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		kda_lb.add_theme_font_size_override("font_size", UI_FONT_BODY)
 		kda_lb.text = _format_kda_per_game_cells(u_data, count)
-		kda_lb.add_theme_color_override("font_color", COLOR_SUBTLE)
+		kda_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		hb.add_child(kda_lb)
 
 		var tt: String = _build_tooltip(key_s, u_data, use_ci, is_synergy)
@@ -1624,12 +1614,12 @@ func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: 
 	var safe_name: String = _escape_bbcode_plain(display_name)
 	if is_synergy:
 		return "%s" % [safe_name]
-	var c: Color = COLOR_TEXT
+	var c: Color = UiTokensScript.COLOR_TEXT
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key, ""))
-		c = SimConstantsScript.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+		c = SimConstantsScript.ROLE_COLORS.get(rk, UiTokensScript.COLOR_TEXT) as Color
 	elif _view_mode == &"roles":
-		c = SimConstantsScript.ROLE_COLORS.get(str(key).to_lower(), COLOR_TEXT) as Color
+		c = SimConstantsScript.ROLE_COLORS.get(str(key).to_lower(), UiTokensScript.COLOR_TEXT) as Color
 	return "[color=%s]%s[/color]" % [c.to_html(false), safe_name]
 
 
@@ -1855,8 +1845,7 @@ func _build_export_ui_content() -> void:
 	
 	var export_card := PanelContainer.new()
 	export_card.custom_minimum_size = Vector2(450, 600)
-	var export_card_style := StyleBoxFlat.new()
-	export_card_style.bg_color = COLOR_SECTION_BG
+	var export_card_style := UiStylesScript.solid(UiTokensScript.COLOR_SECTION_BG)
 	export_card_style.set_corner_radius_all(8)
 	export_card_style.set_content_margin_all(16)
 	export_card.add_theme_stylebox_override("panel", export_card_style)
@@ -1881,7 +1870,7 @@ func _build_export_ui_content() -> void:
 	regen_hint.text = "Select which modes to export. Each checked size runs the match count below."
 	regen_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	regen_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	regen_hint.add_theme_color_override("font_color", COLOR_SUBTLE)
+	regen_hint.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	regen_hint.add_theme_font_size_override("font_size", UI_FONT_BODY + 2)
 	export_inner.add_child(regen_hint)
 
@@ -1904,7 +1893,7 @@ func _build_export_ui_content() -> void:
 	sample_block.add_theme_constant_override("separation", 8)
 	var sample_lbl := Label.new()
 	sample_lbl.text = "Matches per selected mode"
-	sample_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	sample_lbl.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	sample_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	sample_block.add_child(sample_lbl)
 	_regen_sample_edit = LineEdit.new()
@@ -1926,7 +1915,7 @@ func _build_export_ui_content() -> void:
 	)
 	var worker_lbl := Label.new()
 	worker_lbl.text = "Worker threads (< %d)" % worker_max
-	worker_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	worker_lbl.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	worker_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	worker_block.add_child(worker_lbl)
 	_regen_worker_edit = LineEdit.new()
@@ -1948,7 +1937,7 @@ func _build_export_ui_content() -> void:
 	prediction_block.add_child(_regen_eval_predictions_check)
 	var prediction_dir_lbl := Label.new()
 	prediction_dir_lbl.text = "Out-of-sample stats dir for predictions (must differ from output above)"
-	prediction_dir_lbl.add_theme_color_override("font_color", COLOR_TEXT)
+	prediction_dir_lbl.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	prediction_dir_lbl.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	prediction_block.add_child(prediction_dir_lbl)
 	_regen_prediction_dir_edit = LineEdit.new()
@@ -1978,7 +1967,7 @@ func _build_export_ui_content() -> void:
 	_regen_status = Label.new()
 	_regen_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_regen_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_regen_status.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_regen_status.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	export_inner.add_child(_regen_status)
 
@@ -2023,7 +2012,7 @@ func _build_matchup_ui() -> void:
 		var champion_name := _unit_id_to_name(champion_unit_id)
 		var index = champion_list.add_item(champion_name)
 		var role: String = str(_unit_roles.get(champion_unit_id, ""))
-		var color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+		var color: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
 		champion_list.set_item_custom_fg_color(index, color)
 		# Store unit_id as metadata for selection
 		champion_list.set_item_metadata(index, champion_unit_id)
@@ -2091,7 +2080,7 @@ func _create_aggregate_extremes_panel() -> VBoxContainer:
 	# Header
 	var header := Label.new()
 	header.text = "GLOBAL EXTREMES"
-	header.add_theme_color_override("font_color", COLOR_HIGHLIGHT)
+	header.add_theme_color_override("font_color", UiTokensScript.COLOR_HIGHLIGHT)
 	header.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	aggregate_container.add_child(header)
 	
@@ -2115,7 +2104,7 @@ func _create_aggregate_extremes_panel() -> VBoxContainer:
 	
 	var synergies_title := Label.new()
 	synergies_title.text = "BEST SYNERGIES"
-	synergies_title.add_theme_color_override("font_color", COLOR_TEXT)
+	synergies_title.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	synergies_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	synergies_vb.add_child(synergies_title)
 	
@@ -2132,7 +2121,7 @@ func _create_aggregate_extremes_panel() -> VBoxContainer:
 	
 	var counters_title := Label.new()
 	counters_title.text = "BEST COUNTERS"
-	counters_title.add_theme_color_override("font_color", COLOR_TEXT)
+	counters_title.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	counters_title.add_theme_font_size_override("font_size", UI_FONT_BODY)
 	counters_vb.add_child(counters_title)
 	
@@ -2154,31 +2143,31 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 	var champion_label := Label.new()
 	champion_label.text = ("Champion" if matchup_type == "vs" else "Champion").to_upper()
 	champion_label.custom_minimum_size.x = 160
-	champion_label.add_theme_color_override("font_color", COLOR_TEXT)
+	champion_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(champion_label)
 	
 	var opponent_label := Label.new()
 	opponent_label.text = ("Vs" if matchup_type == "vs" else "With").to_upper()
 	opponent_label.custom_minimum_size.x = 150
-	opponent_label.add_theme_color_override("font_color", COLOR_TEXT)
+	opponent_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(opponent_label)
 	
 	var wins_label := Label.new()
 	wins_label.text = "WINS"
 	wins_label.custom_minimum_size.x = 70
-	wins_label.add_theme_color_override("font_color", COLOR_TEXT)
+	wins_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(wins_label)
 	
 	var losses_label := Label.new()
 	losses_label.text = "LOSSES"
 	losses_label.custom_minimum_size.x = 70
-	losses_label.add_theme_color_override("font_color", COLOR_TEXT)
+	losses_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(losses_label)
 	
 	var winrate_label := Label.new()
 	winrate_label.text = "WINRATE"
 	winrate_label.custom_minimum_size.x = 90
-	winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+	winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(winrate_label)
 	
 	main_container.add_child(header_row)
@@ -2209,7 +2198,7 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 		champion_label_data.text = champion_name
 		champion_label_data.custom_minimum_size.x = 160
 		var champion_role: String = str(_unit_roles.get(champion_unit_id, ""))
-		var champion_color: Color = SimConstantsScript.ROLE_COLORS.get(champion_role, COLOR_TEXT) as Color
+		var champion_color: Color = SimConstantsScript.ROLE_COLORS.get(champion_role, UiTokensScript.COLOR_TEXT) as Color
 		champion_label_data.add_theme_color_override("font_color", champion_color)
 		row.add_child(champion_label_data)
 		
@@ -2217,20 +2206,20 @@ func _create_aggregate_table(data: Array, matchup_type: String) -> Control:
 		opponent_label_data.text = opponent_name
 		opponent_label_data.custom_minimum_size.x = 150
 		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_TEXT) as Color
 		opponent_label_data.add_theme_color_override("font_color", opponent_color)
 		row.add_child(opponent_label_data)
 		
 		var data_wins_label := Label.new()
 		data_wins_label.text = str(item.wins)
 		data_wins_label.custom_minimum_size.x = 70
-		data_wins_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		data_wins_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		row.add_child(data_wins_label)
 		
 		var data_losses_label := Label.new()
 		data_losses_label.text = str(item.losses)
 		data_losses_label.custom_minimum_size.x = 70
-		data_losses_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		data_losses_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		row.add_child(data_losses_label)
 		
 		var data_winrate_label := Label.new()
@@ -2266,7 +2255,7 @@ func _show_matchup_error(error_message: String) -> void:
 func _show_matchup_placeholder(parent: Control) -> void:
 	var placeholder := Label.new()
 	placeholder.text = "Select a champion to view matchup analysis"
-	placeholder.add_theme_color_override("font_color", COLOR_SUBTLE)
+	placeholder.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2288,7 +2277,7 @@ func _on_champion_selected(index: int) -> void:
 	# Set selection color to match the selected item's role color
 	var champion_unit_id: String = _champion_list.get_item_metadata(index) as String
 	var role: String = str(_unit_roles.get(champion_unit_id, ""))
-	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
 	_champion_list.add_theme_color_override("font_selected_color", role_color)
 	
 	_current_champion = champion_unit_id
@@ -2329,7 +2318,7 @@ func _update_matchup_display() -> void:
 	var header_hb := HBoxContainer.new()
 	var prefix_label := Label.new()
 	prefix_label.text = "Matchup Analysis: "
-	prefix_label.add_theme_color_override("font_color", COLOR_TEXT)
+	prefix_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	prefix_label.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	header_hb.add_child(prefix_label)
 	
@@ -2337,7 +2326,7 @@ func _update_matchup_display() -> void:
 	var name_label := Label.new()
 	name_label.text = champion_name.to_upper()
 	var role: String = str(_unit_roles.get(_current_champion, ""))
-	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, COLOR_TEXT) as Color
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
 	name_label.add_theme_color_override("font_color", role_color)
 	name_label.add_theme_font_size_override("font_size", UI_FONT_SECTION)
 	header_hb.add_child(name_label)
@@ -2444,8 +2433,7 @@ func _show_both_matchups(parent: Control, matchups: Dictionary) -> void:
 
 func _create_summary_card(title: String, champion: String, matchup_type: String) -> PanelContainer:
 	var card := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_SECTION_BG
+	var style := UiStylesScript.solid(UiTokensScript.COLOR_SECTION_BG)
 	style.set_corner_radius_all(8)
 	style.set_content_margin_all(12)
 	card.add_theme_stylebox_override("panel", style)
@@ -2457,7 +2445,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 	# Title
 	var title_label := Label.new()
 	title_label.text = title
-	title_label.add_theme_color_override("font_color", COLOR_TEXT)
+	title_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	title_label.add_theme_font_size_override("font_size", UI_FONT_SECTION - 2)
 	content.add_child(title_label)
 	
@@ -2485,13 +2473,13 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var item_hb := HBoxContainer.new()
 				var bullet_label := Label.new()
 				bullet_label.text = "  • "
-				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				bullet_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 				item_hb.add_child(bullet_label)
 				
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2499,14 +2487,14 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				
 				var winrate_label := Label.new()
 				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
-				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 				item_hb.add_child(winrate_label)
 				
 				content.add_child(item_hb)
 		else:
 			var none_label := Label.new()
 			none_label.text = "  None"
-			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			none_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			content.add_child(none_label)
 		
 		# Best section (Weak Against)
@@ -2520,13 +2508,13 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var item_hb := HBoxContainer.new()
 				var bullet_label := Label.new()
 				bullet_label.text = "  • "
-				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				bullet_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 				item_hb.add_child(bullet_label)
 				
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2534,14 +2522,14 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				
 				var winrate_label := Label.new()
 				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
-				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 				item_hb.add_child(winrate_label)
 				
 				content.add_child(item_hb)
 		else:
 			var none_label := Label.new()
 			none_label.text = "  None"
-			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			none_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			content.add_child(none_label)
 	else:  # with - synergies: best first, worst second
 		# Best section (Best Synergies)
@@ -2555,13 +2543,13 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var item_hb := HBoxContainer.new()
 				var bullet_label := Label.new()
 				bullet_label.text = "  • "
-				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				bullet_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 				item_hb.add_child(bullet_label)
 				
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2569,14 +2557,14 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				
 				var winrate_label := Label.new()
 				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
-				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 				item_hb.add_child(winrate_label)
 				
 				content.add_child(item_hb)
 		else:
 			var none_label := Label.new()
 			none_label.text = "  None"
-			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			none_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			content.add_child(none_label)
 		
 		# Worst section (Worst Synergies)
@@ -2590,13 +2578,13 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				var item_hb := HBoxContainer.new()
 				var bullet_label := Label.new()
 				bullet_label.text = "  • "
-				bullet_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+				bullet_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 				item_hb.add_child(bullet_label)
 				
 				var opponent_unit_id: String = item.name
 				var opponent_name := _unit_id_to_name(opponent_unit_id)
 				var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_SUBTLE) as Color
+				var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_SUBTLE) as Color
 				var name_label := Label.new()
 				name_label.text = opponent_name
 				name_label.add_theme_color_override("font_color", opponent_color)
@@ -2604,14 +2592,14 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 				
 				var winrate_label := Label.new()
 				winrate_label.text = " (%.2f%%)" % (item.winrate * 100)
-				winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+				winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 				item_hb.add_child(winrate_label)
 				
 				content.add_child(item_hb)
 		else:
 			var none_label := Label.new()
 			none_label.text = "  None"
-			none_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+			none_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			content.add_child(none_label)
 	
 	return card
@@ -2629,25 +2617,25 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 	var opponent_label := Label.new()
 	opponent_label.text = ("Opponent" if matchup_type == "vs" else "Ally").to_upper()
 	opponent_label.custom_minimum_size.x = 150
-	opponent_label.add_theme_color_override("font_color", COLOR_TEXT)
+	opponent_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(opponent_label)
 	
 	var wins_label := Label.new()
 	wins_label.text = "WINS"
 	wins_label.custom_minimum_size.x = 80
-	wins_label.add_theme_color_override("font_color", COLOR_TEXT)
+	wins_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(wins_label)
 	
 	var losses_label := Label.new()
 	losses_label.text = "LOSSES"
 	losses_label.custom_minimum_size.x = 80
-	losses_label.add_theme_color_override("font_color", COLOR_TEXT)
+	losses_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(losses_label)
 	
 	var winrate_label := Label.new()
 	winrate_label.text = "WINRATE"
 	winrate_label.custom_minimum_size.x = 100
-	winrate_label.add_theme_color_override("font_color", COLOR_TEXT)
+	winrate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	header_row.add_child(winrate_label)
 	
 	main_container.add_child(header_row)
@@ -2678,20 +2666,20 @@ func _create_matchup_table(data: Dictionary, matchup_type: String) -> Control:
 		name_label.text = opponent_name
 		name_label.custom_minimum_size.x = 150
 		var opponent_role: String = str(_unit_roles.get(opponent_unit_id, ""))
-		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, COLOR_TEXT) as Color
+		var opponent_color: Color = SimConstantsScript.ROLE_COLORS.get(opponent_role, UiTokensScript.COLOR_TEXT) as Color
 		name_label.add_theme_color_override("font_color", opponent_color)
 		row.add_child(name_label)
 		
 		var data_wins_label := Label.new()
 		data_wins_label.text = str(item.wins)
 		data_wins_label.custom_minimum_size.x = 80
-		data_wins_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		data_wins_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		row.add_child(data_wins_label)
 		
 		var data_losses_label := Label.new()
 		data_losses_label.text = str(item.losses)
 		data_losses_label.custom_minimum_size.x = 80
-		data_losses_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+		data_losses_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		row.add_child(data_losses_label)
 		
 		var data_winrate_label := Label.new()
@@ -2753,7 +2741,7 @@ func _get_winrate_color(winrate: float) -> Color:
 func _show_no_data(parent: Control, message: String) -> void:
 	var no_data := Label.new()
 	no_data.text = message
-	no_data.add_theme_color_override("font_color", COLOR_SUBTLE)
+	no_data.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	no_data.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	no_data.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	no_data.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2800,4 +2788,5 @@ func _on_back_to_menu() -> void:
 	if ResourceLoader.exists("res://scenes/game_root.tscn"):
 		get_tree().change_scene_to_file("res://scenes/game_root.tscn")
 	else:
+		push_error("Cannot find game_root.tscn file")
 		push_error("Cannot find game_root.tscn file")

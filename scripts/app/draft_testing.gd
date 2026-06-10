@@ -94,6 +94,7 @@ var _debug_mode: bool = true
 var _active_role_filters: Array[StringName] = []
 var _player_bans: Array[StringName] = []
 var _enemy_bans: Array[StringName] = []
+var _base_champion_tile_size: int = 0
 
 # UI references
 var _world_layer: Node2D
@@ -287,7 +288,7 @@ func _create_draft_shell(screen_size: Vector2) -> void:
 		push_error("DraftScreenShell instantiate failed")
 		return
 	_ui_layer.add_child(_draft_shell)
-	_draft_shell.apply_layout(screen_size)
+	_draft_shell.apply_layout(screen_size, true)
 	_draft_shell.back_pressed.connect(_on_back_to_menu)
 	_draft_shell.auto_fill_pressed.connect(_on_random_draft_clicked)
 	_draft_shell.start_battle_pressed.connect(_on_start_match_clicked)
@@ -1599,6 +1600,11 @@ func _populate_champion_grid() -> void:
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var visible_champions: Array[StringName] = []
+
+	# Calculate base tile size from ALL champions (not filtered) to maintain consistent size
+	if _base_champion_tile_size == 0:
+		_base_champion_tile_size = DraftLayoutScript.calculate_champion_tile_size(champion_ids)
+
 	for champion_id in champion_ids:
 		if _active_role_filters.is_empty():
 			visible_champions.append(champion_id)
@@ -1612,8 +1618,7 @@ func _populate_champion_grid() -> void:
 					visible_champions.append(champion_id)
 
 	visible_champions.sort_custom(func(a, b): return String(a) < String(b))
-	var tile_size: int = DraftLayoutScript.calculate_champion_tile_size(visible_champions)
-	_update_champion_grid_columns(tile_size)
+	_update_champion_grid_columns(_base_champion_tile_size)
 
 	for champion_id in visible_champions:
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
@@ -1628,20 +1633,24 @@ func _populate_champion_grid() -> void:
 		var button := DraftChampionTileScene.instantiate() as Button
 		button.name = "Champion_" + String(champion_id)
 		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
-		button.call("setup", champion_id, role_color, is_taken, is_banned, team_owner, tile_size)
+		button.call("setup", champion_id, role_color, is_taken, is_banned, team_owner, _base_champion_tile_size)
 		button.tooltip_text = ""
 		_register_champ_tooltip(button, champion_id)
 		button.connect("champion_pressed", _on_champion_clicked)
 		_champion_grid.add_child(button)
 
 	_champion_grid.queue_redraw()
+	
+	# Center the grid after it's populated
+	if _draft_shell != null:
+		_draft_shell.center_champion_grid()
 	return
 
 
 func _update_champion_grid_columns(tile_size: int = UiTokensScript.DRAFT_CHAMPION_TILE_PX) -> void:
 	if _champion_grid == null:
 		return
-	_champion_grid.columns = DraftLayoutScript.calculate_grid_columns(get_viewport_rect().size.x, tile_size)
+	_champion_grid.columns = 12
 
 
 func _team_owner_for_champion(champion_id: StringName) -> StringName:
@@ -1681,11 +1690,15 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 	
 	if is_active or _active_role_filters.is_empty():
 		# Bright when this specific filter is active OR all filters are empty (see all)
-		var style_box := StyleBoxFlat.new()
-		style_box.bg_color = role_color
+		var fill_color := _get_fill_color(role_color)
+		var style_box := UiStylesScript.panel(fill_color, role_color, 6)
+		style_box.set_corner_radius_all(4)
 		button.add_theme_stylebox_override("normal", style_box)
 		button.add_theme_stylebox_override("hover", style_box)
 		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_color_override("font_color", Color.WHITE)
+		button.add_theme_color_override("font_outline_color", Color.BLACK)
+		button.add_theme_constant_override("outline_size", 1)
 	else:
 		# Dimmed when this specific filter is inactive (others are active)
 		var dimmed_color := Color(
@@ -1693,11 +1706,42 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 			max(0.0, role_color.g * 0.5),
 			max(0.0, role_color.b * 0.5)
 		)
-		var style_box := StyleBoxFlat.new()
-		style_box.bg_color = dimmed_color
+		var style_box := UiStylesScript.panel(UiTokensScript.COLOR_PANEL, dimmed_color, 2)
+		style_box.set_corner_radius_all(4)
 		button.add_theme_stylebox_override("normal", style_box)
 		button.add_theme_stylebox_override("hover", style_box)
 		button.add_theme_stylebox_override("pressed", style_box)
+		button.add_theme_color_override("font_color", dimmed_color)
+
+
+func _get_fill_color(role_color: Color) -> Color:
+	var h := role_color.h
+
+	# Preserve more color identity.
+	var s := clampf(role_color.s * 0.90, 0.52, 0.82)
+	var v := clampf(role_color.v * 0.88, 0.56, 0.82)
+
+	# Hue compensation:
+	# yellows/golds get capped harder because they visually flare in dark mode.
+	var yellow_bias := -0.06 * cos(TAU * (h - 0.16))
+	v = clampf(v + yellow_bias, 0.52, 0.84)
+
+	var fill := Color.from_hsv(h, s, v, role_color.a)
+
+	# Instead of blending heavily into the background, blend lightly.
+	# This keeps the color cleaner and less muddy.
+	var bg := Color("#171821")
+	fill = bg.lerp(fill, 0.90)
+
+	# Soft luminance ceiling: prevents overexposed yellow/cyan cards.
+	var max_lum := 0.30
+	var lum := fill.get_luminance()
+
+	if lum > max_lum:
+		var excess := lum - max_lum
+		fill = fill.darkened(clampf(excess * 1.4, 0.02, 0.16))
+
+	return fill
 
 
 func _update_turn_display() -> void:
@@ -1760,22 +1804,30 @@ func _update_team_rosters() -> void:
 		_enemy_team_list.add_child(label2)
 
 	if _player_bans_list != null:
-		var sorted_player_bans: Array[StringName] = _player_bans.duplicate()
-		sorted_player_bans.sort_custom(func(a, b): return String(a) < String(b))
-		for j in range(sorted_player_bans.size()):
-			var b_id: StringName = sorted_player_bans[j]
+		for j in range(_player_bans.size()):
+			var b_id: StringName = _player_bans[j]
 			var bl := Label.new()
-			bl.text = String(b_id)
+			var champion: Variant = ChampionCatalogScript.get_champion(b_id)
+			if champion != null:
+				var champion_dict: Dictionary = champion.to_dict()
+				var stats_dict: Dictionary = champion_dict.get("stats", {})
+				bl.text = String(stats_dict.get("name", String(b_id)))
+			else:
+				bl.text = String(b_id)
 			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
 			_player_bans_list.add_child(bl)
 
 	if _enemy_bans_list != null:
-		var sorted_enemy_bans: Array[StringName] = _enemy_bans.duplicate()
-		sorted_enemy_bans.sort_custom(func(a, b): return String(a) < String(b))
-		for j in range(sorted_enemy_bans.size()):
-			var b_id: StringName = sorted_enemy_bans[j]
+		for j in range(_enemy_bans.size()):
+			var b_id: StringName = _enemy_bans[j]
 			var bl := Label.new()
-			bl.text = String(b_id)
+			var champion: Variant = ChampionCatalogScript.get_champion(b_id)
+			if champion != null:
+				var champion_dict: Dictionary = champion.to_dict()
+				var stats_dict: Dictionary = champion_dict.get("stats", {})
+				bl.text = String(stats_dict.get("name", String(b_id)))
+			else:
+				bl.text = String(b_id)
 			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
 			_enemy_bans_list.add_child(bl)
 

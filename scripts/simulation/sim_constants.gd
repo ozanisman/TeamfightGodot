@@ -113,6 +113,12 @@ const VIEWER_PROJECTILE_SPREAD_ANGLE_VARIATION: float = 0.5  # Random angle vari
 # ========================================
 # DRAFT & POSITIONING
 # ========================================
+const DRAFT_SEQUENCE: Array[String] = [
+	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
+	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK",
+	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
+	"R_PICK", "B_PICK", "B_PICK", "R_PICK"
+]
 const DRAFT_X_BASE: float = 0.9
 const DRAFT_X_STEP: float = 0.9
 const DRAFT_Y_BASE: float = 1.2

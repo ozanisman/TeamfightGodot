@@ -57,12 +57,6 @@ const MATCH_OVER := "MATCH_OVER"
 
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
-const DRAFT_SEQUENCE := [
-	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
-	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK",
-	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
-	"R_PICK", "B_PICK", "R_PICK", "B_PICK", "R_PICK"
-]
 
 # Simulation configuration
 var _backend: RefCounted = null
@@ -2072,7 +2066,7 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 		button.add_theme_stylebox_override("disabled", style_box)
 		button.add_theme_color_override("font_color", COLOR_TEXT)
 		button.modulate = Color.WHITE
-		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
+		button.disabled = _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size()
 		
 		# Remove X overlay if exists
 		var existing_x: Control = button.get_node_or_null("BanOverlay")
@@ -2096,8 +2090,8 @@ func _update_turn_display() -> void:
 	var screen_size := get_viewport_rect().size
 	var center_x := screen_size.x / 2.0
 
-	if _draft_step_index < DRAFT_SEQUENCE.size():
-		var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
+	if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
+		var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 		var phase := "BAN PHASE" if current_turn.ends_with("_BAN") else "PICK PHASE"
 		var team := "BLUE" if current_turn.begins_with("B_") else "RED"
 		
@@ -2176,7 +2170,7 @@ func _update_team_rosters() -> void:
 func _update_start_match_enabled() -> void:
 	if _start_match_button == null:
 		return
-	var can: bool = _draft_step_index >= DRAFT_SEQUENCE.size() or _debug_mode
+	var can: bool = _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size() or _debug_mode
 	_start_match_button.disabled = not can
 
 
@@ -2254,7 +2248,7 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 
 
 func _on_random_draft_clicked() -> void:
-	while _draft_step_index < DRAFT_SEQUENCE.size():
+	while _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
 		var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
 		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 		var available: Array[StringName] = []
@@ -2380,10 +2374,10 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 	if _game_state != DRAFTING:
 		return
 
-	if _draft_step_index >= DRAFT_SEQUENCE.size():
+	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
 		return
 
-	var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
+	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 
 	# Handle ban phases
 	if current_turn.ends_with("_BAN"):
@@ -2569,7 +2563,7 @@ func _enter_preparation() -> void:
 func _can_start_match() -> bool:
 	if _player_picks.is_empty() or _enemy_picks.is_empty():
 		return false
-	if _draft_step_index < DRAFT_SEQUENCE.size() and not _debug_mode:
+	if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size() and not _debug_mode:
 		return false
 	return true
 

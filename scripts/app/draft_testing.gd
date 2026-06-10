@@ -48,6 +48,18 @@ const ROSTER_TILE_START_PX: int = 96
 ## Keep in sync with roster_champion_card.gd MIN_SQUARE_PX.
 const ROSTER_TILE_MIN_SQUARE_PX: int = 40
 const UI_WINDOW_MIN := Vector2(1920, 1080)
+const DRAFT_EDGE_MARGIN_PX: int = 24
+const DRAFT_TOP_MARGIN_PX: int = 16
+const DRAFT_SECTION_W_PX: int = 150
+const DRAFT_SECTION_H_PX: int = 260
+const DRAFT_SECTION_GAP_PX: int = 16
+const DRAFT_ACTION_W_PX: int = 420
+const DRAFT_ACTION_H_PX: int = 56
+const DRAFT_ROLE_H_PX: int = 48
+const DRAFT_CHAMPION_TILE_PX: int = 92
+const DRAFT_CHAMPION_TILE_MAX_PX: int = 148
+const DRAFT_CHAMPION_FONT_SIZE_PX: int = 14
+const DRAFT_CHAMPION_GAP_PX: int = 14
 
 # Game states
 const DRAFTING := "DRAFTING"
@@ -57,12 +69,6 @@ const MATCH_OVER := "MATCH_OVER"
 
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
-const DRAFT_SEQUENCE := [
-	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
-	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK",
-	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
-	"R_PICK", "B_PICK", "R_PICK", "B_PICK", "R_PICK"
-]
 const RECOMMENDATION_STATS_DIR := "res://stats_output"
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
 const RECOMMENDATION_BASE_SEED := 81000
@@ -148,6 +154,8 @@ var _overtime_border: Panel
 var _recommendation_panel: Panel
 var _recommendation_title: Label
 var _recommendation_list: VBoxContainer
+var _draft_action_box: VBoxContainer
+var _champion_scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -252,8 +260,11 @@ func _create_ui_structure() -> void:
 	# Create DraftPanel (full screen for drafting)
 	_header_panel = Panel.new()
 	_header_panel.name = "DraftPanel"
-	_header_panel.position = Vector2(0.0, 0.0)
-	_header_panel.size = screen_size
+	_header_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_header_panel.offset_left = 0.0
+	_header_panel.offset_top = 0.0
+	_header_panel.offset_right = 0.0
+	_header_panel.offset_bottom = 0.0
 	_header_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_header_panel)
 	
@@ -262,10 +273,10 @@ func _create_ui_structure() -> void:
 	menu_button.text = "Back to Menu"
 	menu_button.custom_minimum_size = Vector2(120, 40)
 	menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	menu_button.offset_left = -130
-	menu_button.offset_top = 10
-	menu_button.offset_right = -10
-	menu_button.offset_bottom = 50
+	menu_button.offset_left = -150
+	menu_button.offset_top = DRAFT_TOP_MARGIN_PX
+	menu_button.offset_right = -DRAFT_EDGE_MARGIN_PX
+	menu_button.offset_bottom = DRAFT_TOP_MARGIN_PX + 40
 	menu_button.pressed.connect(_on_back_to_menu)
 	_style_button(menu_button)
 	_header_panel.add_child(menu_button)
@@ -278,14 +289,24 @@ func _create_ui_structure() -> void:
 	_title_label = Label.new()
 	_title_label.name = "TitleLabel"
 	_title_label.text = "MANUAL TEAM SELECTION"
-	_title_label.position = Vector2(screen_size.x / 2.0 - 100.0, 14.0)
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_title_label.offset_left = 0.0
+	_title_label.offset_top = DRAFT_TOP_MARGIN_PX
+	_title_label.offset_right = 0.0
+	_title_label.offset_bottom = DRAFT_TOP_MARGIN_PX + 28
 	_header_panel.add_child(_title_label)
 
 	# Create TurnLabel (centered below title)
 	_turn_label = Label.new()
 	_turn_label.name = "TurnLabel"
 	_turn_label.text = "TURN: P1_PICK"
-	_turn_label.position = Vector2(screen_size.x / 2.0 - 50.0, 50.0)
+	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_turn_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_turn_label.offset_left = 0.0
+	_turn_label.offset_top = DRAFT_TOP_MARGIN_PX + 32
+	_turn_label.offset_right = 0.0
+	_turn_label.offset_bottom = DRAFT_TOP_MARGIN_PX + 58
 	_header_panel.add_child(_turn_label)
 
 	# Create DebugLabel (top-right)
@@ -298,7 +319,11 @@ func _create_ui_structure() -> void:
 	else:
 		debug_label.text = "DEBUG MODE: OFF"
 	
-	debug_label.position = Vector2(screen_size.x - 150.0, 10.0)
+	debug_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	debug_label.offset_left = -320.0
+	debug_label.offset_top = DRAFT_TOP_MARGIN_PX + 48
+	debug_label.offset_right = -DRAFT_EDGE_MARGIN_PX
+	debug_label.offset_bottom = DRAFT_TOP_MARGIN_PX + 72
 	debug_label.visible = true
 	debug_label.add_theme_color_override("font_color", COLOR_WARNING)
 	_header_panel.add_child(debug_label)
@@ -306,8 +331,11 @@ func _create_ui_structure() -> void:
 	# Create PlayerTeamPanel (background for player team section)
 	_player_team_panel = Panel.new()
 	_player_team_panel.name = "PlayerTeamPanel"
-	_player_team_panel.position = Vector2(30.0, 60.0)
-	_player_team_panel.size = Vector2(150.0, 300.0)
+	_player_team_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_player_team_panel.offset_left = DRAFT_EDGE_MARGIN_PX
+	_player_team_panel.offset_top = 82.0
+	_player_team_panel.offset_right = DRAFT_EDGE_MARGIN_PX + DRAFT_SECTION_W_PX
+	_player_team_panel.offset_bottom = 82.0 + DRAFT_SECTION_H_PX
 	var player_team_style := StyleBoxFlat.new()
 	player_team_style.bg_color = COLOR_SECTION_BG
 	player_team_style.border_width_left = 2
@@ -322,21 +350,32 @@ func _create_ui_structure() -> void:
 	_player_team_label = Label.new()
 	_player_team_label.name = "PlayerTeamLabel"
 	_player_team_label.text = "PLAYER 1"
-	_player_team_label.position = Vector2(40.0, 67.0)
+	_player_team_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_player_team_label.offset_left = 10.0
+	_player_team_label.offset_top = 8.0
+	_player_team_label.offset_right = -10.0
+	_player_team_label.offset_bottom = 34.0
 	_player_team_label.add_theme_font_size_override("font_size", 16)
-	_header_panel.add_child(_player_team_label)
+	_player_team_panel.add_child(_player_team_label)
 
 	# Create PlayerTeamList (below player team label)
 	_player_team_list = VBoxContainer.new()
 	_player_team_list.name = "PlayerTeamList"
-	_player_team_list.position = Vector2(40.0, 105.0)
-	_header_panel.add_child(_player_team_list)
+	_player_team_list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_player_team_list.offset_left = 10.0
+	_player_team_list.offset_top = 44.0
+	_player_team_list.offset_right = -10.0
+	_player_team_list.offset_bottom = -10.0
+	_player_team_panel.add_child(_player_team_list)
 
 	# Create PlayerBansPanel (background for player bans section)
 	_player_bans_panel = Panel.new()
 	_player_bans_panel.name = "PlayerBansPanel"
-	_player_bans_panel.position = Vector2(200.0, 60.0)
-	_player_bans_panel.size = Vector2(150.0, 300.0)
+	_player_bans_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_player_bans_panel.offset_left = DRAFT_EDGE_MARGIN_PX + DRAFT_SECTION_W_PX + DRAFT_SECTION_GAP_PX
+	_player_bans_panel.offset_top = 82.0
+	_player_bans_panel.offset_right = DRAFT_EDGE_MARGIN_PX + DRAFT_SECTION_W_PX * 2 + DRAFT_SECTION_GAP_PX
+	_player_bans_panel.offset_bottom = 82.0 + DRAFT_SECTION_H_PX
 	var player_bans_style := StyleBoxFlat.new()
 	player_bans_style.bg_color = COLOR_SECTION_BG
 	player_bans_style.border_width_left = 2
@@ -351,22 +390,33 @@ func _create_ui_structure() -> void:
 	_player_bans_label = Label.new()
 	_player_bans_label.name = "PlayerBansLabel"
 	_player_bans_label.text = "BANS"
-	_player_bans_label.position = Vector2(210.0, 67.0)
+	_player_bans_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_player_bans_label.offset_left = 10.0
+	_player_bans_label.offset_top = 8.0
+	_player_bans_label.offset_right = -10.0
+	_player_bans_label.offset_bottom = 34.0
 	_player_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_player_bans_label.add_theme_font_size_override("font_size", 16)
-	_header_panel.add_child(_player_bans_label)
+	_player_bans_panel.add_child(_player_bans_label)
 
 	# Create PlayerBansList (below player bans label)
 	_player_bans_list = VBoxContainer.new()
 	_player_bans_list.name = "PlayerBansList"
-	_player_bans_list.position = Vector2(210.0, 95.0)
-	_header_panel.add_child(_player_bans_list)
+	_player_bans_list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_player_bans_list.offset_left = 10.0
+	_player_bans_list.offset_top = 44.0
+	_player_bans_list.offset_right = -10.0
+	_player_bans_list.offset_bottom = -10.0
+	_player_bans_panel.add_child(_player_bans_list)
 
 	# Create EnemyTeamPanel (background for enemy team section)
 	_enemy_team_panel = Panel.new()
 	_enemy_team_panel.name = "EnemyTeamPanel"
-	_enemy_team_panel.position = Vector2(screen_size.x - 350.0, 60.0)
-	_enemy_team_panel.size = Vector2(150.0, 300.0)
+	_enemy_team_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_enemy_team_panel.offset_left = -DRAFT_EDGE_MARGIN_PX - DRAFT_SECTION_W_PX * 2 - DRAFT_SECTION_GAP_PX
+	_enemy_team_panel.offset_top = 82.0
+	_enemy_team_panel.offset_right = -DRAFT_EDGE_MARGIN_PX - DRAFT_SECTION_W_PX - DRAFT_SECTION_GAP_PX
+	_enemy_team_panel.offset_bottom = 82.0 + DRAFT_SECTION_H_PX
 	var enemy_team_style := StyleBoxFlat.new()
 	enemy_team_style.bg_color = COLOR_SECTION_BG
 	enemy_team_style.border_width_left = 2
@@ -381,21 +431,32 @@ func _create_ui_structure() -> void:
 	_enemy_team_label = Label.new()
 	_enemy_team_label.name = "EnemyTeamLabel"
 	_enemy_team_label.text = "PLAYER 2"
-	_enemy_team_label.position = Vector2(screen_size.x - 340.0, 67.0)
+	_enemy_team_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_enemy_team_label.offset_left = 10.0
+	_enemy_team_label.offset_top = 8.0
+	_enemy_team_label.offset_right = -10.0
+	_enemy_team_label.offset_bottom = 34.0
 	_enemy_team_label.add_theme_font_size_override("font_size", 16)
-	_header_panel.add_child(_enemy_team_label)
+	_enemy_team_panel.add_child(_enemy_team_label)
 
 	# Create EnemyTeamList (below enemy team label)
 	_enemy_team_list = VBoxContainer.new()
 	_enemy_team_list.name = "EnemyTeamList"
-	_enemy_team_list.position = Vector2(screen_size.x - 340.0, 105.0)
-	_header_panel.add_child(_enemy_team_list)
+	_enemy_team_list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_enemy_team_list.offset_left = 10.0
+	_enemy_team_list.offset_top = 44.0
+	_enemy_team_list.offset_right = -10.0
+	_enemy_team_list.offset_bottom = -10.0
+	_enemy_team_panel.add_child(_enemy_team_list)
 
 	# Create EnemyBansPanel (background for enemy bans section)
 	_enemy_bans_panel = Panel.new()
 	_enemy_bans_panel.name = "EnemyBansPanel"
-	_enemy_bans_panel.position = Vector2(screen_size.x - 180.0, 60.0)
-	_enemy_bans_panel.size = Vector2(150.0, 300.0)
+	_enemy_bans_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_enemy_bans_panel.offset_left = -DRAFT_EDGE_MARGIN_PX - DRAFT_SECTION_W_PX
+	_enemy_bans_panel.offset_top = 82.0
+	_enemy_bans_panel.offset_right = -DRAFT_EDGE_MARGIN_PX
+	_enemy_bans_panel.offset_bottom = 82.0 + DRAFT_SECTION_H_PX
 	var enemy_bans_style := StyleBoxFlat.new()
 	enemy_bans_style.bg_color = COLOR_SECTION_BG
 	enemy_bans_style.border_width_left = 2
@@ -410,46 +471,80 @@ func _create_ui_structure() -> void:
 	_enemy_bans_label = Label.new()
 	_enemy_bans_label.name = "EnemyBansLabel"
 	_enemy_bans_label.text = "BANS"
-	_enemy_bans_label.position = Vector2(screen_size.x - 170.0, 67.0)
+	_enemy_bans_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_enemy_bans_label.offset_left = 10.0
+	_enemy_bans_label.offset_top = 8.0
+	_enemy_bans_label.offset_right = -10.0
+	_enemy_bans_label.offset_bottom = 34.0
 	_enemy_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
 	_enemy_bans_label.add_theme_font_size_override("font_size", 16)
-	_header_panel.add_child(_enemy_bans_label)
+	_enemy_bans_panel.add_child(_enemy_bans_label)
 
 	# Create EnemyBansList (below enemy bans label)
 	_enemy_bans_list = VBoxContainer.new()
 	_enemy_bans_list.name = "EnemyBansList"
-	_enemy_bans_list.position = Vector2(screen_size.x - 170.0, 95.0)
-	_header_panel.add_child(_enemy_bans_list)
+	_enemy_bans_list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_enemy_bans_list.offset_left = 10.0
+	_enemy_bans_list.offset_top = 44.0
+	_enemy_bans_list.offset_right = -10.0
+	_enemy_bans_list.offset_bottom = -10.0
+	_enemy_bans_panel.add_child(_enemy_bans_list)
 
 	# Role filter buttons will be created in _setup_draft_ui
 	_role_filter_container = HBoxContainer.new()
 	_role_filter_container.name = "RoleFilterContainer"
-	_role_filter_container.position = Vector2(0.0, 0.0)
+	_role_filter_container.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_role_filter_container.offset_left = DRAFT_EDGE_MARGIN_PX
+	_role_filter_container.offset_top = 354.0
+	_role_filter_container.offset_right = -DRAFT_EDGE_MARGIN_PX
+	_role_filter_container.offset_bottom = 354.0 + DRAFT_ROLE_H_PX
+	_role_filter_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	_role_filter_container.add_theme_constant_override("separation", DRAFT_CHAMPION_GAP_PX)
 	_role_filter_container.visible = false
 	_header_panel.add_child(_role_filter_container)
 
-	# RandomDraftButton (centered, increased size)
+	_draft_action_box = VBoxContainer.new()
+	_draft_action_box.name = "DraftActionBox"
+	_draft_action_box.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_draft_action_box.offset_left = (screen_size.x - DRAFT_ACTION_W_PX) * 0.5
+	_draft_action_box.offset_top = 108.0
+	_draft_action_box.offset_right = -((screen_size.x - DRAFT_ACTION_W_PX) * 0.5)
+	_draft_action_box.offset_bottom = 108.0 + DRAFT_ACTION_H_PX * 2 + 12.0
+	_draft_action_box.add_theme_constant_override("separation", 12)
+	_header_panel.add_child(_draft_action_box)
+
+	# RandomDraftButton (centered)
 	_random_draft_button = Button.new()
 	_random_draft_button.name = "RandomDraftButton"
 	_random_draft_button.text = "RANDOM DRAFT"
-	_random_draft_button.size = Vector2(screen_size.x * 0.26, screen_size.y * 0.07)
-	_random_draft_button.position = Vector2(screen_size.x / 2.0 - (screen_size.x * 0.26) / 2.0, screen_size.y * 0.17)
-	_header_panel.add_child(_random_draft_button)
+	_random_draft_button.custom_minimum_size = Vector2(DRAFT_ACTION_W_PX, DRAFT_ACTION_H_PX)
+	_draft_action_box.add_child(_random_draft_button)
 
-	# StartMatchButton (centered, increased size)
+	# StartMatchButton (centered)
 	_start_match_button = Button.new()
 	_start_match_button.name = "StartMatchButton"
 	_start_match_button.text = "START MATCH"
-	_start_match_button.size = Vector2(screen_size.x * 0.26, screen_size.y * 0.07)
-	_start_match_button.position = Vector2(screen_size.x / 2.0 - (screen_size.x * 0.26) / 2.0, screen_size.y * 0.24)
-	_header_panel.add_child(_start_match_button)
+	_start_match_button.custom_minimum_size = Vector2(DRAFT_ACTION_W_PX, DRAFT_ACTION_H_PX)
+	_draft_action_box.add_child(_start_match_button)
+
+	_champion_scroll = ScrollContainer.new()
+	_champion_scroll.name = "ChampionScroll"
+	_champion_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_champion_scroll.offset_left = DRAFT_EDGE_MARGIN_PX
+	_champion_scroll.offset_top = 416.0
+	_champion_scroll.offset_right = -DRAFT_EDGE_MARGIN_PX
+	_champion_scroll.offset_bottom = -screen_size.y * 0.33 - 12.0
+	_champion_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_champion_scroll.visible = false
+	_header_panel.add_child(_champion_scroll)
 
 	# ChampionGrid (will be populated manually)
 	_champion_grid = GridContainer.new()
 	_champion_grid.name = "ChampionGrid"
-	_champion_grid.position = Vector2(20.0, 310.0)
-	_champion_grid.visible = false
-	_header_panel.add_child(_champion_grid)
+	_champion_grid.add_theme_constant_override("h_separation", DRAFT_CHAMPION_GAP_PX)
+	_champion_grid.add_theme_constant_override("v_separation", DRAFT_CHAMPION_GAP_PX)
+	_champion_grid.visible = true
+	_champion_scroll.add_child(_champion_grid)
 
 	# Store champion grid reference for manual positioning
 	_champion_grid_ref = _champion_grid
@@ -722,81 +817,7 @@ func _on_resize_debounce_timeout() -> void:
 	if _ui_layer != null and is_instance_valid(_ui_layer):
 		_ui_layer.size = screen_size
 		_update_battle_layer_layout()
-
-	# Update panel size
-	if _header_panel != null:
-		_header_panel.size = screen_size
-	
-	# Update title position
-	if _title_label != null:
-		_title_label.position = Vector2(screen_size.x / 2.0 - 70.0, 14.0)
-	
-	# Update turn position
-	if _turn_label != null:
-		_turn_label.position = Vector2(screen_size.x / 2.0 - 50.0, 50.0)
-	
-	# Update debug label position
-	var debug_label := _header_panel.get_node_or_null("DebugLabel")
-	if debug_label != null:
-		debug_label.position = Vector2(screen_size.x - 150.0, 10.0)
-	
-	# Update player team panel position
-	if _player_team_panel != null:
-		_player_team_panel.position = Vector2(30.0, 60.0)
-	
-	# Update player team label position
-	if _player_team_label != null:
-		_player_team_label.position = Vector2(40.0, 67.0)
-	
-	# Update player team list position
-	if _player_team_list != null:
-		_player_team_list.position = Vector2(40.0, 105.0)
-	
-	# Update player bans panel position
-	if _player_bans_panel != null:
-		_player_bans_panel.position = Vector2(200.0, 60.0)
-	
-	# Update player bans label position
-	if _player_bans_label != null:
-		_player_bans_label.position = Vector2(210.0, 67.0)
-	
-	# Update player bans list position
-	if _player_bans_list != null:
-		_player_bans_list.position = Vector2(210.0, 95.0)
-	
-	# Update enemy team panel position
-	if _enemy_team_panel != null:
-		_enemy_team_panel.position = Vector2(screen_size.x - 350.0, 60.0)
-	
-	# Update enemy team label position
-	if _enemy_team_label != null:
-		_enemy_team_label.position = Vector2(screen_size.x - 340.0, 67.0)
-	
-	# Update enemy team list position
-	if _enemy_team_list != null:
-		_enemy_team_list.position = Vector2(screen_size.x - 340.0, 105.0)
-	
-	# Update enemy bans panel position
-	if _enemy_bans_panel != null:
-		_enemy_bans_panel.position = Vector2(screen_size.x - 180.0, 60.0)
-	
-	# Update enemy bans label position
-	if _enemy_bans_label != null:
-		_enemy_bans_label.position = Vector2(screen_size.x - 170.0, 67.0)
-	
-	# Update enemy bans list position
-	if _enemy_bans_list != null:
-		_enemy_bans_list.position = Vector2(screen_size.x - 170.0, 95.0)
-	
-	# Update action buttons with proportional sizing
-	_update_action_buttons(screen_size)
-	
-	# Update champion grid position
-	if _champion_grid != null:
-		_champion_grid.position = Vector2(20.0, 310.0)
-	
-	# Update role filter buttons with new sizes
-	_update_role_filter_buttons(screen_size)
+	_update_draft_layout(screen_size)
 	
 	# Update champion buttons in place instead of recreating them
 	if _game_state == DRAFTING:
@@ -815,71 +836,28 @@ func _on_resize_debounce_timeout() -> void:
 
 
 func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
-	var start_y_ratio := 0.41  # 41% of screen height
-	var square_size_ratio := 0.05  # 5% of screen width (was 10%)
-	var square_margin_ratio := 0.015  # 1.5% of screen width
-	var start_x_ratio := 0.025  # 2.5% of screen width
-
-	var square_size := screen_size.x * square_size_ratio
-	var square_margin := screen_size.x * square_margin_ratio
-	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
-
-	_remove_champion_buttons_from_header()
-
-	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var visible_champions: Array[StringName] = []
-
-	# Filter by role
-	for champion_id in champion_ids:
-		if _active_role_filters.is_empty():
-			visible_champions.append(champion_id)
-		else:
-			var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
-			if champion != null:
-				var champion_dict: Dictionary = champion.to_dict()
-				var stats_dict: Dictionary = champion_dict.get("stats", {})
-				var role: StringName = StringName(stats_dict.get("role", ""))
-				if _active_role_filters.has(role):
-					visible_champions.append(champion_id)
+	_update_draft_layout(screen_size)
+	_populate_champion_grid()
 
 
-	# Sort by name
-	visible_champions.sort_custom(func(a, b): return String(a) < String(b))
-
-	# Create buttons with proportional sizing (manual positioning)
-	for i in range(visible_champions.size()):
-		var champion_id: StringName = visible_champions[i]
-		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
-		if champion == null:
-			continue
-		
-		var champion_dict: Dictionary = champion.to_dict()
-		var stats_dict: Dictionary = champion_dict.get("stats", {})
-		var role: StringName = StringName(stats_dict.get("role", ""))
-		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
-
-		var row := i / cols
-		var col := i % cols
-		var button_size := Vector2(square_size, square_size)
-		var button_position := Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
-
-		var button_name = "Champion_" + String(champion_id)
-		var new_size = Vector2(square_size, square_size)
-		var new_position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
-
-		var button := Button.new()
-		button.name = button_name
-		button.size = new_size
-		button.position = new_position
-		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
-		_style_champion_button(button, role_color, champion_id, is_taken)
-		button.tooltip_text = ""
-		_register_champ_tooltip(button, champion_id)
-		button.pressed.connect(_on_champion_clicked.bind(champion_id))
-		_header_panel.add_child(button)
-
-	# Force redraw after creating new buttons
-	_header_panel.queue_redraw()
+func _update_draft_layout(screen_size: Vector2) -> void:
+	if _draft_action_box != null:
+		var action_margin: float = maxf(DRAFT_EDGE_MARGIN_PX, (screen_size.x - DRAFT_ACTION_W_PX) * 0.5)
+		_draft_action_box.offset_left = action_margin
+		_draft_action_box.offset_right = -action_margin
+	if _champion_scroll != null:
+		_champion_scroll.offset_bottom = -screen_size.y * 0.33 - 12.0
+	if _champion_grid != null:
+		var available_width: float = maxf(
+			DRAFT_CHAMPION_TILE_PX,
+			screen_size.x - float(DRAFT_EDGE_MARGIN_PX * 2)
+		)
+		_champion_grid.columns = maxi(
+			1,
+			int((available_width + DRAFT_CHAMPION_GAP_PX) / (DRAFT_CHAMPION_TILE_PX + DRAFT_CHAMPION_GAP_PX))
+		)
+	if _recommendation_panel != null:
+		_recommendation_panel.offset_top = -screen_size.y * 0.33
 
 
 func _init_champion_catalog_tooltip() -> void:
@@ -917,6 +895,15 @@ func _register_roster_card_tooltip(card: Node, ud: Dictionary) -> void:
 
 
 func _remove_champion_buttons_from_header() -> void:
+	_clear_champion_buttons()
+
+
+func _clear_champion_buttons() -> void:
+	if _champion_grid != null:
+		for child in _champion_grid.get_children():
+			if child is Button and (child as Button).name.begins_with("Champion"):
+				_champion_grid.remove_child(child)
+				child.free()
 	var to_clear: Array[Node] = []
 	for child in _header_panel.get_children():
 		if child is Button and (child as Button).name.begins_with("Champion"):
@@ -928,36 +915,11 @@ func _remove_champion_buttons_from_header() -> void:
 
 
 func _update_action_buttons(screen_size: Vector2) -> void:
-	var button_w_ratio := 0.26  # 26% of screen width
-	var button_h_ratio := 0.07  # 7% of screen height
-	var button_y1_ratio := 0.17  # 17% of screen height
-	var button_y2_ratio := 0.24  # 24% of screen height
-
-	if _random_draft_button != null:
-		var button_size := Vector2(screen_size.x * button_w_ratio, screen_size.y * button_h_ratio)
-		_random_draft_button.size = button_size
-		_random_draft_button.position = Vector2(screen_size.x / 2.0 - button_size.x / 2.0, screen_size.y * button_y1_ratio)
-	if _start_match_button != null:
-		var button_size := Vector2(screen_size.x * button_w_ratio, screen_size.y * button_h_ratio)
-		_start_match_button.size = button_size
-		_start_match_button.position = Vector2(screen_size.x / 2.0 - button_size.x / 2.0, screen_size.y * button_y2_ratio)
+	_update_draft_layout(screen_size)
 
 
 func _update_role_filter_buttons(screen_size: Vector2) -> void:
-	var roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
-	var filter_w_ratio := 0.15  # 15% of screen width
-	var filter_h_ratio := 0.06  # 6% of screen height
-	var filter_spacing_ratio := 0.02  # 2% of screen width
-	var filter_start_x_ratio := 0.02  # 2% of screen width
-	var filter_start_y_ratio := 0.33  # 33% of screen height
-
-	for i in range(roles.size()):
-		var role: StringName = roles[i]
-		var filter_button := _header_panel.get_node_or_null("RoleFilter_" + String(role))
-		if filter_button != null:
-			var new_size := Vector2(screen_size.x * filter_w_ratio, screen_size.y * filter_h_ratio)
-			filter_button.size = new_size
-			filter_button.position = Vector2(screen_size.x * (filter_start_x_ratio + float(i) * (filter_w_ratio + filter_spacing_ratio)), screen_size.y * filter_start_y_ratio)
+	_update_draft_layout(screen_size)
 
 
 func _apply_color_scheme() -> void:
@@ -1895,32 +1857,28 @@ func _setup_draft_ui() -> void:
 	var screen_size := get_viewport_rect().size
 
 	var rf: Array[Node] = []
-	for child in _header_panel.get_children():
+	var role_parent: Control = _role_filter_container if _role_filter_container != null else _header_panel
+	for child in role_parent.get_children():
 		if child is Button and (child as Button).name.begins_with("RoleFilter"):
 			rf.append(child)
 	for n: Node in rf:
-		if is_instance_valid(n) and n.get_parent() == _header_panel:
-			_header_panel.remove_child(n)
+		if is_instance_valid(n) and n.get_parent() == role_parent:
+			role_parent.remove_child(n)
 			n.free()
 
-	# Set up role filter buttons with proportional sizing (manual positioning)
+	_update_draft_layout(screen_size)
+
+	# Set up role filter buttons in one centered row.
 	var roles: Array[StringName] = [&"tank", &"fighter", &"assassin", &"marksman", &"mage", &"support"]
-	var filter_w_ratio := 0.15  # 15% of screen width
-	var filter_h_ratio := 0.06  # 6% of screen height
-	var filter_spacing_ratio := 0.02  # 2% of screen width
-	var filter_start_x_ratio := 0.02  # 2% of screen width
-	var filter_start_y_ratio := 0.33  # 33% of screen height
 
 	for i in range(roles.size()):
 		var role: StringName = roles[i]
 		var filter_button := Button.new()
 		filter_button.name = "RoleFilter_" + String(role)
 		filter_button.text = String(role).to_upper()
-		var button_size := Vector2(screen_size.x * filter_w_ratio, screen_size.y * filter_h_ratio)
-		filter_button.size = button_size
-		filter_button.position = Vector2(screen_size.x * (filter_start_x_ratio + float(i) * (filter_w_ratio + filter_spacing_ratio)), screen_size.y * filter_start_y_ratio)
+		filter_button.custom_minimum_size = Vector2(160, DRAFT_ROLE_H_PX)
 		filter_button.pressed.connect(_on_role_filter_toggled.bind(role, filter_button))
-		_header_panel.add_child(filter_button)
+		role_parent.add_child(filter_button)
 		# Don't add to active filters initially - all roles should be visible (see all)
 		_update_role_filter_button_style(filter_button, role, false)
 
@@ -1932,25 +1890,18 @@ func _setup_draft_ui() -> void:
 
 	# Populate champion grid with proportional sizing
 	_populate_champion_grid()
+	if _role_filter_container != null:
+		_role_filter_container.visible = true
+	if _champion_scroll != null:
+		_champion_scroll.visible = true
 
 
 func _populate_champion_grid() -> void:
-	var screen_size := get_viewport_rect().size
-	var start_y_ratio := 0.41  # 41% of screen height
-	var square_size_ratio := 0.05  # 5% of screen width (was 10%)
-	var square_margin_ratio := 0.015  # 1.5% of screen width
-	var start_x_ratio := 0.025  # 2.5% of screen width
-
-	var square_size := screen_size.x * square_size_ratio
-	var square_margin := screen_size.x * square_margin_ratio
-	var cols: int = max(1, int((screen_size.x - screen_size.x * start_x_ratio * 2) / (square_size + square_margin)))
-
-	_remove_champion_buttons_from_header()
+	_update_draft_layout(get_viewport_rect().size)
+	_clear_champion_buttons()
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var visible_champions: Array[StringName] = []
-
-	# Filter by role
 	for champion_id in champion_ids:
 		if _active_role_filters.is_empty():
 			visible_champions.append(champion_id)
@@ -1963,37 +1914,75 @@ func _populate_champion_grid() -> void:
 				if _active_role_filters.has(role):
 					visible_champions.append(champion_id)
 
-	# Sort by name
 	visible_champions.sort_custom(func(a, b): return String(a) < String(b))
+	var tile_size: int = _draft_champion_tile_size(visible_champions)
+	_update_champion_grid_columns(tile_size)
 
-	# Create buttons with proportional sizing (manual positioning)
-	for i in range(visible_champions.size()):
-		var champion_id: StringName = visible_champions[i]
+	for champion_id in visible_champions:
 		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
 		if champion == null:
 			continue
-		
 		var champion_dict: Dictionary = champion.to_dict()
 		var stats_dict: Dictionary = champion_dict.get("stats", {})
 		var role: StringName = StringName(stats_dict.get("role", ""))
-
 		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
-
-		var row := i / cols
-		var col := i % cols
 		var button := Button.new()
 		button.name = "Champion_" + String(champion_id)
-		button.custom_minimum_size = Vector2(square_size, square_size)
-		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
+		_apply_champion_button_layout(button, tile_size)
 		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 		_style_champion_button(button, role_color, champion_id, is_taken)
 		button.tooltip_text = ""
 		_register_champ_tooltip(button, champion_id)
 		button.pressed.connect(_on_champion_clicked.bind(champion_id))
-		_header_panel.add_child(button)
+		_champion_grid.add_child(button)
 
-	# Force redraw after creating new buttons
-	_header_panel.queue_redraw()
+	_champion_grid.queue_redraw()
+	return
+
+
+func _draft_champion_tile_size(champion_ids: Array[StringName]) -> int:
+	var font: Font = ThemeDB.fallback_font
+	var max_text_w: float = 0.0
+	for champion_id in champion_ids:
+		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+		var champion_name: String = String(champion_id)
+		if champion != null:
+			var champion_dict: Dictionary = champion.to_dict()
+			var stats_dict: Dictionary = champion_dict.get("stats", {})
+			champion_name = String(stats_dict.get("name", String(champion_id)))
+		var text_w: float = font.get_string_size(
+			champion_name,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			-1.0,
+			DRAFT_CHAMPION_FONT_SIZE_PX
+		).x
+		max_text_w = maxf(max_text_w, text_w)
+	var content_px: int = ceili(max_text_w) + 24
+	return clampi(maxi(DRAFT_CHAMPION_TILE_PX, content_px), DRAFT_CHAMPION_TILE_PX, DRAFT_CHAMPION_TILE_MAX_PX)
+
+
+func _apply_champion_button_layout(button: Button, tile_size: int) -> void:
+	var square := Vector2(tile_size, tile_size)
+	button.custom_minimum_size = square
+	button.size = square
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	button.add_theme_font_size_override("font_size", DRAFT_CHAMPION_FONT_SIZE_PX)
+
+
+func _update_champion_grid_columns(tile_size: int = DRAFT_CHAMPION_TILE_PX) -> void:
+	if _champion_grid == null:
+		return
+	var screen_size := get_viewport_rect().size
+	var available_width: float = maxf(
+		tile_size,
+		screen_size.x - float(DRAFT_EDGE_MARGIN_PX * 2)
+	)
+	_champion_grid.columns = maxi(
+		1,
+		int((available_width + DRAFT_CHAMPION_GAP_PX) / (tile_size + DRAFT_CHAMPION_GAP_PX))
+	)
 
 
 func _on_role_filter_toggled(role: StringName, button: Button) -> void:
@@ -2006,7 +1995,8 @@ func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 		_active_role_filters.append(role)
 	
 	# Update all role filter button styles
-	for child in _header_panel.get_children():
+	var role_parent: Control = _role_filter_container if _role_filter_container != null else _header_panel
+	for child in role_parent.get_children():
 		if child is Button and child.name.begins_with("RoleFilter"):
 			var button_role := String(child.name.replace("RoleFilter_", ""))
 			var is_active := StringName(button_role) in _active_role_filters
@@ -2046,6 +2036,8 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 func _style_champion_button(button: Button, role_color: Color, champion_id: StringName, is_taken: bool) -> void:
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
+	button.add_theme_font_size_override("font_size", DRAFT_CHAMPION_FONT_SIZE_PX)
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	
 	var is_banned: bool = champion_id in _player_bans or champion_id in _enemy_bans
 	var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
@@ -2108,7 +2100,7 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 		button.add_theme_stylebox_override("disabled", style_box)
 		button.add_theme_color_override("font_color", COLOR_TEXT)
 		button.modulate = Color.WHITE
-		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
+		button.disabled = _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size()
 		
 		# Remove X overlay if exists
 		var existing_x: Control = button.get_node_or_null("BanOverlay")
@@ -2129,11 +2121,9 @@ func _draw_ban_x(control: Control) -> void:
 func _update_turn_display() -> void:
 	if _turn_label == null:
 		return
-	var screen_size := get_viewport_rect().size
-	var center_x := screen_size.x / 2.0
 
-	if _draft_step_index < DRAFT_SEQUENCE.size():
-		var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
+	if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
+		var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 		var phase := "BAN PHASE" if current_turn.ends_with("_BAN") else "PICK PHASE"
 		var team := "BLUE" if current_turn.begins_with("B_") else "RED"
 		
@@ -2146,8 +2136,7 @@ func _update_turn_display() -> void:
 			_turn_label.text = "TURN: %s" % current_turn.replace("_", " ")
 	else:
 		_turn_label.text = "TEAMS READY - START MATCH"
-	# Center the turn label horizontally
-	_turn_label.position = Vector2(center_x - _turn_label.get_size().x / 2.0, 50.0)
+	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _update_team_rosters() -> void:
@@ -2212,7 +2201,7 @@ func _update_team_rosters() -> void:
 func _update_start_match_enabled() -> void:
 	if _start_match_button == null:
 		return
-	var can: bool = _draft_step_index >= DRAFT_SEQUENCE.size() or _debug_mode
+	var can: bool = _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size() or _debug_mode
 	_start_match_button.disabled = not can
 
 
@@ -2290,7 +2279,7 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 
 
 func _on_random_draft_clicked() -> void:
-	while _draft_step_index < DRAFT_SEQUENCE.size():
+	while _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
 		var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
 		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 		var available: Array[StringName] = []
@@ -2419,10 +2408,10 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 	if _game_state != DRAFTING:
 		return
 
-	if _draft_step_index >= DRAFT_SEQUENCE.size():
+	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
 		return
 
-	var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
+	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 
 	# Handle ban phases
 	if current_turn.ends_with("_BAN"):
@@ -2458,8 +2447,7 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 
 
 func _update_champion_button_style(champion_id: StringName) -> void:
-	var button_name := "Champion_" + String(champion_id)
-	var button: Button = _header_panel.get_node_or_null(button_name)
+	var button: Button = _get_champion_button(champion_id)
 	if button == null:
 		return
 	
@@ -2473,70 +2461,18 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 	var role: StringName = StringName(stats_dict.get("role", ""))
 	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
 	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
-	var is_banned: bool = champion_id in _player_bans or champion_id in _enemy_bans
-	var champion_name: String = String(stats_dict.get("name", String(champion_id)))
-	
-	# Reset modulate to white to avoid affecting StyleBoxFlat
-	button.modulate = Color.WHITE
-	
-	# Always show champion name
-	button.text = champion_name
-	
-	if is_taken:
-		# Dim the role color for the fill
-		var dimmed_color := Color(
-			max(0.0, role_color.r * 0.5),
-			max(0.0, role_color.g * 0.5),
-			max(0.0, role_color.b * 0.5)
-		)
-		
-		# Add border highlight based on team (independent of role color)
-		var border_color := COLOR_PLAYER if champion_id in _player_picks else COLOR_ENEMY
-		var style_box := StyleBoxFlat.new()
-		style_box.bg_color = dimmed_color  # Use dimmed role color as fill
-		style_box.border_width_left = 3
-		style_box.border_width_top = 3
-		style_box.border_width_right = 3
-		style_box.border_width_bottom = 3
-		style_box.border_color = border_color  # Team color for border
-		button.add_theme_stylebox_override("normal", style_box)
-		button.add_theme_stylebox_override("hover", style_box)
-		button.add_theme_stylebox_override("pressed", style_box)
-		button.add_theme_stylebox_override("disabled", style_box)
-		button.disabled = true
-		button.add_theme_color_override("font_color", COLOR_TEXT)
-		
-		# Add gray X overlay for banned champions
-		var existing_x: Control = button.get_node_or_null("BanOverlay")
-		if is_banned:
-			if existing_x == null:
-				var x_overlay := Control.new()
-				x_overlay.name = "BanOverlay"
-				x_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-				x_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				x_overlay.z_index = 10
-				x_overlay.connect("draw", _draw_ban_x.bind(x_overlay))
-				button.add_child(x_overlay)
-				x_overlay.queue_redraw()
-		else:
-			if existing_x != null:
-				button.remove_child(existing_x)
-				existing_x.queue_free()
-	else:
-		# Apply role color for available champions using StyleBoxFlat
-		var style_box := StyleBoxFlat.new()
-		style_box.bg_color = role_color
-		button.add_theme_stylebox_override("normal", style_box)
-		button.add_theme_stylebox_override("hover", style_box)
-		button.add_theme_stylebox_override("pressed", style_box)
-		button.add_theme_stylebox_override("disabled", style_box)
-		button.add_theme_color_override("font_color", COLOR_TEXT)
-		
-		# Remove X overlay if exists
-		var existing_x: Control = button.get_node_or_null("BanOverlay")
-		if existing_x != null:
-			button.remove_child(existing_x)
-			existing_x.queue_free()
+	_style_champion_button(button, role_color, champion_id, is_taken)
+
+
+func _get_champion_button(champion_id: StringName) -> Button:
+	var button_name := "Champion_" + String(champion_id)
+	if _champion_grid != null:
+		var grid_button: Button = _champion_grid.get_node_or_null(button_name) as Button
+		if grid_button != null:
+			return grid_button
+	if _header_panel != null:
+		return _header_panel.get_node_or_null(button_name) as Button
+	return null
 
 
 func _update_draft_recommendations() -> void:
@@ -2554,7 +2490,7 @@ func _update_draft_recommendations() -> void:
 		return
 
 	# If draft is complete, show final prediction for 5v5 teams
-	if _draft_step_index >= DRAFT_SEQUENCE.size():
+	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
 		_show_final_prediction()
 		_recommendation_panel.visible = true
 		return
@@ -2563,7 +2499,7 @@ func _update_draft_recommendations() -> void:
 	_recommendation_panel.visible = true
 
 	# Determine which team is picking next
-	var next_turn: String = DRAFT_SEQUENCE[_draft_step_index] if _draft_step_index < DRAFT_SEQUENCE.size() else ""
+	var next_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index] if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size() else ""
 
 	# Set allies and enemies based on who is picking next
 	var allies: Array[StringName] = []
@@ -2877,7 +2813,7 @@ func _enter_preparation() -> void:
 func _can_start_match() -> bool:
 	if _player_picks.is_empty() or _enemy_picks.is_empty():
 		return false
-	if _draft_step_index < DRAFT_SEQUENCE.size() and not _debug_mode:
+	if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size() and not _debug_mode:
 		return false
 	return true
 
@@ -2893,8 +2829,8 @@ func _show_world_and_hud_for_battle() -> void:
 		_header_panel.visible = false
 	if _role_filter_container != null:
 		_role_filter_container.visible = false
-	if _champion_grid != null:
-		_champion_grid.visible = false
+	if _champion_scroll != null:
+		_champion_scroll.visible = false
 	if _random_draft_button != null:
 		_random_draft_button.visible = false
 	if _start_match_button != null:
@@ -3036,6 +2972,8 @@ func _reset_to_draft() -> void:
 		_header_panel.visible = true
 	if _role_filter_container != null:
 		_role_filter_container.visible = true
+	if _champion_scroll != null:
+		_champion_scroll.visible = true
 	# Clear and hide recommendations on new draft
 	if _recommendation_list != null:
 		for child in _recommendation_list.get_children():
@@ -3043,8 +2981,8 @@ func _reset_to_draft() -> void:
 			child.free()
 	if _recommendation_panel != null:
 		_recommendation_panel.visible = false
-	if _champion_grid != null:
-		_champion_grid.visible = true
+	if _champion_scroll != null:
+		_champion_scroll.visible = true
 	if _random_draft_button != null:
 		_random_draft_button.visible = true
 	if _start_match_button != null:

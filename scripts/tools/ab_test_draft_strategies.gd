@@ -20,14 +20,6 @@ const DraftStrategyCertifiedPath := "res://scripts/tools/draft_strategy_certifie
 
 const TEAM_SIZE: int = 5
 
-# New snake draft sequence with bans
-const DRAFT_SEQUENCE := [
-	"B_BAN", "R_BAN", "B_BAN", "R_BAN", "B_BAN", "R_BAN",
-	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK",
-	"R_BAN", "B_BAN", "R_BAN", "B_BAN",
-	"R_PICK", "B_PICK", "R_PICK", "B_PICK", "R_PICK"
-]
-
 
 func _extract_argument(prefix: String, default_value: String) -> String:
 	for a in OS.get_cmdline_user_args():
@@ -212,9 +204,9 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 	var banned: Array[StringName] = []
 	
 	# Simulate draft sequence up to draft_depth steps
-	var steps_to_simulate := mini(draft_depth, DRAFT_SEQUENCE.size())
+	var steps_to_simulate := mini(draft_depth, SimConstantsScript.DRAFT_SEQUENCE.size())
 	for i in range(steps_to_simulate):
-		var turn := DRAFT_SEQUENCE[i]
+		var turn := SimConstantsScript.DRAFT_SEQUENCE[i]
 		if pool.is_empty():
 			break
 		

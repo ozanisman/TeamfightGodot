@@ -94,6 +94,20 @@ struct CertifiedPairwiseFeatures {
 	double base = 0.5;
 	double synergy = 0.5;
 	double counter = 0.5;
+	// Variance and specificity (Phase 1.1)
+	double synergy_variance = 0.0;
+	double counter_variance = 0.0;
+	double best_synergy = 0.5;
+	double worst_synergy = 0.5;
+	double best_counter = 0.5;
+	double worst_counter = 0.5;
+	// Role balance (Phase 1.2)
+	int tank_count = 0;
+	int fighter_count = 0;
+	int assassin_count = 0;
+	int marksman_count = 0;
+	int mage_count = 0;
+	int support_count = 0;
 };
 
 double mean_or_zero(const std::vector<double> &values) {
@@ -436,29 +450,43 @@ void DraftStatsDatabase::calculate_win_probability(const std::vector<StringName>
 double DraftStatsDatabase::calculate_certified_pairwise_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
 	// Pairwise probability logistic fitted by verify_pairwise_signal.gd on
 	// draft_ceiling_holdout_5000.csv. Runtime still loads feature inputs from stats_dir.
-	static constexpr double k_weights[6] = {
-		-1.431640,
-		0.224893,
-		1.361544,
-		1.491399,
-		-0.259811,
-		-1.361542,
+	static constexpr double k_weights[30] = {
+		// Team A: base, synergy, counter
+		-1.431640, 0.224893, 1.361544,
+		// Team A: variance + specificity (placeholder — trained in Phase 1)
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+		// Team A: role counts (placeholder — trained in Phase 1)
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+		// Team B: base, synergy, counter
+		1.491399, -0.259811, -1.361542,
+		// Team B: variance + specificity (placeholder)
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+		// Team B: role counts (placeholder)
+		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 	};
-	static constexpr double k_means[6] = {
-		0.499869,
-		0.499912,
-		0.499880,
-		0.500286,
-		0.500188,
-		0.500120,
+	static constexpr double k_means[30] = {
+		// Team A
+		0.499869, 0.499912, 0.499880,
+		0.0, 0.0, // variance means ~0
+		0.5, 0.5, 0.5, 0.5, // specificity means ~0.5
+		0.5, 0.5, 0.5, 0.5, 0.5, 0.5, // role count means (placeholder)
+		// Team B
+		0.500286, 0.500188, 0.500120,
+		0.0, 0.0,
+		0.5, 0.5, 0.5, 0.5,
+		0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
 	};
-	static constexpr double k_stddevs[6] = {
-		0.020055,
-		0.012098,
-		0.010396,
-		0.020156,
-		0.012149,
-		0.010396,
+	static constexpr double k_stddevs[30] = {
+		// Team A
+		0.020055, 0.012098, 0.010396,
+		1.0, 1.0, // variance stddevs (placeholder)
+		1.0, 1.0, 1.0, 1.0, // specificity stddevs (placeholder)
+		1.0, 1.0, 1.0, 1.0, 1.0, 1.0, // role count stddevs (placeholder)
+		// Team B
+		0.020156, 0.012149, 0.010396,
+		1.0, 1.0,
+		1.0, 1.0, 1.0, 1.0,
+		1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
 	};
 	static constexpr double k_bias = -0.035751;
 
@@ -474,39 +502,70 @@ double DraftStatsDatabase::calculate_certified_pairwise_probability(const std::v
 		double base_sum = 0.0;
 		double synergy_sum = 0.0;
 		double counter_sum = 0.0;
+		double synergy_variance_sum = 0.0;
+		double counter_variance_sum = 0.0;
+		double best_synergy_sum = 0.0;
+		double worst_synergy_sum = 0.0;
+		double best_counter_sum = 0.0;
+		double worst_counter_sum = 0.0;
 		for (const StringName &champion : team) {
 			StatValue base_stat = base_winrate_for(champion);
 			base_sum += apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, smoothing_config);
 
-			std::vector<double> synergy_values;
-			for (const StringName &ally : team) {
-				if (ally == champion) {
-					continue;
-				}
-				StatValue stat;
-				synergy_values.push_back(lookup_pair(_synergy_winrates, champion, ally, stat) ? stat.winrate : 0.5);
-			}
-			synergy_sum += apply_bayesian_smoothing(mean_or_zero(synergy_values), int64_t(synergy_values.size()), smoothing_config);
+			RelationshipAggregate synergy_agg = aggregate_relationship_signal(*this, champion, team, RelationshipKind::SYNERGY, smoothing_config);
+			synergy_sum += synergy_agg.adjusted_average;
+			synergy_variance_sum += synergy_agg.variance;
+			best_synergy_sum += synergy_agg.max_adjusted;
+			worst_synergy_sum += synergy_agg.min_adjusted;
 
-			std::vector<double> counter_values;
-			for (const StringName &enemy : opponents) {
-				StatValue stat;
-				counter_values.push_back(counter_winrate_for(champion, enemy, stat) ? stat.winrate : 0.5);
-			}
-			counter_sum += apply_bayesian_smoothing(mean_or_zero(counter_values), int64_t(counter_values.size()), smoothing_config);
+			RelationshipAggregate counter_agg = aggregate_relationship_signal(*this, champion, opponents, RelationshipKind::COUNTER, smoothing_config);
+			counter_sum += counter_agg.adjusted_average;
+			counter_variance_sum += counter_agg.variance;
+			best_counter_sum += counter_agg.max_adjusted;
+			worst_counter_sum += counter_agg.min_adjusted;
+
+			StringName role = get_champion_role(champion);
+			if (role == StringName("tank")) features.tank_count++;
+			else if (role == StringName("fighter")) features.fighter_count++;
+			else if (role == StringName("assassin")) features.assassin_count++;
+			else if (role == StringName("marksman")) features.marksman_count++;
+			else if (role == StringName("mage")) features.mage_count++;
+			else if (role == StringName("support")) features.support_count++;
 		}
 
-		features.base = base_sum / double(team.size());
-		features.synergy = synergy_sum / double(team.size());
-		features.counter = counter_sum / double(team.size());
+		double n = double(team.size());
+		features.base = base_sum / n;
+		features.synergy = synergy_sum / n;
+		features.counter = counter_sum / n;
+		features.synergy_variance = synergy_variance_sum / n;
+		features.counter_variance = counter_variance_sum / n;
+		features.best_synergy = best_synergy_sum / n;
+		features.worst_synergy = worst_synergy_sum / n;
+		features.best_counter = best_counter_sum / n;
+		features.worst_counter = worst_counter_sum / n;
 		return features;
 	};
 
 	CertifiedPairwiseFeatures a = extract(team1, team2);
 	CertifiedPairwiseFeatures b = extract(team2, team1);
-	const double raw[6] = { a.base, a.synergy, a.counter, b.base, b.synergy, b.counter };
+	const double raw[30] = {
+		a.base, a.synergy, a.counter,
+		a.synergy_variance, a.counter_variance,
+		a.best_synergy, a.worst_synergy,
+		a.best_counter, a.worst_counter,
+		static_cast<double>(a.tank_count), static_cast<double>(a.fighter_count),
+		static_cast<double>(a.assassin_count), static_cast<double>(a.marksman_count),
+		static_cast<double>(a.mage_count), static_cast<double>(a.support_count),
+		b.base, b.synergy, b.counter,
+		b.synergy_variance, b.counter_variance,
+		b.best_synergy, b.worst_synergy,
+		b.best_counter, b.worst_counter,
+		static_cast<double>(b.tank_count), static_cast<double>(b.fighter_count),
+		static_cast<double>(b.assassin_count), static_cast<double>(b.marksman_count),
+		static_cast<double>(b.mage_count), static_cast<double>(b.support_count),
+	};
 	double z = k_bias;
-	for (int i = 0; i < 6; ++i) {
+	for (int i = 0; i < 30; ++i) {
 		z += k_weights[i] * ((raw[i] - k_means[i]) / k_stddevs[i]);
 	}
 	return 1.0 / (1.0 + std::exp(-z));

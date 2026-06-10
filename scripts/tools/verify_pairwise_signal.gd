@@ -10,13 +10,16 @@ const SMOOTHING_K: float = 10.0
 const PRIOR_WINRATE: float = 0.5
 const LEARNING_RATE: float = 0.05
 const MAX_ITERATIONS: int = 5000
-const CONVERGENCE_TOLERANCE: float = 1e-7
+const CONVERGENCE_TOLERANCE: float = 1e-6
 const L2_REGULARIZATION: float = 0.001
 const TRAIN_FRACTION: float = 0.8
 const SPLIT_SEED: int = 1337
 const DEFAULT_SPLIT_REPEATS: int = 0
 const REPEATED_SPLIT_FEATURE_SETS: Array[String] = [
 	"pairwise",
+	"pairwise_extended",
+	"pairwise_extended_roles",
+	"pairwise_phase1",
 	"pairwise_archetype",
 	"pairwise_probe",
 	"combined_all",
@@ -114,6 +117,8 @@ func _run() -> void:
 
 	var model_reports: Array[Dictionary] = []
 	var feature_sets: Array[String] = ["pairwise", "mechanical", "combined"]
+	if _feature_set_available(feature_data, "pairwise_extended"):
+		feature_sets.append_array(["pairwise_extended", "pairwise_extended_roles", "pairwise_phase1"])
 	if _feature_set_available(feature_data, "archetype"):
 		feature_sets.append_array(["archetype", "pairwise_archetype"])
 	if _feature_set_available(feature_data, "probe"):
@@ -173,6 +178,12 @@ func _load_combat_stats(path: String) -> Dictionary:
 	var hero_col: int = header.find("hero")
 	var winrate_col: int = header.find("win_rate")
 	var total_games_col: int = header.find("total_games")
+	var role_col: int = header.find("role")
+	var dmg_col: int = header.find("avg_dmg_dealt")
+	var heal_col: int = header.find("avg_healing")
+	var stun_col: int = header.find("avg_stuns")
+	var dmg_rcv_col: int = header.find("avg_dmg_received")
+	var dmg_mit_col: int = header.find("avg_dmg_mitigated")
 	if hero_col < 0 or winrate_col < 0 or total_games_col < 0:
 		push_error("Missing required columns in combat_stats.csv")
 		f.close()
@@ -181,7 +192,22 @@ func _load_combat_stats(path: String) -> Dictionary:
 		var line: PackedStringArray = f.get_csv_line()
 		if line.size() <= 1:
 			continue
-		result[line[hero_col]] = {"winrate": float(line[winrate_col]), "samples": int(line[total_games_col])}
+		var entry: Dictionary = {
+			"winrate": float(line[winrate_col]),
+			"samples": int(line[total_games_col]),
+			"role": line[role_col] if role_col >= 0 and role_col < line.size() else "",
+		}
+		if dmg_col >= 0 and dmg_col < line.size():
+			entry["avg_dmg_dealt"] = float(line[dmg_col])
+		if heal_col >= 0 and heal_col < line.size():
+			entry["avg_healing"] = float(line[heal_col])
+		if stun_col >= 0 and stun_col < line.size():
+			entry["avg_stuns"] = float(line[stun_col])
+		if dmg_rcv_col >= 0 and dmg_rcv_col < line.size():
+			entry["avg_dmg_received"] = float(line[dmg_rcv_col])
+		if dmg_mit_col >= 0 and dmg_mit_col < line.size():
+			entry["avg_dmg_mitigated"] = float(line[dmg_mit_col])
+		result[line[hero_col]] = entry
 	f.close()
 	return result
 
@@ -284,8 +310,27 @@ func _extract_features(ceiling_data: Array, combat_stats: Dictionary, synergy_st
 		var probe_a := _extract_probe_team_features(team_a, probe_signals)
 		var probe_b := _extract_probe_team_features(team_b, probe_signals)
 		var pairwise_features := PackedFloat32Array()
-		pairwise_features.append_array(pairwise_a)
-		pairwise_features.append_array(pairwise_b)
+		# Original 3 features per team: base, synergy, counter
+		for i in [0, 1, 2]:
+			pairwise_features.append(pairwise_a[i])
+		for i in [0, 1, 2]:
+			pairwise_features.append(pairwise_b[i])
+		# pairwise_extended: original 3 + interaction terms per team (no variance/roles/combat)
+		var pairwise_extended := PackedFloat32Array()
+		for i in [0, 1, 2, 3, 4, 5]:
+			pairwise_extended.append(pairwise_a[i])
+		for i in [0, 1, 2, 3, 4, 5]:
+			pairwise_extended.append(pairwise_b[i])
+		# pairwise_extended_roles: original + interactions + variance + specificity + roles (no combat)
+		var pairwise_extended_roles := PackedFloat32Array()
+		for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]:
+			pairwise_extended_roles.append(pairwise_a[i])
+		for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]:
+			pairwise_extended_roles.append(pairwise_b[i])
+		# pairwise_phase1: all features per team
+		var pairwise_phase1 := PackedFloat32Array()
+		pairwise_phase1.append_array(pairwise_a)
+		pairwise_phase1.append_array(pairwise_b)
 		var mechanical_features := PackedFloat32Array()
 		mechanical_features.append_array(mech_a)
 		mechanical_features.append_array(mech_b)
@@ -319,6 +364,9 @@ func _extract_features(ceiling_data: Array, combat_stats: Dictionary, synergy_st
 			"team_b": team_b,
 			"true_p": comp["true_p"],
 			"pairwise": pairwise_features,
+			"pairwise_extended": pairwise_extended,
+			"pairwise_extended_roles": pairwise_extended_roles,
+			"pairwise_phase1": pairwise_phase1,
 			"mechanical": mechanical_features,
 			"combined": combined_features,
 			"probe": probe_features,
@@ -336,6 +384,20 @@ func _extract_pairwise_team_features(team: Array, opponents: Array, combat_stats
 	var base_sum: float = 0.0
 	var synergy_sum: float = 0.0
 	var counter_sum: float = 0.0
+	var synergy_variance_sum: float = 0.0
+	var counter_variance_sum: float = 0.0
+	var best_synergy_sum: float = 0.0
+	var worst_synergy_sum: float = 0.0
+	var best_counter_sum: float = 0.0
+	var worst_counter_sum: float = 0.0
+	var role_counts: Dictionary = {
+		"tank": 0, "fighter": 0, "assassin": 0,
+		"marksman": 0, "mage": 0, "support": 0,
+	}
+	var dmg_dealt_sum: float = 0.0
+	var healing_sum: float = 0.0
+	var stuns_sum: float = 0.0
+	var effective_hp_sum: float = 0.0
 	var count: int = 0
 	for champion in team:
 		var base_data: Dictionary = combat_stats.get(champion, {"winrate": 0.5, "samples": 0})
@@ -345,17 +407,64 @@ func _extract_pairwise_team_features(team: Array, opponents: Array, combat_stats
 		for ally in team:
 			if ally != champion:
 				synergy_values.append(synergy_data.get(ally, {"winrate": 0.5})["winrate"])
-		synergy_sum += _apply_bayesian_smoothing(_compute_mean(synergy_values), synergy_values.size())
+		var smoothed_synergy: float = _apply_bayesian_smoothing(_compute_mean(synergy_values), synergy_values.size())
+		synergy_sum += smoothed_synergy
+		synergy_variance_sum += _compute_variance(synergy_values)
+		best_synergy_sum += _compute_max(synergy_values)
+		worst_synergy_sum += _compute_min(synergy_values)
 		var counter_values: Array = []
 		var counter_data: Dictionary = counter_stats.get(champion, {})
 		for enemy in opponents:
 			counter_values.append(counter_data.get(enemy, {"winrate": 0.5})["winrate"])
-		counter_sum += _apply_bayesian_smoothing(_compute_mean(counter_values), counter_values.size())
+		var smoothed_counter: float = _apply_bayesian_smoothing(_compute_mean(counter_values), counter_values.size())
+		counter_sum += smoothed_counter
+		counter_variance_sum += _compute_variance(counter_values)
+		best_counter_sum += _compute_max(counter_values)
+		worst_counter_sum += _compute_min(counter_values)
+		var role: String = base_data.get("role", "")
+		if role != "" and role_counts.has(role):
+			role_counts[role] += 1
+		# Combat stat aggregates
+		if base_data.has("avg_dmg_dealt"):
+			dmg_dealt_sum += base_data["avg_dmg_dealt"]
+		if base_data.has("avg_healing"):
+			healing_sum += base_data["avg_healing"]
+		if base_data.has("avg_stuns"):
+			stuns_sum += base_data["avg_stuns"]
+		if base_data.has("avg_dmg_received") and base_data.has("avg_dmg_mitigated"):
+			effective_hp_sum += base_data["avg_dmg_received"] + base_data["avg_dmg_mitigated"]
 		count += 1
+	var n: float = float(count) if count > 0 else 1.0
+	var avg_base: float = base_sum / n
+	var avg_synergy: float = synergy_sum / n
+	var avg_counter: float = counter_sum / n
 	var result := PackedFloat32Array()
-	result.append(base_sum / float(count) if count > 0 else 0.5)
-	result.append(synergy_sum / float(count) if count > 0 else 0.5)
-	result.append(counter_sum / float(count) if count > 0 else 0.5)
+	result.append(avg_base)
+	result.append(avg_synergy)
+	result.append(avg_counter)
+	# Interaction terms (Phase 1 alternative)
+	result.append(avg_base * avg_synergy)
+	result.append(avg_base * avg_counter)
+	result.append(avg_synergy * avg_counter)
+	# Variance and specificity
+	result.append(synergy_variance_sum / n)
+	result.append(counter_variance_sum / n)
+	result.append(best_synergy_sum / n)
+	result.append(worst_synergy_sum / n)
+	result.append(best_counter_sum / n)
+	result.append(worst_counter_sum / n)
+	# Role counts
+	result.append(float(role_counts["tank"]))
+	result.append(float(role_counts["fighter"]))
+	result.append(float(role_counts["assassin"]))
+	result.append(float(role_counts["marksman"]))
+	result.append(float(role_counts["mage"]))
+	result.append(float(role_counts["support"]))
+	# Combat stat aggregates
+	result.append(dmg_dealt_sum / n)
+	result.append(healing_sum / n)
+	result.append(stuns_sum / n)
+	result.append(effective_hp_sum / n)
 	return result
 
 
@@ -830,9 +939,25 @@ func _print_report(baseline: Dictionary, model_reports: Array[Dictionary], repea
 	lines.append("")
 	lines.append("Decision gate:")
 	var pairwise := _find_report(model_reports, "pairwise", MODEL_LABEL, false)
+	var pairwise_extended := _find_report(model_reports, "pairwise_extended", MODEL_LABEL, false)
+	var pairwise_extended_roles := _find_report(model_reports, "pairwise_extended_roles", MODEL_LABEL, false)
+	var pairwise_phase1 := _find_report(model_reports, "pairwise_phase1", MODEL_LABEL, false)
 	var combined := _find_report(model_reports, "combined", MODEL_LABEL, false)
 	var pairwise_archetype := _find_report(model_reports, "pairwise_archetype", MODEL_LABEL, false)
 	var pairwise_probe := _find_report(model_reports, "pairwise_probe", MODEL_LABEL, false)
+	if not pairwise.is_empty() and not pairwise_extended.is_empty():
+		var extended_delta_pp: float = (pairwise_extended["test"]["accuracy"] - pairwise["test"]["accuracy"]) * 100.0
+		lines.append("  pairwise_extended vs pairwise test delta: %+.1f pp" % extended_delta_pp)
+	if not pairwise_extended.is_empty() and not pairwise_extended_roles.is_empty():
+		var roles_delta_pp: float = (pairwise_extended_roles["test"]["accuracy"] - pairwise_extended["test"]["accuracy"]) * 100.0
+		lines.append("  pairwise_extended_roles vs pairwise_extended test delta: %+.1f pp" % roles_delta_pp)
+	if not pairwise.is_empty() and not pairwise_phase1.is_empty():
+		var phase1_delta_pp: float = (pairwise_phase1["test"]["accuracy"] - pairwise["test"]["accuracy"]) * 100.0
+		lines.append("  pairwise_phase1 vs pairwise test delta: %+.1f pp" % phase1_delta_pp)
+		if phase1_delta_pp >= 2.0 or (pairwise_phase1["test"]["accuracy"] >= pairwise["test"]["accuracy"] and pairwise_phase1["test"]["mse"] < pairwise["test"]["mse"]):
+			lines.append("  recommendation: proceed with Phase 1 feature set for native wiring")
+		else:
+			lines.append("  recommendation: Phase 1 features do not improve signal; do not wire yet")
 	if not pairwise.is_empty() and not combined.is_empty():
 		var delta_pp: float = (combined["test"]["accuracy"] - pairwise["test"]["accuracy"]) * 100.0
 		lines.append("  combined_label vs pairwise_label test delta: %+.1f pp" % delta_pp)
@@ -948,6 +1073,35 @@ func _compute_mean(values: Array) -> float:
 	for v in values:
 		sum += float(v)
 	return sum / float(values.size())
+
+
+func _compute_variance(values: Array) -> float:
+	if values.is_empty():
+		return 0.0
+	var mean: float = _compute_mean(values)
+	var sum_sq: float = 0.0
+	for v in values:
+		var d: float = float(v) - mean
+		sum_sq += d * d
+	return sum_sq / float(values.size())
+
+
+func _compute_max(values: Array) -> float:
+	if values.is_empty():
+		return 0.5
+	var max_val: float = float(values[0])
+	for v in values:
+		max_val = maxf(max_val, float(v))
+	return max_val
+
+
+func _compute_min(values: Array) -> float:
+	if values.is_empty():
+		return 0.5
+	var min_val: float = float(values[0])
+	for v in values:
+		min_val = minf(min_val, float(v))
+	return min_val
 
 
 func _compute_correlation(feature_data: Array, x_key: String, y_key: String) -> float:

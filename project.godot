@@ -16,6 +16,10 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 run/max_fps=60
 
+[gui]
+
+theme/custom="res://assets/theme/theme.tres"
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"

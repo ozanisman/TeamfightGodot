@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://draft_champion_tile"]
+
+[ext_resource type="Script" path="res://scripts/ui/components/draft_champion_tile.gd" id="1"]
+
+[node name="DraftChampionTile" type="Button"]
+custom_minimum_size = Vector2(92, 92)
+text = "Champion"
+clip_text = true
+script = ExtResource("1")

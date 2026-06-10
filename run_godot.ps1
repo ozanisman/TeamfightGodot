@@ -16,6 +16,7 @@ $checkBenchmark = $Arguments -contains "--check-benchmark"
 $checkBenchmarkSharded = $Arguments -contains "--check-benchmark-sharded"
 $checkBalancePatches = $Arguments -contains "--check-balance-patches"
 $checkStatsDashboard = $Arguments -contains "--check-stats-dashboard"
+$checkDraftUi = $Arguments -contains "--check-draft-ui"
 $checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
 $checkStatsCsvDeterminism = $Arguments -contains "--check-stats-csv-determinism"
 $generateStats = $Arguments -contains "--generate-stats"
@@ -54,6 +55,9 @@ if ($checkOnly) {
 	$timeoutSeconds = 15
 }
 elseif ($checkStatsDashboard) {
+	$timeoutSeconds = 30
+}
+elseif ($checkDraftUi) {
 	$timeoutSeconds = 30
 }
 elseif ($checkNativeLoad) {
@@ -140,6 +144,9 @@ elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkBenchmarkSharded) {
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsDashboard) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
+elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkDraftUi) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
+}
 elseif ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkStatsAggregator) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
@@ -223,6 +230,9 @@ elseif ($checkBalancePatches) {
 elseif ($checkStatsDashboard) {
 	$godotArgs += @("--script", "res://scripts/tools/check_stats_dashboard_load.gd")
 }
+elseif ($checkDraftUi) {
+	$godotArgs += @("--script", "res://scripts/tools/check_draft_ui_load.gd")
+}
 elseif ($checkStatsAggregator) {
 	$godotArgs += @("--script", "res://scripts/tools/check_stats_aggregator_roundtrip.gd")
 }
@@ -268,7 +278,7 @@ elseif ($validateRolloutConvergence) {
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
-elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $isSimulationViewer) {
+elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $checkDraftUi -and -not $isSimulationViewer) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {
@@ -276,13 +286,13 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if (($checkOnly -or $checkStatsDashboard -or $checkStatsAggregator -or $checkStatsCsvDeterminism) -and (Test-Path $logFile)) {
+if (($checkOnly -or $checkStatsDashboard -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
 
 try {
-	if ($checkOnly -or $checkStatsDashboard -or $checkStatsAggregator -or $checkStatsCsvDeterminism) {
+	if ($checkOnly -or $checkStatsDashboard -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism) {
 		$deadline = (Get-Date).AddSeconds($timeoutSeconds)
 		while ((Get-Date) -lt $deadline) {
 			if ($process.HasExited) {
@@ -325,10 +335,10 @@ try {
 	}
 
 	$process.Refresh()
-	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkStatsCsvDeterminism) {
+	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkDraftUi -or $checkStatsCsvDeterminism) {
 		if (Test-Path $logFile) {
 			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
-			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)"
+			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|check_draft_ui_load: FAILED"
 			if ($tail -match $failurePattern) {
 				Write-Error "Godot check failed. See $logFile."
 				exit 1

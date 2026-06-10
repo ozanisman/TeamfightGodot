@@ -54,6 +54,10 @@ func apply_layout(screen_size: Vector2) -> void:
 	DraftLayoutScript.apply_section_panel_layout(player_bans_panel, &"left", 1)
 	DraftLayoutScript.apply_section_panel_layout(enemy_team_panel, &"right", 0)
 	DraftLayoutScript.apply_section_panel_layout(enemy_bans_panel, &"right", 1)
+	for label in [player_team_label, player_bans_label, enemy_team_label, enemy_bans_label]:
+		DraftLayoutScript.apply_section_header_layout(label as Label)
+	for list in [player_team_list, player_bans_list, enemy_team_list, enemy_bans_list]:
+		DraftLayoutScript.apply_section_list_layout(list as Control)
 	DraftLayoutScript.apply_role_filter_layout(role_filter_container)
 	DraftLayoutScript.apply_action_box_layout(draft_action_box, screen_size)
 	DraftLayoutScript.apply_champion_scroll_layout(champion_scroll, screen_size)

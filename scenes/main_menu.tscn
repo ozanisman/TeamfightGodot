@@ -1,0 +1,76 @@
+[gd_scene load_steps=2 format=3 uid="uid://main_menu_scene"]
+
+[ext_resource type="Script" path="res://scripts/app/main_menu.gd" id="1"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.078, 0.078, 0.102, 1)
+
+[node name="MenuBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -345.0
+offset_top = -114.0
+offset_right = 345.0
+offset_bottom = 114.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="MenuBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 48
+text = "Teamfight"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="MenuBox"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="ButtonRow" type="HBoxContainer" parent="MenuBox"]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="SimulationButton" type="Button" parent="MenuBox/ButtonRow"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Simulation Viewer"
+
+[node name="StatsButton" type="Button" parent="MenuBox/ButtonRow"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Stats Dashboard"
+
+[node name="DraftTestingButton" type="Button" parent="MenuBox/ButtonRow"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Draft Testing"
+
+[connection signal="pressed" from="MenuBox/ButtonRow/SimulationButton" to="." method="_on_simulation_pressed"]
+[connection signal="pressed" from="MenuBox/ButtonRow/StatsButton" to="." method="_on_stats_pressed"]
+[connection signal="pressed" from="MenuBox/ButtonRow/DraftTestingButton" to="." method="_on_draft_testing_pressed"]

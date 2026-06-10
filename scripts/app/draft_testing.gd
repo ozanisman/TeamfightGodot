@@ -96,7 +96,8 @@ var _debug_mode: bool = true
 
 # Draft filtering
 var _active_role_filters: Array[StringName] = []
-var _banned_champions: Array[StringName] = []
+var _player_bans: Array[StringName] = []
+var _enemy_bans: Array[StringName] = []
 
 # UI references
 var _world_layer: Node2D
@@ -109,10 +110,16 @@ var _title_label: Label
 var _turn_label: Label
 var _player_team_label: Label
 var _player_team_list: VBoxContainer
+var _player_team_panel: Panel
+var _player_bans_label: Label
+var _player_bans_list: VBoxContainer
+var _player_bans_panel: Panel
 var _enemy_team_label: Label
 var _enemy_team_list: VBoxContainer
-var _banned_list: VBoxContainer
-var _banned_list_ref: VBoxContainer
+var _enemy_team_panel: Panel
+var _enemy_bans_label: Label
+var _enemy_bans_list: VBoxContainer
+var _enemy_bans_panel: Panel
 var _role_filter_container: HBoxContainer
 var _champion_grid: GridContainer
 var _champion_grid_ref: GridContainer
@@ -296,48 +303,123 @@ func _create_ui_structure() -> void:
 	debug_label.add_theme_color_override("font_color", COLOR_WARNING)
 	_header_panel.add_child(debug_label)
 
+	# Create PlayerTeamPanel (background for player team section)
+	_player_team_panel = Panel.new()
+	_player_team_panel.name = "PlayerTeamPanel"
+	_player_team_panel.position = Vector2(30.0, 60.0)
+	_player_team_panel.size = Vector2(150.0, 300.0)
+	var player_team_style := StyleBoxFlat.new()
+	player_team_style.bg_color = COLOR_SECTION_BG
+	player_team_style.border_width_left = 2
+	player_team_style.border_width_top = 2
+	player_team_style.border_width_right = 2
+	player_team_style.border_width_bottom = 2
+	player_team_style.border_color = COLOR_SECTION_BORDER
+	_player_team_panel.add_theme_stylebox_override("panel", player_team_style)
+	_header_panel.add_child(_player_team_panel)
+
 	# Create PlayerTeamLabel (top-left)
 	_player_team_label = Label.new()
 	_player_team_label.name = "PlayerTeamLabel"
-	_player_team_label.text = "PLAYER 1 TEAM"
-	_player_team_label.position = Vector2(40.0, 12.0)
+	_player_team_label.text = "PLAYER 1"
+	_player_team_label.position = Vector2(40.0, 67.0)
+	_player_team_label.add_theme_font_size_override("font_size", 16)
 	_header_panel.add_child(_player_team_label)
 
 	# Create PlayerTeamList (below player team label)
 	_player_team_list = VBoxContainer.new()
 	_player_team_list.name = "PlayerTeamList"
-	_player_team_list.position = Vector2(40.0, 50.0)
+	_player_team_list.position = Vector2(40.0, 105.0)
 	_header_panel.add_child(_player_team_list)
+
+	# Create PlayerBansPanel (background for player bans section)
+	_player_bans_panel = Panel.new()
+	_player_bans_panel.name = "PlayerBansPanel"
+	_player_bans_panel.position = Vector2(200.0, 60.0)
+	_player_bans_panel.size = Vector2(150.0, 300.0)
+	var player_bans_style := StyleBoxFlat.new()
+	player_bans_style.bg_color = COLOR_SECTION_BG
+	player_bans_style.border_width_left = 2
+	player_bans_style.border_width_top = 2
+	player_bans_style.border_width_right = 2
+	player_bans_style.border_width_bottom = 2
+	player_bans_style.border_color = COLOR_SECTION_BORDER
+	_player_bans_panel.add_theme_stylebox_override("panel", player_bans_style)
+	_header_panel.add_child(_player_bans_panel)
+
+	# Create PlayerBansLabel (next to player team)
+	_player_bans_label = Label.new()
+	_player_bans_label.name = "PlayerBansLabel"
+	_player_bans_label.text = "BANS"
+	_player_bans_label.position = Vector2(210.0, 67.0)
+	_player_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_player_bans_label.add_theme_font_size_override("font_size", 16)
+	_header_panel.add_child(_player_bans_label)
+
+	# Create PlayerBansList (below player bans label)
+	_player_bans_list = VBoxContainer.new()
+	_player_bans_list.name = "PlayerBansList"
+	_player_bans_list.position = Vector2(210.0, 95.0)
+	_header_panel.add_child(_player_bans_list)
+
+	# Create EnemyTeamPanel (background for enemy team section)
+	_enemy_team_panel = Panel.new()
+	_enemy_team_panel.name = "EnemyTeamPanel"
+	_enemy_team_panel.position = Vector2(screen_size.x - 350.0, 60.0)
+	_enemy_team_panel.size = Vector2(150.0, 300.0)
+	var enemy_team_style := StyleBoxFlat.new()
+	enemy_team_style.bg_color = COLOR_SECTION_BG
+	enemy_team_style.border_width_left = 2
+	enemy_team_style.border_width_top = 2
+	enemy_team_style.border_width_right = 2
+	enemy_team_style.border_width_bottom = 2
+	enemy_team_style.border_color = COLOR_SECTION_BORDER
+	_enemy_team_panel.add_theme_stylebox_override("panel", enemy_team_style)
+	_header_panel.add_child(_enemy_team_panel)
 
 	# Create EnemyTeamLabel (top-right)
 	_enemy_team_label = Label.new()
 	_enemy_team_label.name = "EnemyTeamLabel"
-	_enemy_team_label.text = "PLAYER 2 TEAM"
-	_enemy_team_label.position = Vector2(screen_size.x - 240.0, 12.0)
+	_enemy_team_label.text = "PLAYER 2"
+	_enemy_team_label.position = Vector2(screen_size.x - 340.0, 67.0)
+	_enemy_team_label.add_theme_font_size_override("font_size", 16)
 	_header_panel.add_child(_enemy_team_label)
 
 	# Create EnemyTeamList (below enemy team label)
 	_enemy_team_list = VBoxContainer.new()
 	_enemy_team_list.name = "EnemyTeamList"
-	_enemy_team_list.position = Vector2(screen_size.x - 240.0, 50.0)
+	_enemy_team_list.position = Vector2(screen_size.x - 340.0, 105.0)
 	_header_panel.add_child(_enemy_team_list)
 
-	# Create BannedLabel (centered lower)
-	var banned_label := Label.new()
-	banned_label.name = "BannedLabel"
-	banned_label.text = "BANNED"
-	banned_label.position = Vector2(screen_size.x / 2.0 - 100.0, 220.0)
-	banned_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-	_header_panel.add_child(banned_label)
+	# Create EnemyBansPanel (background for enemy bans section)
+	_enemy_bans_panel = Panel.new()
+	_enemy_bans_panel.name = "EnemyBansPanel"
+	_enemy_bans_panel.position = Vector2(screen_size.x - 180.0, 60.0)
+	_enemy_bans_panel.size = Vector2(150.0, 300.0)
+	var enemy_bans_style := StyleBoxFlat.new()
+	enemy_bans_style.bg_color = COLOR_SECTION_BG
+	enemy_bans_style.border_width_left = 2
+	enemy_bans_style.border_width_top = 2
+	enemy_bans_style.border_width_right = 2
+	enemy_bans_style.border_width_bottom = 2
+	enemy_bans_style.border_color = COLOR_SECTION_BORDER
+	_enemy_bans_panel.add_theme_stylebox_override("panel", enemy_bans_style)
+	_header_panel.add_child(_enemy_bans_panel)
 
-	# Create BannedList (below banned label)
-	_banned_list = VBoxContainer.new()
-	_banned_list.name = "BannedList"
-	_banned_list.position = Vector2(screen_size.x / 2.0 - 100.0, 250.0)
-	_header_panel.add_child(_banned_list)
+	# Create EnemyBansLabel (next to enemy team)
+	_enemy_bans_label = Label.new()
+	_enemy_bans_label.name = "EnemyBansLabel"
+	_enemy_bans_label.text = "BANS"
+	_enemy_bans_label.position = Vector2(screen_size.x - 170.0, 67.0)
+	_enemy_bans_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_enemy_bans_label.add_theme_font_size_override("font_size", 16)
+	_header_panel.add_child(_enemy_bans_label)
 
-	# Store reference for banned list
-	_banned_list_ref = _banned_list
+	# Create EnemyBansList (below enemy bans label)
+	_enemy_bans_list = VBoxContainer.new()
+	_enemy_bans_list.name = "EnemyBansList"
+	_enemy_bans_list.position = Vector2(screen_size.x - 170.0, 95.0)
+	_header_panel.add_child(_enemy_bans_list)
 
 	# Role filter buttons will be created in _setup_draft_ui
 	_role_filter_container = HBoxContainer.new()
@@ -658,22 +740,53 @@ func _on_resize_debounce_timeout() -> void:
 	if debug_label != null:
 		debug_label.position = Vector2(screen_size.x - 150.0, 10.0)
 	
+	# Update player team panel position
+	if _player_team_panel != null:
+		_player_team_panel.position = Vector2(30.0, 60.0)
+	
+	# Update player team label position
+	if _player_team_label != null:
+		_player_team_label.position = Vector2(40.0, 67.0)
+	
+	# Update player team list position
+	if _player_team_list != null:
+		_player_team_list.position = Vector2(40.0, 105.0)
+	
+	# Update player bans panel position
+	if _player_bans_panel != null:
+		_player_bans_panel.position = Vector2(200.0, 60.0)
+	
+	# Update player bans label position
+	if _player_bans_label != null:
+		_player_bans_label.position = Vector2(210.0, 67.0)
+	
+	# Update player bans list position
+	if _player_bans_list != null:
+		_player_bans_list.position = Vector2(210.0, 95.0)
+	
+	# Update enemy team panel position
+	if _enemy_team_panel != null:
+		_enemy_team_panel.position = Vector2(screen_size.x - 350.0, 60.0)
+	
 	# Update enemy team label position
 	if _enemy_team_label != null:
-		_enemy_team_label.position = Vector2(screen_size.x - 240.0, 12.0)
+		_enemy_team_label.position = Vector2(screen_size.x - 340.0, 67.0)
 	
 	# Update enemy team list position
 	if _enemy_team_list != null:
-		_enemy_team_list.position = Vector2(screen_size.x - 240.0, 50.0)
+		_enemy_team_list.position = Vector2(screen_size.x - 340.0, 105.0)
 	
-	# Update banned label position
-	var banned_label := _header_panel.get_node_or_null("BannedLabel")
-	if banned_label != null:
-		banned_label.position = Vector2(screen_size.x / 2.0 - 100.0, 220.0)
+	# Update enemy bans panel position
+	if _enemy_bans_panel != null:
+		_enemy_bans_panel.position = Vector2(screen_size.x - 180.0, 60.0)
 	
-	# Update banned list position
-	if _banned_list != null:
-		_banned_list.position = Vector2(screen_size.x / 2.0 - 100.0, 250.0)
+	# Update enemy bans label position
+	if _enemy_bans_label != null:
+		_enemy_bans_label.position = Vector2(screen_size.x - 170.0, 67.0)
+	
+	# Update enemy bans list position
+	if _enemy_bans_list != null:
+		_enemy_bans_list.position = Vector2(screen_size.x - 170.0, 95.0)
 	
 	# Update action buttons with proportional sizing
 	_update_action_buttons(screen_size)
@@ -743,7 +856,7 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 		var champion_dict: Dictionary = champion.to_dict()
 		var stats_dict: Dictionary = champion_dict.get("stats", {})
 		var role: StringName = StringName(stats_dict.get("role", ""))
-		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
 
 		var row := i / cols
 		var col := i % cols
@@ -756,7 +869,6 @@ func _update_champion_buttons_in_place(screen_size: Vector2) -> void:
 
 		var button := Button.new()
 		button.name = button_name
-		button.text = String(stats_dict.get("name", String(champion_id)))
 		button.size = new_size
 		button.position = new_position
 		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
@@ -1865,13 +1977,12 @@ func _populate_champion_grid() -> void:
 		var stats_dict: Dictionary = champion_dict.get("stats", {})
 		var role: StringName = StringName(stats_dict.get("role", ""))
 
-		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
+		var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
 
 		var row := i / cols
 		var col := i % cols
 		var button := Button.new()
 		button.name = "Champion_" + String(champion_id)
-		button.text = String(stats_dict.get("name", String(champion_id)))
 		button.custom_minimum_size = Vector2(square_size, square_size)
 		button.position = Vector2(screen_size.x * (start_x_ratio + float(col) * (square_size_ratio + square_margin_ratio)), screen_size.y * (start_y_ratio + float(row) * (square_size_ratio * screen_size.x / screen_size.y + square_margin_ratio * screen_size.x / screen_size.y)))
 		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
@@ -1936,6 +2047,17 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
 	
+	var is_banned: bool = champion_id in _player_bans or champion_id in _enemy_bans
+	var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+	var champion_name: String = ""
+	if champion != null:
+		var champion_dict: Dictionary = champion.to_dict()
+		var stats_dict: Dictionary = champion_dict.get("stats", {})
+		champion_name = String(stats_dict.get("name", String(champion_id)))
+	
+	# Always show champion name
+	button.text = champion_name
+	
 	if is_taken:
 		# Dim the role color for the fill
 		var dimmed_color := Color(
@@ -1958,6 +2080,24 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 		button.add_theme_stylebox_override("pressed", style_box)
 		button.add_theme_stylebox_override("disabled", style_box)
 		button.disabled = true
+		button.add_theme_color_override("font_color", COLOR_TEXT)
+		
+		# Add gray X overlay for banned champions
+		var existing_x: Control = button.get_node_or_null("BanOverlay")
+		if is_banned:
+			if existing_x == null:
+				var x_overlay := Control.new()
+				x_overlay.name = "BanOverlay"
+				x_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+				x_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				x_overlay.z_index = 10
+				x_overlay.connect("draw", _draw_ban_x.bind(x_overlay))
+				button.add_child(x_overlay)
+				x_overlay.queue_redraw()
+		else:
+			if existing_x != null:
+				button.remove_child(existing_x)
+				existing_x.queue_free()
 	else:
 		# Apply full role color for available champions (bright default)
 		var style_box := StyleBoxFlat.new()
@@ -1966,8 +2106,24 @@ func _style_champion_button(button: Button, role_color: Color, champion_id: Stri
 		button.add_theme_stylebox_override("hover", style_box)
 		button.add_theme_stylebox_override("pressed", style_box)
 		button.add_theme_stylebox_override("disabled", style_box)
+		button.add_theme_color_override("font_color", COLOR_TEXT)
 		button.modulate = Color.WHITE
 		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
+		
+		# Remove X overlay if exists
+		var existing_x: Control = button.get_node_or_null("BanOverlay")
+		if existing_x != null:
+			button.remove_child(existing_x)
+			existing_x.queue_free()
+
+
+func _draw_ban_x(control: Control) -> void:
+	var size := control.size
+	var color := Color(0.5, 0.5, 0.5)
+	var line_width := 4.0
+	var offset := 4.0  # Match border width + 1px
+	control.draw_line(Vector2(offset, offset), Vector2(size.x - offset, size.y - offset), color, line_width)
+	control.draw_line(Vector2(size.x - offset, offset), Vector2(offset, size.y - offset), color, line_width)
 
 
 func _update_turn_display() -> void:
@@ -2001,15 +2157,21 @@ func _update_team_rosters() -> void:
 	for child in _enemy_team_list.get_children():
 		_enemy_team_list.remove_child(child)
 		child.free()
-	if _banned_list != null:
-		for child in _banned_list.get_children():
-			_banned_list.remove_child(child)
+	if _player_bans_list != null:
+		for child in _player_bans_list.get_children():
+			_player_bans_list.remove_child(child)
+			child.free()
+	if _enemy_bans_list != null:
+		for child in _enemy_bans_list.get_children():
+			_enemy_bans_list.remove_child(child)
 			child.free()
 
 	_player_team_list.add_theme_constant_override("separation", 2)
 	_enemy_team_list.add_theme_constant_override("separation", 2)
-	if _banned_list != null:
-		_banned_list.add_theme_constant_override("separation", 2)
+	if _player_bans_list != null:
+		_player_bans_list.add_theme_constant_override("separation", 2)
+	if _enemy_bans_list != null:
+		_enemy_bans_list.add_theme_constant_override("separation", 2)
 
 	# VBoxContainer lays out; do not set per-label y (was stacking with flow + races from await).
 	for i in range(_player_picks.size()):
@@ -2026,15 +2188,25 @@ func _update_team_rosters() -> void:
 		label2.add_theme_color_override("font_color", COLOR_TEXT)
 		_enemy_team_list.add_child(label2)
 
-	if _banned_list != null:
-		var sorted_banned: Array[StringName] = _banned_champions.duplicate()
-		sorted_banned.sort_custom(func(a, b): return String(a) < String(b))
-		for j in range(sorted_banned.size()):
-			var b_id: StringName = sorted_banned[j]
+	if _player_bans_list != null:
+		var sorted_player_bans: Array[StringName] = _player_bans.duplicate()
+		sorted_player_bans.sort_custom(func(a, b): return String(a) < String(b))
+		for j in range(sorted_player_bans.size()):
+			var b_id: StringName = sorted_player_bans[j]
 			var bl := Label.new()
 			bl.text = String(b_id)
 			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
-			_banned_list.add_child(bl)
+			_player_bans_list.add_child(bl)
+
+	if _enemy_bans_list != null:
+		var sorted_enemy_bans: Array[StringName] = _enemy_bans.duplicate()
+		sorted_enemy_bans.sort_custom(func(a, b): return String(a) < String(b))
+		for j in range(sorted_enemy_bans.size()):
+			var b_id: StringName = sorted_enemy_bans[j]
+			var bl := Label.new()
+			bl.text = String(b_id)
+			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
+			_enemy_bans_list.add_child(bl)
 
 
 func _update_start_match_enabled() -> void:
@@ -2119,7 +2291,7 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 
 func _on_random_draft_clicked() -> void:
 	while _draft_step_index < DRAFT_SEQUENCE.size():
-		var taken: Array[StringName] = _player_picks + _enemy_picks + _banned_champions
+		var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
 		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 		var available: Array[StringName] = []
 		for cid in champion_ids:
@@ -2254,8 +2426,18 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 
 	# Handle ban phases
 	if current_turn.ends_with("_BAN"):
-		if champion_id not in _banned_champions and champion_id not in _player_picks and champion_id not in _enemy_picks:
-			_banned_champions.append(champion_id)
+		if champion_id not in _player_bans and champion_id not in _enemy_bans and champion_id not in _player_picks and champion_id not in _enemy_picks:
+			if current_turn.begins_with("B_"):
+				_player_bans.append(champion_id)
+			elif current_turn.begins_with("R_"):
+				_enemy_bans.append(champion_id)
+		_draft_step_index += 1
+		_update_turn_display()
+		_update_team_rosters()
+		_update_champion_button_style(champion_id)
+		_update_start_match_enabled()
+		_update_draft_recommendations()
+		_try_enemy_draft_ai()
 	# Handle pick phases
 	elif current_turn.ends_with("_PICK"):
 		if current_turn.begins_with("B_"):
@@ -2265,13 +2447,13 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 			if _enemy_picks.size() < MAX_TEAM_SIZE:
 				_enemy_picks.append(champion_id)
 
-	_draft_step_index += 1
-	_update_turn_display()
-	_update_team_rosters()
-	_update_champion_button_style(champion_id)
-	_update_start_match_enabled()
-	_update_draft_recommendations()
-	_try_enemy_draft_ai()
+		_draft_step_index += 1
+		_update_turn_display()
+		_update_team_rosters()
+		_update_champion_button_style(champion_id)
+		_update_start_match_enabled()
+		_update_draft_recommendations()
+		_try_enemy_draft_ai()
 
 
 
@@ -2290,10 +2472,15 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 	var stats_dict: Dictionary = champion_dict.get("stats", {})
 	var role: StringName = StringName(stats_dict.get("role", ""))
 	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
-	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _banned_champions
+	var is_taken: bool = champion_id in _player_picks or champion_id in _enemy_picks or champion_id in _player_bans or champion_id in _enemy_bans
+	var is_banned: bool = champion_id in _player_bans or champion_id in _enemy_bans
+	var champion_name: String = String(stats_dict.get("name", String(champion_id)))
 	
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
+	
+	# Always show champion name
+	button.text = champion_name
 	
 	if is_taken:
 		# Dim the role color for the fill
@@ -2317,6 +2504,24 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 		button.add_theme_stylebox_override("pressed", style_box)
 		button.add_theme_stylebox_override("disabled", style_box)
 		button.disabled = true
+		button.add_theme_color_override("font_color", COLOR_TEXT)
+		
+		# Add gray X overlay for banned champions
+		var existing_x: Control = button.get_node_or_null("BanOverlay")
+		if is_banned:
+			if existing_x == null:
+				var x_overlay := Control.new()
+				x_overlay.name = "BanOverlay"
+				x_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+				x_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				x_overlay.z_index = 10
+				x_overlay.connect("draw", _draw_ban_x.bind(x_overlay))
+				button.add_child(x_overlay)
+				x_overlay.queue_redraw()
+		else:
+			if existing_x != null:
+				button.remove_child(existing_x)
+				existing_x.queue_free()
 	else:
 		# Apply role color for available champions using StyleBoxFlat
 		var style_box := StyleBoxFlat.new()
@@ -2325,8 +2530,13 @@ func _update_champion_button_style(champion_id: StringName) -> void:
 		button.add_theme_stylebox_override("hover", style_box)
 		button.add_theme_stylebox_override("pressed", style_box)
 		button.add_theme_stylebox_override("disabled", style_box)
-		button.modulate = Color.WHITE
-		button.disabled = _draft_step_index >= DRAFT_SEQUENCE.size()
+		button.add_theme_color_override("font_color", COLOR_TEXT)
+		
+		# Remove X overlay if exists
+		var existing_x: Control = button.get_node_or_null("BanOverlay")
+		if existing_x != null:
+			button.remove_child(existing_x)
+			existing_x.queue_free()
 
 
 func _update_draft_recommendations() -> void:
@@ -2445,7 +2655,7 @@ func _get_available_champions() -> Array[StringName]:
 	var all_champions: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	var available: Array[StringName] = []
 	for champion_id in all_champions:
-		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _banned_champions:
+		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _player_bans and champion_id not in _enemy_bans:
 			available.append(champion_id)
 	return available
 
@@ -2814,7 +3024,8 @@ func _reset_to_draft() -> void:
 	_draft_step_index = 0
 	_player_picks.clear()
 	_enemy_picks.clear()
-	_banned_champions.clear()
+	_player_bans.clear()
+	_enemy_bans.clear()
 	_sim_time_accumulator = 0.0
 	_selected_unit_id = 0
 	if _commence_button != null:

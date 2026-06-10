@@ -11,3 +11,116 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1")
+
+[node name="DraftPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="DraftPanel"]
+layout_mode = 0
+text = "Back to Menu"
+
+[node name="TitleLabel" type="Label" parent="DraftPanel"]
+layout_mode = 0
+text = "MANUAL TEAM SELECTION"
+horizontal_alignment = 1
+
+[node name="TurnLabel" type="Label" parent="DraftPanel"]
+layout_mode = 0
+text = "TURN: P1_PICK"
+horizontal_alignment = 1
+
+[node name="DebugLabel" type="Label" parent="DraftPanel"]
+layout_mode = 0
+visible = true
+
+[node name="PlayerTeamPanel" type="Panel" parent="DraftPanel"]
+layout_mode = 0
+
+[node name="PlayerTeamLabel" type="Label" parent="DraftPanel/PlayerTeamPanel"]
+layout_mode = 0
+text = "PLAYER 1"
+
+[node name="PlayerTeamList" type="VBoxContainer" parent="DraftPanel/PlayerTeamPanel"]
+layout_mode = 0
+
+[node name="PlayerBansPanel" type="Panel" parent="DraftPanel"]
+layout_mode = 0
+
+[node name="PlayerBansLabel" type="Label" parent="DraftPanel/PlayerBansPanel"]
+layout_mode = 0
+text = "BANS"
+
+[node name="PlayerBansList" type="VBoxContainer" parent="DraftPanel/PlayerBansPanel"]
+layout_mode = 0
+
+[node name="EnemyTeamPanel" type="Panel" parent="DraftPanel"]
+layout_mode = 0
+
+[node name="EnemyTeamLabel" type="Label" parent="DraftPanel/EnemyTeamPanel"]
+layout_mode = 0
+text = "PLAYER 2"
+
+[node name="EnemyTeamList" type="VBoxContainer" parent="DraftPanel/EnemyTeamPanel"]
+layout_mode = 0
+
+[node name="EnemyBansPanel" type="Panel" parent="DraftPanel"]
+layout_mode = 0
+
+[node name="EnemyBansLabel" type="Label" parent="DraftPanel/EnemyBansPanel"]
+layout_mode = 0
+text = "BANS"
+
+[node name="EnemyBansList" type="VBoxContainer" parent="DraftPanel/EnemyBansPanel"]
+layout_mode = 0
+
+[node name="RoleFilterContainer" type="HBoxContainer" parent="DraftPanel"]
+visible = false
+layout_mode = 0
+alignment = 1
+
+[node name="DraftActionBox" type="VBoxContainer" parent="DraftPanel"]
+layout_mode = 0
+
+[node name="RandomDraftButton" type="Button" parent="DraftPanel/DraftActionBox"]
+layout_mode = 2
+text = "RANDOM DRAFT"
+
+[node name="StartMatchButton" type="Button" parent="DraftPanel/DraftActionBox"]
+layout_mode = 2
+text = "START MATCH"
+
+[node name="ChampionScroll" type="ScrollContainer" parent="DraftPanel"]
+visible = false
+layout_mode = 0
+horizontal_scroll_mode = 0
+
+[node name="ChampionGrid" type="GridContainer" parent="DraftPanel/ChampionScroll"]
+layout_mode = 2
+
+[node name="RecommendationPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 0
+
+[node name="RecommendationTitle" type="Label" parent="RecommendationPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 320.0
+offset_bottom = 52.0
+text = "RECOMMENDATIONS"
+
+[node name="RecommendationList" type="VBoxContainer" parent="RecommendationPanel"]
+layout_mode = 0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 60.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2

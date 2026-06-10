@@ -35,28 +35,28 @@ func _run() -> void:
 		_fail(inst, "draft_ui: DraftScreenShell missing")
 		return
 
-	var draft_panel := shell.find_child("DraftPanel", true, false) as Control
+	var draft_panel := shell.get_node_or_null("DraftPanel") as Control
 	if draft_panel == null:
 		_fail(inst, "draft_ui: DraftPanel missing")
 		return
 
-	if draft_panel.find_child("RoleFilterContainer", true, false) == null:
+	if shell.get_node_or_null("DraftPanel/RoleFilterContainer") == null:
 		_fail(inst, "draft_ui: RoleFilterContainer missing")
 		return
-	if draft_panel.find_child("ChampionScroll", true, false) == null:
+	if shell.get_node_or_null("DraftPanel/ChampionScroll") == null:
 		_fail(inst, "draft_ui: ChampionScroll missing")
 		return
-	if draft_panel.find_child("RandomDraftButton", true, false) == null:
+	if shell.get_node_or_null("DraftPanel/DraftActionBox/RandomDraftButton") == null:
 		_fail(inst, "draft_ui: RandomDraftButton missing")
 		return
-	if draft_panel.find_child("StartMatchButton", true, false) == null:
+	if shell.get_node_or_null("DraftPanel/DraftActionBox/StartMatchButton") == null:
 		_fail(inst, "draft_ui: StartMatchButton missing")
 		return
-	if shell.find_child("RecommendationPanel", true, false) == null:
+	if shell.get_node_or_null("RecommendationPanel") == null:
 		_fail(inst, "draft_ui: RecommendationPanel missing")
 		return
 
-	var champion_grid := draft_panel.find_child("ChampionGrid", true, false) as GridContainer
+	var champion_grid := shell.get_node_or_null("DraftPanel/ChampionScroll/ChampionGrid") as GridContainer
 	if champion_grid == null:
 		_fail(inst, "draft_ui: ChampionGrid missing")
 		return

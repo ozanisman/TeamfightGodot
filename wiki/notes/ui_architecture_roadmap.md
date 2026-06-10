@@ -8,8 +8,9 @@ Code remains the source of truth. This note records the current UI architecture 
 - Use `res://scripts/ui/ui_tokens.gd` for stable colors, spacing, font sizes, and draft layout sizes.
 - Use small reusable component scenes when they own structure or behavior.
 - Use `draft_champion_tile.tscn` for champion tile visuals and click forwarding.
-- Use `draft_screen_shell.tscn` for shared draft screen structure while app scripts keep draft rules.
+- Use `draft_screen_shell.tscn` as the scene-owned shared draft screen structure while app scripts keep draft rules.
 - Use shared layout helpers for repeated draft-screen positioning between draft screens.
+- Materialize component scenes before broad screen moves, so behavior boundaries stabilize first.
 - Prefer Godot containers and anchors over manual per-control coordinate updates.
 
 ## Maybe later

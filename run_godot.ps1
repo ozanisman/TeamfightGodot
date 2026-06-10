@@ -338,7 +338,7 @@ try {
 	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkDraftUi -or $checkStatsCsvDeterminism) {
 		if (Test-Path $logFile) {
 			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
-			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|check_draft_ui_load: FAILED"
+			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|draft_ui: .*missing|check_draft_ui_load: FAILED"
 			if ($tail -match $failurePattern) {
 				Write-Error "Godot check failed. See $logFile."
 				exit 1

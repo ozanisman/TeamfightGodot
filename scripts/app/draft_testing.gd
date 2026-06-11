@@ -153,8 +153,6 @@ func _update_draft_recommendations() -> void:
 				float(recommendation.get("counter", 0.0)),
 				float(recommendation.get("final", 0.0))
 			]
-		label.add_theme_color_override("font_color", COLOR_TEXT)
-		label.add_theme_font_size_override("font_size", 20)
 		_recommendation_list.add_child(label)
 
 	# Add separator between recommendations and prediction
@@ -302,14 +300,12 @@ func _add_prediction_model_label(prediction: Dictionary) -> void:
 	else:
 		model_label.text = "Prediction model: legacy scorer"
 	model_label.add_theme_color_override("font_color", COLOR_SUBTLE)
-	model_label.add_theme_font_size_override("font_size", 18)
 	_recommendation_list.add_child(model_label)
 
 
 func _show_final_prediction() -> void:
 	var title_label := Label.new()
 	title_label.text = "Final 5v5 Prediction"
-	title_label.add_theme_color_override("font_color", COLOR_TEXT)
 	title_label.add_theme_font_size_override("font_size", 24)
 	_recommendation_list.add_child(title_label)
 

@@ -107,21 +107,11 @@ func _connect_signals() -> void:
 
 func _apply_static_styles() -> void:
 	draft_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	draft_panel.add_theme_stylebox_override("panel", Styles.solid(Tokens.COLOR_PANEL))
 
-	for panel in [player_team_panel, player_bans_panel, enemy_team_panel, enemy_bans_panel]:
-		(panel as Panel).add_theme_stylebox_override("panel", Styles.panel(Tokens.COLOR_SECTION_BG, Tokens.COLOR_SECTION_BORDER))
-
-	title_label.add_theme_color_override("font_color", Tokens.COLOR_TEXT)
 	turn_label.add_theme_color_override("font_color", Tokens.COLOR_WARNING)
 	debug_label.add_theme_color_override("font_color", Tokens.COLOR_WARNING)
-	player_team_label.add_theme_color_override("font_color", Tokens.COLOR_TEXT)
-	enemy_team_label.add_theme_color_override("font_color", Tokens.COLOR_TEXT)
 	player_bans_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
 	enemy_bans_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
-
-	for label in [player_team_label, player_bans_label, enemy_team_label, enemy_bans_label]:
-		(label as Label).add_theme_font_size_override("font_size", 16)
 
 	draft_action_box.add_theme_constant_override("separation", Tokens.DRAFT_ACTION_GAP_PX)
 	auto_fill_button.custom_minimum_size = Vector2(Tokens.DRAFT_ACTION_W_PX, Tokens.DRAFT_ACTION_H_PX)
@@ -129,7 +119,6 @@ func _apply_static_styles() -> void:
 	champion_grid.add_theme_constant_override("h_separation", Tokens.DRAFT_CHAMPION_GAP_PX)
 	champion_grid.add_theme_constant_override("v_separation", Tokens.DRAFT_CHAMPION_GAP_PX)
 
-	recommendation_panel.add_theme_stylebox_override("panel", Styles.solid(Tokens.COLOR_PANEL))
 	recommendation_title.add_theme_color_override("font_color", Tokens.COLOR_HIGHLIGHT)
 	recommendation_title.add_theme_font_size_override("font_size", 24)
 	recommendation_list.add_theme_constant_override("separation", 8)

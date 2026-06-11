@@ -393,16 +393,12 @@ func _build_combat_overlay_hud() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", HUD_ROW_SEP_PX)
 	_lbl_timer = Label.new()
-	_lbl_timer.add_theme_color_override("font_color", COLOR_TEXT)
-	_lbl_timer.add_theme_font_size_override("font_size", 20)
 	row.add_child(_lbl_timer)
 	_lbl_score = Label.new()
 	_lbl_score.add_theme_color_override("font_color", COLOR_WARNING)
-	_lbl_score.add_theme_font_size_override("font_size", 20)
 	row.add_child(_lbl_score)
 	_lbl_combat_state = Label.new()
 	_lbl_combat_state.add_theme_color_override("font_color", COLOR_SUBTLE)
-	_lbl_combat_state.add_theme_font_size_override("font_size", 16)
 	row.add_child(_lbl_combat_state)
 	_hud_pause = Label.new()
 	_hud_pause.visible = false
@@ -412,7 +408,6 @@ func _build_combat_overlay_hud() -> void:
 	_speed_button.text = "Speed: 1x"
 	_speed_button.tooltip_text = "Toggle 0.5x / 1x (keyboard: K)"
 	_speed_button.flat = true
-	_speed_button.add_theme_color_override("font_color", COLOR_TEXT)
 	_speed_button.pressed.connect(_on_speed_toggle)
 	row.add_child(_speed_button)
 	center.add_child(row)
@@ -528,7 +523,6 @@ func _build_preparation_controls() -> void:
 	_commence_button.offset_right = half_w
 	_commence_button.offset_bottom = -24.0
 	_commence_button.pressed.connect(_on_commence_battle)
-	_style_button(_commence_button)
 	_ui_layer.add_child(_commence_button)
 
 
@@ -637,14 +631,6 @@ func _update_role_filter_buttons(screen_size: Vector2) -> void:
 
 
 func _apply_color_scheme() -> void:
-	if _header_panel != null:
-		# Don't use modulate on panel - it washes out children
-		_header_panel.add_theme_stylebox_override("panel", StyleBoxFlat.new())
-		var style: StyleBoxFlat = _header_panel.get_theme_stylebox("panel")
-		if style != null:
-			style.bg_color = COLOR_PANEL
-	if _title_label != null:
-		_title_label.add_theme_color_override("font_color", COLOR_TEXT)
 	if _turn_label != null:
 		_turn_label.add_theme_color_override("font_color", COLOR_WARNING)
 	if _player_team_label != null:
@@ -1550,7 +1536,6 @@ func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
 func _spawn_floating_text_screen(text: String, screen_pos: Vector2, color: Color) -> void:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 16)
 	label.add_theme_color_override("font_color", color)
 	label.z_index = 200
 	label.position = screen_pos
@@ -1806,14 +1791,12 @@ func _update_team_rosters() -> void:
 		var champion_id: StringName = _player_picks[i]
 		var label := Label.new()
 		label.text = "- %s" % String(champion_id).capitalize()
-		label.add_theme_color_override("font_color", COLOR_TEXT)
 		_player_team_list.add_child(label)
 
 	for i in range(_enemy_picks.size()):
 		var champion_id: StringName = _enemy_picks[i]
 		var label2 := Label.new()
 		label2.text = "- %s" % String(champion_id).capitalize()
-		label2.add_theme_color_override("font_color", COLOR_TEXT)
 		_enemy_team_list.add_child(label2)
 
 	if _player_bans_list != null:
@@ -1983,27 +1966,19 @@ func _setup_control_panel() -> void:
 	pause_button.text = "Pause"
 	pause_button.custom_minimum_size = Vector2(100, 40)
 	pause_button.pressed.connect(_toggle_pause)
-	_style_button(pause_button)
 	hbox.add_child(pause_button)
 
 	var restart_button := Button.new()
 	restart_button.text = "Restart"
 	restart_button.custom_minimum_size = Vector2(100, 40)
 	restart_button.pressed.connect(_restart_match)
-	_style_button(restart_button)
 	hbox.add_child(restart_button)
 
 	var menu_button := Button.new()
 	menu_button.text = "Back to Menu"
 	menu_button.custom_minimum_size = Vector2(120, 40)
 	menu_button.pressed.connect(_on_back_to_menu)
-	_style_button(menu_button)
 	hbox.add_child(menu_button)
-
-
-func _style_button(button: Button) -> void:
-	button.add_theme_color_override("font_color", COLOR_BUTTON_TEXT)
-	button.add_theme_color_override("font_pressed_color", COLOR_BUTTON_TEXT)
 
 
 func _setup_inspection_panel() -> void:

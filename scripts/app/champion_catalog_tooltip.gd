@@ -49,18 +49,11 @@ func setup(ui_layer: Control) -> void:
 	_tt_panel.visible = false
 	_tt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tt_panel.z_index = 200
-	_tt_panel.add_theme_stylebox_override("panel", _tt_style)
 	_tt_rich = RichTextLabel.new()
 	_tt_rich.bbcode_enabled = true
 	_tt_rich.scroll_active = false
 	_tt_rich.fit_content = true
 	_tt_rich.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tt_rich.add_theme_color_override("default_color", COLOR_TEXT)
-	_tt_rich.add_theme_font_size_override("normal_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_rich.add_theme_font_size_override("bold_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_rich.add_theme_font_size_override("italics_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_rich.add_theme_font_size_override("bold_italics_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_rich.add_theme_font_size_override("mono_font_size", UI_TOOLTIP_FONT_SIZE)
 	_tt_rich.custom_minimum_size.x = UI_TOOLTIP_MIN_WIDTH
 	_tt_panel.add_child(_tt_rich)
 	_ui_parent.add_child(_tt_panel)
@@ -135,6 +128,7 @@ func _position_panel() -> void:
 func _show_for_champion(champion_id: StringName, unit_data: Dictionary = {}) -> void:
 	_tt_rich.text = _build_champion_bbcode(champion_id, unit_data)
 	_tt_style.border_color = _border_color_for_champion(champion_id)
+	_tt_panel.add_theme_stylebox_override("panel", _tt_style)
 	_tt_panel.visible = true
 	_tt_panel.reset_size()
 	_position_panel()

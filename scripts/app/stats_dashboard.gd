@@ -13,6 +13,8 @@ const StatsSimulationCsvGeneratorScript := preload("res://scripts/tools/stats_si
 const MatchupDataLoaderScript := preload("res://scripts/tools/matchup_data_loader.gd")
 const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
+const ChartTooltipScene := preload("res://scenes/components/chart_tooltip.tscn")
+
 
 # Local color constants for stats dashboard visualization (winrate gradients, error labels, section headers).
 # These differ from general UI tokens and should remain local to this script.
@@ -146,14 +148,13 @@ var _hdr_pct_l50: Label
 var _hdr_pct_l100: Label
 var _chart_host: Control
 var _axis_guides: Control
-var _tt_panel: PanelContainer
-var _tt_label: RichTextLabel
+var _chart_tooltip: ChartTooltip
 var _right_panel: VBoxContainer
-var _tt_style: StyleBoxFlat
 var _error_label: Label
 var _refresh_btn: Button
 var _team_button_group: ButtonGroup
 var _team_size_buttons: Dictionary = {}
+var _export_popup: ExportPopup
 var _regen_checks: Dictionary = {}
 var _regen_sample_edit: LineEdit
 var _regen_worker_edit: LineEdit
@@ -162,8 +163,6 @@ var _regen_prediction_dir_edit: LineEdit
 var _regen_button: Button
 var _regen_progress: ProgressBar
 var _regen_status: Label
-var _export_popup: Window
-var _export_popup_content: VBoxContainer
 var _matchup_loader: RefCounted
 var _matchup_vb: VBoxContainer
 var _matchup_right_panel: VBoxContainer
@@ -173,7 +172,6 @@ var _current_champion: String = ""
 var _current_view_mode: int = 2  # 0=vs, 1=with, 2=both
 var _current_sort_mode: int = 0  # 0=winrate_desc, 1=winrate_asc, 2=wins, 3=losses, 4=alpha
 var _restoring_selection: bool = false  # Flag to prevent recursive calls during selection restore
-var _native_required_notice: Label
 var _regen_native_confirm: ConfirmationDialog
 var _regen_stashed_export_params: Variant = null
 var _regen_thread: Thread
@@ -620,11 +618,15 @@ func _apply_sidebar_split_after_layout() -> void:
 func _section_label(text: String) -> Label:
 	var lb := Label.new()
 	lb.text = text
+	_style_section_label(lb)
+	return lb
+
+
+func _style_section_label(lb: Label) -> void:
 	lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lb.add_theme_color_override("font_color", UiTokensScript.COLOR_HIGHLIGHT)
-	lb.add_theme_font_size_override("font_size", UI_FONT_SECTION)
-	return lb
+	lb.add_theme_font_size_override("font_size", 22)
 
 
 func _style_header_sub_label(lb: Label) -> void:
@@ -633,53 +635,26 @@ func _style_header_sub_label(lb: Label) -> void:
 
 
 func _build_chart_tooltip_overlay() -> void:
-	_tt_style = UiStylesScript.panel(UiTokensScript.COLOR_PANEL, UiTokensScript.COLOR_SUBTLE, 2)
-	_tt_style.set_corner_radius_all(4)
-	_tt_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)
-	_tt_panel = PanelContainer.new()
-	_tt_panel.visible = false
-	_tt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tt_panel.z_index = 80
-	_tt_panel.add_theme_stylebox_override("panel", _tt_style)
-	_tt_label = RichTextLabel.new()
-	_tt_label.bbcode_enabled = true
-	_tt_label.scroll_active = false
-	_tt_label.fit_content = true
-	_tt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tt_label.add_theme_font_size_override("normal_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_label.add_theme_font_size_override("bold_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_label.add_theme_font_size_override("italics_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_label.add_theme_font_size_override("bold_italics_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_label.add_theme_font_size_override("mono_font_size", UI_TOOLTIP_FONT_SIZE)
-	_tt_label.custom_minimum_size.x = UI_TOOLTIP_MIN_WIDTH
-	_tt_panel.add_child(_tt_label)
-	add_child(_tt_panel)
+	_chart_tooltip = ChartTooltipScene.instantiate()
+	add_child(_chart_tooltip)
 
 
 func _hide_chart_tooltip() -> void:
-	if _tt_panel != null:
-		_tt_panel.visible = false
+	if _chart_tooltip != null:
+		_chart_tooltip.hide_tooltip()
 
 
 func _position_chart_tooltip() -> void:
-	if _tt_panel == null or not _tt_panel.visible:
-		return
-	var vp: Rect2 = get_viewport().get_visible_rect()
-	var sz: Vector2 = _tt_panel.get_combined_minimum_size()
-	var g: Vector2 = get_global_mouse_position() + UI_TOOLTIP_MOUSE_OFF
-	g.x = clampf(g.x, vp.position.x + 4.0, vp.end.x - sz.x - 4.0)
-	g.y = clampf(g.y, vp.position.y + 4.0, vp.end.y - sz.y - 4.0)
-	_tt_panel.global_position = g
+	if _chart_tooltip != null:
+		_chart_tooltip.update_position()
 
 
 func _chart_row_tt_enter(row: PanelContainer) -> void:
-	if _tt_panel == null:
+	if _chart_tooltip == null:
 		return
-	_tt_label.text = str(row.get_meta(&"tt", ""))
-	_tt_style.border_color = row.get_meta(&"tt_border", UiTokensScript.COLOR_SUBTLE) as Color
-	_tt_panel.visible = true
-	_tt_panel.reset_size()
-	_position_chart_tooltip()
+	var tt_text: String = str(row.get_meta(&"tt", ""))
+	var tt_border: Color = row.get_meta(&"tt_border", UiTokensScript.COLOR_SUBTLE) as Color
+	_chart_tooltip.show_tooltip(tt_text, tt_border)
 
 
 func _chart_row_tt_exit() -> void:
@@ -687,8 +662,8 @@ func _chart_row_tt_exit() -> void:
 
 
 func _chart_row_tt_motion(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and _tt_panel != null and _tt_panel.visible:
-		_position_chart_tooltip()
+	if event is InputEventMouseMotion and _chart_tooltip != null:
+		_chart_tooltip.update_position()
 
 
 func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
@@ -804,12 +779,14 @@ func _setup_regen_timer() -> void:
 
 
 func _set_regen_busy(busy: bool) -> void:
-	_regen_button.disabled = busy
+	if _regen_button != null:
+		_regen_button.disabled = busy
+	if _regen_sample_edit != null:
+		_regen_sample_edit.editable = not busy
 	for k in _regen_checks.keys():
 		var cb: BaseButton = _regen_checks[k] as BaseButton
 		if cb != null:
 			cb.disabled = busy
-	_regen_sample_edit.editable = not busy
 
 
 func _resolve_writable_stats_dir() -> String:
@@ -832,11 +809,14 @@ func _dir_probe_write(dir: String) -> bool:
 
 
 func _on_regen_eval_predictions_toggled(enabled: bool) -> void:
-	if _regen_prediction_dir_edit != null:
-		_regen_prediction_dir_edit.editable = enabled
+	if _regen_prediction_dir_edit == null:
+		return
+	_regen_prediction_dir_edit.editable = enabled
 
 
 func _read_regen_export_params() -> Variant:
+	if _regen_status == null or _regen_sample_edit == null or _regen_worker_edit == null:
+		return null
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
 		_regen_status.text = "Simulation backend is not available."
@@ -1755,182 +1735,45 @@ func _on_tab_changed(tab_index: int) -> void:
 func _on_new_data_pressed() -> void:
 	if _export_popup == null:
 		_build_export_popup()
-		add_child(_export_popup)  # Add to scene tree before showing
-	_export_popup.popup_centered(Vector2i(1000, 900))
+	_export_popup.show_popup()
 
 
 func _build_export_popup() -> void:
-	_export_popup = Window.new()
-	_export_popup.title = "Generate New Data"
-	_export_popup.min_size = Vector2i(1000, 900)
-	_export_popup.unresizable = false
-	_export_popup.close_requested.connect(func(): _export_popup.hide())
-
-	var main_vb := VBoxContainer.new()
-	main_vb.add_theme_constant_override("separation", 20)
-	_export_popup.add_child(main_vb)
-	# Window does not auto-layout Control children; stretch to fill or the VBox collapses to its
-	# (now tiny, post-ScrollContainer) minimum size and only the close button remains visible.
-	_stretch_control_to_parent_full_rect(main_vb)
-
-	# Scrollable area so the panel remains usable when its content (export card + status/report
-	# text) is taller than the window.
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	main_vb.add_child(scroll)
-
-	# Add export content
-	_export_popup_content = VBoxContainer.new()
-	_export_popup_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_export_popup_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_export_popup_content.add_theme_constant_override("separation", 18)
-	scroll.add_child(_export_popup_content)
-
-	# Build export UI (moved from Matchups tab)
-	_build_export_ui_content()
-
-	# Close button
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(140, 56)
-	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	close_button.pressed.connect(func(): _export_popup.hide())
-	main_vb.add_child(close_button)
-
-
-func _build_export_ui_content() -> void:
-	_export_popup_content.add_child(_section_label("EXPORT"))
+	if _export_popup != null:
+		return
+	_export_popup = ExportPopup.new()
+	_export_popup.closed.connect(_on_export_popup_closed)
 	
-	# MarginContainer to add padding around export_card
-	var margin_container := MarginContainer.new()
-	margin_container.add_theme_constant_override("margin_left", 25)
-	margin_container.add_theme_constant_override("margin_right", 25)
-	margin_container.add_theme_constant_override("margin_top", 25)
-	_export_popup_content.add_child(margin_container)
+	# Wire component controls to dashboard variables
+	_regen_checks = _export_popup.regen_checks
+	_regen_sample_edit = _export_popup.sample_edit
+	_regen_worker_edit = _export_popup.worker_edit
+	_regen_eval_predictions_check = _export_popup.eval_predictions_check
+	_regen_prediction_dir_edit = _export_popup.prediction_dir_edit
+	_regen_button = _export_popup.generate_button
+	_regen_progress = _export_popup.progress_bar
+	_regen_status = _export_popup.status_label
 	
-	var export_card := PanelContainer.new()
-	export_card.custom_minimum_size = Vector2(450, 600)
-	var export_card_style := UiStylesScript.solid(UiTokensScript.COLOR_SECTION_BG)
-	export_card_style.set_corner_radius_all(8)
-	export_card_style.set_content_margin_all(16)
-	export_card.add_theme_stylebox_override("panel", export_card_style)
-	var export_inner := VBoxContainer.new()
-	export_inner.add_theme_constant_override("separation", 18)
-	export_card.add_child(export_inner)
-	margin_container.add_child(export_card)
+	# Wire prediction checkbox toggle
+	if _regen_eval_predictions_check != null:
+		_regen_eval_predictions_check.toggled.connect(_on_regen_eval_predictions_toggled)
+	
+	# Set initial values
+	if _regen_sample_edit != null:
+		_regen_sample_edit.text = ""
+	if _regen_worker_edit != null:
+		_regen_worker_edit.text = str(_default_export_worker_threads())
+	if _regen_prediction_dir_edit != null:
+		_regen_prediction_dir_edit.text = "res://stats_output_baseline"
+	
+	# Set native ready state
+	_export_popup.set_native_ready(_native_backend_ready())
+	
+	add_child(_export_popup)
 
-	_native_required_notice = Label.new()
-	_native_required_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_native_required_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_native_required_notice.add_theme_color_override("font_color", COLOR_RED)
-	_native_required_notice.add_theme_font_size_override("font_size", UI_FONT_BODY + 2)
-	_native_required_notice.text = (
-		"Native simulation is required for export and batch tooling. "
-		+ "Build and place teamfight_simulation_core.dll in native/bin/."
-	)
-	_native_required_notice.visible = not _native_backend_ready()
-	export_inner.add_child(_native_required_notice)
 
-	var regen_hint := Label.new()
-	regen_hint.text = "Select which modes to export. Each checked size runs the match count below."
-	regen_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	regen_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	regen_hint.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
-	regen_hint.add_theme_font_size_override("font_size", UI_FONT_BODY + 2)
-	export_inner.add_child(regen_hint)
-
-	var modes_row := HFlowContainer.new()
-	modes_row.add_theme_constant_override("h_separation", 12)
-	modes_row.add_theme_constant_override("v_separation", 10)
-	var sizes: Array = Array(SimConstantsScript.SIMULATION_TEAM_SIZES)
-	for sz_idx in range(sizes.size()):
-		var sz2: int = int(sizes[sz_idx])
-		var cb := CheckBox.new()
-		cb.text = "%dv%d" % [sz2, sz2]
-		cb.custom_minimum_size.y = 56
-		cb.button_pressed = true
-		cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		_regen_checks[sz2] = cb
-		modes_row.add_child(cb)
-	export_inner.add_child(modes_row)
-
-	var sample_block := VBoxContainer.new()
-	sample_block.add_theme_constant_override("separation", 8)
-	var sample_lbl := Label.new()
-	sample_lbl.text = "Matches per selected mode"
-	sample_block.add_child(sample_lbl)
-	_regen_sample_edit = LineEdit.new()
-	_regen_sample_edit.text = ""
-	_regen_sample_edit.placeholder_text = "Integer ≥ 1"
-	_regen_sample_edit.custom_minimum_size = Vector2(0, 56)
-	_regen_sample_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sample_block.add_child(_regen_sample_edit)
-	export_inner.add_child(sample_block)
-
-	var worker_block := VBoxContainer.new()
-	worker_block.add_theme_constant_override("separation", 8)
-	var worker_max := maxi(
-		1,
-		mini(
-			OS.get_processor_count(),
-			StatsSimulationCsvGeneratorScript.DEFAULT_EXPORT_MAX_WORKER_THREADS
-		)
-	)
-	var worker_lbl := Label.new()
-	worker_lbl.text = "Worker threads (< %d)" % worker_max
-	worker_block.add_child(worker_lbl)
-	_regen_worker_edit = LineEdit.new()
-	_regen_worker_edit.text = str(_default_export_worker_threads())
-	_regen_worker_edit.placeholder_text = "Integer >= 0"
-	_regen_worker_edit.custom_minimum_size = Vector2(0, 56)
-	_regen_worker_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	worker_block.add_child(_regen_worker_edit)
-	export_inner.add_child(worker_block)
-
-	var prediction_block := VBoxContainer.new()
-	prediction_block.add_theme_constant_override("separation", 8)
-	_regen_eval_predictions_check = CheckBox.new()
-	_regen_eval_predictions_check.text = "Evaluate draft prediction accuracy after generating"
-	_regen_eval_predictions_check.custom_minimum_size.y = 56
-	_regen_eval_predictions_check.button_pressed = false
-	_regen_eval_predictions_check.tooltip_text = "Runs predict_draft_winner on each completed-draft (5v5) match and prints one accuracy report comparing predicted vs actual winner."
-	_regen_eval_predictions_check.toggled.connect(_on_regen_eval_predictions_toggled)
-	prediction_block.add_child(_regen_eval_predictions_check)
-	var prediction_dir_lbl := Label.new()
-	prediction_dir_lbl.text = "Out-of-sample stats dir for predictions (must differ from output above)"
-	prediction_block.add_child(prediction_dir_lbl)
-	_regen_prediction_dir_edit = LineEdit.new()
-	_regen_prediction_dir_edit.text = "res://stats_output_baseline"
-	_regen_prediction_dir_edit.placeholder_text = "e.g. res://stats_output_baseline"
-	_regen_prediction_dir_edit.custom_minimum_size = Vector2(0, 56)
-	_regen_prediction_dir_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_regen_prediction_dir_edit.editable = false
-	prediction_block.add_child(_regen_prediction_dir_edit)
-	export_inner.add_child(prediction_block)
-
-	_regen_button = Button.new()
-	_regen_button.text = "Generate"
-	_regen_button.tooltip_text = "Regenerate stats CSVs (native sim)"
-	_regen_button.clip_text = true
-	_regen_button.custom_minimum_size = Vector2(0, 56)
-	_regen_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_regen_button.pressed.connect(_on_regenerate_pressed)
-	export_inner.add_child(_regen_button)
-	_regen_progress = ProgressBar.new()
-	_regen_progress.visible = false
-	_regen_progress.min_value = 0.0
-	_regen_progress.max_value = 1.0
-	_regen_progress.custom_minimum_size.y = 40
-	_regen_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	export_inner.add_child(_regen_progress)
-	_regen_status = Label.new()
-	_regen_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_regen_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
-	export_inner.add_child(_regen_status)
+func _on_export_popup_closed() -> void:
+	pass
 
 
 func _build_matchup_ui() -> void:

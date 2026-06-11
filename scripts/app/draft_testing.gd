@@ -1650,7 +1650,6 @@ func _populate_champion_grid() -> void:
 func _update_champion_grid_columns(tile_size: int = UiTokensScript.DRAFT_CHAMPION_TILE_PX) -> void:
 	if _champion_grid == null:
 		return
-	_champion_grid.columns = 12
 
 
 func _team_owner_for_champion(champion_id: StringName) -> StringName:

@@ -139,6 +139,6 @@ static func calculate_champion_tile_size(champion_ids: Array[StringName]) -> int
 	return clampi(maxi(Tokens.DRAFT_CHAMPION_TILE_PX, content_px), Tokens.DRAFT_CHAMPION_TILE_PX, Tokens.DRAFT_CHAMPION_TILE_MAX_PX)
 
 
-static func calculate_grid_columns(view_width: float, tile_size: int) -> int:
+static func calculate_grid_columns(view_width: float, tile_size: int, max_columns: int = Tokens.DRAFT_CHAMPION_MAX_COLUMNS) -> int:
 	var available_width: float = maxf(tile_size, view_width - float(Tokens.DRAFT_EDGE_MARGIN_PX * 2))
-	return maxi(1, int((available_width + Tokens.DRAFT_CHAMPION_GAP_PX) / (tile_size + Tokens.DRAFT_CHAMPION_GAP_PX)))
+	return mini(max_columns, maxi(1, int((available_width + Tokens.DRAFT_CHAMPION_GAP_PX) / (tile_size + Tokens.DRAFT_CHAMPION_GAP_PX))))

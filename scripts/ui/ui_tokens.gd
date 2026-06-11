@@ -40,11 +40,12 @@ const DRAFT_ROLE_W_PX: int = 250
 const DRAFT_ROLE_H_PX: int = 75
 
 # Champion grid (scroll container and tile buttons)
-const DRAFT_CHAMPION_SCROLL_TOP_PX: int = 500
+const DRAFT_CHAMPION_SCROLL_TOP_PX: int = 550
 const DRAFT_CHAMPION_TILE_PX: int = 200
 const DRAFT_CHAMPION_TILE_MAX_PX: int = 160
 const DRAFT_CHAMPION_FONT_SIZE_PX: int = 20
 const DRAFT_CHAMPION_GAP_PX: int = 30
+const DRAFT_CHAMPION_MAX_COLUMNS: int = 9
 
 # Recommendation panel (draft testing only)
 const DRAFT_RECOMMENDATION_HEIGHT_RATIO: float = 0.10

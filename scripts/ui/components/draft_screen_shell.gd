@@ -8,6 +8,7 @@ signal auto_fill_pressed
 const Tokens := preload("res://scripts/ui/ui_tokens.gd")
 const Styles := preload("res://scripts/ui/ui_styles.gd")
 const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
 @onready var draft_panel: Panel = $DraftPanel
 @onready var back_button: Button = $DraftPanel/BackButton
@@ -63,7 +64,7 @@ func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) 
 	DraftLayoutScript.apply_champion_scroll_layout(champion_scroll, screen_size, has_recommendation_panel)
 	if has_recommendation_panel:
 		DraftLayoutScript.apply_recommendation_panel_layout(recommendation_panel, screen_size)
-	champion_grid.columns = 12
+	champion_grid.columns = DraftLayoutScript.calculate_grid_columns(screen_size.x, UiTokensScript.DRAFT_CHAMPION_TILE_PX)
 
 
 func set_draft_visible(is_visible: bool) -> void:

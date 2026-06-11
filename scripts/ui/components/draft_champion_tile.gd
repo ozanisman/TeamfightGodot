@@ -17,6 +17,13 @@ var _team_owner: StringName = &""
 func _ready() -> void:
 	if not pressed.is_connected(_on_pressed):
 		pressed.connect(_on_pressed)
+	add_theme_font_size_override("font_size", Tokens.DRAFT_CHAMPION_FONT_SIZE_PX)
+	add_theme_color_override("font_color", Color.WHITE)
+	add_theme_color_override("font_disabled_color", Color.WHITE)
+	add_theme_color_override("font_outline_color", Color.BLACK)
+	add_theme_constant_override("outline_size", 1)
+	text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	modulate = Color.WHITE
 
 
 func setup(
@@ -38,35 +45,42 @@ func refresh_state(is_taken: bool, is_banned: bool, team_owner: StringName) -> v
 	_is_banned = is_banned
 	_team_owner = team_owner
 	text = _champion_display_name(champion_id)
-	add_theme_font_size_override("font_size", Tokens.DRAFT_CHAMPION_FONT_SIZE_PX)
-	add_theme_color_override("font_color", Color.WHITE)
-	add_theme_color_override("font_outline_color", Color.BLACK)
-	add_theme_constant_override("outline_size", 1)
-	text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	modulate = Color.WHITE
 
-	if _is_taken:
-		var dimmed_color := Color(_role_color.r * 0.5, _role_color.g * 0.5, _role_color.b * 0.5, _role_color.a)
-		var border_color := Tokens.COLOR_SECTION_BORDER
+	if _is_banned:
+		var gray := _role_color.get_luminance()
+		var dimmed_color := Color(gray, gray, gray, _role_color.a * 0.5)
+		var border_color := Color(gray, gray, gray, 0.50)
+		_apply_style(Styles.bordered(dimmed_color, border_color, 6))
+		add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+		disabled = true
+	elif _is_taken:
+		var gray := _role_color.get_luminance()
+		var pastel_bg := Color(gray, gray, gray, _role_color.a * 0.7)
+		var border_color := Color(gray, gray, gray, 0.8)
 		if _team_owner == &"player":
 			border_color = Tokens.COLOR_PLAYER
 		elif _team_owner == &"enemy":
 			border_color = Tokens.COLOR_ENEMY
-		_apply_style(Styles.bordered(dimmed_color, border_color, 8))
+		_apply_style(Styles.bordered(pastel_bg, border_color, 6))
+		add_theme_color_override("font_color", Color.WHITE)
+		add_theme_color_override("font_disabled_color", Color.WHITE)
 		disabled = true
 	else:
 		var pastel_bg := _get_fill_color(_role_color)
 		var style := Styles.panel(pastel_bg, _role_color, 6)
 		style.set_corner_radius_all(4)
 		_apply_style(style)
+		add_theme_color_override("font_color", Color.WHITE)
+		add_theme_color_override("font_disabled_color", Color.WHITE)
 		disabled = false
 	queue_redraw()
 
 
 func _apply_square_size(tile_size: int) -> void:
-	var square := Vector2(tile_size, tile_size)
-	custom_minimum_size = square
-	size = square
+	var rect := Vector2(tile_size, tile_size * 3 / 4)
+	custom_minimum_size = rect
+	size = rect
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
@@ -123,8 +137,30 @@ func _on_pressed() -> void:
 func _draw() -> void:
 	if not _is_banned:
 		return
-	var line_color := Color(0.5, 0.5, 0.5)
-	var line_width := 4.0
-	var inset := 4.0
-	draw_line(Vector2(inset, inset), Vector2(size.x - inset, size.y - inset), line_color, line_width)
-	draw_line(Vector2(size.x - inset, inset), Vector2(inset, size.y - inset), line_color, line_width)
+	var line_color := Tokens.COLOR_SECTION_BORDER
+	if _team_owner == &"player":
+		line_color = Tokens.COLOR_PLAYER
+	elif _team_owner == &"enemy":
+		line_color = Tokens.COLOR_ENEMY
+	line_color.a = 0.75
+	var w := 5.0
+
+	# Top-left to bottom-right
+	draw_colored_polygon([
+		Vector2(0, 0),
+		Vector2(w, 0),
+		Vector2(size.x, size.y - w),
+		Vector2(size.x, size.y),
+		Vector2(size.x - w, size.y),
+		Vector2(0, w),
+	], line_color)
+
+	# Top-right to bottom-left
+	draw_colored_polygon([
+		Vector2(size.x, 0),
+		Vector2(size.x, w),
+		Vector2(w, size.y),
+		Vector2(0, size.y),
+		Vector2(0, size.y - w),
+		Vector2(size.x - w, 0),
+	], line_color)

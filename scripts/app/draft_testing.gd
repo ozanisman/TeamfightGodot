@@ -206,6 +206,10 @@ func _rollout_recommendations(allies: Array[StringName], enemies: Array[StringNa
 	var recommendations: Array[Dictionary] = []
 	if _backend == null or available.is_empty():
 		return recommendations
+	
+	# Calculate global draft position (1-10) from current step index
+	var draft_position := SimConstantsScript.get_global_pick_position(_draft_step_index)
+	
 	var state_seed := _stable_draft_seed(allies, enemies, available)
 	for candidate_index in range(available.size()):
 		var candidate: StringName = available[candidate_index]
@@ -224,7 +228,34 @@ func _rollout_recommendations(allies: Array[StringName], enemies: Array[StringNa
 			var prediction: Dictionary = _backend.predict_draft_winner(
 				completion["allies"],
 				completion["enemies"],
-				RECOMMENDATION_STATS_DIR
+				RECOMMENDATION_STATS_DIR,
+				0.50,  # base_weight
+				0.25,  # synergy_weight
+				0.25,  # counter_weight
+				0.25,  # matchup_weight
+				0.0,   # composition_weight
+				10.0,  # logistic_k
+				true,  # include_breakdown
+				1.2,   # synergy_amplification
+				1.2,   # matchup_amplification
+				1.5,   # logit_sharpness
+				1.0,   # score_sharpness
+				0.0,   # interaction_weight
+				3,     # scoring_mode
+				0.0,   # variance_weight
+				0.0,   # cc_weight
+				0.0,   # mobility_weight
+				0.0,   # sustain_weight
+				0.0,   # best_counter_weight
+				0.0,   # worst_counter_weight
+				0.0,   # best_synergy_weight
+				0.0,   # worst_synergy_weight
+				0,     # synergy_aggregation
+				0,     # counter_aggregation
+				false, # use_decorrelated_scoring
+				draft_position,
+				0.7,   # early_pick_base_weight
+				0.4    # late_pick_counter_weight
 			)
 			if prediction.is_empty() or not prediction.has("scoring_mode"):
 				continue
@@ -254,10 +285,28 @@ func _complete_recommendation_rollout(allies: Array[StringName], enemies: Array[
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	_shuffle_recommendation_pool(pool, rng)
-	while completed_allies.size() < MAX_TEAM_SIZE and not pool.is_empty():
-		completed_allies.append(pool.pop_back())
-	while completed_enemies.size() < MAX_TEAM_SIZE and not pool.is_empty():
-		completed_enemies.append(pool.pop_back())
+	
+	# Simulate snake draft order for remaining picks
+	# Full pick sequence: B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK
+	var pick_sequence := ["B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK"]
+	
+	# Calculate starting position in sequence based on current team sizes
+	var total_picks := completed_allies.size() + completed_enemies.size()
+	var sequence_index := total_picks
+	
+	while completed_allies.size() < MAX_TEAM_SIZE or completed_enemies.size() < MAX_TEAM_SIZE:
+		if sequence_index >= pick_sequence.size():
+			break
+		
+		var turn: String = pick_sequence[sequence_index]
+		if turn == "B_PICK" and completed_allies.size() < MAX_TEAM_SIZE:
+			if not pool.is_empty():
+				completed_allies.append(pool.pop_back())
+		elif turn == "R_PICK" and completed_enemies.size() < MAX_TEAM_SIZE:
+			if not pool.is_empty():
+				completed_enemies.append(pool.pop_back())
+		sequence_index += 1
+	
 	return {"allies": completed_allies, "enemies": completed_enemies}
 
 

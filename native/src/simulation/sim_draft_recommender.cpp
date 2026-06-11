@@ -209,17 +209,17 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 		? (avg_counter - base_winrate + 0.5) * config.matchup_amplification
 		: avg_counter * config.matchup_amplification;
 
-	// Draft-aware scoring: adjust weights based on draft position
+	// Draft-aware scoring: adjust weights based on draft position (global 1-10 for snake draft)
 	double effective_base_weight = config.base_weight;
 	double effective_synergy_weight = config.synergy_weight;
 	double effective_matchup_weight = config.matchup_weight;
 
 	if (config.draft_position > 0) {
-		if (config.draft_position <= 2) {
-			// Early picks: weight base winrate higher
+		if (config.draft_position <= 3) {
+			// Early picks (1-3): weight base winrate higher
 			effective_base_weight = config.early_pick_base_weight;
-		} else if (config.draft_position >= 4) {
-			// Late picks: weight counter/synergy higher
+		} else if (config.draft_position >= 7) {
+			// Late picks (7-10): weight counter/synergy higher
 			effective_matchup_weight = config.late_pick_counter_weight;
 		}
 		// Renormalize weights to sum to 1.0

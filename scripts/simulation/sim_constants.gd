@@ -205,3 +205,22 @@ static func viewer_battle_square_side(vp: Vector2) -> float:
 static func viewer_battle_square_offset(vp: Vector2) -> Vector2:
 	var s: float = viewer_battle_square_side(vp)
 	return Vector2((vp.x - s) * 0.5, (vp.y - s) * 0.5)
+
+
+## Map draft sequence index to global pick position (1-10) for snake draft order
+## Returns 0 if the sequence index is a ban phase, otherwise returns 1-10 for picks
+static func get_global_pick_position(sequence_index: int) -> int:
+	if sequence_index < 0 or sequence_index >= DRAFT_SEQUENCE.size():
+		return 0
+	
+	var turn: String = DRAFT_SEQUENCE[sequence_index]
+	if not turn.ends_with("_PICK"):
+		return 0  # Ban phase
+	
+	# Count picks before this index to determine global position
+	var pick_count := 0
+	for i in range(sequence_index):
+		if DRAFT_SEQUENCE[i].ends_with("_PICK"):
+			pick_count += 1
+	
+	return pick_count + 1  # 1-indexed

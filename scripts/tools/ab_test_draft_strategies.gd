@@ -240,7 +240,7 @@ func _evaluate_pick(
 	sims_per_trial: int,
 	seed_offset: int
 ) -> float:
-	# Complete the draft: add pick to allies, then random-fill rest
+	# Complete the draft: add pick to allies, then snake-fill rest
 	var completed_allies := allies.duplicate()
 	var completed_enemies := enemies.duplicate()
 	completed_allies.append(pick)
@@ -253,10 +253,27 @@ func _evaluate_pick(
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_offset
 	_shuffle(pool, rng)
-	while completed_allies.size() < TEAM_SIZE and not pool.is_empty():
-		completed_allies.append(pool.pop_back())
-	while completed_enemies.size() < TEAM_SIZE and not pool.is_empty():
-		completed_enemies.append(pool.pop_back())
+	
+	# Simulate snake draft order for remaining picks
+	# Full pick sequence: B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK
+	var pick_sequence := ["B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK"]
+	
+	# Calculate starting position in sequence based on current team sizes
+	var total_picks := completed_allies.size() + completed_enemies.size()
+	var sequence_index := total_picks
+	
+	while completed_allies.size() < TEAM_SIZE or completed_enemies.size() < TEAM_SIZE:
+		if sequence_index >= pick_sequence.size():
+			break
+		
+		var turn: String = pick_sequence[sequence_index]
+		if turn == "B_PICK" and completed_allies.size() < TEAM_SIZE:
+			if not pool.is_empty():
+				completed_allies.append(pool.pop_back())
+		elif turn == "R_PICK" and completed_enemies.size() < TEAM_SIZE:
+			if not pool.is_empty():
+				completed_enemies.append(pool.pop_back())
+		sequence_index += 1
 
 	# Build units and run simulations
 	var player_units := _build_units(completed_allies, &"player")

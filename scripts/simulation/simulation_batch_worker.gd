@@ -63,23 +63,24 @@ static func _build_batch_input_for_seed(
 	players.clear()
 	enemies.clear()
 	if archetypes.size() < team_size * 2:
+		push_error("Not enough unique champions for team_size=%d (need %d, have %d). Using duplicates for match seed %d." % [team_size, team_size * 2, archetypes.size(), match_seed])
 		for _i in range(team_size):
 			players.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
 		for _i in range(team_size):
 			enemies.append(archetypes[rng.randi_range(0, archetypes.size() - 1)])
-	else:
-		var indices: Array[int] = []
-		for i in range(archetypes.size()):
-			indices.append(i)
-		for i in range(indices.size() - 1, 0, -1):
-			var j := rng.randi_range(0, i)
-			var tmp := indices[i]
-			indices[i] = indices[j]
-			indices[j] = tmp
-		for i in range(team_size):
-			players.append(archetypes[indices[i]])
-		for i in range(team_size, team_size * 2):
-			enemies.append(archetypes[indices[i]])
+		return MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.DEFAULT_TICK_RATE, false)
+	var indices: Array[int] = []
+	for i in range(archetypes.size()):
+		indices.append(i)
+	for i in range(indices.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp := indices[i]
+		indices[i] = indices[j]
+		indices[j] = tmp
+	for i in range(team_size):
+		players.append(archetypes[indices[i]])
+	for i in range(team_size, team_size * 2):
+		enemies.append(archetypes[indices[i]])
 	return MatchReplayInputScript.build_match_input(match_seed, players, enemies, SimConstantsScript.DEFAULT_TICK_RATE, false)
 
 static func reset_benchmark_progress(total_matches: int) -> void:

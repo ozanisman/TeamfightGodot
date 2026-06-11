@@ -1741,7 +1741,8 @@ func _on_new_data_pressed() -> void:
 func _build_export_popup() -> void:
 	if _export_popup != null:
 		return
-	_export_popup = ExportPopup.new()
+	var scene := load("res://scenes/components/export_popup.tscn")
+	_export_popup = scene.instantiate()
 	_export_popup.closed.connect(_on_export_popup_closed)
 	
 	# Wire component controls to dashboard variables

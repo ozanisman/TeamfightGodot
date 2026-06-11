@@ -16,15 +16,15 @@ signal closed
 @export var _progress_bar_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ProgressBar")
 @export var _status_label_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/StatusLabel")
 
-@onready var _native_required_notice: Label = get_node(_native_required_notice_path)
-@onready var _modes_row: HFlowContainer = get_node(_modes_row_path)
-@onready var _sample_edit: LineEdit = get_node(_sample_edit_path)
-@onready var _worker_edit: LineEdit = get_node(_worker_edit_path)
-@onready var _eval_predictions_check: CheckBox = get_node(_eval_predictions_check_path)
-@onready var _prediction_dir_edit: LineEdit = get_node(_prediction_dir_edit_path)
-@onready var _generate_button: Button = get_node(_generate_button_path)
-@onready var _progress_bar: ProgressBar = get_node(_progress_bar_path)
-@onready var _status_label: Label = get_node(_status_label_path)
+var _native_required_notice: Label
+var _modes_row: HFlowContainer
+var _sample_edit: LineEdit
+var _worker_edit: LineEdit
+var _eval_predictions_check: CheckBox
+var _prediction_dir_edit: LineEdit
+var _generate_button: Button
+var _progress_bar: ProgressBar
+var _status_label: Label
 
 var _regen_checks: Dictionary = {}
 
@@ -65,6 +65,26 @@ func _ready() -> void:
 	min_size = Vector2i(1000, 900)
 	unresizable = false
 	close_requested.connect(_on_close_requested)
+	
+	# Initialize node references
+	if has_node(_native_required_notice_path):
+		_native_required_notice = get_node(_native_required_notice_path)
+	if has_node(_modes_row_path):
+		_modes_row = get_node(_modes_row_path)
+	if has_node(_sample_edit_path):
+		_sample_edit = get_node(_sample_edit_path)
+	if has_node(_worker_edit_path):
+		_worker_edit = get_node(_worker_edit_path)
+	if has_node(_eval_predictions_check_path):
+		_eval_predictions_check = get_node(_eval_predictions_check_path)
+	if has_node(_prediction_dir_edit_path):
+		_prediction_dir_edit = get_node(_prediction_dir_edit_path)
+	if has_node(_generate_button_path):
+		_generate_button = get_node(_generate_button_path)
+	if has_node(_progress_bar_path):
+		_progress_bar = get_node(_progress_bar_path)
+	if has_node(_status_label_path):
+		_status_label = get_node(_status_label_path)
 	
 	# Build mode checkboxes
 	if _modes_row != null:

@@ -1,5 +1,5 @@
 class_name NativeSimulationBackend
-extends RefCounted
+extends SimulationBackend
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const NativeClassName := "TeamfightSimulationCore"

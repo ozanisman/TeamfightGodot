@@ -106,7 +106,7 @@ func _run() -> void:
 				pairs.append([strategy_names[i], strategy_names[j]])
 
 	var csv_lines: Array[String] = [
-		"trial_id,depth,allies,enemies,banned,available_n,strategy_a,pick_a,winrate_a,strategy_b,pick_b,winrate_b,delta"
+		"trial_id,depth,draft_position,allies,enemies,banned,available_n,strategy_a,pick_a,winrate_a,strategy_b,pick_b,winrate_b,delta"
 	]
 
 	var rng := RandomNumberGenerator.new()
@@ -122,6 +122,7 @@ func _run() -> void:
 			var enemies: Array[StringName] = state["enemies"]
 			var available: Array[StringName] = state["available"]
 			var banned: Array[StringName] = state["banned"]
+			var draft_position: int = state["draft_position"]
 
 			for pair in pairs:
 				var name_a: String = pair[0]
@@ -161,8 +162,8 @@ func _run() -> void:
 				)
 
 				var delta := winrate_b - winrate_a
-				csv_lines.append("%d,%d,%s,%s,%s,%d,%s,%s,%.6f,%s,%s,%.6f,%.6f" % [
-					trial, depth,
+				csv_lines.append("%d,%d,%d,%s,%s,%s,%d,%s,%s,%.6f,%s,%s,%.6f,%.6f" % [
+					trial, depth, draft_position,
 					"|".join(allies), "|".join(enemies), "|".join(banned), available.size(),
 					name_a, pick_a, winrate_a,
 					name_b, pick_b, winrate_b,
@@ -221,6 +222,10 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 				if enemy.size() < TEAM_SIZE:
 					enemy.append(pool.pop_back())
 	
+	# Calculate global draft position from the next step index (next pick to recommend)
+	var next_step_index := steps_to_simulate
+	var draft_position := SimConstantsScript.get_global_pick_position(next_step_index)
+	
 	var picking_player := (seed % 2) == 0
 	return {
 		"allies": player if picking_player else enemy,
@@ -228,6 +233,7 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 		"available": pool,
 		"banned": banned,
 		"picking_team": "player" if picking_player else "enemy",
+		"draft_position": draft_position,
 	}
 
 
@@ -329,13 +335,13 @@ func _print_summary(csv_lines: Array[String], depths: Array[int], strategy_names
 
 	for i in range(1, csv_lines.size()):
 		var parts := csv_lines[i].split(",")
-		if parts.size() < 12:
+		if parts.size() < 13:
 			continue
 		var depth := int(parts[1])
-		var name_a := parts[5]
-		var winrate_a := float(parts[7])
-		var name_b := parts[8]
-		var winrate_b := float(parts[10])
+		var name_a := parts[6]
+		var winrate_a := float(parts[8])
+		var name_b := parts[9]
+		var winrate_b := float(parts[11])
 
 		var key_a := "%d_%s" % [depth, name_a]
 		var key_b := "%d_%s" % [depth, name_b]

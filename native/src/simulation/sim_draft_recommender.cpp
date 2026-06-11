@@ -222,6 +222,7 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 			// Late picks (7-10): weight counter/synergy higher
 			effective_matchup_weight = config.late_pick_counter_weight;
 		}
+		// Middle picks (4-6): use default weights (baseline reference)
 		// Renormalize weights to sum to 1.0
 		double total_weight = effective_base_weight + effective_synergy_weight + effective_matchup_weight;
 		if (total_weight > 0.0) {
@@ -413,6 +414,22 @@ double DraftStatsDatabase::calculate_team_score(const std::vector<StringName> &t
 void DraftStatsDatabase::calculate_win_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, const PredictionConfig &config, double &out_team1_prob, double &out_team2_prob, TeamScoreBreakdown &out_team1_breakdown, TeamScoreBreakdown &out_team2_breakdown) const {
 	if (config.scoring_mode == ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY) {
 		out_team1_prob = calculate_certified_pairwise_probability(team1, team2);
+		out_team2_prob = 1.0 - out_team1_prob;
+		out_team1_breakdown.base = 0.5;
+		out_team1_breakdown.synergy = 0.5;
+		out_team1_breakdown.matchup = 0.5;
+		out_team1_breakdown.composition = 0.5;
+		out_team1_breakdown.final = out_team1_prob;
+		out_team2_breakdown.base = 0.5;
+		out_team2_breakdown.synergy = 0.5;
+		out_team2_breakdown.matchup = 0.5;
+		out_team2_breakdown.composition = 0.5;
+		out_team2_breakdown.final = out_team2_prob;
+		return;
+	}
+	
+	if (config.scoring_mode == ScoringMode::DRAFT_AWARE_PAIRWISE_PROBABILITY) {
+		out_team1_prob = calculate_draft_aware_probability(team1, team2, config.draft_position);
 		out_team2_prob = 1.0 - out_team1_prob;
 		out_team1_breakdown.base = 0.5;
 		out_team1_breakdown.synergy = 0.5;
@@ -655,6 +672,97 @@ double DraftStatsDatabase::calculate_partial_draft_probability(const std::vector
 double DraftStatsDatabase::calculate_hybrid_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const {
 	// Hybrid approach: partial model for depths 1-3, certified for depth 4+
 	return calculate_partial_draft_probability(team1, team2);
+}
+
+double DraftStatsDatabase::calculate_draft_aware_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, int draft_position) const {
+	// Draft-aware model with position-specific weights.
+	// For prototype: uses simple features + draft_position (no interactions).
+	// TODO: Load trained weights from JSON file (verify_draft_aware_signal.gd output).
+	// For now, use placeholder weights (will be replaced with trained weights).
+	
+	PredictionConfig smoothing_config;
+	smoothing_config.confidence_prior_samples = 10;
+	
+	// Extract features (same as certified model)
+	auto extract = [&](const std::vector<StringName> &team, const std::vector<StringName> &opponents) -> CertifiedPairwiseFeatures {
+		CertifiedPairwiseFeatures features;
+		if (team.empty()) {
+			return features;
+		}
+		
+		double base_sum = 0.0;
+		double synergy_sum = 0.0;
+		double counter_sum = 0.0;
+		for (const StringName &champion : team) {
+			StatValue base_stat = base_winrate_for(champion);
+			base_sum += apply_bayesian_smoothing(base_stat.winrate, base_stat.samples, smoothing_config);
+			
+			RelationshipAggregate synergy_agg = aggregate_relationship_signal(*this, champion, team, RelationshipKind::SYNERGY, smoothing_config);
+			synergy_sum += synergy_agg.adjusted_average;
+			
+			RelationshipAggregate counter_agg = aggregate_relationship_signal(*this, champion, opponents, RelationshipKind::COUNTER, smoothing_config);
+			counter_sum += counter_agg.adjusted_average;
+		}
+		
+		double n = double(team.size());
+		features.base = base_sum / n;
+		features.synergy = synergy_sum / n;
+		features.counter = counter_sum / n;
+		features.base_synergy = features.base * features.synergy;
+		features.base_counter = features.base * features.counter;
+		features.synergy_counter = features.synergy * features.counter;
+		return features;
+	};
+	
+	CertifiedPairwiseFeatures a = extract(team1, team2);
+	CertifiedPairwiseFeatures b = extract(team2, team1);
+	
+	// Features: [base_a, synergy_a, counter_a, base_synergy_a, base_counter_a, synergy_counter_a,
+	//            base_b, synergy_b, counter_b, base_synergy_b, base_counter_b, synergy_counter_b,
+	//            draft_position_normalized]
+	if (draft_position < 0 || draft_position > 10) {
+		UtilityFunctions::push_warning(vformat("Invalid draft_position: %d, clamping to [0,10]", draft_position));
+	}
+	int normalized_pos = std::clamp(draft_position, 0, 10);
+	const double raw[13] = {
+		a.base, a.synergy, a.counter, a.base_synergy, a.base_counter, a.synergy_counter,
+		b.base, b.synergy, b.counter, b.base_synergy, b.base_counter, b.synergy_counter,
+		double(normalized_pos) / 10.0,  // Normalize to [0, 1]
+	};
+	
+	// Placeholder weights (will be replaced with trained weights from verify_draft_aware_signal.gd)
+	// For now, use certified model weights + zero for draft_position
+	static constexpr double k_weights[13] = {
+		// Team A: base, synergy, counter, base*synergy, base*counter, synergy*counter
+		-1.376139, 0.273626, 1.441759, -0.741939, -0.410863, 0.887265,
+		// Team B: base, synergy, counter, base*synergy, base*counter, synergy*counter
+		1.378210, -0.297698, -1.441758, 0.764406, 0.456609, -0.866910,
+		// draft_position (placeholder, will be trained)
+		0.0,
+	};
+	static constexpr double k_means[13] = {
+		// Team A
+		0.499955, 0.499956, 0.499869, 0.250187, 0.250072, 0.250007,
+		// Team B
+		0.500332, 0.500187, 0.500131, 0.250497, 0.250393, 0.250255,
+		// draft_position mean (placeholder)
+		0.5,
+	};
+	static constexpr double k_stddevs[13] = {
+		// Team A
+		0.019770, 0.011843, 0.010284, 0.015665, 0.014205, 0.010388,
+		// Team B
+		0.019998, 0.011962, 0.010284, 0.015846, 0.014344, 0.010475,
+		// draft_position stddev (placeholder)
+		0.2887,  // stddev of uniform [0, 1]
+	};
+	static constexpr double k_bias = -0.036830;
+	
+	double z = k_bias;
+	for (int i = 0; i < 13; ++i) {
+		z += k_weights[i] * ((raw[i] - k_means[i]) / k_stddevs[i]);
+	}
+	return 1.0 / (1.0 + std::exp(-z));
 }
 
 bool DraftStatsDatabase::_load_combat_stats(const String &path) {

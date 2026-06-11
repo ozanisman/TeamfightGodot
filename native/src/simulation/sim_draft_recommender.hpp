@@ -18,7 +18,9 @@ enum class ScoringMode {
 	LOGIT,
 	// Complete-draft winner predictor certified on draft_ceiling_holdout_5000.csv.
 	// Partial-draft pick recommendations intentionally continue to use LOGIT unless overridden.
-	CERTIFIED_PAIRWISE_PROBABILITY
+	CERTIFIED_PAIRWISE_PROBABILITY,
+	// Draft-aware model with position-specific weights trained on rollout data.
+	DRAFT_AWARE_PAIRWISE_PROBABILITY
 };
 
 enum class SmoothingMode {
@@ -90,9 +92,9 @@ struct PredictionConfig {
 	bool use_decorrelated_scoring = false;
 
 	// Draft-aware scoring: position-based weight adjustment
-	int draft_position = 0;  // 0 = not specified, 1-5 = pick order
-	double early_pick_base_weight = 0.7;  // for picks 1-2
-	double late_pick_counter_weight = 0.4;  // for picks 4-5
+	int draft_position = 0;  // 0 = not specified, 1-10 = global pick order (snake draft)
+	double early_pick_base_weight = 0.7;  // for picks 1-3
+	double late_pick_counter_weight = 0.4;  // for picks 7-10
 };
 
 struct DraftScoreWeights {
@@ -252,6 +254,7 @@ public:
 	double calculate_certified_pairwise_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const;
 	double calculate_partial_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const;
 	double calculate_hybrid_draft_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2) const;
+	double calculate_draft_aware_probability(const std::vector<StringName> &team1, const std::vector<StringName> &team2, int draft_position) const;
 	double apply_bayesian_smoothing(double raw_winrate, int64_t samples, const PredictionConfig &config) const;
 
 private:

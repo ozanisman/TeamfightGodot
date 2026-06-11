@@ -15,25 +15,14 @@ const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const DraftChampionTileScene := preload("res://scenes/components/draft_champion_tile.tscn")
 const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
 
-# Colors from Python pygame_viewer.py
-const COLOR_BG := Color(0.078, 0.078, 0.102, 1.0)
-const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
-const COLOR_GRID := Color(0.157, 0.157, 0.204, 1.0)
+# Viewer-specific colors (not in ui_tokens.gd)
 const COLOR_ZONE_P1 := Color(0.157, 0.196, 0.314, 1.0)
 const COLOR_ZONE_P2 := Color(0.314, 0.157, 0.157, 1.0)
-const COLOR_PLAYER := Color(0.275, 0.51, 1.0)
-const COLOR_ENEMY := Color(0.882, 0.314, 0.314, 1.0)
 const COLOR_HP_BG := Color(0.314, 0.314, 0.314, 1.0)
 const COLOR_HP_FILL := Color(0.314, 0.824, 0.314, 1.0)
 const COLOR_TARGET_LINE := Color(0.824, 0.824, 0.431, 1.0)
-const COLOR_TEXT := Color(0.902, 0.902, 0.902, 1.0)
-const COLOR_SUBTLE := Color(0.706, 0.706, 0.745, 1.0)
-const COLOR_BUTTON := Color(0.275, 0.51, 0.863, 1.0)
 const COLOR_BUTTON_DISABLED := Color(0.275, 0.275, 0.314, 1.0)
 const COLOR_BUTTON_TEXT := Color(0.941, 0.941, 0.941, 1.0)
-const COLOR_WARNING := Color(0.922, 0.667, 0.392, 1.0)
-const COLOR_SUCCESS := Color(0.196, 0.902, 0.196, 1.0)
-const COLOR_HIGHLIGHT := Color(0.471, 0.863, 0.549, 1.0)
 ## World units map to this fraction of min(viewport) for a consistent projectile read.
 const VIEWER_BASE_MIN_AXIS: float = 720.0
 ## Screen-space radius for projectiles (scales slightly with window).
@@ -225,7 +214,7 @@ func _create_ui_structure() -> void:
 	_battle_letterbox.offset_top = 0.0
 	_battle_letterbox.offset_right = 0.0
 	_battle_letterbox.offset_bottom = 0.0
-	_battle_letterbox.color = COLOR_BG
+	_battle_letterbox.color = UiTokensScript.COLOR_BG
 	_battle_letterbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle_letterbox.z_index = -1
 	add_child(_battle_letterbox)
@@ -395,14 +384,14 @@ func _build_combat_overlay_hud() -> void:
 	_lbl_timer = Label.new()
 	row.add_child(_lbl_timer)
 	_lbl_score = Label.new()
-	_lbl_score.add_theme_color_override("font_color", COLOR_WARNING)
+	_lbl_score.add_theme_color_override("font_color", UiTokensScript.COLOR_WARNING)
 	row.add_child(_lbl_score)
 	_lbl_combat_state = Label.new()
-	_lbl_combat_state.add_theme_color_override("font_color", COLOR_SUBTLE)
+	_lbl_combat_state.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	row.add_child(_lbl_combat_state)
 	_hud_pause = Label.new()
 	_hud_pause.visible = false
-	_hud_pause.add_theme_color_override("font_color", COLOR_WARNING)
+	_hud_pause.add_theme_color_override("font_color", UiTokensScript.COLOR_WARNING)
 	row.add_child(_hud_pause)
 	_speed_button = Button.new()
 	_speed_button.text = "Speed: 1x"
@@ -632,11 +621,11 @@ func _update_role_filter_buttons(screen_size: Vector2) -> void:
 
 func _apply_color_scheme() -> void:
 	if _turn_label != null:
-		_turn_label.add_theme_color_override("font_color", COLOR_WARNING)
+		_turn_label.add_theme_color_override("font_color", UiTokensScript.COLOR_WARNING)
 	if _player_team_label != null:
-		_player_team_label.add_theme_color_override("font_color", COLOR_PLAYER)
+		_player_team_label.add_theme_color_override("font_color", UiTokensScript.COLOR_PLAYER)
 	if _enemy_team_label != null:
-		_enemy_team_label.add_theme_color_override("font_color", COLOR_ENEMY)
+		_enemy_team_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 
 
 func _process(delta: float) -> void:
@@ -921,7 +910,7 @@ func _create_projectile_node(proj_id: int, projectile_id: int, pos_x: float, pos
 	proj_node.position = world_to_battle_local(pos_x, pos_y) + spread_offset
 	proj_node.set_meta("reason", reason)
 	proj_node.set_meta("action_kind", action_kind)
-	var col: Color = COLOR_PLAYER if team == &"player" else COLOR_ENEMY
+	var col: Color = UiTokensScript.COLOR_PLAYER if team == &"player" else UiTokensScript.COLOR_ENEMY
 	var r: float = _projectile_screen_radius_px()
 	var disc := Polygon2D.new()
 	disc.name = "Disc"
@@ -963,7 +952,7 @@ func _refresh_combat_hud(snapshot: Dictionary) -> void:
 				_overtime_border.visible = true
 		else:
 			_lbl_timer.text = "TIME: %.1fs" % time_remaining
-			_lbl_timer.add_theme_color_override("font_color", COLOR_TEXT)
+			_lbl_timer.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 			if _overtime_border != null:
 				_overtime_border.visible = false
 	if _lbl_score != null:
@@ -1135,7 +1124,7 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 			_spawn_floating_text_screen("-%d" % int(ceil(data.damage)), sp, color)
 		
 		if data.heal > 0.0:
-			_spawn_floating_text_screen("+%d" % int(ceil(data.heal)), sp, COLOR_SUCCESS)
+			_spawn_floating_text_screen("+%d" % int(ceil(data.heal)), sp, UiTokensScript.COLOR_SUCCESS)
 		
 		if data.shield > 0.0:
 			_spawn_floating_text_screen("[%d]" % int(ceil(data.shield)), sp, Color(0.55, 0.75, 1.0))
@@ -1631,7 +1620,7 @@ func _populate_champion_grid() -> void:
 		var team_owner := _team_owner_for_champion(champion_id)
 		var button := DraftChampionTileScene.instantiate() as Button
 		button.name = "Champion_" + String(champion_id)
-		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+		var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), UiTokensScript.COLOR_BUTTON)
 		button.call("setup", champion_id, role_color, is_taken, is_banned, team_owner, _base_champion_tile_size)
 		button.tooltip_text = ""
 		_register_champ_tooltip(button, champion_id)
@@ -1681,7 +1670,7 @@ func _on_role_filter_toggled(role: StringName, button: Button) -> void:
 
 
 func _update_role_filter_button_style(button: Button, role: StringName, is_active: bool) -> void:
-	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), COLOR_BUTTON)
+	var role_color: Color = SimConstantsScript.ROLE_COLORS.get(String(role), UiTokensScript.COLOR_BUTTON)
 	
 	# Reset modulate to white to avoid affecting StyleBoxFlat
 	button.modulate = Color.WHITE
@@ -1810,7 +1799,7 @@ func _update_team_rosters() -> void:
 				bl.text = String(stats_dict.get("name", String(b_id)))
 			else:
 				bl.text = String(b_id)
-			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
+			bl.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			_player_bans_list.add_child(bl)
 
 	if _enemy_bans_list != null:
@@ -1824,7 +1813,7 @@ func _update_team_rosters() -> void:
 				bl.text = String(stats_dict.get("name", String(b_id)))
 			else:
 				bl.text = String(b_id)
-			bl.add_theme_color_override("font_color", COLOR_SUBTLE)
+			bl.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 			_enemy_bans_list.add_child(bl)
 
 
@@ -2218,13 +2207,13 @@ func _show_match_results(summary: Dictionary) -> void:
 	_match_title.remove_theme_color_override("font_color")
 	if w == "player":
 		_match_title.text = "PLAYER 1 VICTORY"
-		_match_title.add_theme_color_override("font_color", COLOR_PLAYER)
+		_match_title.add_theme_color_override("font_color", UiTokensScript.COLOR_PLAYER)
 	elif w == "enemy":
 		_match_title.text = "PLAYER 2 VICTORY"
-		_match_title.add_theme_color_override("font_color", COLOR_ENEMY)
+		_match_title.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 	else:
 		_match_title.text = "MATCH DRAW"
-		_match_title.add_theme_color_override("font_color", COLOR_TEXT)
+		_match_title.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
 	for c in _match_stats_container.get_children():
 		c.queue_free()
 	var pi: int = int(summary.get("player_kills", 0))

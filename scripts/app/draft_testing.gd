@@ -43,7 +43,7 @@ func _on_before_battle_start() -> void:
 
 
 func _on_champion_clicked(champion_id: StringName) -> void:
-	if _game_state != DRAFTING:
+	if _game_state != GameState.DRAFTING:
 		return
 
 	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
@@ -93,7 +93,7 @@ func _update_draft_recommendations() -> void:
 		child.free()
 
 	# Hide panel if not in drafting state
-	if _game_state != DRAFTING:
+	if _game_state != GameState.DRAFTING:
 		_recommendation_panel.visible = false
 		return
 
@@ -131,7 +131,7 @@ func _update_draft_recommendations() -> void:
 
 	# Update title with team info and color
 	_recommendation_title.text = "RECOMMENDATIONS FOR " + team_label
-	var title_color := COLOR_PLAYER if team_label == "PLAYER 1" else COLOR_ENEMY
+	var title_color := UiTokensScript.COLOR_PLAYER if team_label == "PLAYER 1" else UiTokensScript.COLOR_ENEMY
 	_recommendation_title.add_theme_color_override("font_color", title_color)
 
 	var recommendations: Array[Dictionary] = _rollout_recommendations(allies, enemies, available)
@@ -182,9 +182,9 @@ func _update_draft_recommendations() -> void:
 	var prediction_label := RichTextLabel.new()
 	prediction_label.bbcode_enabled = true
 	prediction_label.text = "Game Prediction: [color=%s]P1 [%.1f%%][/color] vs [color=%s][%.1f%%] P2[/color]" % [
-		"#" + COLOR_PLAYER.to_html(false),
+		"#" + UiTokensScript.COLOR_PLAYER.to_html(false),
 		team1_prob,
-		"#" + COLOR_ENEMY.to_html(false),
+		"#" + UiTokensScript.COLOR_ENEMY.to_html(false),
 		team2_prob
 	]
 	prediction_label.add_theme_font_size_override("normal_font_size", 24)
@@ -304,7 +304,7 @@ func _add_prediction_model_label(prediction: Dictionary) -> void:
 		model_label.text = "Prediction model: certified pairwise probability"
 	else:
 		model_label.text = "Prediction model: legacy scorer"
-	model_label.add_theme_color_override("font_color", COLOR_SUBTLE)
+	model_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_recommendation_list.add_child(model_label)
 
 
@@ -332,9 +332,9 @@ func _show_final_prediction() -> void:
 	var prediction_label := RichTextLabel.new()
 	prediction_label.bbcode_enabled = true
 	prediction_label.text = "Game Prediction: [color=%s]P1 [%.1f%%][/color] vs [color=%s][%.1f%%] P2[/color]" % [
-		"#" + COLOR_PLAYER.to_html(false),
+		"#" + UiTokensScript.COLOR_PLAYER.to_html(false),
 		team1_prob,
-		"#" + COLOR_ENEMY.to_html(false),
+		"#" + UiTokensScript.COLOR_ENEMY.to_html(false),
 		team2_prob
 	]
 	prediction_label.add_theme_font_size_override("normal_font_size", 24)

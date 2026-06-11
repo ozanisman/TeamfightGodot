@@ -5,6 +5,11 @@ const RECOMMENDATION_STATS_DIR := "res://stats_output"
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
 const RECOMMENDATION_BASE_SEED := 81000
 
+# Recommendation UI node paths
+@export var _recommendation_panel_path: NodePath = NodePath("RecommendationPanel")
+@export var _recommendation_title_path: NodePath = NodePath("RecommendationPanel/RecommendationTitle")
+@export var _recommendation_list_path: NodePath = NodePath("RecommendationPanel/RecommendationList")
+
 # Recommendation UI references
 var _recommendation_panel: Panel
 var _recommendation_title: Label
@@ -12,9 +17,9 @@ var _recommendation_list: VBoxContainer
 
 
 func _on_draft_shell_created() -> void:
-	_recommendation_panel = _draft_shell.get_node_or_null("RecommendationPanel")
-	_recommendation_title = _draft_shell.get_node_or_null("RecommendationPanel/RecommendationTitle")
-	_recommendation_list = _draft_shell.get_node_or_null("RecommendationPanel/RecommendationList")
+	_recommendation_panel = _draft_shell.get_node(_recommendation_panel_path)
+	_recommendation_title = _draft_shell.get_node(_recommendation_title_path)
+	_recommendation_list = _draft_shell.get_node(_recommendation_list_path)
 	_draft_shell.apply_layout(get_viewport_rect().size, true)
 
 

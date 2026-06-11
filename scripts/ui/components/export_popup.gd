@@ -6,15 +6,25 @@ const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
 signal closed
 
-@onready var _native_required_notice: Label = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/NativeRequiredNotice")
-@onready var _modes_row: HFlowContainer = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ModesRow")
-@onready var _sample_edit: LineEdit = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/SampleBlock/SampleEdit")
-@onready var _worker_edit: LineEdit = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/WorkerBlock/WorkerEdit")
-@onready var _eval_predictions_check: CheckBox = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/EvalPredictionsCheck")
-@onready var _prediction_dir_edit: LineEdit = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/PredictionDirEdit")
-@onready var _generate_button: Button = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/GenerateButton")
-@onready var _progress_bar: ProgressBar = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ProgressBar")
-@onready var _status_label: Label = get_node_or_null("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/StatusLabel")
+@export var _native_required_notice_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/NativeRequiredNotice")
+@export var _modes_row_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ModesRow")
+@export var _sample_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/SampleBlock/SampleEdit")
+@export var _worker_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/WorkerBlock/WorkerEdit")
+@export var _eval_predictions_check_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/EvalPredictionsCheck")
+@export var _prediction_dir_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/PredictionDirEdit")
+@export var _generate_button_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/GenerateButton")
+@export var _progress_bar_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ProgressBar")
+@export var _status_label_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/StatusLabel")
+
+@onready var _native_required_notice: Label = get_node(_native_required_notice_path)
+@onready var _modes_row: HFlowContainer = get_node(_modes_row_path)
+@onready var _sample_edit: LineEdit = get_node(_sample_edit_path)
+@onready var _worker_edit: LineEdit = get_node(_worker_edit_path)
+@onready var _eval_predictions_check: CheckBox = get_node(_eval_predictions_check_path)
+@onready var _prediction_dir_edit: LineEdit = get_node(_prediction_dir_edit_path)
+@onready var _generate_button: Button = get_node(_generate_button_path)
+@onready var _progress_bar: ProgressBar = get_node(_progress_bar_path)
+@onready var _status_label: Label = get_node(_status_label_path)
 
 var _regen_checks: Dictionary = {}
 

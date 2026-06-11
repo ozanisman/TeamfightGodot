@@ -9,16 +9,14 @@ const UI_TOOLTIP_FONT_SIZE := 22
 const UI_TOOLTIP_MIN_WIDTH := 520
 const UI_TOOLTIP_CONTENT_MARGIN := 10
 
-var _label: RichTextLabel
+@export var _label_path: NodePath = NodePath("RichTextLabel")
+
+@onready var _label: RichTextLabel = get_node(_label_path)
 var _style: StyleBoxFlat
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 80
-	_label = get_node_or_null("RichTextLabel")
-	if _label == null:
-		push_error("ChartTooltip: RichTextLabel node not found in scene")
-		return
 	_style = UiStylesScript.panel(UiTokensScript.COLOR_PANEL, UiTokensScript.COLOR_SUBTLE, 2)
 	_style.set_corner_radius_all(4)
 	_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)

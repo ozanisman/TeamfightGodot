@@ -189,6 +189,7 @@ var _fps_cap_applied: bool = false
 
 
 func _native_backend_ready() -> bool:
+	NativeSimulationBackendScript.ensure_gdextension_loaded()
 	return ClassDB.class_exists("TeamfightSimulationCore") and ClassDB.can_instantiate("TeamfightSimulationCore")
 
 
@@ -738,11 +739,6 @@ func _wire_controls() -> void:
 		_absolute_colors = not _absolute_colors
 		_refresh_chart()
 	)
-	# Only connect regen button if it exists (export UI built in popup)
-	if _regen_button != null:
-		_regen_button.pressed.connect(_on_regenerate_pressed)
-
-
 func _setup_regen_native_confirm_dialog() -> void:
 	_regen_native_confirm = ConfirmationDialog.new()
 	_regen_native_confirm.title = "Native backend required"
@@ -1743,8 +1739,9 @@ func _build_export_popup() -> void:
 		return
 	var scene := load("res://scenes/components/export_popup.tscn")
 	_export_popup = scene.instantiate()
+	add_child(_export_popup)
 	_export_popup.closed.connect(_on_export_popup_closed)
-	
+
 	# Wire component controls to dashboard variables
 	_regen_checks = _export_popup.regen_checks
 	_regen_sample_edit = _export_popup.sample_edit
@@ -1754,11 +1751,15 @@ func _build_export_popup() -> void:
 	_regen_button = _export_popup.generate_button
 	_regen_progress = _export_popup.progress_bar
 	_regen_status = _export_popup.status_label
-	
+
+	# Wire generate button
+	if _regen_button != null:
+		_regen_button.pressed.connect(_on_regenerate_pressed)
+
 	# Wire prediction checkbox toggle
 	if _regen_eval_predictions_check != null:
 		_regen_eval_predictions_check.toggled.connect(_on_regen_eval_predictions_toggled)
-	
+
 	# Set initial values
 	if _regen_sample_edit != null:
 		_regen_sample_edit.text = ""
@@ -1766,11 +1767,9 @@ func _build_export_popup() -> void:
 		_regen_worker_edit.text = str(_default_export_worker_threads())
 	if _regen_prediction_dir_edit != null:
 		_regen_prediction_dir_edit.text = "res://stats_output_baseline"
-	
+
 	# Set native ready state
 	_export_popup.set_native_ready(_native_backend_ready())
-	
-	add_child(_export_popup)
 
 
 func _on_export_popup_closed() -> void:

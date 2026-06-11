@@ -54,17 +54,19 @@ const ROSTER_TILE_MIN_SQUARE_PX: int = 40
 const UI_WINDOW_MIN := Vector2(1920, 1080)
 
 # Game states
-const DRAFTING := "DRAFTING"
-const PREPARATION := "PREPARATION"
-const COMBAT := "COMBAT"
-const MATCH_OVER := "MATCH_OVER"
+enum GameState {
+	DRAFTING,
+	PREPARATION,
+	COMBAT,
+	MATCH_OVER
+}
 
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
 
 # Simulation configuration
 var _backend: RefCounted = null
-var _game_state: String = DRAFTING
+var _game_state: GameState = GameState.DRAFTING
 var _sim_time_accumulator: float = 0.0
 var _sim_speed: float = 1.0
 var _combat_paused: bool = false
@@ -172,7 +174,7 @@ func _ready() -> void:
 	_update_start_match_enabled()
 
 	if _debug_mode:
-		print("Simulation Viewer ready. Game state: ", _game_state)
+		print("Simulation Viewer ready. Game state: ", GameState.keys()[_game_state])
 
 	_on_ready_extra()
 
@@ -198,10 +200,10 @@ func _notification(what: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE and (_game_state == COMBAT or _game_state == PREPARATION):
+		if event.keycode == KEY_SPACE and (_game_state == GameState.COMBAT or _game_state == GameState.PREPARATION):
 			_toggle_pause()
 			get_viewport().set_input_as_handled()
-		if event.keycode == KEY_K and (_game_state == COMBAT or _game_state == PREPARATION):
+		if event.keycode == KEY_K and (_game_state == GameState.COMBAT or _game_state == GameState.PREPARATION):
 			_on_speed_toggle()
 			get_viewport().set_input_as_handled()
 
@@ -545,7 +547,7 @@ func _on_resize_debounce_timeout() -> void:
 	_update_draft_layout(screen_size)
 	
 	# Update champion buttons in place instead of recreating them
-	if _game_state == DRAFTING:
+	if _game_state == GameState.DRAFTING:
 		_update_champion_buttons_in_place(screen_size)
 	
 	# Force redraw to clear visual artifacts
@@ -553,9 +555,9 @@ func _on_resize_debounce_timeout() -> void:
 		_header_panel.queue_redraw()
 	if _ui_layer != null:
 		_ui_layer.queue_redraw()
-	if _game_state == COMBAT or _game_state == PREPARATION or _game_state == MATCH_OVER:
+	if _game_state == GameState.COMBAT or _game_state == GameState.PREPARATION or _game_state == GameState.MATCH_OVER:
 		call_deferred("_roster_reflow_squares")
-	if (_game_state == COMBAT or _game_state == PREPARATION) and _backend != null:
+	if (_game_state == GameState.COMBAT or _game_state == GameState.PREPARATION) and _backend != null:
 		# Do not re-apply tick_fx (floaters / melee VFX) — same snapshot, layout-only.
 		_update_visualization_from_snapshot(false)
 
@@ -652,9 +654,9 @@ func _apply_color_scheme() -> void:
 
 
 func _process(delta: float) -> void:
-	if _game_state == COMBAT and not _combat_paused:
+	if _game_state == GameState.COMBAT and not _combat_paused:
 		_step_simulation(delta)
-	if _arena_layer != null and (_game_state == COMBAT or _game_state == PREPARATION):
+	if _arena_layer != null and (_game_state == GameState.COMBAT or _game_state == GameState.PREPARATION):
 		_arena_layer.refresh()
 
 
@@ -764,7 +766,7 @@ func _update_unit_node(unit_dict: Dictionary) -> void:
 
 
 func _is_unit_on_battlefield(u: Dictionary) -> bool:
-	if _game_state != COMBAT and _game_state != PREPARATION:
+	if _game_state != GameState.COMBAT and _game_state != GameState.PREPARATION:
 		return true
 	if str(u.get("state", "")) == SimConstants.UNIT_STATE_DEAD:
 		return false
@@ -794,7 +796,7 @@ func _sync_target_lines_from_snapshot(units: Array) -> void:
 			continue
 		var ud2: Dictionary = by_id.get(int(unit_id), {})
 		var tid: int = int(ud2.get("target_id", 0))
-		if tid != 0 and _game_state == COMBAT:
+		if tid != 0 and _game_state == GameState.COMBAT:
 			var tnode: Node2D = _unit_nodes.get(tid) as Node2D
 			if tnode != null and is_instance_valid(tnode) and tnode.visible:
 				line.points = PackedVector2Array([Vector2.ZERO, tnode.position - unit_node.position])
@@ -986,13 +988,13 @@ func _refresh_combat_hud(snapshot: Dictionary) -> void:
 			_viewer_contract_mismatch("snapshot", "enemy_kills", "present", snapshot)
 			return
 		_lbl_score.text = "SCORE: %d - %d" % [int(snapshot.get("player_kills")), int(snapshot.get("enemy_kills"))]
-	if _lbl_combat_state != null and _game_state != PREPARATION:
+	if _lbl_combat_state != null and _game_state != GameState.PREPARATION:
 		if not snapshot.has("live_winner"):
 			_viewer_contract_mismatch("snapshot", "live_winner", "present", snapshot)
 			return
-		_lbl_combat_state.text = "COMBAT" if _game_state == COMBAT else String(_game_state)
+		_lbl_combat_state.text = GameState.keys()[_game_state]
 	if _hud_pause != null:
-		_hud_pause.visible = _combat_paused and _game_state == COMBAT
+		_hud_pause.visible = _combat_paused and _game_state == GameState.COMBAT
 		if _hud_pause.visible:
 			_hud_pause.text = "PAUSED (Space)  |  K: speed"
 
@@ -1954,14 +1956,14 @@ func _on_start_match_clicked() -> void:
 	)
 	
 	_backend.begin_match(match_input)
-	_game_state = COMBAT
+	_game_state = GameState.COMBAT
 	_sim_time_accumulator = 0.0
 	_show_world_and_hud_for_battle()
 	if _arena_layer != null:
 		_arena_layer.show_preparation_zones = false
 	if _commence_button != null:
 		_commence_button.visible = false
-	_lbl_combat_state.text = "COMBAT"
+	_lbl_combat_state.text = GameState.keys()[GameState.COMBAT]
 	_hud_pause.visible = false
 	_update_visualization_from_snapshot()
 
@@ -2047,7 +2049,7 @@ func _update_inspection_panel(instance_id: int) -> void:
 
 
 func _on_champion_clicked(champion_id: StringName) -> void:
-	if _game_state != DRAFTING:
+	if _game_state != GameState.DRAFTING:
 		return
 
 	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
@@ -2109,7 +2111,7 @@ func _get_champion_button(champion_id: StringName) -> Button:
 func _toggle_pause() -> void:
 	_combat_paused = not _combat_paused
 	if _hud_pause != null:
-		_hud_pause.visible = _combat_paused and _game_state == COMBAT
+		_hud_pause.visible = _combat_paused and _game_state == GameState.COMBAT
 		if _hud_pause.visible:
 			_hud_pause.text = "PAUSED (Space)  |  K: speed"
 	_update_tween_pause_state()
@@ -2162,7 +2164,7 @@ func _enter_preparation() -> void:
 		SimConstantsScript.DEFAULT_TICK_RATE
 	)
 	_backend.begin_match(match_input)
-	_game_state = PREPARATION
+	_game_state = GameState.PREPARATION
 	_sim_time_accumulator = 0.0
 	_on_before_battle_start()
 	_show_world_and_hud_for_battle()
@@ -2170,7 +2172,7 @@ func _enter_preparation() -> void:
 		_arena_layer.show_preparation_zones = true
 	if _commence_button != null:
 		_commence_button.visible = true
-	_lbl_combat_state.text = "PREPARATION"
+	_lbl_combat_state.text = GameState.keys()[GameState.PREPARATION]
 	_hud_pause.visible = false
 	_update_visualization_from_snapshot()
 
@@ -2208,19 +2210,19 @@ func _show_world_and_hud_for_battle() -> void:
 
 
 func _on_commence_battle() -> void:
-	if _game_state != PREPARATION:
+	if _game_state != GameState.PREPARATION:
 		return
 	if _commence_button != null:
 		_commence_button.visible = false
 	if _arena_layer != null:
 		_arena_layer.show_preparation_zones = false
-	_game_state = COMBAT
+	_game_state = GameState.COMBAT
 	_sim_time_accumulator = 0.0
-	_lbl_combat_state.text = "COMBAT"
+	_lbl_combat_state.text = GameState.keys()[GameState.COMBAT]
 
 
 func _end_match() -> void:
-	_game_state = MATCH_OVER
+	_game_state = GameState.MATCH_OVER
 	var summary: Dictionary = _backend.finish_and_summarize()
 	_combat_paused = false
 	
@@ -2312,7 +2314,7 @@ func _on_new_draft_from_match() -> void:
 
 func _reset_to_draft() -> void:
 	_clear_units()
-	_game_state = DRAFTING
+	_game_state = GameState.DRAFTING
 	_combat_paused = false
 	_draft_step_index = 0
 	_player_picks.clear()

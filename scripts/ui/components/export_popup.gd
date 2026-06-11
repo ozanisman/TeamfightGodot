@@ -2,6 +2,7 @@ class_name ExportPopup
 extends Window
 
 const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
 signal closed
@@ -77,8 +78,10 @@ func _ready() -> void:
 		_worker_edit = get_node(_worker_edit_path)
 	if has_node(_eval_predictions_check_path):
 		_eval_predictions_check = get_node(_eval_predictions_check_path)
+		_clear_checkbox_border(_eval_predictions_check)
 	if has_node(_prediction_dir_edit_path):
 		_prediction_dir_edit = get_node(_prediction_dir_edit_path)
+		_prediction_dir_edit.text = "res://stats_output_baseline"
 	if has_node(_generate_button_path):
 		_generate_button = get_node(_generate_button_path)
 	if has_node(_progress_bar_path):
@@ -95,8 +98,28 @@ func _ready() -> void:
 			cb.custom_minimum_size.y = 56
 			cb.button_pressed = true
 			cb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			_clear_checkbox_border(cb)
 			_regen_checks[sz] = cb
 			_modes_row.add_child(cb)
+
+func _clear_checkbox_border(cb: CheckBox) -> void:
+	var bg := UiStylesScript.solid(UiTokensScript.COLOR_PANEL)
+	bg.content_margin_left = 16.0
+	bg.content_margin_top = 8.0
+	bg.content_margin_right = 16.0
+	bg.content_margin_bottom = 8.0
+	cb.add_theme_stylebox_override("normal", bg)
+	cb.add_theme_stylebox_override("hover", bg)
+	cb.add_theme_stylebox_override("pressed", bg)
+	cb.add_theme_stylebox_override("hover_pressed", bg)
+	cb.add_theme_stylebox_override("disabled", bg)
+	cb.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	cb.add_theme_color_override("font_color", UiTokensScript.COLOR_TEXT)
+	cb.add_theme_color_override("font_hover_color", UiTokensScript.COLOR_TEXT)
+	cb.add_theme_color_override("font_pressed_color", UiTokensScript.COLOR_TEXT)
+	cb.add_theme_color_override("font_hover_pressed_color", UiTokensScript.COLOR_TEXT)
+	cb.add_theme_color_override("font_focus_color", UiTokensScript.COLOR_TEXT)
+	cb.add_theme_color_override("font_disabled_color", UiTokensScript.COLOR_TEXT)
 
 func show_popup() -> void:
 	reset_size()

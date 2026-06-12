@@ -89,9 +89,6 @@ func _run() -> void:
 		for row: Dictionary in depth_training:
 			var allies: Array = (row["allies"] as String).split("|")
 			var enemies: Array = (row["enemies"] as String).split("|")
-			var banned_allies: Array = (row["banned_allies"] as String).split("|") if row.has("banned_allies") else []
-			var banned_enemies: Array = (row["banned_enemies"] as String).split("|") if row.has("banned_enemies") else []
-			
 			# Extract role counts if available
 			var ally_roles: Dictionary = {}
 			var enemy_roles: Dictionary = {}
@@ -118,7 +115,7 @@ func _run() -> void:
 			comp_balance["ally_damage_ratio"] = float(row.get("ally_damage_ratio", 0.0)) if row.has("ally_damage_ratio") else 0.0
 			comp_balance["enemy_damage_ratio"] = float(row.get("enemy_damage_ratio", 0.0)) if row.has("enemy_damage_ratio") else 0.0
 			
-			var feature_vec := _extract_pairwise_features(allies, enemies, banned_allies, banned_enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
+			var feature_vec := _extract_pairwise_features(allies, enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
 			train_features.append(feature_vec)
 			train_labels.append(float(row["expected_win"]))
 
@@ -128,9 +125,6 @@ func _run() -> void:
 		for row: Dictionary in depth_testing:
 			var allies: Array = (row["allies"] as String).split("|")
 			var enemies: Array = (row["enemies"] as String).split("|")
-			var banned_allies: Array = (row["banned_allies"] as String).split("|") if row.has("banned_allies") else []
-			var banned_enemies: Array = (row["banned_enemies"] as String).split("|") if row.has("banned_enemies") else []
-			
 			# Extract role counts if available
 			var ally_roles: Dictionary = {}
 			var enemy_roles: Dictionary = {}
@@ -157,7 +151,7 @@ func _run() -> void:
 			comp_balance["ally_damage_ratio"] = float(row.get("ally_damage_ratio", 0.0)) if row.has("ally_damage_ratio") else 0.0
 			comp_balance["enemy_damage_ratio"] = float(row.get("enemy_damage_ratio", 0.0)) if row.has("enemy_damage_ratio") else 0.0
 			
-			var feature_vec := _extract_pairwise_features(allies, enemies, banned_allies, banned_enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
+			var feature_vec := _extract_pairwise_features(allies, enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
 			test_features.append(feature_vec)
 			test_labels.append(float(row["expected_win"]))
 
@@ -205,20 +199,6 @@ func _run() -> void:
 		return
 	f.store_string("\n".join(csv_lines) + "\n")
 	f.close()
-	
-	# Save trained weights for depth 4 (final depth) for ban recommendation testing
-	if trained_weights.has(4):
-		var weights_path := ProjectSettings.globalize_path("res://training_data/ban_aware_weights.txt")
-		var weights_f := FileAccess.open(weights_path, FileAccess.WRITE)
-		if weights_f == null:
-			push_error("verify_draft_aware_signal: could not open %s" % weights_path)
-			quit(1)
-			return
-		var depth4_weights: Array = trained_weights.get(4, [])
-		var weights_str := ",".join(depth4_weights.map(func(x): return str(x)))
-		weights_f.store_string(weights_str)
-		weights_f.close()
-		print("Trained weights saved to: %s" % weights_path)
 	
 	print("")
 	print("================ DRAFT-AWARE VERIFICATION COMPLETE ================")
@@ -303,7 +283,7 @@ func _load_matchup_stats(path: String) -> Dictionary:
 	return result
 
 
-func _extract_pairwise_features(allies: Array, enemies: Array, banned_allies: Array, banned_enemies: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, ally_roles: Dictionary = {}, enemy_roles: Dictionary = {}, syn_cnt: Dictionary = {}, comp_balance: Dictionary = {}) -> Array:
+func _extract_pairwise_features(allies: Array, enemies: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, ally_roles: Dictionary = {}, enemy_roles: Dictionary = {}, syn_cnt: Dictionary = {}, comp_balance: Dictionary = {}) -> Array:
 	# Pick-focused features (30 total): [base_winrate, avg_synergy, avg_counter, synergy_variance, counter_variance, net_matchup,
 	#            ally_tank, ally_fighter, ally_mage, ally_assassin, ally_marksman, ally_support,
 	#            enemy_tank, enemy_fighter, enemy_mage, enemy_assassin, enemy_marksman, enemy_support,
@@ -525,7 +505,7 @@ func recommend_ban(allies: Array, enemies: Array, banned_allies: Array, banned_e
 	
 	# Random fallback until ban model is implemented
 	var random_index := randi() % available.size()
-	var random_champion := available[random_index]
+	var random_champion: StringName = available[random_index]
 	
 	return {
 		"champion": random_champion,

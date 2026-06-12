@@ -10,7 +10,7 @@ const NativeSimulationBackendScript := preload("res://scripts/simulation/native_
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
 const TEAM_SIZE: int = 5
-const DEFAULT_OUTPUT := "res://training_data/draft_aware_training.csv"
+const DEFAULT_OUTPUT := "res://model_stats/draft_aware_training_250k/draft_aware_training.csv"
 const ROLES: Array[String] = ["tank", "fighter", "mage", "assassin", "marksman", "support"]
 
 

@@ -8,7 +8,7 @@ Godot 4.6.2 stable has a file system bug in headless mode on Windows where `File
 
 - `scripts/tools/verify_draft_aware_signal.gd` — Verification script that should write model stats but fails in headless mode
 - `scripts/tools/generate_draft_aware_training_data.gd` — Data generation script (partially mitigated with absolute paths)
-- `training_data/` — Output directory where files should be written but aren't persisting
+- `model_stats/draft_aware_training_250k/` — Output directory where files should be written but aren't persisting
 
 ## Observed Behavior
 

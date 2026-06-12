@@ -424,13 +424,3 @@ func predict_draft_winner(team1: Array, team2: Array, stats_dir: String = "res:/
 		return _backend.call("predict_draft_winner", team1, team2, stats_dir, base_weight, synergy_weight, counter_weight, matchup_weight, composition_weight, logistic_k, include_breakdown, synergy_amplification, matchup_amplification, logit_sharpness, score_sharpness, interaction_weight, scoring_mode, variance_weight, cc_weight, mobility_weight, sustain_weight, best_counter_weight, worst_counter_weight, best_synergy_weight, worst_synergy_weight, synergy_aggregation, counter_aggregation, use_decorrelated_scoring, draft_position, early_pick_base_weight, late_pick_counter_weight)
 	push_error("Native simulation backend is missing predict_draft_winner().")
 	return {"team1_prob": 0.5, "team2_prob": 0.5}
-
-
-func predict_draft_winner_hybrid(team1: Array, team2: Array, stats_dir: String = "res://stats_output") -> Dictionary:
-	if not _ensure_native_backend():
-		push_error("Simulation backend is not available.")
-		return {"team1_prob": 0.5, "team2_prob": 0.5, "model": "error"}
-	if _backend.has_method("predict_draft_winner_hybrid"):
-		return _backend.call("predict_draft_winner_hybrid", team1, team2, stats_dir)
-	push_error("Native simulation backend is missing predict_draft_winner_hybrid().")
-	return {"team1_prob": 0.5, "team2_prob": 0.5, "model": "error"}

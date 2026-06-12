@@ -129,7 +129,6 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
 	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "logit_sharpness", "score_sharpness", "interaction_weight", "scoring_mode", "variance_weight", "cc_weight", "mobility_weight", "sustain_weight", "best_counter_weight", "worst_counter_weight", "best_synergy_weight", "worst_synergy_weight", "synergy_aggregation", "counter_aggregation", "use_decorrelated_scoring", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(1.5), DEFVAL(1.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY)), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(false), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
-	ClassDB::bind_method(D_METHOD("predict_draft_winner_hybrid", "team1", "team2", "stats_dir"), &TeamfightSimulationCore::predict_draft_winner_hybrid, DEFVAL("res://stats_output"));
 	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
@@ -462,41 +461,6 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 	return result;
 }
 
-Dictionary TeamfightSimulationCore::predict_draft_winner_hybrid(
-		const Array &team1,
-		const Array &team2,
-		const String &stats_dir) {
-	// Load database with caching (same as predict_draft_winner)
-	static thread_local String s_cached_stats_dir;
-	static thread_local sim::draft::DraftStatsDatabase s_cached_database;
-	static thread_local bool s_cache_loaded = false;
-	if (!s_cache_loaded || s_cached_stats_dir != stats_dir) {
-		sim::draft::DraftStatsDatabase fresh;
-		if (!fresh.load_from_dir(stats_dir)) {
-			UtilityFunctions::push_error(fresh.last_error());
-			Dictionary result;
-			result["team1_prob"] = 0.5;
-			result["team2_prob"] = 0.5;
-			result["model"] = "error";
-			return result;
-		}
-		s_cached_database = std::move(fresh);
-		s_cached_stats_dir = stats_dir;
-		s_cache_loaded = true;
-	}
-	const sim::draft::DraftStatsDatabase &database = s_cached_database;
-
-	// Use hybrid model: partial for depths 1-3, certified for depth 4+
-	double team1_prob = database.calculate_hybrid_draft_probability(
-		array_to_string_names(team1),
-		array_to_string_names(team2));
-
-	Dictionary result;
-	result["team1_prob"] = team1_prob;
-	result["team2_prob"] = 1.0 - team1_prob;
-	result["model"] = "hybrid";
-	return result;
-}
 
 Dictionary TeamfightSimulationCore::analyze_draft_signal_influence(
 		const Array &candidate,

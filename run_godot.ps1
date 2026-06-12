@@ -25,12 +25,8 @@ $measureDraftCeiling = $Arguments -contains "--measure-draft-ceiling"
 $verifyPairwiseSignal = $Arguments -contains "--verify-pairwise-signal"
 $generateDraftProbeSignals = $Arguments -contains "--generate-draft-probe-signals"
 $validatePickRecommendations = $Arguments -contains "--validate-pick-recommendations"
-$generatePartialDraftTrainingData = $Arguments -contains "--generate-partial-draft-training-data"
-$verifyPartialDraftSignal = $Arguments -contains "--verify-partial-draft-signal"
-$evaluatePartialDraftModel = $Arguments -contains "--evaluate-partial-draft-model"
 $generateDraftAwareTrainingData = $Arguments -contains "--generate-draft-aware-training-data"
 $verifyDraftAwareSignal = $Arguments -contains "--verify-draft-aware-signal"
-$testHybridModel = $Arguments -contains "--test-hybrid-model"
 $testRolloutCounts = $Arguments -contains "--test-rollout-counts"
 $validateRolloutConvergence = $Arguments -contains "--validate-rollout-convergence"
 $abTestDraftStrategies = $Arguments -contains "--ab-test-draft-strategies"
@@ -159,23 +155,11 @@ elseif ($generateDraftProbeSignals) {
 elseif ($validatePickRecommendations) {
 	$timeoutSeconds = 900
 }
-elseif ($generatePartialDraftTrainingData) {
-	$timeoutSeconds = 900
-}
-elseif ($verifyPartialDraftSignal) {
-	$timeoutSeconds = 300
-}
-elseif ($evaluatePartialDraftModel) {
-	$timeoutSeconds = 300
-}
 elseif ($generateDraftAwareTrainingData) {
 	$timeoutSeconds = 900
 }
 elseif ($verifyDraftAwareSignal) {
 	$timeoutSeconds = 300
-}
-elseif ($testHybridModel) {
-	$timeoutSeconds = 60
 }
 elseif ($testRolloutCounts) {
 	$timeoutSeconds = 1800
@@ -326,15 +310,6 @@ elseif ($generateDraftProbeSignals) {
 elseif ($validatePickRecommendations) {
 	$godotArgs += @("--script", "res://scripts/tools/validate_pick_recommendations.gd")
 }
-elseif ($generatePartialDraftTrainingData) {
-	$godotArgs += @("--script", "res://scripts/tools/generate_partial_draft_training_data.gd")
-}
-elseif ($verifyPartialDraftSignal) {
-	$godotArgs += @("--script", "res://scripts/tools/verify_partial_draft_signal.gd")
-}
-elseif ($evaluatePartialDraftModel) {
-	$godotArgs += @("--script", "res://scripts/tools/evaluate_partial_draft_model.gd")
-}
 elseif ($generateDraftAwareTrainingData) {
 	$godotArgs += @("--script", "res://scripts/tools/generate_draft_aware_training_data.gd")
 	$depthsArg = Get-ArgString "--depths=" "1,2,3,4,5"
@@ -346,9 +321,6 @@ elseif ($generateDraftAwareTrainingData) {
 }
 elseif ($verifyDraftAwareSignal) {
 	$godotArgs += @("--script", "res://scripts/tools/verify_draft_aware_signal.gd")
-}
-elseif ($testHybridModel) {
-	$godotArgs += @("--script", "res://scripts/tools/test_hybrid_model.gd")
 }
 elseif ($testRolloutCounts) {
 	$godotArgs += @("--script", "res://scripts/tools/test_rollout_counts.gd")
@@ -430,7 +402,7 @@ try {
 		}
 	}
 	if ($generateDraftAwareTrainingData) {
-		$outputPath = Convert-ProjectPath (Get-ArgString "--output=" "res://training_data/draft_aware_training.csv")
+		$outputPath = Convert-ProjectPath (Get-ArgString "--output=" "res://model_stats/draft_aware_training_250k/draft_aware_training.csv")
 		$statesPerDepth = [Math]::Max(1, (Get-ArgInt "--states-per-depth=" 25))
 		$depthCount = Get-ValidDepthCount (Get-ArgString "--depths=" "1,2,3,4,5")
 		Assert-DurableOutput $outputPath 2 0 (($statesPerDepth * $depthCount) + 1)

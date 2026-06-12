@@ -20,8 +20,8 @@ func _init() -> void:
 
 func _run() -> void:
 	print("analyze_draft_picks: STARTED")
-	var input_path := _extract_argument("--input=", "res://stats_output_partial/draft_ab_test_200.csv")
-	var output_dir := _extract_argument("--output-dir=", "res://stats_output_partial")
+	var input_path := _extract_argument("--input=", "res://model_stats/draft_ab_test_200.csv")
+	var output_dir := _extract_argument("--output-dir=", "res://model_stats")
 	var mode := _extract_argument("--mode=", "all")
 
 	print("analyze_draft_picks: input=%s output_dir=%s mode=%s" % [input_path, output_dir, mode])
@@ -80,7 +80,7 @@ func _run() -> void:
 
 func _analyze_frequency(rows: Array, output_dir: String) -> void:
 	var pick_counts := {}
-	var strategies := ["hybrid", "logit", "certified", "random"]
+	var strategies := ["logit", "certified", "random"]
 
 	for strat in strategies:
 		pick_counts[strat] = {}
@@ -131,7 +131,7 @@ func _analyze_frequency(rows: Array, output_dir: String) -> void:
 
 func _analyze_contextual(rows: Array, output_dir: String) -> void:
 	var enemy_cooccurrence := {}
-	var strategies := ["hybrid", "logit", "certified", "random"]
+	var strategies := ["logit", "certified", "random"]
 
 	for strat in strategies:
 		enemy_cooccurrence[strat] = {}
@@ -218,7 +218,7 @@ func _analyze_comparative(rows: Array, output_dir: String) -> void:
 		push_error("analyze_draft_picks: could not open %s" % output_path)
 		return
 
-	var strategies := ["hybrid", "logit", "certified", "random"]
+	var strategies := ["logit", "certified", "random"]
 	var headers := ["allies", "enemies", "depth"]
 	for s in strategies:
 		headers.append("%s_pick" % s)

@@ -5,7 +5,7 @@ func _init() -> void:
 
 func _run() -> void:
 	print("test_analyze: STARTED")
-	var input_path := "res://stats_output_partial/draft_ab_test_200.csv"
+	var input_path := "res://model_stats/draft_ab_test_200.csv"
 	var global_path := ProjectSettings.globalize_path(input_path)
 	print("test_analyze: global_path=%s" % global_path)
 	

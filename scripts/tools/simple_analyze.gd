@@ -6,7 +6,7 @@ func _init() -> void:
 func _run() -> void:
 	print("simple_analyze: STARTED")
 	
-	var input_path := "res://stats_output_partial/draft_ab_test_200.csv"
+	var input_path := "res://model_stats/draft_ab_test_200.csv"
 	var global_path := ProjectSettings.globalize_path(input_path)
 	print("simple_analyze: reading from %s" % global_path)
 	
@@ -23,7 +23,7 @@ func _run() -> void:
 	var header := lines[0].split(",")
 	print("simple_analyze: header: %s" % header)
 	
-	var pick_counts := {"hybrid": {}, "logit": {}, "random": {}}
+	var pick_counts := {"logit": {}, "random": {}}
 	
 	for i in range(1, lines.size()):
 		var line := lines[i].strip_edges()
@@ -52,7 +52,7 @@ func _run() -> void:
 	for strat in pick_counts:
 		print("  %s: %d unique picks" % [strat, pick_counts[strat].size()])
 	
-	var output_path := "res://stats_output_partial/pick_frequency_simple.csv"
+	var output_path := "res://model_stats/pick_frequency_simple.csv"
 	var global_output := ProjectSettings.globalize_path(output_path)
 	print("simple_analyze: writing to %s" % global_output)
 	
@@ -62,7 +62,7 @@ func _run() -> void:
 		quit(1)
 		return
 	
-	out_f.store_string("champion,hybrid,logit,random\n")
+	out_f.store_string("champion,logit,random\n")
 	
 	var all_champs := {}
 	for strat in pick_counts:
@@ -70,7 +70,7 @@ func _run() -> void:
 			all_champs[champ] = true
 	
 	for champ in all_champs:
-		var line = "%s,%d,%d,%d\n" % [champ, pick_counts["hybrid"].get(champ, 0), pick_counts["logit"].get(champ, 0), pick_counts["random"].get(champ, 0)]
+		var line = "%s,%d,%d\n" % [champ, pick_counts["logit"].get(champ, 0), pick_counts["random"].get(champ, 0)]
 		out_f.store_string(line)
 	
 	out_f.close()
@@ -78,7 +78,7 @@ func _run() -> void:
 	
 	# Contextual analysis: enemy co-occurrence
 	print("simple_analyze: contextual analysis...")
-	var enemy_cooccurrence := {"hybrid": {}, "logit": {}, "random": {}}
+	var enemy_cooccurrence := {"logit": {}, "random": {}}
 	
 	for i in range(1, lines.size()):
 		var line := lines[i].strip_edges()
@@ -97,7 +97,7 @@ func _run() -> void:
 		_process_context(strategy_a, pick_a, enemies, enemy_cooccurrence)
 		_process_context(strategy_b, pick_b, enemies, enemy_cooccurrence)
 	
-	var context_path := "res://stats_output_partial/pick_contextual_simple.csv"
+	var context_path := "res://model_stats/pick_contextual_simple.csv"
 	var global_context := ProjectSettings.globalize_path(context_path)
 	var context_f := FileAccess.open(global_context, FileAccess.WRITE)
 	if context_f == null:
@@ -149,7 +149,7 @@ func _run() -> void:
 		disagreements[key]["winrates"][strategy_a] = winrate_a
 		disagreements[key]["winrates"][strategy_b] = winrate_b
 	
-	var comp_path := "res://stats_output_partial/pick_comparative_simple.csv"
+	var comp_path := "res://model_stats/pick_comparative_simple.csv"
 	var global_comp := ProjectSettings.globalize_path(comp_path)
 	var comp_f := FileAccess.open(global_comp, FileAccess.WRITE)
 	if comp_f == null:
@@ -157,7 +157,7 @@ func _run() -> void:
 		quit(1)
 		return
 	
-	var strategies = ["hybrid", "logit", "random"]
+	var strategies = ["logit", "random"]
 	var headers = ["allies", "enemies", "depth"]
 	for s in strategies:
 		headers.append("%s_pick" % s)

@@ -40,7 +40,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - `scripts/tools/verify_pairwise_signal.gd` - Tests whether pairwise features contain predictive signal
 - `scripts/tools/analyze_signal_variance.gd` - Analyzes signal variance and correlations
 - `scripts/tools/generate_draft_probe_signals.gd` - Generates simulation-derived probe features from fixed templates
-- `scripts/tools/validate_pick_recommendations.gd` - Validation-only rollout scorer for partial-draft pick recommendations
+- `scripts/tools/validate_pick_recommendations.gd` - Validation-only rollout scorer for draft pick recommendations
 - `scripts/tools/validate_rollout_convergence.gd` - Tests rollout convergence across different rollout counts
 - `scripts/tools/ab_test_draft_strategies.gd` - A/B testing framework for comparing draft strategies using combat simulations
 - `scripts/tools/analyze_validation_patterns.gd` - Analyzes validation patterns to identify when validation is reliable
@@ -67,7 +67,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - Complete-draft `predict_draft_winner` now defaults to the 5000-comp holdout-certified pairwise probability logistic model (`ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY`)
 - Certified validation: 76.1% test accuracy / MSE 0.0484 on `draft_ceiling_holdout_5000.csv`
 - Runtime shape: logistic weights/means/stddevs are baked into native code, but feature inputs still come from the active `stats_dir` CSVs (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`)
-- Scope: complete-team win prediction is certified; incomplete-draft probabilities are allowed in the UI but are extrapolated; partial-draft pick recommendation ranking still uses the existing recommender scorer
+- Scope: complete-team win prediction is certified; incomplete-draft probabilities are allowed in the UI but are extrapolated; draft-aware model is used for pick recommendations
 
 **2. Rollout-based validation (COMPLETED)**
 - Validation-only tool ranks each candidate by sampled complete-draft continuations scored with certified `predict_draft_winner`
@@ -123,26 +123,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - Model sequential decision-making (counter-pick timing, synergy building)
 - Requires draft simulation framework, not static comp evaluation
 
-**8. Partial draft model (COMPLETED)**
-- Training data generated: 500 states/depth, 100 rollouts/state on `stats_output_baseline`
-- Verification results (depth-specific logistic models):
-  - Depth 1: 87.0% test accuracy, MSE 0.000465
-  - Depth 2: 97.0% test accuracy, MSE 0.000199
-  - Depth 3: 90.0% test accuracy, MSE 0.000500
-  - Depth 4: 94.0% test accuracy, MSE 0.001864
-- Evaluation vs certified extrapolation:
-  - Depth 1: +70.00 pp improvement (hybrid 85.0% vs certified 15.0%)
-  - Depth 2: +75.00 pp improvement (hybrid 97.0% vs certified 22.0%)
-  - Depth 3: +43.00 pp improvement (hybrid 91.0% vs certified 48.0%)
-  - Depth 4: 0.00 pp (both use certified model)
-- Old vs new weights comparison: Identical results (both produce same accuracy/MSE)
-  - Old weights were functional despite missing training data reference
-  - New weights have provenance from fresh training data
-  - Decision: Keep new weights for audit trail and reproducibility
-- Native implementation updated in `sim_draft_recommender.cpp` with new weights baked
-- Runtime: `calculate_partial_draft_probability()` uses depth-specific models for depths 1-3, certified for depth 4+
-
-**9. Rollout validation analysis (COMPLETED)**
+**8. Rollout validation analysis (COMPLETED)**
 - Validation provides useful directional signal, especially at earlier draft stages
 - Analysis results (500 states per depth, 100 rollouts/candidate):
   - Depth 0: 60.6% agreement, avg regret 1.66 pp when disagreeing, score CV 0.023
@@ -157,7 +138,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 
 **10. A/B testing framework (COMPLETED)**
 - Compares draft strategies by running actual combat simulations (true ground truth)
-- Strategies: random, logit, hybrid, certified
+- Strategies: random, logit, certified
 - For each trial: samples partial draft state, gets picks from two strategies, completes drafts randomly, runs N simulations per pick
 - Metrics: winrate per strategy, pairwise delta (winrate_b - winrate_a), summary statistics (mean, std, SE)
 - Output: CSV with trial-by-trial results + summary by depth/strategy

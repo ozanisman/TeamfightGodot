@@ -23,9 +23,9 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var training_input := _extract_argument("--training-input=", "res://stats_output_training/draft_aware_training.csv")
-	var testing_input := _extract_argument("--testing-input=", "res://stats_output_testing/draft_aware_training.csv")
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output_training")
+	var training_input := _extract_argument("--training-input=", "res://model_stats/draft_aware_training_250k/draft_aware_training.csv")
+	var testing_input := _extract_argument("--testing-input=", "res://model_stats/draft_aware_testing_250k/draft_aware_training.csv")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/draft_aware_training_250k")
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 
 	print("verify_draft_aware_signal: loading training data from %s" % training_input)

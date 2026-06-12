@@ -542,7 +542,7 @@ labeled data to train and evaluate models.
 - Large verifier probability result: pairwise 75.0% test (MSE 0.0426), pairwise+archetype 75.0% (MSE 0.0446), pairwise+probe 73.3% (MSE 0.0510), combined_all 71.7% (MSE 0.0534)
 - 5000-comp non-mirror holdout result: current heuristic 68.6% test / 67.7% all; pairwise label 75.4% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe label 76.8% test; pairwise+probe probability 76.6% test / MSE 0.0479
 - Conclusion: larger labels reduce the apparent single-split pairwise overperformance. Probe features improve slightly on the 5000-comp holdout, but not enough to justify native recommender wiring yet.
-- Runtime status: pairwise probability logistic is certified as the modern default for complete-draft winner prediction. Incomplete-draft probabilities are UI extrapolations, and partial-draft pick recommendations remain on the existing recommender scorer.
+- Runtime status: pairwise probability logistic is certified as the modern default for complete-draft winner prediction. Incomplete-draft probabilities are UI extrapolations, and draft-aware model is used for pick recommendations.
 - Verifier-only combined sets (`combined`, `combined_all`, `mechanical_probe`, `pairwise_archetype`, `pairwise_probe`) are archived experiment surfaces, not runtime defaults.
 
 **7. Draft-state context (lower priority)**

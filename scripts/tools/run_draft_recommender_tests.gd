@@ -499,7 +499,7 @@ func _initialize() -> void:
 	print("\nRecommendation:")
 	if criteria_failed.size() == 0:
 		print("  LOGIT meets core acceptance criteria (Top-3 stability improvement ≥10pp).")
-		print("  LOGIT remains the partial-draft recommendation scorer; certified pairwise probability is the predict_draft_winner default.")
+		print("  LOGIT remains the draft recommendation scorer; certified pairwise probability is the predict_draft_winner default.")
 		print("  Notes:")
 		print("    - CW smoothing: null result at k=100 (CW≈LEGACY); no further k tuning needed")
 		print("    - synergy_context 73% is structural (score proximity under perturbation); acceptable")

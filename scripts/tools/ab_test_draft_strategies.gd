@@ -6,7 +6,7 @@ extends SceneTree
 ## Usage:
 ##   godot --headless --script res://scripts/tools/ab_test_draft_strategies.gd \
 ##     -- --trials=500 --sims-per-trial=50 --depths=1,2,3 \
-##     --strategies=hybrid,logit,random --output=res://stats_output_partial/draft_ab_test.csv
+##     --strategies=logit,random,certified --output=res://model_stats/draft_ab_test.csv
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
@@ -15,7 +15,6 @@ const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyLogitPath := "res://scripts/tools/draft_strategy_logit.gd"
-const DraftStrategyHybridPath := "res://scripts/tools/draft_strategy_hybrid.gd"
 const DraftStrategyCertifiedPath := "res://scripts/tools/draft_strategy_certified.gd"
 
 const TEAM_SIZE: int = 5
@@ -44,9 +43,9 @@ func _run() -> void:
 	var trials := maxi(1, int(_extract_argument("--trials=", "500")))
 	var sims_per_trial := maxi(1, int(_extract_argument("--sims-per-trial=", "50")))
 	var depths_str := _extract_argument("--depths=", "1,2,3")
-	var strategies_str := _extract_argument("--strategies=", "hybrid,logit,random")
+	var strategies_str := _extract_argument("--strategies=", "logit,random,certified")
 	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
-	var output_path := _extract_argument("--output=", "res://stats_output_partial/draft_ab_test.csv")
+	var output_path := _extract_argument("--output=", "res://model_stats/draft_ab_test.csv")
 	var base_seed := int(_extract_argument("--base-seed=", "90000"))
 
 	var depths: Array[int] = []
@@ -89,8 +88,6 @@ func _run() -> void:
 				strategies[name] = load(DraftStrategyRandomPath).new()
 			"logit":
 				strategies[name] = load(DraftStrategyLogitPath).new(stats_dir)
-			"hybrid":
-				strategies[name] = load(DraftStrategyHybridPath).new(stats_dir)
 			"certified":
 				strategies[name] = load(DraftStrategyCertifiedPath).new(stats_dir)
 			_:

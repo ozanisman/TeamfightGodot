@@ -11,6 +11,7 @@ signal closed
 @export var _modes_row_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ModesRow")
 @export var _sample_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/SampleBlock/SampleEdit")
 @export var _worker_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/WorkerBlock/WorkerEdit")
+@export var _output_dir_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/OutputDirBlock/OutputDirEdit")
 @export var _eval_predictions_check_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/EvalPredictionsCheck")
 @export var _prediction_dir_edit_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/PredictionBlock/PredictionDirEdit")
 @export var _generate_button_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/GenerateButton")
@@ -21,6 +22,7 @@ var _native_required_notice: Label
 var _modes_row: HFlowContainer
 var _sample_edit: LineEdit
 var _worker_edit: LineEdit
+var _output_dir_edit: LineEdit
 var _eval_predictions_check: CheckBox
 var _prediction_dir_edit: LineEdit
 var _generate_button: Button
@@ -40,6 +42,10 @@ var sample_edit: LineEdit:
 var worker_edit: LineEdit:
 	get:
 		return _worker_edit
+
+var output_dir_edit: LineEdit:
+	get:
+		return _output_dir_edit
 
 var eval_predictions_check: CheckBox:
 	get:
@@ -76,6 +82,9 @@ func _ready() -> void:
 		_sample_edit = get_node(_sample_edit_path)
 	if has_node(_worker_edit_path):
 		_worker_edit = get_node(_worker_edit_path)
+	if has_node(_output_dir_edit_path):
+		_output_dir_edit = get_node(_output_dir_edit_path)
+		_output_dir_edit.text = "res://stats_output"
 	if has_node(_eval_predictions_check_path):
 		_eval_predictions_check = get_node(_eval_predictions_check_path)
 		_clear_checkbox_border(_eval_predictions_check)

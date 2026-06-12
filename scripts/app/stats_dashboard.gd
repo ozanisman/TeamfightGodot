@@ -158,6 +158,7 @@ var _export_popup: ExportPopup
 var _regen_checks: Dictionary = {}
 var _regen_sample_edit: LineEdit
 var _regen_worker_edit: LineEdit
+var _regen_output_dir_edit: LineEdit
 var _regen_eval_predictions_check: CheckBox
 var _regen_prediction_dir_edit: LineEdit
 var _regen_button: Button
@@ -847,7 +848,10 @@ func _read_regen_export_params() -> Variant:
 		_regen_status.text = "Worker count must be >= 1."
 		_regen_status.add_theme_color_override("font_color", COLOR_RED)
 		return null
-	var output_dir: String = _resolve_writable_stats_dir()
+	var output_dir_text: String = _regen_output_dir_edit.text.strip_edges() if _regen_output_dir_edit != null else ""
+	if output_dir_text.is_empty():
+		output_dir_text = "res://stats_output"
+	var output_dir: String = output_dir_text
 	var evaluate_draft_predictions: bool = _regen_eval_predictions_check != null and _regen_eval_predictions_check.button_pressed
 	var prediction_stats_dir: String = ""
 	if evaluate_draft_predictions:
@@ -917,7 +921,7 @@ func _on_regenerate_pressed() -> void:
 	_regen_status.remove_theme_color_override("font_color")
 	_regen_progress.max_value = maxf(1.0, float(_regen_total_matches))
 	_regen_progress.value = 0.0
-	_regen_progress.visible = true
+	_regen_progress.visible = false
 	_set_regen_busy(true)
 	
 	# Start background thread for export and simulations
@@ -955,7 +959,7 @@ func _on_regen_native_export_confirmed() -> void:
 	_regen_status.remove_theme_color_override("font_color")
 	_regen_progress.max_value = maxf(1.0, float(_regen_total_matches))
 	_regen_progress.value = 0.0
-	_regen_progress.visible = true
+	_regen_progress.visible = false
 	_set_regen_busy(true)
 	
 	# Start background thread for export and simulations
@@ -981,6 +985,8 @@ func _on_regen_poll_tick() -> void:
 		_regen_poll_timer.stop()
 		return
 	var cur: int = SimulationBatchWorkerScript.benchmark_progress_read_value()
+	if cur > 0 and not _regen_progress.visible:
+		_regen_progress.visible = true
 	_regen_progress.value = minf(float(cur), _regen_progress.max_value)
 	if _regen_thread.is_alive():
 		return
@@ -1746,6 +1752,7 @@ func _build_export_popup() -> void:
 	_regen_checks = _export_popup.regen_checks
 	_regen_sample_edit = _export_popup.sample_edit
 	_regen_worker_edit = _export_popup.worker_edit
+	_regen_output_dir_edit = _export_popup.output_dir_edit
 	_regen_eval_predictions_check = _export_popup.eval_predictions_check
 	_regen_prediction_dir_edit = _export_popup.prediction_dir_edit
 	_regen_button = _export_popup.generate_button

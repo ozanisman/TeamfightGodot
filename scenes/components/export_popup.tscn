@@ -84,6 +84,19 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 56)
 placeholder_text = "Integer >= 0"
 
+[node name="OutputDirBlock" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OutputDirLabel" type="Label" parent="ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/OutputDirBlock"]
+layout_mode = 2
+text = "Output directory"
+
+[node name="OutputDirEdit" type="LineEdit" parent="ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/OutputDirBlock"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+placeholder_text = "e.g. res://stats_output"
+
 [node name="PredictionBlock" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -115,6 +128,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 max_value = 1.0
 value = 0.0
+visible = false
 
 [node name="StatusLabel" type="Label" parent="ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer"]
 layout_mode = 2

@@ -64,7 +64,7 @@ func _run() -> void:
 	ChampionCatalogScript.build_minion_catalog()
 	ChampionCatalogScript.freeze_built_specs_for_worker_reuse()
 	
-	var out_dir := _extract_argument("--out-dir=", "res://stats_output")
+	var out_dir := _extract_argument("--out-dir=", "res://model_stats/certified_pairwise_training_250k")
 	var sizes_raw := _extract_argument("--team-sizes=", "1,2,3,4,5")
 	var matches := int(_extract_argument("--matches-per-size=", "100"))
 	var seed := int(_extract_argument("--base-seed=", "0"))
@@ -74,7 +74,7 @@ func _run() -> void:
 	var aggregate_stats_in_worker := not _flag_enabled("--no-worker-aggregate")
 	var use_native_generated_stats := not _flag_enabled("--no-native-generated-stats")
 	var evaluate_draft_predictions := _flag_enabled("--evaluate-draft-predictions")
-	var prediction_stats_dir := _extract_argument("--prediction-stats-dir=", "res://stats_output")
+	var prediction_stats_dir := _extract_argument("--prediction-stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
 	var prediction_sizes_raw := _extract_argument("--prediction-team-sizes=", "5")
 	var analyze_signal_variance := _flag_enabled("--analyze-signal-variance")
 	var signal_variance_output_path := _extract_argument("--signal-variance-output=", "")

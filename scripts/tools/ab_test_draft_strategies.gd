@@ -43,7 +43,7 @@ func _run() -> void:
 	var sims_per_trial := maxi(1, int(_extract_argument("--sims-per-trial=", "50")))
 	var depths_str := _extract_argument("--depths=", "1,2,3")
 	var strategies_str := _extract_argument("--strategies=", "random,certified")
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
 	var output_path := _extract_argument("--output=", "res://model_stats/draft_ab_test.csv")
 	var base_seed := int(_extract_argument("--base-seed=", "90000"))
 

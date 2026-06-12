@@ -5,10 +5,10 @@
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
 var _backend: RefCounted = null
-var _stats_dir: String = "res://stats_output"
+var _stats_dir: String = "res://model_stats/certified_pairwise_testing_250k"
 
 
-func _init(stats_dir: String = "res://stats_output") -> void:
+func _init(stats_dir: String = "res://model_stats/certified_pairwise_testing_250k") -> void:
 	_stats_dir = stats_dir
 	_backend = NativeSimulationBackendScript.new()
 

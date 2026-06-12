@@ -9,7 +9,7 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
 const TEAM_SIZE: int = 5
-const DEFAULT_OUTPUT := "res://stats_output/rollout_convergence.csv"
+const DEFAULT_OUTPUT := "res://model_stats/certified_pairwise_testing_250k/rollout_convergence.csv"
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:
@@ -35,7 +35,7 @@ func _run() -> void:
 	var rollout_counts_str := _extract_argument("--rollout-counts=", "10,25,50,100,200,500")
 	var rollout_counts := _parse_rollout_counts(rollout_counts_str)
 	var base_seed := int(_extract_argument("--base-seed=", "70000"))
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 
 	# Handle PowerShell argument splitting issue

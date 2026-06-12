@@ -39,7 +39,7 @@ func _run() -> void:
 	var rollouts_per_state := maxi(1, int(_extract_argument("--rollouts-per-state=", "20")))
 	var depths_str := _extract_argument("--depths=", "1,2,3,4,5")
 	var base_seed := int(_extract_argument("--base-seed=", "80000"))
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/draft_aware_testing_250k")
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 	
 	print("Parameters: states_per_depth=%d rollouts_per_state=%d depths=%s" % [states_per_depth, rollouts_per_state, depths_str])
@@ -460,7 +460,7 @@ func _complete_snake_rollout(allies: Array[StringName], enemies: Array[StringNam
 
 func _load_combat_stats_simple() -> Dictionary:
 	var result := {}
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://stats_output_100k/combat_stats.csv"), FileAccess.READ)
+	var f := FileAccess.open(ProjectSettings.globalize_path("res://model_stats/draft_aware_testing_250k/combat_stats.csv"), FileAccess.READ)
 	if f == null:
 		return result
 	var lines := f.get_as_text().split("\n")
@@ -477,7 +477,7 @@ func _load_combat_stats_simple() -> Dictionary:
 
 func _load_synergy_stats() -> Dictionary:
 	var result := {}
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://stats_output_100k/matchup_with.csv"), FileAccess.READ)
+	var f := FileAccess.open(ProjectSettings.globalize_path("res://model_stats/draft_aware_testing_250k/matchup_with.csv"), FileAccess.READ)
 	if f == null:
 		return result
 	var lines := f.get_as_text().split("\n")
@@ -499,7 +499,7 @@ func _load_synergy_stats() -> Dictionary:
 
 func _load_counter_stats() -> Dictionary:
 	var result := {}
-	var f := FileAccess.open(ProjectSettings.globalize_path("res://stats_output_100k/matchup_vs.csv"), FileAccess.READ)
+	var f := FileAccess.open(ProjectSettings.globalize_path("res://model_stats/draft_aware_testing_250k/matchup_vs.csv"), FileAccess.READ)
 	if f == null:
 		return result
 	var lines := f.get_as_text().split("\n")

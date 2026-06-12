@@ -12,8 +12,6 @@ The Godot-facing debug entrypoint is `TeamfightSimulationCore.debug_print_draft_
 
 Batch observability uses `TeamfightSimulationCore.run_debug_draft_evaluation_batch(allies, enemies, available, num_runs, stats_dir, base_weight, synergy_weight, counter_weight)`. The batch helper deterministically rotates available champions into empty ally/enemy slots and prints full debug breakdowns per generated state.
 
-Behavioral validation lives in `scripts/tools/run_draft_recommender_tests.gd`. The script defines baseline, enemy-heavy, and ally-synergy fixed draft states, calls native debug recommendation APIs, then reruns one case with shifted weights and prints `UNCHANGED` or `CHANGED` for the top-3 result set.
-
 Missing base or counter data falls back gracefully: missing base winrate uses `0.5`; missing ally/enemy counter rows are skipped, and empty sample sets fall back to the candidate base winrate.
 
 ## Historical update: LOGIT default (DEPRECATED), ADDITIVE/MULTIPLICATIVE (DEPRECATED), smoothing_k tuning, evaluation metric change

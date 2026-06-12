@@ -1,7 +1,7 @@
 extends "res://scripts/app/simulation_viewer_base.gd"
 
 # Recommendation-specific constants
-const RECOMMENDATION_STATS_DIR := "res://stats_output"
+const RECOMMENDATION_STATS_DIR := "res://model_stats/certified_pairwise_testing_250k"
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
 const RECOMMENDATION_BASE_SEED := 81000
 

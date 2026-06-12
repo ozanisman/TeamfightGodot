@@ -12,7 +12,7 @@ const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
-const DEFAULT_OUTPUT := "res://stats_output/draft_probe_signals.csv"
+const DEFAULT_OUTPUT := "res://model_stats/certified_pairwise_training_250k/draft_probe_signals.csv"
 const DEFAULT_SIM_BASE_SEED: int = 3000000
 
 const PROBE_TEMPLATES: Array[Dictionary] = [

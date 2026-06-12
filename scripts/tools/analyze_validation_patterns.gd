@@ -7,7 +7,7 @@ extends SceneTree
 ## - Regret magnitude distribution
 ## - Depth-specific patterns
 
-const DEFAULT_OUTPUT := "res://stats_output/validation_patterns_analysis.csv"
+const DEFAULT_OUTPUT := "res://model_stats/certified_pairwise_testing_250k/validation_patterns_analysis.csv"
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:
@@ -24,7 +24,7 @@ func _init() -> void:
 
 func _run() -> void:
 	var depth := int(_extract_argument("--depth=", "4"))
-	var input_path := _extract_argument("--input=", "res://stats_output/pick_recommendation_validation_depth%d.csv" % depth)
+	var input_path := _extract_argument("--input=", "res://model_stats/certified_pairwise_testing_250k/pick_recommendation_validation_depth%d.csv" % depth)
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 
 	print("analyze_validation_patterns: depth=%d input=%s" % [depth, input_path])

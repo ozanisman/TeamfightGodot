@@ -34,8 +34,8 @@ func _run() -> void:
 	var completion_variations := maxi(1, int(_extract_argument("--completion-variations=", "100")))
 	var draft_depth := clampi(int(_extract_argument("--draft-depth=", "4")), 0, TEAM_SIZE - 1)
 	var base_seed := int(_extract_argument("--base-seed=", "80000"))
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
-	var output_path := _extract_argument("--output=", "res://stats_output/completion_variance.csv")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
+	var output_path := _extract_argument("--output=", "res://model_stats/certified_pairwise_testing_250k/completion_variance.csv")
 
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
@@ -144,7 +144,7 @@ func _evaluate_single_completion(
 
 	# Use certified model to predict win probability
 	var prediction: Dictionary = backend.predict_draft_winner(
-		completed_allies, completed_enemies, "res://stats_output"
+		completed_allies, completed_enemies, "res://model_stats/certified_pairwise_testing_250k"
 	)
 	return float(prediction.get("team1_prob", 0.5))
 

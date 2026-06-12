@@ -126,7 +126,7 @@ func _run() -> void:
 	var comp_base_seed := int(_extract_argument("--comp-base-seed=", "1"))
 	var sim_base_seed := int(_extract_argument("--sim-base-seed=", "1000000"))
 	var team_size := maxi(1, int(_extract_argument("--team-size=", "5")))
-	var ceiling_output := _extract_argument("--ceiling-output=", "res://stats_output/draft_ceiling.csv")
+	var ceiling_output := _extract_argument("--ceiling-output=", "res://model_stats/certified_pairwise_training_250k/draft_ceiling.csv")
 	# Mirror mode: run each comp+seed twice with sides swapped. Averaging a comp's winrate across both
 	# orientations cancels the engine's player-side bias, so the ceiling reflects comp-signal ONLY.
 	var mirror := _flag_enabled("--mirror")

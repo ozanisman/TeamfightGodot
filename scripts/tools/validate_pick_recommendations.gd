@@ -10,7 +10,7 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
 const TEAM_SIZE: int = 5
-const DEFAULT_OUTPUT := "res://stats_output/pick_recommendation_validation.csv"
+const DEFAULT_OUTPUT := "res://model_stats/certified_pairwise_testing_250k/pick_recommendation_validation.csv"
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:
@@ -36,7 +36,7 @@ func _run() -> void:
 	var rollouts_per_candidate := maxi(1, int(_extract_argument("--rollouts-per-candidate=", "20")))
 	var draft_depth := clampi(int(_extract_argument("--draft-depth=", "4")), 0, TEAM_SIZE - 1)
 	var base_seed := int(_extract_argument("--base-seed=", "70000"))
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 
 	var backend := NativeSimulationBackendScript.new()

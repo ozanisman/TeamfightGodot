@@ -376,7 +376,7 @@ func get_trace_events() -> Array:
 	return []
 
 
-func get_draft_recommendation_names(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> Array:
+func get_draft_recommendation_names(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> Array:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
@@ -386,7 +386,7 @@ func get_draft_recommendation_names(allies: Array, enemies: Array, available: Ar
 	return []
 
 
-func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, draft_position: int = 0, early_pick_base_weight: float = 0.7, late_pick_counter_weight: float = 0.4) -> Array:
+func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, draft_position: int = 0, early_pick_base_weight: float = 0.7, late_pick_counter_weight: float = 0.4) -> Array:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
@@ -396,7 +396,7 @@ func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, av
 	return []
 
 
-func debug_print_draft_recommendations(allies: Array, enemies: Array, available: Array, top_n: int = 5, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, debug_mode: bool = false) -> void:
+func debug_print_draft_recommendations(allies: Array, enemies: Array, available: Array, top_n: int = 5, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, debug_mode: bool = false) -> void:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return
@@ -406,7 +406,7 @@ func debug_print_draft_recommendations(allies: Array, enemies: Array, available:
 	push_error("Native simulation backend is missing debug_print_draft_recommendations().")
 
 
-func run_debug_draft_evaluation_batch(allies: Array, enemies: Array, available: Array, num_runs: int = 50, stats_dir: String = "res://stats_output", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> void:
+func run_debug_draft_evaluation_batch(allies: Array, enemies: Array, available: Array, num_runs: int = 50, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25) -> void:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return

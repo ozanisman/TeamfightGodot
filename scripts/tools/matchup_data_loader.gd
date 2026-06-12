@@ -10,8 +10,8 @@ var champions: Array[String] = []
 var is_loaded: bool = false
 var last_error: String = ""
 
-const VS_FILE_PATH := "res://stats_output/matchup_vs.csv"
-const WITH_FILE_PATH := "res://stats_output/matchup_with.csv"
+const VS_FILE_PATH := "res://model_stats/certified_pairwise_testing_250k/matchup_vs.csv"
+const WITH_FILE_PATH := "res://model_stats/certified_pairwise_testing_250k/matchup_with.csv"
 
 func load_data() -> bool:
 	vs_data.clear()

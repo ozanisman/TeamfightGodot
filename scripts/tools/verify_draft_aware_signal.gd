@@ -7,7 +7,7 @@ const L2_REGULARIZATION: float = 0.001
 const ROLES: Array[String] = ["tank", "fighter", "mage", "assassin", "marksman", "support"]
 const FEATURE_DIM: int = 30
 
-const DEFAULT_OUTPUT := "res://stats_output/draft_aware_model.csv"
+const DEFAULT_OUTPUT := "res://model_stats/draft_aware_training_250k/draft_aware_model.csv"
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:

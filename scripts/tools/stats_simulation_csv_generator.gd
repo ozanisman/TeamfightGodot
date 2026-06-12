@@ -248,7 +248,7 @@ func run(
 	role_by_hero_map_override: Dictionary = {},
 	use_native_generated_stats: bool = true,
 	evaluate_draft_predictions: bool = false,
-	prediction_stats_dir: String = "res://stats_output",
+	prediction_stats_dir: String = "res://model_stats/certified_pairwise_testing_250k",
 	prediction_team_sizes: Array[int] = [DEFAULT_PREDICTION_TEAM_SIZE],
 	prediction_config_overrides: Dictionary = {},
 	prediction_sweep_param: String = "",

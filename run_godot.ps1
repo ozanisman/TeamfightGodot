@@ -27,7 +27,6 @@ $generateDraftProbeSignals = $Arguments -contains "--generate-draft-probe-signal
 $validatePickRecommendations = $Arguments -contains "--validate-pick-recommendations"
 $generateDraftAwareTrainingData = $Arguments -contains "--generate-draft-aware-training-data"
 $verifyDraftAwareSignal = $Arguments -contains "--verify-draft-aware-signal"
-$testRolloutCounts = $Arguments -contains "--test-rollout-counts"
 $validateRolloutConvergence = $Arguments -contains "--validate-rollout-convergence"
 $abTestDraftStrategies = $Arguments -contains "--ab-test-draft-strategies"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
@@ -160,9 +159,6 @@ elseif ($generateDraftAwareTrainingData) {
 }
 elseif ($verifyDraftAwareSignal) {
 	$timeoutSeconds = 300
-}
-elseif ($testRolloutCounts) {
-	$timeoutSeconds = 1800
 }
 elseif ($validateRolloutConvergence) {
 	$timeoutSeconds = 600
@@ -321,9 +317,6 @@ elseif ($generateDraftAwareTrainingData) {
 }
 elseif ($verifyDraftAwareSignal) {
 	$godotArgs += @("--script", "res://scripts/tools/verify_draft_aware_signal.gd")
-}
-elseif ($testRolloutCounts) {
-	$godotArgs += @("--script", "res://scripts/tools/test_rollout_counts.gd")
 }
 elseif ($validateRolloutConvergence) {
 	$godotArgs += @("--script", "res://scripts/tools/validate_rollout_convergence.gd")

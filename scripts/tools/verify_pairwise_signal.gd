@@ -83,10 +83,10 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var ceiling_input := _extract_argument("--ceiling-input=", "res://stats_output/draft_ceiling.csv")
-	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
+	var ceiling_input := _extract_argument("--ceiling-input=", "res://model_stats/certified_pairwise_training_250k/draft_ceiling.csv")
+	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_training_250k")
 	var probe_input := _extract_argument("--probe-input=", stats_dir + "/draft_probe_signals.csv")
-	var output_path := _extract_argument("--output=", "res://stats_output/pairwise_verification.csv")
+	var output_path := _extract_argument("--output=", "res://model_stats/certified_pairwise_training_250k/pairwise_verification.csv")
 	var archetype_clusters := maxi(2, int(_extract_argument("--archetype-clusters=", "6")))
 	var split_repeats := maxi(0, int(_extract_argument("--split-repeats=", str(DEFAULT_SPLIT_REPEATS))))
 	var requested_feature_sets := _parse_feature_set_filter(_extract_argument("--feature-sets=", ""))
@@ -138,7 +138,7 @@ func _run() -> void:
 	# Dump best model weights for native baking
 	for report in model_reports:
 		if report["feature_set"] == "pairwise_lean" and report["target_mode"] == MODEL_PROBABILITY and not report["overfit"]:
-			_dump_model_json(report, "res://stats_output/pairwise_lean_model.json")
+			_dump_model_json(report, "res://model_stats/certified_pairwise_training_250k/pairwise_lean_model.json")
 			break
 	quit(0)
 

@@ -128,11 +128,11 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
-	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "logit_sharpness", "score_sharpness", "interaction_weight", "scoring_mode", "variance_weight", "cc_weight", "mobility_weight", "sustain_weight", "best_counter_weight", "worst_counter_weight", "best_synergy_weight", "worst_synergy_weight", "synergy_aggregation", "counter_aggregation", "use_decorrelated_scoring", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(1.5), DEFVAL(1.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY)), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(false), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
+	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "score_sharpness", "interaction_weight", "scoring_mode", "variance_weight", "cc_weight", "mobility_weight", "sustain_weight", "best_counter_weight", "worst_counter_weight", "best_synergy_weight", "worst_synergy_weight", "synergy_aggregation", "counter_aggregation", "use_decorrelated_scoring", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(1.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY)), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(false), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
 	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
-	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "logit_sharpness", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(1.0), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -356,7 +356,6 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 		bool include_breakdown,
 		double synergy_amplification,
 		double matchup_amplification,
-		double logit_sharpness,
 		double score_sharpness,
 		double interaction_weight,
 		int scoring_mode,
@@ -404,7 +403,6 @@ Dictionary TeamfightSimulationCore::predict_draft_winner(
 	config.logistic_k = logistic_k;
 	config.synergy_amplification = synergy_amplification;
 	config.matchup_amplification = matchup_amplification;
-	config.logit_sharpness = logit_sharpness;
 	config.score_sharpness = score_sharpness;
 	config.interaction_weight = interaction_weight;
 	config.scoring_mode = static_cast<sim::draft::ScoringMode>(scoring_mode);
@@ -677,7 +675,6 @@ Dictionary TeamfightSimulationCore::run_stress_test_with_perturbations(
 		double synergy_amplification,
 		double matchup_amplification,
 		int64_t scoring_mode,
-		double logit_sharpness,
 		int64_t smoothing_mode) {
 	sim::draft::DraftStatsDatabase database;
 	if (!database.load_from_dir(stats_dir)) {
@@ -705,7 +702,6 @@ Dictionary TeamfightSimulationCore::run_stress_test_with_perturbations(
 	config.matchup_weight = matchup_weight;
 	config.synergy_amplification = synergy_amplification;
 	config.matchup_amplification = matchup_amplification;
-	config.logit_sharpness = logit_sharpness;
 	config.smoothing_mode = static_cast<sim::draft::SmoothingMode>(smoothing_mode);
 
 	// Convert int to ScoringMode enum

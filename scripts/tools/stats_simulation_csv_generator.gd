@@ -33,13 +33,12 @@ const PREDICTION_CONFIDENCE_BUCKETS: Array[Dictionary] = [
 ## defaults below, which match predict_draft_winner's own — so an empty override dict
 ## reproduces today's exact evaluation behavior). Also doubles as the whitelist for
 ## prediction_sweep_param validation.
-## scoring_mode is an enum ordinal (ScoringMode: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2,
-## CERTIFIED_PAIRWISE_PROBABILITY=3) passed
+## scoring_mode is an enum ordinal (ScoringMode: ADDITIVE=0, MULTIPLICATIVE=1,
+## CERTIFIED_PAIRWISE_PROBABILITY=3, DRAFT_AWARE_PAIRWISE_PROBABILITY=4) passed
 ## as a float here for uniformity with the other sweepable knobs; _score_prediction_config casts
 ## it to int before forwarding to predict_draft_winner.
 const PREDICTION_OVERRIDE_DEFAULTS: Dictionary = {
 	"logistic_k": 10.0,
-	"logit_sharpness": 1.5,
 	"score_sharpness": 1.0,
 	"interaction_weight": 0.0,
 	"synergy_amplification": 1.2,
@@ -387,7 +386,7 @@ static func _confidence_bucket_index(confidence: float) -> int:
 ## derived from the very matches being predicted would be in-sample/circular and inflate accuracy.
 ##
 ## prediction_config_overrides may override any subset of PREDICTION_OVERRIDE_DEFAULTS' keys
-## (logistic_k / logit_sharpness / score_sharpness / interaction_weight / synergy_amplification /
+## (logistic_k / score_sharpness / interaction_weight / synergy_amplification /
 ## matchup_amplification / scoring_mode) — e.g. to evaluate a candidate tuning instead of predict_draft_winner's
 ## own defaults. If prediction_sweep_param + prediction_sweep_values are both non-empty, runs the
 ## evaluation once per swept value (varying only that one key on top of the base overrides) and
@@ -469,7 +468,7 @@ func _score_prediction_config(backend: RefCounted, match_logs: Array, eval_team_
 			0.50, 0.25, 0.25, 0.25, 0.0,
 			float(ov["logistic_k"]), false,
 			float(ov["synergy_amplification"]), float(ov["matchup_amplification"]),
-			float(ov["logit_sharpness"]), float(ov["score_sharpness"]), float(ov["interaction_weight"]),
+			float(ov["score_sharpness"]), float(ov["interaction_weight"]),
 			int(ov["scoring_mode"]), float(ov["variance_weight"]),
 			float(ov["cc_weight"]), float(ov["mobility_weight"]), float(ov["sustain_weight"]),
 			float(ov["best_counter_weight"]), float(ov["worst_counter_weight"]),

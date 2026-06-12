@@ -23,7 +23,7 @@ func _run() -> void:
 	var header := lines[0].split(",")
 	print("simple_analyze: header: %s" % header)
 	
-	var pick_counts := {"logit": {}, "random": {}}
+	var pick_counts := {"random": {}}
 	
 	for i in range(1, lines.size()):
 		var line := lines[i].strip_edges()
@@ -62,7 +62,7 @@ func _run() -> void:
 		quit(1)
 		return
 	
-	out_f.store_string("champion,logit,random\n")
+	out_f.store_string("champion,random\n")
 	
 	var all_champs := {}
 	for strat in pick_counts:
@@ -70,7 +70,7 @@ func _run() -> void:
 			all_champs[champ] = true
 	
 	for champ in all_champs:
-		var line = "%s,%d,%d\n" % [champ, pick_counts["logit"].get(champ, 0), pick_counts["random"].get(champ, 0)]
+		var line = "%s,%d\n" % [champ, pick_counts["random"].get(champ, 0)]
 		out_f.store_string(line)
 	
 	out_f.close()
@@ -78,7 +78,7 @@ func _run() -> void:
 	
 	# Contextual analysis: enemy co-occurrence
 	print("simple_analyze: contextual analysis...")
-	var enemy_cooccurrence := {"logit": {}, "random": {}}
+	var enemy_cooccurrence := {"random": {}}
 	
 	for i in range(1, lines.size()):
 		var line := lines[i].strip_edges()
@@ -157,7 +157,7 @@ func _run() -> void:
 		quit(1)
 		return
 	
-	var strategies = ["logit", "random"]
+	var strategies = ["random"]
 	var headers = ["allies", "enemies", "depth"]
 	for s in strategies:
 		headers.append("%s_pick" % s)

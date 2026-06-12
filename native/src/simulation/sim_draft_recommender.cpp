@@ -242,32 +242,6 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 			// No interaction term in multiplicative mode
 			break;
 		}
-		case ScoringMode::LOGIT: {
-			// Logit-space model
-			auto logit_transform = [](double p) -> double {
-				p = std::clamp(p, 1e-6, 1.0 - 1e-6);
-				return std::log(p / (1.0 - p));
-			};
-			auto sigmoid = [](double x) -> double {
-				return 1.0 / (1.0 + std::exp(-x));
-			};
-
-			double logit_base = logit_transform(base_winrate);
-			double logit_synergy = logit_transform(avg_synergy) + std::log(config.synergy_amplification);
-			double logit_matchup = logit_transform(avg_counter) + std::log(config.matchup_amplification);
-
-			double combined = config.logit_sharpness * (
-				effective_base_weight * logit_base +
-				effective_synergy_weight * logit_synergy +
-				effective_matchup_weight * logit_matchup
-			);
-
-			score = sigmoid(combined);
-			// Add interaction term (only in logit mode)
-			score += config.interaction_weight * (effective_synergy * effective_matchup);
-			score = std::clamp(score, 0.0, 1.0);
-			break;
-		}
 		case ScoringMode::ADDITIVE:
 		default: {
 			// Additive model (default)

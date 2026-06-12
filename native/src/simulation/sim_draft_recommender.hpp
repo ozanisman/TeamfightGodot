@@ -15,11 +15,11 @@ namespace draft {
 enum class ScoringMode {
 	ADDITIVE,
 	MULTIPLICATIVE,
-	LOGIT,
 	// Complete-draft winner predictor certified on draft_ceiling_holdout_5000.csv.
 	// Draft-aware model is used for pick recommendations.
 	CERTIFIED_PAIRWISE_PROBABILITY,
 	// Draft-aware model with position-specific weights trained on rollout data.
+	// Default scoring mode for all draft prediction tasks.
 	DRAFT_AWARE_PAIRWISE_PROBABILITY
 };
 
@@ -53,7 +53,7 @@ struct PredictionConfig {
 	double logistic_k = 10.0;
 
 	// Scoring mode
-	ScoringMode scoring_mode = ScoringMode::LOGIT;
+	ScoringMode scoring_mode = ScoringMode::DRAFT_AWARE_PAIRWISE_PROBABILITY;
 	SmoothingMode smoothing_mode = SmoothingMode::LEGACY;
 
 	// Smoothing parameters
@@ -63,8 +63,7 @@ struct PredictionConfig {
 
 	// Scoring sensitivity parameters
 	float score_sharpness = 1.0f;
-	float logit_sharpness = 1.5f;  // sharpness applied in logit space before sigmoid
-	float interaction_weight = 0.0f;  // only used in additive/logit modes
+	float interaction_weight = 0.0f;  // only used in additive mode
 
 	// Additive adjustment on synergy_variance per champion (default 0.0 = disabled).
 	// Positive = reward high-variance picks (context-sensitive, high ceiling).

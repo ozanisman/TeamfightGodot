@@ -1,5 +1,5 @@
-## Certified-model-based draft recommender strategy.
-## Ranks candidates by how much predict_draft_winner (certified model)
+## Draft-aware model-based draft recommender strategy.
+## Ranks candidates by how much predict_draft_winner (draft-aware model)
 ## favors the draft state when that candidate is added to the allies team.
 
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
@@ -33,7 +33,7 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array) -> Str
 		var result: Dictionary = _backend.predict_draft_winner(
 			hypothetical_allies, enemies, _stats_dir,
 			0.50, 0.25, 0.25, 0.25, 0.0, 10.0, false,
-			1.2, 1.2, 1.5, 1.0, 0.0, 3  # scoring_mode=3 = CERTIFIED_PAIRWISE_PROBABILITY
+			1.2, 1.2, 1.0, 0.0, 4  # scoring_mode=4 = DRAFT_AWARE_PAIRWISE_PROBABILITY
 		)
 		var score := float(result.get("team1_prob", 0.5))
 		if score > best_score:

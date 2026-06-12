@@ -16,9 +16,9 @@ Behavioral validation lives in `scripts/tools/run_draft_recommender_tests.gd`. T
 
 Missing base or counter data falls back gracefully: missing base winrate uses `0.5`; missing ally/enemy counter rows are skipped, and empty sample sets fall back to the candidate base winrate.
 
-## Historical update: LOGIT default, smoothing_k tuning, evaluation metric change
+## Historical update: LOGIT default (DEPRECATED), smoothing_k tuning, evaluation metric change
 
-**LOGIT scoring adopted as the historical recommendation default.** `PredictionConfig::scoring_mode` remains `ScoringMode::LOGIT` for partial-draft recommendation ranking. In LOGIT mode, amplification factors are applied in logit space via `log(amplification_factor)` added to the logit before the sigmoid, not multiplied in probability space. This avoids the saturation bug present in earlier experiments where high base winrates (>0.6) produced near-zero amplification deltas regardless of synergy strength. Pre-fix LOGIT/ADDITIVE comparison results are invalid.
+**LOGIT scoring was the historical recommendation default (DEPRECATED).** `PredictionConfig::scoring_mode` previously used `ScoringMode::LOGIT` for partial-draft recommendation ranking. LOGIT has been deprecated and replaced with `DRAFT_AWARE_PAIRWISE_PROBABILITY` (scoring_mode=4) as the default for all draft prediction tasks. In LOGIT mode, amplification factors were applied in logit space via `log(amplification_factor)` added to the logit before the sigmoid, not multiplied in probability space. This avoided the saturation bug present in earlier experiments where high base winrates (>0.6) produced near-zero amplification deltas regardless of synergy strength.
 
 **smoothing_k reverted to 100.** `DraftConfig::smoothing_k` was temporarily raised to `500.0` to create differentiation in CONFIDENCE_WEIGHTED smoothing, but validation showed k=500 produced 30% worse mean margins with no Top-3 stability gain over LEGACY. Root cause: pulling scores toward 0.5 compresses candidate separation, which hurts the ranking stability we measure. k=100 makes CONFIDENCE_WEIGHTED and LEGACY effectively identical on this dataset (w≈0.95 for all rows at 600–2500 samples), which is the correct outcome — CW smoothing provides no benefit for this data distribution.
 
@@ -28,7 +28,7 @@ Missing base or counter data falls back gracefully: missing base winrate uses `0
 
 ## Update: certified complete-draft prediction default
 
-`predict_draft_winner` now defaults to `ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY` for complete-draft winner prediction. This mode uses the 5000-comp holdout-certified pairwise probability logistic model from `wiki/notes/draft_prediction_context.md` (76.1% test accuracy, MSE 0.0484). Its logistic weights are baked into native code, while the base/synergy/counter feature values still come from the active stats directory (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`). The old `LOGIT` scorer remains available as enum ordinal 2 and still backs partial-draft recommendation ranking unless callers explicitly change that path.
+`predict_draft_winner` now defaults to `ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY` for complete-draft winner prediction. This mode uses the 5000-comp holdout-certified pairwise probability logistic model from `wiki/notes/draft_prediction_context.md` (76.1% test accuracy, MSE 0.0484). Its logistic weights are baked into native code, while the base/synergy/counter feature values still come from the active stats directory (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`). The `LOGIT` scorer has been deprecated and removed from the codebase.
 
 ## Update: relationship-count tiebreaker
 

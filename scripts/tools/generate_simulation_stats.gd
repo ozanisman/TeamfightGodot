@@ -12,13 +12,13 @@ extends SceneTree
 ##
 ## Prediction tuning overrides (optional; each defaults to predict_draft_winner's own default —
 ## i.e. omitting all of them reproduces today's exact behavior). Recognized override keys:
-## logistic_k, logit_sharpness, score_sharpness, interaction_weight, synergy_amplification,
+## logistic_k, score_sharpness, interaction_weight, synergy_amplification,
 ## matchup_amplification, scoring_mode.
-##   --prediction-logistic-k=, --prediction-logit-sharpness=, --prediction-score-sharpness=,
+##   --prediction-logistic-k=, --prediction-score-sharpness=,
 ##   --prediction-interaction-weight=, --prediction-synergy-amplification=,
 ##   --prediction-matchup-amplification=, --prediction-scoring-mode=
-## scoring_mode is the ScoringMode enum ordinal: ADDITIVE=0, MULTIPLICATIVE=1, LOGIT=2,
-## CERTIFIED_PAIRWISE_PROBABILITY=3 (default).
+## scoring_mode is the ScoringMode enum ordinal: ADDITIVE=0, MULTIPLICATIVE=1,
+## CERTIFIED_PAIRWISE_PROBABILITY=3, DRAFT_AWARE_PAIRWISE_PROBABILITY=4 (default).
 ##
 ## Sweep mode (A/B compare a single override key across several values in ONE report instead of
 ## re-running the batch per value): --prediction-sweep-param=<override key>
@@ -84,7 +84,6 @@ func _run() -> void:
 	# Recognized prediction tuning override keys -> their CLI flag prefixes.
 	var prediction_override_flags: Dictionary = {
 		"logistic_k": "--prediction-logistic-k=",
-		"logit_sharpness": "--prediction-logit-sharpness=",
 		"score_sharpness": "--prediction-score-sharpness=",
 		"interaction_weight": "--prediction-interaction-weight=",
 		"synergy_amplification": "--prediction-synergy-amplification=",

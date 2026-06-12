@@ -138,7 +138,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 
 **10. A/B testing framework (COMPLETED)**
 - Compares draft strategies by running actual combat simulations (true ground truth)
-- Strategies: random, logit, certified
+- Strategies: random, certified
 - For each trial: samples partial draft state, gets picks from two strategies, completes drafts randomly, runs N simulations per pick
 - Metrics: winrate per strategy, pairwise delta (winrate_b - winrate_a), summary statistics (mean, std, SE)
 - Output: CSV with trial-by-trial results + summary by depth/strategy

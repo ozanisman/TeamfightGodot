@@ -157,9 +157,9 @@ Skipped evaluation of:
 - C++ synergy/counter variance is suppressed further than GDScript shows
 
 **Issue 3: Scoring Mode Limitations**
-- Current scoring modes (multiplicative, logit, additive) all assume independence between signals
+- Current scoring modes (multiplicative, additive) assume independence between signals
 - With perfect correlation, these modes don't capture real synergistic/counter effects
-- The interaction_weight in logit mode is insufficient to compensate for structural redundancy
+- The interaction_weight in additive mode is insufficient to compensate for structural redundancy
 
 **Issue 4: Sparse Pairwise Data**
 - 26 champions × 26 champions = 676 possible pairwise matchups

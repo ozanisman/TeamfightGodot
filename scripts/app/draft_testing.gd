@@ -238,9 +238,7 @@ func _rollout_recommendations(allies: Array[StringName], enemies: Array[StringNa
 				true,  # include_breakdown
 				1.2,   # synergy_amplification
 				1.2,   # matchup_amplification
-				1.0,   # score_sharpness
-				0.0,   # interaction_weight
-				3,     # scoring_mode
+				0,     # scoring_mode (CERTIFIED_PAIRWISE_PROBABILITY)
 				0.0,   # variance_weight
 				0.0,   # cc_weight
 				0.0,   # mobility_weight

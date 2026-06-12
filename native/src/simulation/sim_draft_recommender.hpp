@@ -13,10 +13,7 @@ namespace sim {
 namespace draft {
 
 enum class ScoringMode {
-	ADDITIVE,
-	MULTIPLICATIVE,
 	// Complete-draft winner predictor certified on draft_ceiling_holdout_5000.csv.
-	// Draft-aware model is used for pick recommendations.
 	CERTIFIED_PAIRWISE_PROBABILITY,
 	// Draft-aware model with position-specific weights trained on rollout data.
 	// Default scoring mode for all draft prediction tasks.
@@ -60,10 +57,6 @@ struct PredictionConfig {
 	float smoothing_k = 100.0f;  // for confidence-weighted smoothing
 	float smoothing_strength = 1.0f;
 	int64_t smoothing_threshold_samples = 250;
-
-	// Scoring sensitivity parameters
-	float score_sharpness = 1.0f;
-	float interaction_weight = 0.0f;  // only used in additive mode
 
 	// Additive adjustment on synergy_variance per champion (default 0.0 = disabled).
 	// Positive = reward high-variance picks (context-sensitive, high ceiling).

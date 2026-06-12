@@ -197,9 +197,10 @@ RelationshipAggregate aggregate_relationship_signal(const DraftStatsDatabase &da
 
 // Combines a set of base/synergy/matchup signals (plus an optional composition bonus) into a
 // single score according to config.scoring_mode and its associated sharpening/interaction knobs.
-// Shared by DraftEvaluator::evaluate (per-candidate recommendation scoring) and
-// DraftStatsDatabase::calculate_team_score (whole-team win-probability scoring) so the two
-// scorers cannot silently disagree about what "scoring_mode" means.
+// Scoring via score_from_signals is only used by legacy ADDITIVE/MULTIPLICATIVE modes.
+// With those deprecated, this function is no longer used by production modes.
+// CERTIFIED_PAIRWISE_PROBABILITY and DRAFT_AWARE_PAIRWISE_PROBABILITY use
+// their own specialized probability calculators.
 double score_from_signals(double base_winrate, double avg_synergy, double avg_counter, double composition_bonus, const PredictionConfig &config) {
 	// Decorrelated scoring: use residuals (synergy - base, counter - base) to remove structural correlation
 	double effective_synergy = config.use_decorrelated_scoring
@@ -232,31 +233,8 @@ double score_from_signals(double base_winrate, double avg_synergy, double avg_co
 		}
 	}
 
-	double score = 0.0;
-	switch (config.scoring_mode) {
-		case ScoringMode::MULTIPLICATIVE: {
-			// Multiplicative model: product of components
-			score = base_winrate * effective_synergy * effective_matchup;
-			// Normalize by expected max (1.0 * 1.0 * 1.0 = 1.0)
-			score = std::clamp(score, 0.0, 1.0);
-			// No interaction term in multiplicative mode
-			break;
-		}
-		case ScoringMode::ADDITIVE:
-		default: {
-			// Additive model (default)
-			score = (effective_base_weight * base_winrate) +
-					(effective_synergy_weight * effective_synergy) +
-					(effective_matchup_weight * effective_matchup) +
-					composition_bonus;
-			// Add interaction term (only in additive mode)
-			score += config.interaction_weight * (effective_synergy * effective_matchup);
-			// Apply score sharpening
-			score = std::pow(score, config.score_sharpness);
-			break;
-		}
-	}
-	return score;
+	// This function is only used by deprecated modes; return 0.5 as neutral score
+	return 0.5;
 }
 
 } // namespace

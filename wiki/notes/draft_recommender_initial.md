@@ -16,9 +16,11 @@ Behavioral validation lives in `scripts/tools/run_draft_recommender_tests.gd`. T
 
 Missing base or counter data falls back gracefully: missing base winrate uses `0.5`; missing ally/enemy counter rows are skipped, and empty sample sets fall back to the candidate base winrate.
 
-## Historical update: LOGIT default (DEPRECATED), smoothing_k tuning, evaluation metric change
+## Historical update: LOGIT default (DEPRECATED), ADDITIVE/MULTIPLICATIVE (DEPRECATED), smoothing_k tuning, evaluation metric change
 
-**LOGIT scoring was the historical recommendation default (DEPRECATED).** `PredictionConfig::scoring_mode` previously used `ScoringMode::LOGIT` for partial-draft recommendation ranking. LOGIT has been deprecated and replaced with `DRAFT_AWARE_PAIRWISE_PROBABILITY` (scoring_mode=4) as the default for all draft prediction tasks. In LOGIT mode, amplification factors were applied in logit space via `log(amplification_factor)` added to the logit before the sigmoid, not multiplied in probability space. This avoided the saturation bug present in earlier experiments where high base winrates (>0.6) produced near-zero amplification deltas regardless of synergy strength.
+**LOGIT scoring was the historical recommendation default (DEPRECATED).** `PredictionConfig::scoring_mode` previously used `ScoringMode::LOGIT` for partial-draft recommendation ranking. LOGIT has been deprecated and replaced with `DRAFT_AWARE_PAIRWISE_PROBABILITY` (scoring_mode=1) as the default for all draft prediction tasks.
+
+**ADDITIVE and MULTIPLICATIVE scoring modes (DEPRECATED).** These legacy scoring modes were used as baselines for comparison but have been removed from the codebase. ADDITIVE had poor stability characteristics and MULTIPLICATIVE was rejected for similar reasons. Only `CERTIFIED_PAIRWISE_PROBABILITY` (scoring_mode=0) and `DRAFT_AWARE_PAIRWISE_PROBABILITY` (scoring_mode=1) remain.
 
 **smoothing_k reverted to 100.** `DraftConfig::smoothing_k` was temporarily raised to `500.0` to create differentiation in CONFIDENCE_WEIGHTED smoothing, but validation showed k=500 produced 30% worse mean margins with no Top-3 stability gain over LEGACY. Root cause: pulling scores toward 0.5 compresses candidate separation, which hurts the ranking stability we measure. k=100 makes CONFIDENCE_WEIGHTED and LEGACY effectively identical on this dataset (w≈0.95 for all rows at 600–2500 samples), which is the correct outcome — CW smoothing provides no benefit for this data distribution.
 

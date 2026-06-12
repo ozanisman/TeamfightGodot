@@ -163,66 +163,59 @@ func _initialize() -> void:
 	print("\n========================")
 	print("STRESS TESTING")
 	print("========================")
-	
+
 	# Store scenario reports for aggregated summary
 	var scenario_reports := []
-	
+
 	for i in tests.size():
 		var test: Dictionary = tests[i]
 		print("\n========================")
 		print("SCENARIO: %s" % test["name"])
 		print("========================")
 		print("")  # Force flush
-		
-		# Run with baseline scoring modes
-		var mode_names = ["ADDITIVE", "MULTIPLICATIVE"]
-		var reports = {}
-		
-		for mode_idx in range(2):
-			var report = core.run_stress_test_with_perturbations(
-				test["allies"],
-				test["enemies"],
-				test["available"],
-				"res://stats_output",
-				42,  # Fixed seed for reproducibility
-				30,  # Number of perturbed scenarios
-				0.50,
-				0.25,
-				0.25,
-				1.2,
-				1.2,
-				mode_idx  # 0=ADDITIVE, 1=MULTIPLICATIVE
-			)
-			reports[mode_idx] = report
-		
-		scenario_reports.append({"name": test["name"], "report": reports[0]})
-		
-		# Print baseline reference (same for all modes)
+
+		# Run with draft-aware model
+		var report = core.run_stress_test_with_perturbations(
+			test["allies"],
+			test["enemies"],
+			test["available"],
+			"res://stats_output",
+			42,  # Fixed seed for reproducibility
+			30,  # Number of perturbed scenarios
+			0.50,
+			0.25,
+			0.25,
+			1.2,
+			1.2,
+			4  # DRAFT_AWARE_PAIRWISE_PROBABILITY
+		)
+
+		scenario_reports.append({"name": test["name"], "report": report})
+
+		# Print baseline reference
 		print("\nBaseline ranking:")
-		print("  Top-1: %s" % reports[0].get("baseline_top1", ""))
-		print("  Top-3: %s" % ", ".join(reports[0].get("baseline_top3", [])))
-		
-		# Print comparison table
-		print("\nScoring Mode Comparison:")
-		print("  Mode          | Score Range | Mean Margin | Median Margin | Rank Vol | Top-3 Stab | Context Sens")
-		print("  --------------|-------------|-------------|---------------|----------|------------|--------------")
-		
-		for mode_idx in range(2):
-			var report = reports[mode_idx]
-			var range_val = report.get("score_max", 0.0) - report.get("score_min", 0.0)
-			var mean_margin = report.get("mean_inter_rank_margin", 0.0)
-			var median_margin = report.get("median_inter_rank_margin", 0.0)
-			var rank_vol = report.get("avg_rank_change", 0.0)
-			var top3_stab = report.get("top3_stability_rate", 0.0)
-			var context_sens = report.get("context_sensitivity", 0.0)
-			
-			print("  %-12s | %.6f | %.6f | %.6f | %.4f | %.2f%% | %.6f" % [
-				mode_names[mode_idx], range_val, mean_margin, median_margin, rank_vol, top3_stab, context_sens
-			])
-		
-		# Print per-candidate statistics (ADDITIVE mode)
-		print("\nPer-candidate statistics (ADDITIVE mode):")
-		var candidate_stats = reports[0].get("candidate_stats", [])
+		print("  Top-1: %s" % report.get("baseline_top1", ""))
+		print("  Top-3: %s" % ", ".join(report.get("baseline_top3", [])))
+
+		# Print draft-aware model results
+		var range_val = report.get("score_max", 0.0) - report.get("score_min", 0.0)
+		var mean_margin = report.get("mean_inter_rank_margin", 0.0)
+		var median_margin = report.get("median_inter_rank_margin", 0.0)
+		var rank_vol = report.get("avg_rank_change", 0.0)
+		var top3_stab = report.get("top3_stability_rate", 0.0)
+		var context_sens = report.get("context_sensitivity", 0.0)
+
+		print("\nDRAFT_AWARE_PAIRWISE_PROBABILITY Results:")
+		print("  Score Range: %.6f" % range_val)
+		print("  Mean Margin: %.6f" % mean_margin)
+		print("  Median Margin: %.6f" % median_margin)
+		print("  Rank Volatility: %.4f" % rank_vol)
+		print("  Top-3 Stability: %.2f%%" % top3_stab)
+		print("  Context Sensitivity: %.6f" % context_sens)
+
+		# Print per-candidate statistics
+		print("\nPer-candidate statistics:")
+		var candidate_stats = report.get("candidate_stats", [])
 		for stats in candidate_stats:
 			print("  %s:" % stats.get("champion", ""))
 			print("    Mean score: %.6f (stddev: %.6f)" % [stats.get("mean_score", 0.0), stats.get("score_stddev", 0.0)])

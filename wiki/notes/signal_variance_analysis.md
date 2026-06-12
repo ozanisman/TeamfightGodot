@@ -156,10 +156,10 @@ Skipped evaluation of:
 - This mismatch means C++ signals are more heavily smoothed than analysis suggests
 - C++ synergy/counter variance is suppressed further than GDScript shows
 
-**Issue 3: Scoring Mode Limitations**
-- Current scoring modes (multiplicative, additive) assume independence between signals
-- With perfect correlation, these modes don't capture real synergistic/counter effects
-- The interaction_weight in additive mode is insufficient to compensate for structural redundancy
+**Issue 3: Scoring Mode Limitations (DEPRECATED)**
+- Legacy scoring modes (multiplicative, additive) assumed independence between signals
+- These modes have been deprecated and removed from the codebase
+- Current production models (CERTIFIED_PAIRWISE_PROBABILITY, DRAFT_AWARE_PAIRWISE_PROBABILITY) use specialized probability calculators that better capture synergistic/counter effects
 
 **Issue 4: Sparse Pairwise Data**
 - 26 champions × 26 champions = 676 possible pairwise matchups

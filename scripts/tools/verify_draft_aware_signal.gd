@@ -1,17 +1,15 @@
 extends SceneTree
 
-## Train draft-aware logistic regression models with draft position features.
-##
-## This script trains depth-specific models (1-5) that include draft_position
-## as a feature. Features: base, synergy, counter, base*synergy, base*counter,
-## synergy*counter, draft_position (per team).
-
 const LEARNING_RATE: float = 0.05
 const MAX_ITERATIONS: int = 5000
-const CONVERGENCE_TOLERANCE: float = 1e-6
+const CONVERGENCE_TOLERANCE: float = 1e-7
 const L2_REGULARIZATION: float = 0.001
-const SMOOTHING_K: float = 10.0
-const PRIOR_WINRATE: float = 0.5
+const TRAIN_FRACTION: float = 0.8
+const DEFAULT_SPLIT_SEED: int = 1337
+const ROLES: Array[String] = ["tank", "fighter", "mage", "assassin", "marksman", "support"]
+const FEATURE_DIM: int = 30
+
+const DEFAULT_OUTPUT := "res://stats_output/draft_aware_model.csv"
 
 
 func _extract_argument(prefix: String, default_value: String) -> String:
@@ -27,299 +25,498 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var training_input := _extract_argument("--training-input=", "res://stats_output/draft_training.csv")
+	var training_input := _extract_argument("--training-input=", "res://training_data/draft_aware_training_25_10.csv")
 	var stats_dir := _extract_argument("--stats-dir=", "res://stats_output")
-	var output_path := _extract_argument("--output=", "res://stats_output/draft_aware_model.json")
-	
+	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
+	var seeds_str := _extract_argument("--seeds=", str(DEFAULT_SPLIT_SEED))
+
 	print("verify_draft_aware_signal: loading training data from %s" % training_input)
 	var training_data := _load_training_csv(training_input)
 	if training_data.is_empty():
 		push_error("verify_draft_aware_signal: failed to load training data")
 		quit(1)
 		return
-	
+
 	print("verify_draft_aware_signal: loading stats from %s" % stats_dir)
 	var combat_stats := _load_combat_stats(stats_dir + "/combat_stats.csv")
 	var synergy_stats := _load_matchup_stats(stats_dir + "/matchup_with.csv")
 	var counter_stats := _load_matchup_stats(stats_dir + "/matchup_vs.csv")
-	print("verify_draft_aware_signal: loaded %d training rows, %d champions, %d synergy maps, %d counter maps" % [
-		training_data.size(), combat_stats.size(), synergy_stats.size(), counter_stats.size()
-	])
+
+	if combat_stats.is_empty() or synergy_stats.is_empty() or counter_stats.is_empty():
+		push_error("verify_draft_aware_signal: failed to load stats CSVs")
+		quit(1)
+		return
+
+	# Parse seeds
+	var seeds: Array[int] = []
+	for s in seeds_str.split(","):
+		seeds.append(int(s.strip_edges()))
+	if seeds.is_empty():
+		seeds = [DEFAULT_SPLIT_SEED]
+
+	print("verify_draft_aware_signal: running %d-seed validation with seeds: %s" % [seeds.size(), str(seeds)])
+
+	# Group data by depth
+	var data_by_depth: Dictionary = {}
+	for depth in range(1, 5):
+		data_by_depth[depth] = []
+	for row: Dictionary in training_data:
+		var depth := int(row["depth"])
+		if depth in data_by_depth:
+			data_by_depth[depth].append(row)
+
+	# Train and validate per depth with multiple seeds
+	var csv_lines: Array[String] = [
+		"depth,seed,train_size,test_size,train_accuracy,test_accuracy,train_mse,test_mse"
+	]
+	var trained_weights: Dictionary = {}
+	for depth in range(1, 5):
+		var depth_data: Array = data_by_depth.get(depth, [])
+		if depth_data.is_empty():
+			print("verify_draft_aware_signal: no data for depth %d, skipping" % depth)
+			continue
+
+		print("verify_draft_aware_signal: processing depth %d (%d samples)" % [depth, depth_data.size()])
+
+		for seed_idx in range(seeds.size()):
+			var split_seed := seeds[seed_idx]
+			print("  Seed %d/%d: %d" % [seed_idx + 1, seeds.size(), split_seed])
+
+			# Extract features and labels
+			var features: Array = []
+			var labels: Array[float] = []
+			for row: Dictionary in depth_data:
+				var allies: Array = (row["allies"] as String).split("|")
+				var enemies: Array = (row["enemies"] as String).split("|")
+				var banned_allies: Array = (row["banned_allies"] as String).split("|") if row.has("banned_allies") else []
+				var banned_enemies: Array = (row["banned_enemies"] as String).split("|") if row.has("banned_enemies") else []
+				
+				# Extract role counts if available
+				var ally_roles: Dictionary = {}
+				var enemy_roles: Dictionary = {}
+				for role in ROLES:
+					ally_roles[role] = int(row.get("ally_%s" % role, 0)) if row.has("ally_%s" % role) else 0
+					enemy_roles[role] = int(row.get("enemy_%s" % role, 0)) if row.has("enemy_%s" % role) else 0
+				
+				# Extract synergy/counter features if available
+				var syn_cnt: Dictionary = {}
+				syn_cnt["avg_synergy"] = float(row.get("avg_synergy", 0.5)) if row.has("avg_synergy") else 0.5
+				syn_cnt["avg_counter"] = float(row.get("avg_counter", 0.5)) if row.has("avg_counter") else 0.5
+				syn_cnt["synergy_variance"] = float(row.get("synergy_variance", 0.0)) if row.has("synergy_variance") else 0.0
+				syn_cnt["counter_variance"] = float(row.get("counter_variance", 0.0)) if row.has("counter_variance") else 0.0
+				syn_cnt["net_matchup"] = float(row.get("net_matchup", 0.5)) if row.has("net_matchup") else 0.5
+				
+				# Extract composition balance features if available
+				var comp_balance: Dictionary = {}
+				comp_balance["ally_role_diversity"] = float(row.get("ally_role_diversity", 0.0)) if row.has("ally_role_diversity") else 0.0
+				comp_balance["enemy_role_diversity"] = float(row.get("enemy_role_diversity", 0.0)) if row.has("enemy_role_diversity") else 0.0
+				comp_balance["ally_tank_ratio"] = float(row.get("ally_tank_ratio", 0.0)) if row.has("ally_tank_ratio") else 0.0
+				comp_balance["enemy_tank_ratio"] = float(row.get("enemy_tank_ratio", 0.0)) if row.has("enemy_tank_ratio") else 0.0
+				comp_balance["ally_support_ratio"] = float(row.get("ally_support_ratio", 0.0)) if row.has("ally_support_ratio") else 0.0
+				comp_balance["enemy_support_ratio"] = float(row.get("enemy_support_ratio", 0.0)) if row.has("enemy_support_ratio") else 0.0
+				comp_balance["ally_damage_ratio"] = float(row.get("ally_damage_ratio", 0.0)) if row.has("ally_damage_ratio") else 0.0
+				comp_balance["enemy_damage_ratio"] = float(row.get("enemy_damage_ratio", 0.0)) if row.has("enemy_damage_ratio") else 0.0
+				
+				var feature_vec := _extract_pairwise_features(allies, enemies, banned_allies, banned_enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
+				features.append(feature_vec)
+				labels.append(float(row["expected_win"]))
+
+			# Train/test split with seed
+			seed(split_seed)
+			var shuffled_indices: Array[int] = []
+			for i in range(depth_data.size()):
+				shuffled_indices.append(i)
+			shuffled_indices.shuffle()
+			
+			var split_index := int(depth_data.size() * TRAIN_FRACTION)
+			var train_indices := shuffled_indices.slice(0, split_index)
+			var test_indices := shuffled_indices.slice(split_index)
+			
+			var train_features: Array = []
+			var train_labels: Array[float] = []
+			var test_features: Array = []
+			var test_labels: Array[float] = []
+			
+			for idx in train_indices:
+				train_features.append(features[idx])
+				train_labels.append(labels[idx])
+			for idx in test_indices:
+				test_features.append(features[idx])
+				test_labels.append(labels[idx])
+
+			# Standardize features
+			var train_mean := _compute_mean(train_features)
+			var train_std := _compute_std(train_features, train_mean)
+			var train_stdized := _standardize(train_features, train_mean, train_std)
+			var test_stdized := _standardize(test_features, train_mean, train_std)
+
+			# Train logistic regression
+			var weights := _train_logistic(train_stdized, train_labels)
+			
+			# Only save weights for first seed
+			if seed_idx == 0:
+				trained_weights[depth] = weights
+			
+			var train_preds := _predict_logistic(train_stdized, weights)
+			var test_preds := _predict_logistic(test_stdized, weights)
+
+			# Compute metrics
+			var train_acc := _compute_accuracy(train_preds, train_labels)
+			var test_acc := _compute_accuracy(test_preds, test_labels)
+			var train_mse := _compute_mse(train_preds, train_labels)
+			var test_mse := _compute_mse(test_preds, test_labels)
+
+			# Output weights for native baking (only first seed)
+			if seed_idx == 0:
+				var weights_str := ",".join(weights.map(func(x): return str(x)))
+				var means_str := ",".join(train_mean.map(func(x): return str(x)))
+				var stddevs_str := ",".join(train_std.map(func(x): return str(x)))
+				print("Depth %d weights: %s" % [depth, weights_str])
+				print("Depth %d means: %s" % [depth, means_str])
+				print("Depth %d stddevs: %s" % [depth, stddevs_str])
+
+			csv_lines.append("%d,%d,%d,%d,%.4f,%.4f,%.6f,%.6f" % [
+				depth, split_seed, train_features.size(), test_features.size(), train_acc, test_acc, train_mse, test_mse
+			])
+
+	var mk := _ensure_parent_dir(ProjectSettings.globalize_path(output_path))
+	if mk != OK:
+		push_error("verify_draft_aware_signal: could not create output directory for %s: %s" % [output_path, error_string(mk)])
+		quit(1)
+		return
+
+	var f := FileAccess.open(ProjectSettings.globalize_path(output_path), FileAccess.WRITE)
+	if f == null:
+		push_error("verify_draft_aware_signal: could not open %s" % output_path)
+		quit(1)
+		return
+	f.store_string("\n".join(csv_lines) + "\n")
+	f.close()
 	
-	# Group training data by depth
-	var depth_groups: Dictionary = {}
-	for row in training_data:
-		var depth := row["depth"]
-		if not depth in depth_groups:
-			depth_groups[depth] = []
-		depth_groups[depth].append(row)
+	# Save trained weights for depth 4 (final depth) for ban recommendation testing
+	if trained_weights.has(4):
+		var weights_path := ProjectSettings.globalize_path("res://training_data/ban_aware_weights.txt")
+		var weights_f := FileAccess.open(weights_path, FileAccess.WRITE)
+		if weights_f == null:
+			push_error("verify_draft_aware_signal: could not open %s" % weights_path)
+			quit(1)
+			return
+		var depth4_weights: Array = trained_weights.get(4, [])
+		var weights_str := ",".join(depth4_weights.map(func(x): return str(x)))
+		weights_f.store_string(weights_str)
+		weights_f.close()
+		print("Trained weights saved to: %s" % weights_path)
 	
-	# Train model per depth
-	var models: Dictionary = {}
-	for depth in depth_groups.keys():
-		print("verify_draft_aware_signal: training depth %d model (%d samples)" % [depth, depth_groups[depth].size()])
-		var model := _train_depth_model(depth_groups[depth], combat_stats, synergy_stats, counter_stats, depth)
-		models[depth] = model
-	
-	# Output model weights
-	_write_model_json(output_path, models)
-	print("verify_draft_aware_signal: model weights written to %s" % output_path)
+	print("")
+	print("================ DRAFT-AWARE VERIFICATION COMPLETE ================")
+	print("CSV written to: %s" % output_path)
+	print("====================================================================")
 	quit(0)
 
 
+func _ensure_parent_dir(path: String) -> Error:
+	var slash := path.rfind("/")
+	var backslash := path.rfind("\\")
+	var sep := maxi(slash, backslash)
+	if sep < 0:
+		return OK
+	var dir_path := path.substr(0, sep)
+	if dir_path.is_empty() or DirAccess.dir_exists_absolute(dir_path):
+		return OK
+	return DirAccess.make_dir_recursive_absolute(dir_path)
+
+
 func _load_training_csv(path: String) -> Array:
-	var result: Array = []
 	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
 	if f == null:
-		push_error("Failed to open %s" % path)
-		return result
-	var header: PackedStringArray = f.get_csv_line()
-	var depth_col: int = header.find("depth")
-	var draft_position_col: int = header.find("draft_position")
-	var allies_col: int = header.find("allies")
-	var enemies_col: int = header.find("enemies")
-	var winrate_col: int = header.find("winrate")
-	if depth_col < 0 or allies_col < 0 or enemies_col < 0 or winrate_col < 0:
-		push_error("Missing required columns in training CSV")
-		f.close()
-		return result
-	while not f.eof_reached():
-		var line: PackedStringArray = f.get_csv_line()
-		if line.size() <= 1:
-			continue
-		result.append({
-			"depth": int(line[depth_col]),
-			"draft_position": int(line[draft_position_col]) if draft_position_col >= 0 else 0,
-			"allies": Array(line[allies_col].split("|")),
-			"enemies": Array(line[enemies_col].split("|")),
-			"winrate": float(line[winrate_col]),
-		})
+		push_error("verify_draft_aware_signal: could not open %s" % path)
+		return []
+	var lines := f.get_as_text().split("\n")
 	f.close()
+
+	var result := []
+	var headers := []
+	for i in range(lines.size()):
+		var line := lines[i].strip_edges()
+		if line.is_empty():
+			continue
+		var parts := line.split(",")
+		if i == 0:
+			headers = parts
+		else:
+			var row := {}
+			for j in range(mini(parts.size(), headers.size())):
+				row[headers[j]] = parts[j]
+			result.append(row)
 	return result
 
 
 func _load_combat_stats(path: String) -> Dictionary:
-	var result: Dictionary = {}
 	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
 	if f == null:
-		push_error("Failed to open %s" % path)
-		return result
-	var header: PackedStringArray = f.get_csv_line()
-	var hero_col: int = header.find("hero")
-	var winrate_col: int = header.find("win_rate")
-	var total_games_col: int = header.find("total_games")
-	if hero_col < 0 or winrate_col < 0 or total_games_col < 0:
-		push_error("Missing required columns in combat_stats.csv")
-		f.close()
-		return result
-	while not f.eof_reached():
-		var line: PackedStringArray = f.get_csv_line()
-		if line.size() <= 1:
-			continue
-		result[line[hero_col]] = {
-			"winrate": float(line[winrate_col]),
-			"samples": int(line[total_games_col]),
-		}
+		push_error("verify_draft_aware_signal: could not open %s" % path)
+		return {}
+	var lines := f.get_as_text().split("\n")
 	f.close()
+
+	var result := {}
+	for i in range(1, lines.size()):
+		var line := lines[i].strip_edges()
+		if line.is_empty():
+			continue
+		var parts := line.split(",")
+		if parts.size() >= 2:
+			result[parts[0]] = float(parts[1])
 	return result
 
 
 func _load_matchup_stats(path: String) -> Dictionary:
-	var result: Dictionary = {}
 	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
 	if f == null:
-		push_error("Failed to open %s" % path)
-		return result
-	var header: PackedStringArray = f.get_csv_line()
-	var champion_col: int = header.find("champion")
-	var other_col: int = header.find("ally")
-	if other_col < 0:
-		other_col = header.find("opponent")
-	var winrate_col: int = header.find("winrate")
-	var wins_col: int = header.find("wins")
-	var losses_col: int = header.find("losses")
-	if champion_col < 0 or other_col < 0 or winrate_col < 0:
-		push_error("Missing required columns in matchup CSV")
-		f.close()
-		return result
-	while not f.eof_reached():
-		var line: PackedStringArray = f.get_csv_line()
-		if line.size() <= 1:
-			continue
-		var champion: String = line[champion_col]
-		var other: String = line[other_col]
-		if not champion in result:
-			result[champion] = {}
-		result[champion][other] = {
-			"winrate": float(line[winrate_col]),
-			"samples": int(line[wins_col]) + int(line[losses_col]) if wins_col >= 0 and losses_col >= 0 else 0,
-		}
+		push_error("verify_draft_aware_signal: could not open %s" % path)
+		return {}
+	var lines := f.get_as_text().split("\n")
 	f.close()
+
+	var result := {}
+	for i in range(1, lines.size()):
+		var line := lines[i].strip_edges()
+		if line.is_empty():
+			continue
+		var parts := line.split(",")
+		if parts.size() >= 5:
+			var key := parts[0] + "|" + parts[1]
+			result[key] = float(parts[4])
 	return result
 
 
-func _apply_bayesian_smoothing(raw_winrate: float, samples: int) -> float:
-	if samples <= 0:
-		return PRIOR_WINRATE
-	var prior := PRIOR_WINRATE
-	var N := 10  # confidence_prior_samples
-	return (raw_winrate * samples + prior * N) / (samples + N)
-
-
-func _extract_team_features(team: Array, opponents: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary) -> Dictionary:
+func _extract_pairwise_features(allies: Array, enemies: Array, banned_allies: Array, banned_enemies: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, ally_roles: Dictionary = {}, enemy_roles: Dictionary = {}, syn_cnt: Dictionary = {}, comp_balance: Dictionary = {}) -> Array:
+	# Pick-focused features (30 total): [base_winrate, avg_synergy, avg_counter, synergy_variance, counter_variance, net_matchup,
+	#            ally_tank, ally_fighter, ally_mage, ally_assassin, ally_marksman, ally_support,
+	#            enemy_tank, enemy_fighter, enemy_mage, enemy_assassin, enemy_marksman, enemy_support,
+	#            avg_synergy_precomputed, avg_counter_precomputed, synergy_variance_precomputed, counter_variance_precomputed,
+	#            ally_role_diversity, enemy_role_diversity, ally_tank_ratio, enemy_tank_ratio,
+	#            ally_support_ratio, enemy_support_ratio, ally_damage_ratio, enemy_damage_ratio]
 	var base_sum := 0.0
 	var synergy_sum := 0.0
 	var counter_sum := 0.0
-	var n := float(team.size())
+	var synergy_values: Array[float] = []
+	var counter_values: Array[float] = []
+	var matchup_sum := 0.0
+
+	for ally in allies:
+		base_sum += combat_stats.get(String(ally), 0.5)
+		for other_ally in allies:
+			if ally != other_ally:
+				var key := String(ally) + "|" + String(other_ally)
+				var syn: float = synergy_stats.get(key, 0.5)
+				synergy_sum += syn
+				synergy_values.append(syn)
+		for enemy in enemies:
+			var key := String(ally) + "|" + String(enemy)
+			var cnt: float = counter_stats.get(key, 0.5)
+			counter_sum += cnt
+			counter_values.append(cnt)
+			matchup_sum += cnt
+
+	var n_allies := float(allies.size())
+	var n_enemies := float(enemies.size())
+	var base_winrate := base_sum / n_allies if n_allies > 0 else 0.5
+	var avg_synergy := synergy_sum / (n_allies * (n_allies - 1)) if n_allies > 1 else 0.5
+	var avg_counter := counter_sum / (n_allies * n_enemies) if n_allies > 0 and n_enemies > 0 else 0.5
+	var synergy_variance := _compute_variance(synergy_values) if synergy_values.size() > 0 else 0.0
+	var counter_variance := _compute_variance(counter_values) if counter_values.size() > 0 else 0.0
+	var net_matchup := matchup_sum / (n_allies * n_enemies) if n_allies > 0 and n_enemies > 0 else 0.5
+
+	# Build result with pick-focused features only (no ban features)
+	var result := [base_winrate, avg_synergy, avg_counter, synergy_variance, counter_variance, net_matchup]
 	
-	for champion in team:
-		# Base winrate
-		if champion in combat_stats:
-			var stat = combat_stats[champion]
-			base_sum += _apply_bayesian_smoothing(stat["winrate"], stat["samples"])
-		else:
-			base_sum += PRIOR_WINRATE
-		
-		# Synergy (vs allies)
-		for ally in team:
-			if ally == champion:
-				continue
-			if champion in synergy_stats and ally in synergy_stats[champion]:
-				var stat = synergy_stats[champion][ally]
-				synergy_sum += _apply_bayesian_smoothing(stat["winrate"], stat["samples"])
-		
-		# Counter (vs opponents)
-		for enemy in opponents:
-			if champion in counter_stats and enemy in counter_stats[champion]:
-				var stat = counter_stats[champion][enemy]
-				counter_sum += _apply_bayesian_smoothing(stat["winrate"], stat["samples"])
+	# Add ally role counts
+	for role in ROLES:
+		result.append(float(ally_roles.get(role, 0)))
+	# Add enemy role counts
+	for role in ROLES:
+		result.append(float(enemy_roles.get(role, 0)))
 	
-	var base := base_sum / n if n > 0 else PRIOR_WINRATE
-	var synergy := synergy_sum / (n * (n - 1)) if n > 1 else PRIOR_WINRATE
-	var counter := counter_sum / (n * float(opponents.size())) if n > 0 and opponents.size() > 0 else PRIOR_WINRATE
+	# Add precomputed synergy/counter features if available
+	if not syn_cnt.is_empty():
+		result.append(syn_cnt.get("avg_synergy", 0.5))
+		result.append(syn_cnt.get("avg_counter", 0.5))
+		result.append(syn_cnt.get("synergy_variance", 0.0))
+		result.append(syn_cnt.get("counter_variance", 0.0))
+	else:
+		# Use computed values
+		result.append(avg_synergy)
+		result.append(avg_counter)
+		result.append(synergy_variance)
+		result.append(counter_variance)
 	
-	return {
-		"base": base,
-		"synergy": synergy,
-		"counter": counter,
-		"base_synergy": base * synergy,
-		"base_counter": base * counter,
-		"synergy_counter": synergy * counter,
-	}
+	# Add composition balance features if available
+	if not comp_balance.is_empty():
+		result.append(comp_balance.get("ally_role_diversity", 0.0))
+		result.append(comp_balance.get("enemy_role_diversity", 0.0))
+		result.append(comp_balance.get("ally_tank_ratio", 0.0))
+		result.append(comp_balance.get("enemy_tank_ratio", 0.0))
+		result.append(comp_balance.get("ally_support_ratio", 0.0))
+		result.append(comp_balance.get("enemy_support_ratio", 0.0))
+		result.append(comp_balance.get("ally_damage_ratio", 0.0))
+		result.append(comp_balance.get("enemy_damage_ratio", 0.0))
+	else:
+		# Add zeros for compatibility
+		for i in range(8):
+			result.append(0.0)
+	
+	return result
 
 
-func _train_depth_model(training_data: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, depth: int) -> Dictionary:
-	# Extract features for each training sample
-	var features: Array = []
-	var labels: Array = []
-	var draft_positions: Array = []
-	
-	for row in training_data:
-		var allies: Array = row["allies"]
-		var enemies: Array = row["enemies"]
-		var draft_position: int = row["draft_position"]
-		var winrate: float = row["winrate"]
-		
-		var team_a_features := _extract_team_features(allies, enemies, combat_stats, synergy_stats, counter_stats)
-		var team_b_features := _extract_team_features(enemies, allies, combat_stats, synergy_stats, counter_stats)
-		
-		# Features: [base_a, synergy_a, counter_a, base_synergy_a, base_counter_a, synergy_counter_a,
-		#            base_b, synergy_b, counter_b, base_synergy_b, base_counter_b, synergy_counter_b,
-		#            draft_position]
-		var feature_vector: Array = [
-			team_a_features["base"], team_a_features["synergy"], team_a_features["counter"],
-			team_a_features["base_synergy"], team_a_features["base_counter"], team_a_features["synergy_counter"],
-			team_b_features["base"], team_b_features["synergy"], team_b_features["counter"],
-			team_b_features["base_synergy"], team_b_features["base_counter"], team_b_features["synergy_counter"],
-			float(draft_position) / 10.0,  # Normalize to [0, 1]
-		]
-		
-		features.append(feature_vector)
-		labels.append(winrate)
-		draft_positions.append(draft_position)
-	
-	# Calculate feature means and stddevs
-	var n_features := features[0].size()
-	var means: Array = []
-	var stddevs: Array = []
-	
-	for i in range(n_features):
-		var values: Array = []
-		for f in features:
-			values.append(f[i])
-		var mean: float = 0.0
-		for v in values:
-			mean += v
-		mean /= float(values.size())
-		
-		var variance: float = 0.0
-		for v in values:
-			variance += (v - mean) * (v - mean)
-		variance /= float(values.size())
-		var stddev: float = sqrt(variance) if variance > 0 else 1.0
-		
-		means.append(mean)
-		stddevs.append(stddev)
-	
-	# Normalize features
-	var normalized_features: Array = []
-	for f in features:
-		var normalized: Array = []
-		for i in range(n_features):
-			normalized.append((f[i] - means[i]) / stddevs[i])
-		normalized_features.append(normalized)
-	
-	# Train logistic regression using gradient descent
-	var weights: Array = []
-	for i in range(n_features + 1):  # +1 for bias
+func _compute_variance(values: Array[float]) -> float:
+	if values.is_empty():
+		return 0.0
+	var mean := 0.0
+	for v in values:
+		mean += v
+	mean /= float(values.size())
+	var variance := 0.0
+	for v in values:
+		variance += (v - mean) * (v - mean)
+	return variance / float(values.size())
+
+
+func _compute_mean(features: Array) -> Array[float]:
+	if features.is_empty():
+		var result: Array[float] = []
+		for i in range(FEATURE_DIM):
+			result.append(0.0)
+		return result
+	var n := float(features.size())
+	var dim: int = features[0].size()
+	var result: Array[float] = []
+	for i in range(dim):
+		var sum := 0.0
+		for vec in features:
+			sum += vec[i]
+		result.append(sum / n)
+	return result
+
+
+func _compute_std(features: Array, mean: Array[float]) -> Array[float]:
+	if features.is_empty():
+		var result: Array[float] = []
+		for i in range(FEATURE_DIM):
+			result.append(1.0)
+		return result
+	var n := float(features.size())
+	var dim: int = features[0].size()
+	var result: Array[float] = []
+	for i in range(dim):
+		var sum_sq := 0.0
+		for vec in features:
+			var diff: float = vec[i] - mean[i]
+			sum_sq += diff * diff
+		var variance := sum_sq / n
+		result.append(sqrt(variance) if variance > 0 else 1.0)
+	return result
+
+
+func _standardize(features: Array, mean: Array[float], std: Array[float]) -> Array:
+	var result: Array = []
+	for vec in features:
+		var stdized: Array[float] = []
+		for i in range(vec.size()):
+			stdized.append((vec[i] - mean[i]) / std[i])
+		result.append(stdized)
+	return result
+
+
+func _train_logistic(features: Array, labels: Array[float]) -> Array[float]:
+	if features.is_empty():
+		push_error("verify_draft_aware_signal: cannot train on empty features")
+		return []
+	var dim: int = features[0].size()
+	var weights: Array[float] = []
+	for i in range(dim + 1):
 		weights.append(0.0)
-	
+
 	for iteration in range(MAX_ITERATIONS):
-		var gradient: Array = []
-		for i in range(n_features + 1):
-			gradient.append(0.0)
-		
-		for i in range(normalized_features.size()):
-			var x: Array = normalized_features[i]
+		var grad: Array[float] = []
+		for i in range(dim + 1):
+			grad.append(0.0)
+
+		for i in range(features.size()):
+			var x = features[i]
 			var y: float = labels[i]
-			
-			# Compute prediction
-			var z: float = weights[0]  # bias
-			for j in range(n_features):
+			var z: float = weights[0]
+			for j in range(dim):
 				z += weights[j + 1] * x[j]
 			var p: float = 1.0 / (1.0 + exp(-z))
-			
-			# Compute gradient
-			gradient[0] += (p - y)
-			for j in range(n_features):
-				gradient[j + 1] += (p - y) * x[j]
-		
-		# Update weights with L2 regularization
-		var max_update: float = 0.0
-		for i in range(n_features + 1):
-			var reg_term: float = L2_REGULARIZATION * weights[i] if i > 0 else 0.0
-			var update: float = (gradient[i] / float(normalized_features.size()) + reg_term) * LEARNING_RATE
-			weights[i] -= update
-			max_update = max(max_update, abs(update))
-		
-		if max_update < CONVERGENCE_TOLERANCE:
-			print("verify_draft_aware_signal: converged at iteration %d" % iteration)
+			var error: float = p - y
+			grad[0] += error
+			for j in range(dim):
+				grad[j + 1] += error * x[j] + L2_REGULARIZATION * weights[j + 1]
+
+		var max_grad: float = 0.0
+		for g in grad:
+			max_grad = max(max_grad, abs(g))
+
+		if max_grad < CONVERGENCE_TOLERANCE:
 			break
+
+		for i in range(dim + 1):
+			weights[i] -= LEARNING_RATE * grad[i] / float(features.size())
+
+	return weights
+
+
+func _predict_logistic(features: Array, weights: Array[float]) -> Array[float]:
+	var result: Array[float] = []
+	var dim: int = weights.size() - 1
+	for x in features:
+		var z: float = weights[0]
+		for j in range(mini(dim, x.size())):
+			z += weights[j + 1] * x[j]
+		var p: float = 1.0 / (1.0 + exp(-z))
+		result.append(p)
+	return result
+
+
+func _compute_accuracy(preds: Array[float], labels: Array[float]) -> float:
+	var correct := 0
+	for i in range(preds.size()):
+		var pred_label := 1 if preds[i] >= 0.5 else 0
+		var true_label := 1 if labels[i] >= 0.5 else 0
+		if pred_label == true_label:
+			correct += 1
+	return float(correct) / float(preds.size())
+
+
+func _compute_mse(preds: Array[float], labels: Array[float]) -> float:
+	var sum_sq := 0.0
+	for i in range(preds.size()):
+		var diff := preds[i] - labels[i]
+		sum_sq += diff * diff
+	return sum_sq / float(preds.size())
+
+
+func recommend_ban(allies: Array, enemies: Array, banned_allies: Array, banned_enemies: Array, available: Array, combat_stats: Dictionary, synergy_stats: Dictionary, counter_stats: Dictionary, weights: Array[float], team_banning: String) -> Dictionary:
+	# TODO: Replace with ban-specific model training and recommendation
+	# Current simplified model does not support ban-related features
+	# Returns: {champion: StringName, predicted_win_rate: float, all_predictions: Dictionary}
+	
+	if available.is_empty():
+		return {
+			"champion": "",
+			"predicted_win_rate": 0.5,
+			"all_predictions": {},
+			"team_banning": team_banning
+		}
+	
+	# Random fallback until ban model is implemented
+	var random_index := randi() % available.size()
+	var random_champion := available[random_index]
 	
 	return {
-		"depth": depth,
-		"weights": weights,
-		"means": means,
-		"stddevs": stddevs,
-		"n_samples": training_data.size(),
+		"champion": random_champion,
+		"predicted_win_rate": 0.5,
+		"all_predictions": {},
+		"team_banning": team_banning
 	}
-
-
-func _write_model_json(path: String, models: Dictionary) -> void:
-	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.WRITE)
-	if f == null:
-		push_error("Failed to open %s for writing" % path)
-		return
-	
-	f.store_string(JSON.stringify(models, "\t"))
-	f.close()

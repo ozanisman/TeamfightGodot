@@ -28,6 +28,8 @@ $validatePickRecommendations = $Arguments -contains "--validate-pick-recommendat
 $generatePartialDraftTrainingData = $Arguments -contains "--generate-partial-draft-training-data"
 $verifyPartialDraftSignal = $Arguments -contains "--verify-partial-draft-signal"
 $evaluatePartialDraftModel = $Arguments -contains "--evaluate-partial-draft-model"
+$generateDraftAwareTrainingData = $Arguments -contains "--generate-draft-aware-training-data"
+$verifyDraftAwareSignal = $Arguments -contains "--verify-draft-aware-signal"
 $testHybridModel = $Arguments -contains "--test-hybrid-model"
 $testRolloutCounts = $Arguments -contains "--test-rollout-counts"
 $validateRolloutConvergence = $Arguments -contains "--validate-rollout-convergence"
@@ -51,6 +53,60 @@ function Get-ArgString([string]$Prefix, [string]$DefaultValue) {
 		}
 	}
 	return $DefaultValue
+}
+function Get-ArgInt([string]$Prefix, [int]$DefaultValue) {
+	foreach ($a in $Arguments) {
+		if ($a -like "$Prefix*") {
+			return [int]($a.Substring($Prefix.Length))
+		}
+	}
+	return $DefaultValue
+}
+function Convert-ProjectPath([string]$PathValue) {
+	if ($PathValue.StartsWith("res://")) {
+		$relative = $PathValue.Substring("res://".Length).Replace("/", "\")
+		return Join-Path $projectRoot $relative
+	}
+	if ([System.IO.Path]::IsPathRooted($PathValue)) {
+		return $PathValue
+	}
+	return Join-Path $projectRoot $PathValue
+}
+function Get-ValidDepthCount([string]$DepthsValue) {
+	$count = 0
+	foreach ($part in $DepthsValue.Split(",")) {
+		$depth = 0
+		if ([int]::TryParse($part.Trim(), [ref]$depth) -and $depth -ge 1 -and $depth -le 5) {
+			$count += 1
+		}
+	}
+	if ($count -le 0) {
+		return 5
+	}
+	return $count
+}
+function Assert-DurableOutput([string]$OutputPath, [int]$MinBytes, [int]$MinLines, [int]$ExactLines) {
+	if (-not (Test-Path -LiteralPath $OutputPath)) {
+		Write-Error "Expected output was not persisted after Godot exited: $OutputPath"
+		exit 1
+	}
+	$item = Get-Item -LiteralPath $OutputPath
+	if ($item.Length -lt $MinBytes) {
+		Write-Error "Expected output is too small after Godot exited: $OutputPath ($($item.Length) bytes)"
+		exit 1
+	}
+	if ($MinLines -gt 0 -or $ExactLines -gt 0) {
+		$lineCount = (Get-Content -LiteralPath $OutputPath -ErrorAction Stop | Measure-Object -Line).Lines
+		if ($MinLines -gt 0 -and $lineCount -lt $MinLines) {
+			Write-Error "Expected output has too few lines after Godot exited: $OutputPath ($lineCount lines)"
+			exit 1
+		}
+		if ($ExactLines -gt 0 -and $lineCount -ne $ExactLines) {
+			Write-Error "Expected output has wrong line count after Godot exited: $OutputPath ($lineCount lines, expected $ExactLines)"
+			exit 1
+		}
+	}
+	Write-Host "Durable output verified: $OutputPath ($($item.Length) bytes)"
 }
 if ($checkOnly) {
 	$timeoutSeconds = 15
@@ -110,6 +166,12 @@ elseif ($verifyPartialDraftSignal) {
 	$timeoutSeconds = 300
 }
 elseif ($evaluatePartialDraftModel) {
+	$timeoutSeconds = 300
+}
+elseif ($generateDraftAwareTrainingData) {
+	$timeoutSeconds = 900
+}
+elseif ($verifyDraftAwareSignal) {
 	$timeoutSeconds = 300
 }
 elseif ($testHybridModel) {
@@ -273,6 +335,18 @@ elseif ($verifyPartialDraftSignal) {
 elseif ($evaluatePartialDraftModel) {
 	$godotArgs += @("--script", "res://scripts/tools/evaluate_partial_draft_model.gd")
 }
+elseif ($generateDraftAwareTrainingData) {
+	$godotArgs += @("--script", "res://scripts/tools/generate_draft_aware_training_data.gd")
+	$depthsArg = Get-ArgString "--depths=" "1,2,3,4,5"
+	$godotArgs += "--depths=$depthsArg"
+	$Arguments = $Arguments | Where-Object { $_ -notlike "--depths=*" }
+	$rolloutsArg = Get-ArgString "--rollouts-per-state=" "50"
+	$godotArgs += "--rollouts-per-state=$rolloutsArg"
+	$Arguments = $Arguments | Where-Object { $_ -notlike "--rollouts-per-state=*" }
+}
+elseif ($verifyDraftAwareSignal) {
+	$godotArgs += @("--script", "res://scripts/tools/verify_draft_aware_signal.gd")
+}
 elseif ($testHybridModel) {
 	$godotArgs += @("--script", "res://scripts/tools/test_hybrid_model.gd")
 }
@@ -296,7 +370,7 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if (($checkOnly -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism) -and (Test-Path $logFile)) {
+if (($checkOnly -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
@@ -345,15 +419,25 @@ try {
 	}
 
 	$process.Refresh()
-	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism) {
+	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) {
 		if (Test-Path $logFile) {
 			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
-			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|main_menu: .*missing|draft_ui: .*missing|check_main_menu_load: FAILED|check_draft_ui_load: FAILED"
+			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|CrashHandlerException|Program crashed with signal|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|main_menu: .*missing|draft_ui: .*missing|check_main_menu_load: FAILED|check_draft_ui_load: FAILED"
 			if ($tail -match $failurePattern) {
 				Write-Error "Godot check failed. See $logFile."
 				exit 1
 			}
 		}
+	}
+	if ($generateDraftAwareTrainingData) {
+		$outputPath = Convert-ProjectPath (Get-ArgString "--output=" "res://training_data/draft_aware_training.csv")
+		$statesPerDepth = [Math]::Max(1, (Get-ArgInt "--states-per-depth=" 25))
+		$depthCount = Get-ValidDepthCount (Get-ArgString "--depths=" "1,2,3,4,5")
+		Assert-DurableOutput $outputPath 2 0 (($statesPerDepth * $depthCount) + 1)
+	}
+	elseif ($verifyDraftAwareSignal) {
+		$outputPath = Convert-ProjectPath (Get-ArgString "--output=" "res://stats_output/draft_aware_model.csv")
+		Assert-DurableOutput $outputPath 2 2 0
 	}
 	exit $process.ExitCode
 }

@@ -20,12 +20,13 @@ void cooldowns_and_cc(
 		UnitTickProfileCounters &profile) {
 	const bool profile_sim = profile.profile_sim;
 	const double tick_rate = world.tick_rate;
+	UnitStateCold &cold = uc(world, unit);
 
 	SimProfileAccScope _uu_cc(profile_sim, profile.uu_cooldowns_cc);
 
 	if (unit.attack_cooldown > 0.0) {
 		SimProfileAccScope _ucc_acd(profile_sim, profile.ucc_attack_cd);
-		if (!uc(world, unit).is_channeling && !(unit.casting_remaining >= 0.0 && unit.has_casting_effect)) {
+		if (!cold.is_channeling && !(unit.casting_remaining >= 0.0 && unit.has_casting_effect)) {
 			unit.attack_cooldown -= tick_rate;
 			if (unit.attack_cooldown < 0.0) {
 				unit.attack_cooldown = 0.0;
@@ -61,9 +62,9 @@ void cooldowns_and_cc(
 			unit.stun_remaining = 0.0;
 		}
 	}
-	if (!uc(world, unit).slow_buffs.empty()) {
+	if (!cold.slow_buffs.empty()) {
 		SimProfileAccScope _ucc_slow(profile_sim, profile.ucc_slow);
-		auto &slow_buffs = uc(world, unit).slow_buffs;
+		auto &slow_buffs = cold.slow_buffs;
 		size_t index = 0;
 		while (index < slow_buffs.size()) {
 			slow_buffs[index].remaining_duration = Math::max(0.0, slow_buffs[index].remaining_duration - tick_rate);
@@ -119,9 +120,9 @@ void cooldowns_and_cc(
 			unit.shield = 0.0;
 		}
 	}
-	if (!uc(world, unit).reflect_buffs.empty()) {
+	if (!cold.reflect_buffs.empty()) {
 		SimProfileAccScope _ucc_ref(profile_sim, profile.ucc_reflect);
-		auto &reflect_buffs = uc(world, unit).reflect_buffs;
+		auto &reflect_buffs = cold.reflect_buffs;
 		size_t index = 0;
 		while (index < reflect_buffs.size()) {
 			reflect_buffs[index].remaining_duration = Math::max(0.0, reflect_buffs[index].remaining_duration - tick_rate);
@@ -161,7 +162,7 @@ void cooldowns_and_cc(
 	if (unit.forced_target_remaining <= 0.0) {
 		unit.forced_target_remaining = 0.0;
 		unit.forced_target_id = 0;
-		uc(world, unit).forced_target_kind = StringName();
+		cold.forced_target_kind = StringName();
 	}
 }
 

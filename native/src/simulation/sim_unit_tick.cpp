@@ -39,7 +39,9 @@ void update_unit(
 	const UnitStrategy &strategy = tick_hooks.strategy_for_unit(tick_hooks.user_data, unit);
 
 	cooldowns_and_cc(world, unit, tick_hooks, profile);
-	apply_sudden_death_overtime(world, match);
+	if (match.sudden_death_ticks > 0) {
+		apply_sudden_death_overtime(world, match);
+	}
 	separation(world, unit, profile);
 	threat_and_assist(world, unit, strategy, host, tick_hooks, profile);
 

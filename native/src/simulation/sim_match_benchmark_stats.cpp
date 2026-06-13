@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/random_number_generator.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <chrono>
 #include <unordered_map>
 
 using namespace godot;
@@ -19,6 +20,11 @@ using namespace godot;
 namespace {
 using namespace sim::effect_kinds;
 using namespace sim::match::benchmark::stats_internal;
+
+uint64_t profile_elapsed_ns(const std::chrono::steady_clock::time_point &t0) {
+	return static_cast<uint64_t>(
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count());
+}
 }
 
 namespace sim {
@@ -77,8 +83,15 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 	Dictionary matchup_data;
 	Dictionary spawn_spec;
 	int64_t next_progress = 0;
+	uint64_t setup_ns = 0;
+	uint64_t simulate_ns = 0;
+	uint64_t stats_aggregation_ns = 0;
+	uint64_t matchup_aggregation_ns = 0;
+	uint64_t reset_ns = 0;
+	uint64_t progress_ns = 0;
 
 	for (int64_t match_index = 0; match_index < batch_count; ++match_index) {
+		auto phase_start = std::chrono::steady_clock::now();
 		const int64_t seed = base_seed + match_index;
 		GeneratedMatchHost::seed_generated_match(&core, seed, tick_rate);
 		match_roster::MatchRosterState roster = GeneratedMatchHost::match_roster_state(&core);
@@ -116,8 +129,13 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 		}
 		GeneratedMatchHost::build_role_strategy_cache(&core);
 		GeneratedMatchHost::prepare_tick_context(&core);
-		GeneratedMatchHost::simulate_match(&core);
+		setup_ns += profile_elapsed_ns(phase_start);
 
+		phase_start = std::chrono::steady_clock::now();
+		GeneratedMatchHost::simulate_match(&core);
+		simulate_ns += profile_elapsed_ns(phase_start);
+
+		phase_start = std::chrono::steady_clock::now();
 		std::unordered_map<int64_t, double> summoner_minion_damage_dealt;
 		std::unordered_map<int64_t, double> summoner_minion_damage_received;
 		std::unordered_map<int64_t, double> summoner_minion_damage_mitigated;
@@ -219,24 +237,35 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			combos[enemy_role_fp] = enemy_combo;
 			bucket["combos"] = combos;
 		}
+		stats_aggregation_ns += profile_elapsed_ns(phase_start);
 
+		phase_start = std::chrono::steady_clock::now();
 		if (player_won) {
 			record_matchup_result(matchup_data, GeneratedMatchHost::player_comp(&core), GeneratedMatchHost::enemy_comp(&core));
 		} else if (enemy_won) {
 			record_matchup_result(matchup_data, GeneratedMatchHost::enemy_comp(&core), GeneratedMatchHost::player_comp(&core));
 		}
+		matchup_aggregation_ns += profile_elapsed_ns(phase_start);
 
-		GeneratedMatchHost::reset_runtime_state(&core);
 		next_progress += 1;
 		if (next_progress == 1000) {
+			phase_start = std::chrono::steady_clock::now();
 			core.benchmark_progress_add(1000);
+			progress_ns += profile_elapsed_ns(phase_start);
 			next_progress = 0;
 		}
 	}
 	if (next_progress != 0) {
+		const auto phase_start = std::chrono::steady_clock::now();
 		core.benchmark_progress_add(next_progress);
+		progress_ns += profile_elapsed_ns(phase_start);
 	}
 
+	const auto cleanup_start = std::chrono::steady_clock::now();
+	GeneratedMatchHost::reset_runtime_state(&core);
+	reset_ns += profile_elapsed_ns(cleanup_start);
+
+	const auto result_build_start = std::chrono::steady_clock::now();
 	Dictionary by_size;
 	by_size[team_size] = bucket;
 	Dictionary stats_partial;
@@ -244,6 +273,15 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 	stats_partial["match_logs"] = include_match_log ? match_logs : Array();
 	result["stats_partial"] = stats_partial;
 	result["matchup_data"] = matchup_data;
+	Dictionary native_profile;
+	native_profile["setup_ns"] = int64_t(setup_ns);
+	native_profile["simulate_ns"] = int64_t(simulate_ns);
+	native_profile["stats_aggregation_ns"] = int64_t(stats_aggregation_ns);
+	native_profile["matchup_aggregation_ns"] = int64_t(matchup_aggregation_ns);
+	native_profile["reset_ns"] = int64_t(reset_ns);
+	native_profile["progress_ns"] = int64_t(progress_ns);
+	native_profile["result_build_ns"] = int64_t(profile_elapsed_ns(result_build_start));
+	result["native_profile"] = native_profile;
 	return result;
 }
 

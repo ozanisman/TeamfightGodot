@@ -78,10 +78,11 @@ bool combat_actions(
 		const double dist_sq = dx * dx + dy * dy;
 		const double range_sq = effective_range * effective_range;
 		const bool in_contact = (dist_sq <= range_sq);
-		const double distance = Math::sqrt(dist_sq);
 
 		const bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
 		const bool can_cast_ability = in_contact || !unit.ability_requires_target_in_range;
+		const bool needs_distance = can_cast_ultimate || can_cast_ability || in_contact;
+		const double distance = needs_distance ? Math::sqrt(dist_sq) : 0.0;
 
 		if (can_cast_ultimate) {
 			SimProfileAccScope _uc_ab(profile_sim, profile.uc_ability);

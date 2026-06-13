@@ -70,7 +70,7 @@ bool regen_and_periodic(
 	UnitStateCold &cold = uc(world, unit);
 	const std::vector<EffectRecord> &effects = combat::collect_effects(world, unit, sn_on_tick());
 
-	const bool has_regen_work = !effects.empty() || uc(world, unit).is_channeling;
+	const bool has_regen_work = !effects.empty() || cold.is_channeling;
 	if (has_regen_work) {
 		{
 			SimProfileAccScope _ur_eff(profile_sim, profile.ur_effects);
@@ -89,7 +89,7 @@ bool regen_and_periodic(
 			}
 		}
 
-		if (uc(world, unit).is_channeling) {
+		if (cold.is_channeling) {
 			SimProfileAccScope _ur_chn(profile_sim, profile.ur_channel);
 			channel::process_channel_tick(world, host, channel_hooks, unit, tick_rate);
 		}

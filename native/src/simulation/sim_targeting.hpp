@@ -21,6 +21,8 @@ struct ScoreEnemyProfileCounters {
 struct TargetingProfileCounters {
 	bool active = false;
 	int64_t *retarget_keeps = nullptr;
+	int64_t *enemy_early_keeps = nullptr;
+	int64_t *enemy_early_keep_rejects = nullptr;
 	int64_t *enemy_scans = nullptr;
 	int64_t *candidates_scored = nullptr;
 	int64_t *candidates_prefix_pruned = nullptr;
@@ -109,6 +111,8 @@ struct CoordinatorTargetingState {
 			const StringName &attacker_archetype,
 			const StringName &enemy_archetype) = nullptr;
 	int64_t *tgt_retarget_keeps = nullptr;
+	int64_t *tgt_enemy_early_keeps = nullptr;
+	int64_t *tgt_enemy_early_keep_rejects = nullptr;
 	int64_t *tgt_enemy_scans = nullptr;
 	int64_t *tgt_candidates_scored = nullptr;
 	int64_t *tgt_candidates_prefix_pruned = nullptr;

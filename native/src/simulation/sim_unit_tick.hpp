@@ -42,6 +42,9 @@ struct UnitTickProfileCounters {
 	uint64_t *ur_effects = nullptr;
 	uint64_t *ur_channel = nullptr;
 	uint64_t *ur_periodic = nullptr;
+	int64_t *regen_no_work_fast_path = nullptr;
+	int64_t *regen_on_tick_empty = nullptr;
+	int64_t *regen_periodic_empty = nullptr;
 
 	uint64_t *uc_distance_calc = nullptr;
 	uint64_t *uc_ability = nullptr;

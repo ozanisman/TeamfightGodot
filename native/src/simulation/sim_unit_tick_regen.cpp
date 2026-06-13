@@ -3,6 +3,7 @@
 
 #include "sim_channel.hpp"
 #include "sim_combat.hpp"
+#include "sim_combat_internal.hpp"
 #include "sim_constants.hpp"
 #include "sim_periodic.hpp"
 #include "sim_stats.hpp"
@@ -14,7 +15,6 @@ namespace unit_tick {
 
 using internal::SimProfileAccScope;
 using internal::execute_effect;
-using internal::sn_on_tick;
 using internal::sn_passive;
 using internal::sn_player;
 
@@ -68,9 +68,26 @@ bool regen_and_periodic(
 
 	SimProfileAccScope _uu_regen(profile_sim, profile.uu_regen_on_tick);
 	UnitStateCold &cold = uc(world, unit);
-	const std::vector<EffectRecord> &effects = combat::collect_effects(world, unit, sn_on_tick());
+	const std::vector<EffectRecord> &effects = cold.passive_effects[combat::internal::EFFECT_BUCKET_ON_TICK];
+	const bool on_tick_empty = effects.empty();
+	const bool periodic_empty = cold.periodic_effects.empty();
+	if (profile_sim) {
+		if (on_tick_empty && profile.regen_on_tick_empty != nullptr) {
+			*profile.regen_on_tick_empty += 1;
+		}
+		if (periodic_empty && profile.regen_periodic_empty != nullptr) {
+			*profile.regen_periodic_empty += 1;
+		}
+	}
 
-	const bool has_regen_work = !effects.empty() || cold.is_channeling;
+	if (on_tick_empty && !cold.is_channeling && periodic_empty) {
+		if (profile_sim && profile.regen_no_work_fast_path != nullptr) {
+			*profile.regen_no_work_fast_path += 1;
+		}
+		return unit.stun_remaining > 0.0;
+	}
+
+	const bool has_regen_work = !on_tick_empty || cold.is_channeling;
 	if (has_regen_work) {
 		{
 			SimProfileAccScope _ur_eff(profile_sim, profile.ur_effects);

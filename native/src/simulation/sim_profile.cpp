@@ -91,8 +91,13 @@ void emit_json_stderr(const TeamfightSimulationCore &core) {
 	profile["ur_effects"] = core._sim_profile_counters.ur_effects;
 	profile["ur_periodic"] = core._sim_profile_counters.ur_periodic;
 	profile["ur_channel"] = core._sim_profile_counters.ur_channel;
+	profile["regen_no_work_fast_path"] = core._sim_profile_counters.regen_no_work_fast_path;
+	profile["regen_on_tick_empty"] = core._sim_profile_counters.regen_on_tick_empty;
+	profile["regen_periodic_empty"] = core._sim_profile_counters.regen_periodic_empty;
 	if (core._sim_profile_runtime.targeting_active) {
 		profile["tgt_retarget_keeps"] = core._sim_profile_counters.tgt_retarget_keeps;
+		profile["tgt_enemy_early_keeps"] = core._sim_profile_counters.tgt_enemy_early_keeps;
+		profile["tgt_enemy_early_keep_rejects"] = core._sim_profile_counters.tgt_enemy_early_keep_rejects;
 		profile["tgt_enemy_scans"] = core._sim_profile_counters.tgt_enemy_scans;
 		profile["tgt_candidates_scored"] = core._sim_profile_counters.tgt_candidates_scored;
 		profile["tgt_candidates_prefix_pruned"] = core._sim_profile_counters.tgt_candidates_prefix_pruned;
@@ -140,6 +145,9 @@ unit_tick::UnitTickProfileCounters unit_tick_profile(Counters &counters, bool pr
 	tick_profile.ur_effects = &counters.ur_effects;
 	tick_profile.ur_channel = &counters.ur_channel;
 	tick_profile.ur_periodic = &counters.ur_periodic;
+	tick_profile.regen_no_work_fast_path = &counters.regen_no_work_fast_path;
+	tick_profile.regen_on_tick_empty = &counters.regen_on_tick_empty;
+	tick_profile.regen_periodic_empty = &counters.regen_periodic_empty;
 	tick_profile.uc_distance_calc = &counters.uc_distance_calc;
 	tick_profile.uc_ability = &counters.uc_ability;
 	tick_profile.uc_auto_attack = &counters.uc_auto_attack;

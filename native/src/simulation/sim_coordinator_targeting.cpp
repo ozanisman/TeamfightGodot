@@ -47,6 +47,8 @@ sim::targeting::CoordinatorTargetingState TeamfightSimulationCore::_targeting_co
 	state.debug_print_line = &sim_host_print_line;
 	state.debug_print_score_breakdown = &sim_host_print_score_breakdown;
 	state.tgt_retarget_keeps = &_sim_profile_counters.tgt_retarget_keeps;
+	state.tgt_enemy_early_keeps = &_sim_profile_counters.tgt_enemy_early_keeps;
+	state.tgt_enemy_early_keep_rejects = &_sim_profile_counters.tgt_enemy_early_keep_rejects;
 	state.tgt_enemy_scans = &_sim_profile_counters.tgt_enemy_scans;
 	state.tgt_candidates_scored = &_sim_profile_counters.tgt_candidates_scored;
 	state.tgt_candidates_prefix_pruned = &_sim_profile_counters.tgt_candidates_prefix_pruned;

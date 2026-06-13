@@ -69,7 +69,12 @@ struct Counters {
 	uint64_t ur_effects = 0;
 	uint64_t ur_periodic = 0;
 	uint64_t ur_channel = 0;
+	int64_t regen_no_work_fast_path = 0;
+	int64_t regen_on_tick_empty = 0;
+	int64_t regen_periodic_empty = 0;
 	int64_t tgt_retarget_keeps = 0;
+	int64_t tgt_enemy_early_keeps = 0;
+	int64_t tgt_enemy_early_keep_rejects = 0;
 	int64_t tgt_enemy_scans = 0;
 	int64_t tgt_candidates_scored = 0;
 	int64_t tgt_candidates_prefix_pruned = 0;

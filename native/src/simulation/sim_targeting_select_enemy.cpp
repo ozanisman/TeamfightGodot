@@ -13,6 +13,64 @@ namespace targeting {
 
 using namespace internal;
 
+namespace {
+
+UnitState *try_keep_current_enemy_target_early(
+		SimWorld &world,
+		UnitState &unit,
+		SimHostCallbacks *host,
+		const CoordinatorTargetingState &state) {
+	const bool profile_active = state.profile_targeting_active;
+	auto reject = [&]() -> UnitState * {
+		if (profile_active && state.tgt_enemy_early_keep_rejects != nullptr) {
+			*state.tgt_enemy_early_keep_rejects += 1;
+		}
+		return nullptr;
+	};
+
+	if (unit.retarget_timer <= 0.0) {
+		return reject();
+	}
+	if (unit.forced_target_id != 0 && unit.forced_target_remaining > 0.0) {
+		return reject();
+	}
+	if (unit.taunt_target_id != 0 && unit.taunt_remaining > 0.0) {
+		return reject();
+	}
+
+	const int64_t current_target_index = target_index_for_unit(world, unit);
+	if (current_target_index < 0 || current_target_index >= int64_t(world.targeting_frame.size())) {
+		return reject();
+	}
+
+	TargetingFrameEntry &current_frame = world.targeting_frame[static_cast<size_t>(current_target_index)];
+	if (!current_frame.alive || current_frame.is_player_team == (unit.team == player_team_name()) || current_frame.stealth_remaining > 0.0) {
+		return reject();
+	}
+
+	if (unit.is_assassin_role && (current_frame.is_tank_role || current_frame.is_fighter_role)) {
+		const bool unit_is_player = unit.team == player_team_name();
+		const int backliners_alive = unit_is_player ? world.tick_ctx.player_backliner_alive_count : world.tick_ctx.enemy_backliner_alive_count;
+		if (backliners_alive > 0) {
+			return reject();
+		}
+	}
+
+	UnitState &current_target = world.units[static_cast<size_t>(current_target_index)];
+	if (profile_active) {
+		if (state.tgt_retarget_keeps != nullptr) {
+			*state.tgt_retarget_keeps += 1;
+		}
+		if (state.tgt_enemy_early_keeps != nullptr) {
+			*state.tgt_enemy_early_keeps += 1;
+		}
+	}
+	set_current_target(world, unit, current_target, host);
+	return &current_target;
+}
+
+} // namespace
+
 UnitState *select_enemy_target(
 		SimWorld &world,
 		UnitState &unit,
@@ -290,9 +348,13 @@ UnitState *select_enemy_target(
 UnitState *select_enemy_target_coordinator(
 		SimWorld &world,
 		UnitState &unit,
-		const UnitStrategy &strategy,
-		SimHostCallbacks *host,
-		const CoordinatorTargetingState &state) {
+	const UnitStrategy &strategy,
+	SimHostCallbacks *host,
+	const CoordinatorTargetingState &state) {
+	if (UnitState *kept = try_keep_current_enemy_target_early(world, unit, host, state)) {
+		return kept;
+	}
+
 	TargetScoreContext score_ctx;
 	score_ctx.attack_range = attack_range(unit);
 	score_ctx.effective_range = effective_attack_range(unit);

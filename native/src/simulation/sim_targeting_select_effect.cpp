@@ -94,8 +94,8 @@ std::vector<UnitState *> select_targets(
 		}
 		case TARGET_SELECTION_LOWEST_PERCENT_HP: {
 			std::sort(candidates.begin(), candidates.end(), [](UnitState *a, UnitState *b) {
-				const double max_a = get_effective_max_hp(*a);
-				const double max_b = get_effective_max_hp(*b);
+				const double max_a = a->stats_dirty ? get_effective_max_hp(*a) : a->cached_max_hp;
+				const double max_b = b->stats_dirty ? get_effective_max_hp(*b) : b->cached_max_hp;
 				const double pct_a = (max_a > EPSILON) ? (a->hp / max_a) : 0.0;
 				const double pct_b = (max_b > EPSILON) ? (b->hp / max_b) : 0.0;
 				return pct_a < pct_b;
@@ -104,8 +104,8 @@ std::vector<UnitState *> select_targets(
 		}
 		case TARGET_SELECTION_HIGHEST_PERCENT_HP: {
 			std::sort(candidates.begin(), candidates.end(), [](UnitState *a, UnitState *b) {
-				const double max_a = get_effective_max_hp(*a);
-				const double max_b = get_effective_max_hp(*b);
+				const double max_a = a->stats_dirty ? get_effective_max_hp(*a) : a->cached_max_hp;
+				const double max_b = b->stats_dirty ? get_effective_max_hp(*b) : b->cached_max_hp;
 				const double pct_a = (max_a > EPSILON) ? (a->hp / max_a) : 0.0;
 				const double pct_b = (max_b > EPSILON) ? (b->hp / max_b) : 0.0;
 				return pct_a > pct_b;

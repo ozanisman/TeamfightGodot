@@ -35,7 +35,7 @@ void record_damage_fx(
 	ev.val = total_damage;
 	ev.damage_type = damage_type;
 	buffer.push(ev);
-	if (action_kind == StringName("auto") && get_effective_attack_range(source) <= RANGED_THRESHOLD) {
+	if (action_kind == StringName("auto") && (source.stats_dirty ? get_effective_attack_range(source) : source.cached_attack_range) <= RANGED_THRESHOLD) {
 		ViewerFxEvent slash;
 		slash.kind = StringName("melee_slash");
 		slash.pos_x = target.pos_x;

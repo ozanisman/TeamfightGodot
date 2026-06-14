@@ -164,7 +164,7 @@ void handle_death(
 	}
 
 	target.alive = false;
-	target.respawn_timer = get_effective_respawn_time(target);
+	target.respawn_timer = target.stats_dirty ? get_effective_respawn_time(target) : target.cached_respawn_time;
 	uc(world, target).deaths += 1;
 	sync_targeting_frame_index(host, target_index, target);
 
@@ -301,11 +301,11 @@ void respawn_unit(
 	const int64_t unit_index = targeting::unit_index_by_id(world, unit.instance_id);
 	UnitStateCold &cold = uc(world, unit);
 	unit.alive = true;
-	unit.hp = get_effective_max_hp(unit);
+	unit.hp = unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp;
 	unit.mana = 0.0;
 	unit.shield = 0.0;
 	unit.perceived_threat = 0.0;
-	unit.ability_cooldown = get_effective_ability_cd(unit);
+	unit.ability_cooldown = unit.stats_dirty ? get_effective_ability_cd(unit) : unit.cached_ability_cd;
 	unit.stun_remaining = 0.0;
 	unit.root_remaining = 0.0;
 	unit.silence_remaining = 0.0;

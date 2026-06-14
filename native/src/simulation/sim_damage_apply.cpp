@@ -50,10 +50,10 @@ double apply_damage(
 
 	double final_damage = pre_res;
 	if (damage_is_physical) {
-		const double armor = get_effective_armor(target);
+		const double armor = target.stats_dirty ? get_effective_armor(target) : target.cached_armor;
 		final_damage *= (1.0 - armor);
 	} else if (damage_is_magic) {
-		const double mr = get_effective_magic_resist(target);
+		const double mr = target.stats_dirty ? get_effective_magic_resist(target) : target.cached_magic_resist;
 		final_damage *= (1.0 - mr);
 	}
 
@@ -70,7 +70,7 @@ double apply_damage(
 	uc(world, target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	target.hp = Math::max(0.0, target.hp - hp_loss);
 	
-	const double max_hp = get_effective_max_hp(target);
+	const double max_hp = target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp;
 	if (max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD) {
 		target.perceived_threat += (hp_loss / max_hp) * THREAT_BURST_MULTIPLIER;
 	}

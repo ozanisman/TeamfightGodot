@@ -28,7 +28,7 @@ Dictionary exec_status_heal_shield(
 			Dictionary shield_result;
 			shield_result["success"] = true;
 			UnitState &shield_target = (effect.int0 == 1) ? source : (target_ally == nullptr ? source : *target_ally);
-			double amount = get_effective_max_hp(shield_target) * effect.scalar0;
+			double amount = (shield_target.stats_dirty ? get_effective_max_hp(shield_target) : shield_target.cached_max_hp) * effect.scalar0;
 
 			double damage_for_ratio = context.damage;
 			if (damage_for_ratio <= 0.0 && context.accumulated_results.has("damage")) {
@@ -55,8 +55,8 @@ Dictionary exec_status_heal_shield(
 			Dictionary heal_result;
 			heal_result["success"] = true;
 			UnitState &heal_target = (effect.int0 == 1) ? source : (target_ally == nullptr ? source : *target_ally);
-			double heal_amount = get_effective_max_hp(heal_target) * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
-			double missing_hp = get_effective_max_hp(heal_target) - heal_target.hp;
+			double heal_amount = (heal_target.stats_dirty ? get_effective_max_hp(heal_target) : heal_target.cached_max_hp) * effect.scalar0 + heal_target.hp * effect.scalar1 + effect.scalar2;
+			double missing_hp = (heal_target.stats_dirty ? get_effective_max_hp(heal_target) : heal_target.cached_max_hp) - heal_target.hp;
 			heal_amount += missing_hp * effect.scalar3;
 			double old_hp = heal_target.hp;
 			sim::status::heal_unit(world, source, heal_target, heal_amount, context.action_kind, false, &host);
@@ -93,7 +93,7 @@ Dictionary exec_status_heal_shield(
 		case EFFECT_OPCODE_CONSUME_STACKS_HEAL: {
 			Dictionary result;
 			result["success"] = true;
-			double max_hp = get_effective_max_hp(source);
+			double max_hp = source.stats_dirty ? get_effective_max_hp(source) : source.cached_max_hp;
 			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;
@@ -117,7 +117,7 @@ Dictionary exec_status_heal_shield(
 		case EFFECT_OPCODE_CONSUME_STACKS_SHIELD: {
 			Dictionary result;
 			result["success"] = true;
-			double max_hp = get_effective_max_hp(source);
+			double max_hp = source.stats_dirty ? get_effective_max_hp(source) : source.cached_max_hp;
 			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;

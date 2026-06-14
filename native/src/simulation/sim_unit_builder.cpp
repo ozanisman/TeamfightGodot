@@ -300,7 +300,7 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	unit.mana = 0.0;
 	unit.attack_cooldown = 0.0;
 	unit.attack_period = 0.0;
-	unit.ability_cooldown = get_effective_ability_cd(unit);
+	unit.ability_cooldown = unit.stats_dirty ? get_effective_ability_cd(unit) : unit.cached_ability_cd;
 	unit.casting_remaining = 0.0;
 	cold.casting_kind = StringName();
 	cold.casting_effect = EffectRecord();
@@ -338,6 +338,7 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	unit.stat_multiplicative_##name = 1.0;
 	STAT_LIST
 #undef X
+	unit.stats_dirty = true;
 	cold.damage_dealt = 0.0;
 	cold.damage_dealt_auto = 0.0;
 	cold.damage_dealt_ability = 0.0;

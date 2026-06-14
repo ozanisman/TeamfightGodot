@@ -24,8 +24,8 @@ ProjectileState make_auto_projectile(UnitState &unit, UnitState &target, double 
 	projectile.impact_effect.scalar3 = 1.0;
 	projectile.impact_effect.damage_type = sn_physical();
 	projectile.impact_effect.reason = String("Auto Attack");
-	projectile.radius = get_effective_projectile_radius(unit);
-	projectile.speed = Math::max(0.0001, get_effective_projectile_speed(unit));
+	projectile.radius = unit.stats_dirty ? get_effective_projectile_radius(unit) : unit.cached_projectile_radius;
+	projectile.speed = Math::max(0.0001, unit.stats_dirty ? get_effective_projectile_speed(unit) : unit.cached_projectile_speed);
 	projectile.pos_x = unit.pos_x;
 	projectile.pos_y = unit.pos_y;
 	projectile.motion = sn_homing();
@@ -66,7 +66,7 @@ bool try_cast_ultimate(SimWorld &world, SimHostCallbacks &host, const CombatHost
 	if (uc(world, unit).is_channeling) {
 		return false;
 	}
-	const double mana_cost = get_effective_mana_cost(unit);
+	const double mana_cost = unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost;
 	if (mana_cost <= 0.0 || unit.mana < mana_cost) {
 		return false;
 	}
@@ -93,7 +93,7 @@ bool start_cast(
 	if (action_kind == sn_ability()) {
 		uc(world, unit).abilities += 1;
 	} else {
-		unit.mana = Math::max(0.0, unit.mana - get_effective_mana_cost(unit));
+		unit.mana = Math::max(0.0, unit.mana - (unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost));
 	}
 	UnitStateCold &ucast = uc(world, unit);
 	ucast.casting_kind = action_kind;
@@ -134,13 +134,13 @@ void resolve_cast(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks
 		return;
 	}
 	if (action_kind == sn_ability()) {
-		unit.ability_cooldown = get_effective_ability_cd(unit);
+		unit.ability_cooldown = unit.stats_dirty ? get_effective_ability_cd(unit) : unit.cached_ability_cd;
 	}
 	if (effect_uses_projectile(effect) && (target == nullptr || !target->alive || target->stealth_remaining > 0.0)) {
 		if (action_kind == sn_ability()) {
 			unit.ability_cooldown = 0.0;
 		} else if (action_kind == sn_ultimate()) {
-			const double effective_mana_cost = get_effective_mana_cost(unit);
+			const double effective_mana_cost = unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost;
 			unit.mana = Math::min(effective_mana_cost, unit.mana + effective_mana_cost);
 		}
 		return;
@@ -168,9 +168,9 @@ void perform_auto_attack(
 	}
 	uc(world, unit).auto_attacks += 1;
 	unit.attack_count += 1;
-	double damage = get_effective_attack_damage(unit);
+	double damage = unit.stats_dirty ? get_effective_attack_damage(unit) : unit.cached_attack_damage;
 	damage = damage::apply_attack_modifiers(world, host, unit, target, distance, damage);
-	if (get_effective_attack_range(unit) > RANGED_THRESHOLD) {
+	if ((unit.stats_dirty ? get_effective_attack_range(unit) : unit.cached_attack_range) > RANGED_THRESHOLD) {
 		ProjectileState projectile = make_auto_projectile(unit, target, damage);
 		if (host.next_projectile_id != nullptr) {
 			projectile.projectile_id = (*host.next_projectile_id)++;
@@ -182,7 +182,7 @@ void perform_auto_attack(
 		const double dealt = damage::apply_damage(world, host, unit, target, damage, sn_physical(), sn_auto(), context);
 		emit_trace(host, StringName("auto_melee"), unit.instance_id, target.instance_id, dealt);
 		run_post_attack_effects(world, host, unit, target, dealt, context);
-		const double life_steal = get_effective_life_steal(unit);
+		const double life_steal = unit.stats_dirty ? get_effective_life_steal(unit) : unit.cached_life_steal;
 		if (life_steal > 0.0) {
 			const double old_hp = unit.hp;
 			const double heal_amount = dealt * life_steal;
@@ -191,12 +191,12 @@ void perform_auto_attack(
 			run_post_heal_effects(world, host, unit, unit, heal_amount, heal_gained, context);
 		}
 	}
-	const double mana_gain = get_effective_mana_per_attack(unit);
+	const double mana_gain = unit.stats_dirty ? get_effective_mana_per_attack(unit) : unit.cached_mana_per_attack;
 	if (mana_gain > 0.0) {
-		const double mana_cost = get_effective_mana_cost(unit);
+		const double mana_cost = unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost;
 		unit.mana = Math::min(mana_cost, unit.mana + mana_gain);
 	}
-	const double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
+	const double attack_speed = Math::max(0.0001, unit.stats_dirty ? get_effective_attack_speed(unit) : unit.cached_attack_speed);
 	unit.attack_cooldown = 1.0 / attack_speed;
 	unit.attack_period = unit.attack_cooldown;
 }

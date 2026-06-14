@@ -87,7 +87,7 @@ double score_enemy_target(
 		if ((attacker.is_tank_role || attacker.is_support_role) && enemy.target_id != 0) {
 			UnitState *targeted_ally = unit_by_id(world, enemy.target_id);
 			if (targeted_ally != nullptr && targeted_ally->alive && targeted_ally->team == attacker.team) {
-				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, get_effective_max_hp(*targeted_ally));
+				double ally_hp_ratio = targeted_ally->hp / Math::max(0.0001, targeted_ally->stats_dirty ? get_effective_max_hp(*targeted_ally) : targeted_ally->cached_max_hp);
 				double ally_missing_hp_factor = 1.0 - ally_hp_ratio;
 				score -= REACTIVE_PEEL_BONUS * ally_missing_hp_factor;
 			}
@@ -188,7 +188,7 @@ bool should_switch(
 			in_range = (dist <= effective_range_val);
 		}
 		if (in_range) {
-			double attack_speed = Math::max(0.0001, get_effective_attack_speed(unit));
+			double attack_speed = Math::max(0.0001, unit.stats_dirty ? get_effective_attack_speed(unit) : unit.cached_attack_speed);
 			double swing = 1.0 / attack_speed;
 			double commit_window = Math::min(SWITCH_COMMIT_WINDOW_SECONDS, swing * SWITCH_COMMIT_WINDOW_SWING_FRACTION);
 			if (unit.attack_cooldown <= commit_window) {

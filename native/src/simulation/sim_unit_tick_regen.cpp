@@ -30,7 +30,7 @@ void apply_sudden_death_overtime(SimWorld &world, const UnitTickMatchState &matc
 			continue;
 		}
 
-		const double max_hp = get_effective_max_hp(overtime_unit);
+		const double max_hp = overtime_unit.stats_dirty ? get_effective_max_hp(overtime_unit) : overtime_unit.cached_max_hp;
 		const double damage = 1 + max_hp * damage_rate;
 
 		const double shield_before = overtime_unit.shield;

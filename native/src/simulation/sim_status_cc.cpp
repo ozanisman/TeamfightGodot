@@ -41,7 +41,7 @@ void apply_stun(SimWorld &world, UnitState &source, UnitState &target, double du
 	if (duration <= 0.0) {
 		return;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_duration = duration * (1.0 - tenacity);
 	if (effective_duration <= 0.0) {
 		return;
@@ -56,7 +56,7 @@ void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double sl
 	if (duration <= 0.0 || slow_percentage <= 0.0) {
 		return;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_duration = duration * (1.0 - tenacity);
 	if (effective_duration <= 0.0) {
 		return;
@@ -75,7 +75,7 @@ void apply_root(SimWorld &world, UnitState &source, UnitState &target, double du
 	if (duration <= 0.0) {
 		return;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_duration = duration * (1.0 - tenacity);
 	if (effective_duration <= 0.0) {
 		return;
@@ -89,7 +89,7 @@ void apply_silence(SimWorld &world, UnitState &source, UnitState &target, double
 	if (duration <= 0.0) {
 		return;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_duration = duration * (1.0 - tenacity);
 	if (effective_duration <= 0.0) {
 		return;
@@ -111,7 +111,7 @@ void apply_disarm(SimWorld &world, UnitState &source, UnitState &target, double 
 	if (duration <= 0.0) {
 		return;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_duration = duration * (1.0 - tenacity);
 	if (effective_duration <= 0.0) {
 		return;

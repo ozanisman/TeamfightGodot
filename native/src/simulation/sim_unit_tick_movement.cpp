@@ -20,9 +20,9 @@ void separation(SimWorld &world, UnitState &unit, UnitTickProfileCounters &profi
 
 	SimProfileAccScope _uu_sep(profile_sim, profile.uu_separation);
 	if (unit.stun_remaining <= 0.0 && unit.root_remaining <= 0.0) {
-		const double move_speed = get_effective_move_speed(unit) * movement_speed_multiplier(world, unit);
+		const double move_speed = (unit.stats_dirty ? get_effective_move_speed(unit) : unit.cached_move_speed) * movement_speed_multiplier(world, unit);
 		if (move_speed > 0.0) {
-			const double attack_range = get_effective_attack_range(unit);
+			const double attack_range = unit.stats_dirty ? get_effective_attack_range(unit) : unit.cached_attack_range;
 			const double radius = attack_range > SEPARATION_RANGE_THRESHOLD ? SEPARATION_RADIUS_RANGED : SEPARATION_RADIUS_MELEE;
 			const double r2 = radius * radius;
 			const double threshold_r2 = 4.0 * r2;

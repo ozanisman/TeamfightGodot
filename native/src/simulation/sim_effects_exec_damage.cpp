@@ -38,9 +38,9 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 			if (effect.int1 != 0 && context.channel_accumulated_damage > 0.0) {
 				damage = context.channel_accumulated_damage * effect.scalar1;
 			} else {
-				damage = get_effective_max_hp(*damage_target) * effect.scalar0;  // max_hp_ratio
+				damage = (damage_target->stats_dirty ? get_effective_max_hp(*damage_target) : damage_target->cached_max_hp) * effect.scalar0;  // max_hp_ratio
 				damage += damage_target->hp * effect.scalar4;  // current_hp_ratio
-				damage += get_effective_attack_damage(source) * effect.scalar1;  // damage_ratio
+				damage += (source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage) * effect.scalar1;  // damage_ratio
 				damage += effect.scalar2;  // flat_amount
 			}
 			
@@ -65,7 +65,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 				
 				// Apply lifesteal for abilities with trigger_on_hit (excluding self-damage)
 				if (source.instance_id != damage_target->instance_id) {
-					double life_steal = get_effective_life_steal(source);
+					double life_steal = source.stats_dirty ? get_effective_life_steal(source) : source.cached_life_steal;
 					if (life_steal > 0.0) {
 						double old_hp = source.hp;
 						double heal_amount = dealt * life_steal;
@@ -84,7 +84,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 		{
 			Dictionary threshold_result;
 			threshold_result["success"] = true;
-			if (context.damage > get_effective_attack_damage(source) * effect.scalar0 && !effect.children.empty()) {
+			if (context.damage > (source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage) * effect.scalar0 && !effect.children.empty()) {
 				Dictionary child_result = execute_recursive(effect.children[0], context, world, host, hooks, match_host);
 				threshold_result["triggered"] = true;
 				merge_accumulated_results(threshold_result, child_result);
@@ -102,7 +102,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 				result["target_killed"] = false;
 				return result;
 			}
-			double attack_damage = get_effective_attack_damage(source);
+			double attack_damage = source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage;
 			int stacks = sim::stats_modifiers::consume_stat_stacks(source, effect.stat_name, effect.string1);
 			double base_ratio = effect.scalar0;
 			double stack_bonus = effect.scalar1;

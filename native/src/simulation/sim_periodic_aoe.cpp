@@ -207,7 +207,7 @@ void apply_aoe_taunt(SimWorld &world, UnitState &source, double radius, double d
 void apply_aoe_taunt_shape(SimWorld &world, UnitState &source, UnitState *target, const EffectRecord &effect, double duration, const SimHostCallbacks *host) {
 	record_aoe_shape_fx(host != nullptr ? host->viewer_hooks : nullptr, world, source, target, effect, StringName("aoe_taunt"));
 	for_each_enemy_in_aoe_shape(world, source, target, effect, 0, [&](UnitState &unit) {
-		const double tenacity = get_effective_tenacity(unit);
+		const double tenacity = unit.stats_dirty ? get_effective_tenacity(unit) : unit.cached_tenacity;
 		const double effective_duration = duration * (1.0 - tenacity);
 		if (effective_duration > 0.0) {
 			unit.taunt_target_id = source.instance_id;
@@ -271,8 +271,8 @@ double apply_aoe_damage_shape_per_target(
 	record_aoe_shape_fx(host.viewer_hooks, world, source, target, effect, StringName("aoe_damage"));
 	double total_damage = 0.0;
 	for_each_enemy_in_aoe_shape(world, source, target, effect, 0, [&](UnitState &unit) {
-		double target_damage = get_effective_max_hp(unit) * max_hp_ratio;
-		target_damage += get_effective_attack_damage(source) * damage_ratio;
+		double target_damage = (unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) * max_hp_ratio;
+		target_damage += (source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage) * damage_ratio;
 		target_damage += flat_amount;
 		if (splash_ratio != 1.0) {
 			target_damage *= splash_ratio;
@@ -287,7 +287,7 @@ bool apply_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source,
 	if (distance <= 0.0 || !target.alive) {
 		return false;
 	}
-	const double tenacity = get_effective_tenacity(target);
+	const double tenacity = target.stats_dirty ? get_effective_tenacity(target) : target.cached_tenacity;
 	const double effective_distance = distance * (1.0 - tenacity);
 	if (effective_distance <= EPSILON) {
 		return false;

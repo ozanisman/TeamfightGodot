@@ -26,7 +26,7 @@ double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double a
 		return 0.0;
 	}
 
-	const double max_hp = get_effective_max_hp(target);
+	const double max_hp = target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp;
 	const double old_hp = target.hp;
 	const double new_hp = allow_overheal ? old_hp + amount : Math::min(max_hp, old_hp + amount);
 
@@ -52,7 +52,7 @@ void restore_mana(SimWorld &world, UnitState &source, UnitState &target, double 
 	if (amount <= 0.0) {
 		return;
 	}
-	const double mana_cost = get_effective_mana_cost(target);
+	const double mana_cost = target.stats_dirty ? get_effective_mana_cost(target) : target.cached_mana_cost;
 	target.mana = Math::min(mana_cost, target.mana + amount);
 }
 

@@ -52,9 +52,9 @@ void apply_dot(
 		return;
 	}
 
-	const double source_attack_damage = get_effective_attack_damage(source);
+	const double source_attack_damage = source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage;
 	double damage_total = source_attack_damage * attack_damage_ratio;
-	damage_total += get_effective_max_hp(target) * max_hp_ratio;
+	damage_total += (target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp) * max_hp_ratio;
 	damage_total += flat_amount;
 
 	if (duration <= 0.0 || damage_total <= 0.0) {
@@ -178,9 +178,9 @@ void apply_hot(
 		return;
 	}
 
-	double heal_total = get_effective_max_hp(target) * max_hp_ratio;
+	double heal_total = (target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp) * max_hp_ratio;
 	heal_total += target.hp * current_hp_ratio;
-	heal_total += (get_effective_max_hp(target) - target.hp) * missing_hp_ratio;
+	heal_total += ((target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp) - target.hp) * missing_hp_ratio;
 	heal_total += flat_amount;
 
 	if (duration <= 0.0 || heal_total <= 0.0) {
@@ -311,8 +311,8 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 				if (effect.calculation_mode == StringName("dynamic")) {
 					UnitState *source = targeting::unit_by_id(world, effect.source_instance_id);
 					if (source != nullptr) {
-						double damage_total = get_effective_attack_damage(*source) * effect.total_attack_damage_ratio;
-						damage_total += get_effective_max_hp(unit) * effect.total_max_hp_ratio;
+						double damage_total = (source->stats_dirty ? get_effective_attack_damage(*source) : source->cached_attack_damage) * effect.total_attack_damage_ratio;
+						damage_total += (unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) * effect.total_max_hp_ratio;
 						damage_total += effect.total_flat_amount;
 						damage_per_tick = damage_total / (tick_count + 1.0);
 					} else {
@@ -328,9 +328,9 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 				if (effect.calculation_mode == StringName("dynamic")) {
 					UnitState *source = targeting::unit_by_id(world, effect.source_instance_id);
 					if (source != nullptr) {
-						double heal_total = get_effective_max_hp(unit) * effect.total_max_hp_ratio;
+						double heal_total = (unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) * effect.total_max_hp_ratio;
 						heal_total += unit.hp * effect.total_current_hp_ratio;
-						heal_total += (get_effective_max_hp(unit) - unit.hp) * effect.total_missing_hp_ratio;
+						heal_total += ((unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) - unit.hp) * effect.total_missing_hp_ratio;
 						heal_total += effect.total_flat_amount;
 						heal_per_tick = heal_total / (tick_count + 1.0);
 					} else {

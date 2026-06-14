@@ -30,6 +30,8 @@ double cell_size() {
 	return (WORLD_BOUNDARY_MAX - WORLD_BOUNDARY_MIN) / double(SPATIAL_GRID_DIM);
 }
 
+static constexpr double INVALIDATION_THRESHOLD = 0.5 * ((WORLD_BOUNDARY_MAX - WORLD_BOUNDARY_MIN) / double(SPATIAL_GRID_DIM));
+
 int flat_index(double x, double y) {
 	double cs = cell_size();
 	int ix = int(Math::floor((x - WORLD_BOUNDARY_MIN) / cs));
@@ -196,6 +198,7 @@ void invalidate_spatial_bucket_fill(SimWorld &world) {
 	}
 	world.spatial_fill_cache->valid = false;
 	world.spatial_fill_cache->indices = nullptr;
+	world.spatial_fill_cache->prev_positions.clear();
 }
 
 void on_unit_position_changed(SimWorld &world, const UnitState &unit) {
@@ -203,9 +206,23 @@ void on_unit_position_changed(SimWorld &world, const UnitState &unit) {
 		return;
 	}
 	const int64_t unit_index = static_cast<int64_t>(&unit - world.units.data());
-	if (unit_index_in_cached_indices(*world.spatial_fill_cache, unit_index)) {
+	if (!unit_index_in_cached_indices(*world.spatial_fill_cache, unit_index)) {
+		return;
+	}
+
+	auto &prev_pos = world.spatial_fill_cache->prev_positions[unit_index];
+	if (prev_pos.first == 0.0 && prev_pos.second == 0.0) {
+		invalidate_spatial_bucket_fill(world);
+		return;
+	}
+
+	double dx = unit.pos_x - prev_pos.first;
+	double dy = unit.pos_y - prev_pos.second;
+	double dist_sq = dx * dx + dy * dy;
+	if (dist_sq >= INVALIDATION_THRESHOLD * INVALIDATION_THRESHOLD) {
 		invalidate_spatial_bucket_fill(world);
 	}
+	prev_pos = {unit.pos_x, unit.pos_y};
 }
 
 void fill_buckets_for_indices_cached(SimWorld &world, const std::vector<int64_t> &indices) {
@@ -232,6 +249,9 @@ void fill_buckets_for_indices(SimWorld &world, const std::vector<int64_t> &indic
 		}
 		int fi = flat_index(u.pos_x, u.pos_y);
 		(*world.spatial_buckets)[static_cast<size_t>(fi)].push_back(idx);
+		if (world.spatial_fill_cache != nullptr) {
+			world.spatial_fill_cache->prev_positions[idx] = {u.pos_x, u.pos_y};
+		}
 	}
 }
 

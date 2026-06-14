@@ -19,6 +19,7 @@ namespace sim {
 struct SpatialBucketFillCache {
 	const std::vector<int64_t> *indices = nullptr;
 	bool valid = false;
+	std::unordered_map<int64_t, std::pair<double, double>> prev_positions;
 };
 
 struct SimWorld {

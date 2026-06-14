@@ -10,6 +10,12 @@ User-run benchmarks tracking simulation performance across git commits.
 
 ## Entries
 
+### 2026-06-13 - 608335e
+- **Commit**: 608335e
+- **Matches/sec**: ~454
+- **Configuration**: 2000 matches, 8 worker thread, team size 5
+- **Context**: Hot/cold/rare data split for UnitState (telemetry fields moved to UnitStateRare)
+
 ### 2026-06-13 - e88a398
 - **Commit**: e88a398
 - **Matches/sec**: ~450

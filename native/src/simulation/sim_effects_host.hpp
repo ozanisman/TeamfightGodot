@@ -25,6 +25,7 @@ struct SimMatchHost {
 struct EffectExecBindings {
 	std::vector<UnitState> *units = nullptr;
 	std::vector<UnitStateCold> *unit_cold = nullptr;
+	std::vector<UnitStateRare> *unit_rare = nullptr;
 	std::unordered_map<int64_t, int64_t> *unit_index_map = nullptr;
 	std::vector<TargetingFrameEntry> *targeting_frame = nullptr;
 	TickContext *tick_ctx = nullptr;

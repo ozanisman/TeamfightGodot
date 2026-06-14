@@ -26,6 +26,10 @@ struct CoordinatorHostAccess {
 	static UnitStateCold &unit_cold_at(TeamfightSimulationCore *core, size_t index);
 	static UnitStateCold &uc(TeamfightSimulationCore *core, UnitState &unit);
 	static const UnitStateCold &uc(TeamfightSimulationCore *core, const UnitState &unit);
+	static std::vector<UnitStateRare> &unit_rare(TeamfightSimulationCore *core);
+	static UnitStateRare &unit_rare_at(TeamfightSimulationCore *core, size_t index);
+	static UnitStateRare &ur(TeamfightSimulationCore *core, UnitState &unit);
+	static const UnitStateRare &ur(TeamfightSimulationCore *core, const UnitState &unit);
 };
 
 void sim_host_handle_death(void *user_data, UnitState &killer, UnitState &target);

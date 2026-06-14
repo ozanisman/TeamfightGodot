@@ -20,6 +20,7 @@ SimWorld make_world(MatchLoopState &state) {
 	return SimWorld(
 			state.units,
 			state.unit_cold,
+			state.unit_rare,
 			state.unit_index_map,
 			state.targeting_frame,
 			state.tick_ctx,

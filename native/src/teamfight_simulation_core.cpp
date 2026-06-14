@@ -31,6 +31,7 @@ sim::SimWorld TeamfightSimulationCore::_sim_world() const {
 	return sim::SimWorld(
 			self._units,
 			self._unit_cold,
+			self._unit_rare,
 			self._unit_index_map,
 			self._targeting_frame,
 			self._tick_ctx,
@@ -48,6 +49,7 @@ sim::match::MatchLoopState TeamfightSimulationCore::_match_loop_state() {
 	sim::match::MatchLoopState state{
 		_units,
 		_unit_cold,
+		_unit_rare,
 		_unit_index_map,
 		_targeting_frame,
 		_tick_ctx,
@@ -81,6 +83,14 @@ sim::UnitStateCold &TeamfightSimulationCore::_uc(sim::UnitState &u) {
 
 const sim::UnitStateCold &TeamfightSimulationCore::_uc(const sim::UnitState &u) const {
 	return _unit_cold[static_cast<size_t>(&u - _units.data())];
+}
+
+sim::UnitStateRare &TeamfightSimulationCore::_ur(sim::UnitState &u) {
+	return _unit_rare[static_cast<size_t>(&u - _units.data())];
+}
+
+const sim::UnitStateRare &TeamfightSimulationCore::_ur(const sim::UnitState &u) const {
+	return _unit_rare[static_cast<size_t>(&u - _units.data())];
 }
 
 TeamfightSimulationCore::TeamfightSimulationCore() {
@@ -830,11 +840,11 @@ sim::match::MatchSnapshot TeamfightSimulationCore::_match_snapshot() const {
 }
 
 Dictionary TeamfightSimulationCore::_build_summary() {
-	return sim::match::build_summary(_match_snapshot(), _units, _unit_cold, _summary_cache, _summary_unit_stats);
+	return sim::match::build_summary(_match_snapshot(), _units, _unit_cold, _unit_rare, _summary_cache, _summary_unit_stats);
 }
 
 Dictionary TeamfightSimulationCore::_build_stats_summary() {
-	return sim::match::build_stats_summary(_match_snapshot(), _units, _unit_cold);
+	return sim::match::build_stats_summary(_match_snapshot(), _units, _unit_cold, _unit_rare);
 }
 
 void TeamfightSimulationCore::run_generated_matches_simulation_only(int64_t base_seed, int64_t batch_count, int64_t team_size) {

@@ -103,7 +103,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			spawn_spec.clear();
 			spawn_spec["unit_id"] = selected_archetype;
 			sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
-			std::pair<UnitState, UnitStateCold> built =
+			sim::unit_builder::BuiltUnit built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_player(), next_instance_id);
 			const int64_t unit_index = sim::match_roster::register_built_unit(
 					w, roster, std::move(built), sn_player(), next_instance_id);
@@ -128,7 +128,7 @@ void run_generated_matches_simulation_only(TeamfightSimulationCore &core, int64_
 			spawn_spec.clear();
 			spawn_spec["unit_id"] = selected_archetype;
 			sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
-			std::pair<UnitState, UnitStateCold> built =
+			sim::unit_builder::BuiltUnit built =
 					sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, sn_enemy(), next_instance_id);
 			const int64_t unit_index = sim::match_roster::register_built_unit(
 					w, roster, std::move(built), sn_enemy(), next_instance_id);

@@ -50,28 +50,28 @@ Dictionary make_role_entry() {
 	return entry;
 }
 
-void accumulate_common(Dictionary &entry, const UnitStateCold &c) {
-	entry["dmg_d"] = double(entry["dmg_d"]) + c.damage_dealt;
-	entry["dmg_r"] = double(entry["dmg_r"]) + c.damage_received;
-	entry["dmg_m"] = double(entry["dmg_m"]) + c.damage_mitigated;
-	entry["heal"] = double(entry["heal"]) + c.healing_done;
-	entry["heal_auto"] = double(entry["heal_auto"]) + c.healing_done_auto;
-	entry["heal_ability"] = double(entry["heal_ability"]) + c.healing_done_ability;
-	entry["heal_ultimate"] = double(entry["heal_ultimate"]) + c.healing_done_ultimate;
-	entry["heal_passive"] = double(entry["heal_passive"]) + c.healing_done_passive;
-	entry["shield"] = double(entry["shield"]) + c.shielding_done;
-	entry["shield_auto"] = double(entry["shield_auto"]) + c.shielding_done_auto;
-	entry["shield_ability"] = double(entry["shield_ability"]) + c.shielding_done_ability;
-	entry["shield_ultimate"] = double(entry["shield_ultimate"]) + c.shielding_done_ultimate;
-	entry["shield_passive"] = double(entry["shield_passive"]) + c.shielding_done_passive;
-	entry["stuns"] = int64_t(entry["stuns"]) + c.stuns;
-	entry["d_auto"] = double(entry["d_auto"]) + c.damage_dealt_auto;
-	entry["d_ab"] = double(entry["d_ab"]) + c.damage_dealt_ability;
-	entry["d_ult"] = double(entry["d_ult"]) + c.damage_dealt_ultimate;
-	entry["d_passive"] = double(entry["d_passive"]) + c.damage_dealt_passive;
+void accumulate_common(Dictionary &entry, const UnitStateRare &r) {
+	entry["dmg_d"] = double(entry["dmg_d"]) + r.damage_dealt;
+	entry["dmg_r"] = double(entry["dmg_r"]) + r.damage_received;
+	entry["dmg_m"] = double(entry["dmg_m"]) + r.damage_mitigated;
+	entry["heal"] = double(entry["heal"]) + r.healing_done;
+	entry["heal_auto"] = double(entry["heal_auto"]) + r.healing_done_auto;
+	entry["heal_ability"] = double(entry["heal_ability"]) + r.healing_done_ability;
+	entry["heal_ultimate"] = double(entry["heal_ultimate"]) + r.healing_done_ultimate;
+	entry["heal_passive"] = double(entry["heal_passive"]) + r.healing_done_passive;
+	entry["shield"] = double(entry["shield"]) + r.shielding_done;
+	entry["shield_auto"] = double(entry["shield_auto"]) + r.shielding_done_auto;
+	entry["shield_ability"] = double(entry["shield_ability"]) + r.shielding_done_ability;
+	entry["shield_ultimate"] = double(entry["shield_ultimate"]) + r.shielding_done_ultimate;
+	entry["shield_passive"] = double(entry["shield_passive"]) + r.shielding_done_passive;
+	entry["stuns"] = int64_t(entry["stuns"]) + r.stuns;
+	entry["d_auto"] = double(entry["d_auto"]) + r.damage_dealt_auto;
+	entry["d_ab"] = double(entry["d_ab"]) + r.damage_dealt_ability;
+	entry["d_ult"] = double(entry["d_ult"]) + r.damage_dealt_ultimate;
+	entry["d_passive"] = double(entry["d_passive"]) + r.damage_dealt_passive;
 }
 
-void add_record(Dictionary &entry, const UnitStateCold &c, bool won, bool draw, bool include_kda) {
+void add_record(Dictionary &entry, const UnitStateRare &r, bool won, bool draw, bool include_kda) {
 	if (draw) {
 		entry["d"] = int64_t(entry["d"]) + 1;
 	} else if (won) {
@@ -79,22 +79,22 @@ void add_record(Dictionary &entry, const UnitStateCold &c, bool won, bool draw, 
 	} else {
 		entry["l"] = int64_t(entry["l"]) + 1;
 	}
-	accumulate_common(entry, c);
+	accumulate_common(entry, r);
 	if (include_kda) {
-		entry["kills"] = int64_t(entry["kills"]) + c.kills;
-		entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;
-		entry["assists"] = int64_t(entry["assists"]) + c.assists;
+		entry["kills"] = int64_t(entry["kills"]) + r.kills;
+		entry["deaths"] = int64_t(entry["deaths"]) + r.deaths;
+		entry["assists"] = int64_t(entry["assists"]) + r.assists;
 	}
 }
 
 void accumulate_common_with_minions(
 		Dictionary &entry,
-		const UnitStateCold &c,
+		const UnitStateRare &r,
 		int64_t instance_id,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated) {
-	accumulate_common(entry, c);
+	accumulate_common(entry, r);
 	auto it_dealt = summoner_minion_damage_dealt.find(instance_id);
 	auto it_received = summoner_minion_damage_received.find(instance_id);
 	auto it_mitigated = summoner_minion_damage_mitigated.find(instance_id);
@@ -105,7 +105,7 @@ void accumulate_common_with_minions(
 
 void add_record_with_minions(
 		Dictionary &entry,
-		const UnitStateCold &c,
+		const UnitStateRare &r,
 		int64_t instance_id,
 		bool won,
 		bool draw,
@@ -120,11 +120,11 @@ void add_record_with_minions(
 	} else {
 		entry["l"] = int64_t(entry["l"]) + 1;
 	}
-	accumulate_common_with_minions(entry, c, instance_id, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
+	accumulate_common_with_minions(entry, r, instance_id, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 	if (include_kda) {
-		entry["kills"] = int64_t(entry["kills"]) + c.kills;
-		entry["deaths"] = int64_t(entry["deaths"]) + c.deaths;
-		entry["assists"] = int64_t(entry["assists"]) + c.assists;
+		entry["kills"] = int64_t(entry["kills"]) + r.kills;
+		entry["deaths"] = int64_t(entry["deaths"]) + r.deaths;
+		entry["assists"] = int64_t(entry["assists"]) + r.assists;
 	}
 }
 

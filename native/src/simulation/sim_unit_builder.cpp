@@ -138,7 +138,7 @@ EffectRecord compile_effect(const UnitBuilderHost &host, const Dictionary &effec
 
 } // namespace
 
-std::pair<UnitState, UnitStateCold> build_unit(
+BuiltUnit build_unit(
 		const UnitBuilderHost &host,
 		const Dictionary &spawn_spec,
 		const StringName &team,
@@ -339,42 +339,47 @@ std::pair<UnitState, UnitStateCold> build_unit(
 	STAT_LIST
 #undef X
 	unit.stats_dirty = true;
-	cold.damage_dealt = 0.0;
-	cold.damage_dealt_auto = 0.0;
-	cold.damage_dealt_ability = 0.0;
-	cold.damage_dealt_ultimate = 0.0;
-	cold.damage_dealt_passive = 0.0;
-	cold.damage_received = 0.0;
-	cold.damage_mitigated = 0.0;
-	cold.healing_done = 0.0;
-	cold.healing_done_auto = 0.0;
-	cold.healing_done_ability = 0.0;
-	cold.healing_done_ultimate = 0.0;
-	cold.healing_done_passive = 0.0;
-	cold.shielding_done = 0.0;
-	cold.shielding_done_auto = 0.0;
-	cold.shielding_done_ability = 0.0;
-	cold.shielding_done_ultimate = 0.0;
-	cold.shielding_done_passive = 0.0;
-	cold.auto_attacks = 0;
-	cold.abilities = 0;
-	cold.ultimates = 0;
-	cold.stuns = 0;
-	cold.kills = 0;
-	cold.deaths = 0;
-	cold.assists = 0;
+	UnitStateRare rare;
+	rare.damage_dealt = 0.0;
+	rare.damage_dealt_auto = 0.0;
+	rare.damage_dealt_ability = 0.0;
+	rare.damage_dealt_ultimate = 0.0;
+	rare.damage_dealt_passive = 0.0;
+	rare.damage_received = 0.0;
+	rare.damage_mitigated = 0.0;
+	rare.healing_done = 0.0;
+	rare.healing_done_auto = 0.0;
+	rare.healing_done_ability = 0.0;
+	rare.healing_done_ultimate = 0.0;
+	rare.healing_done_passive = 0.0;
+	rare.shielding_done = 0.0;
+	rare.shielding_done_auto = 0.0;
+	rare.shielding_done_ability = 0.0;
+	rare.shielding_done_ultimate = 0.0;
+	rare.shielding_done_passive = 0.0;
+	rare.auto_attacks = 0;
+	rare.abilities = 0;
+	rare.ultimates = 0;
+	rare.stuns = 0;
+	rare.kills = 0;
+	rare.deaths = 0;
+	rare.assists = 0;
+	rare.damage_sources.clear();
+	rare.recent_benefactors.clear();
+	rare.last_hit_time = 0.0;
+	rare.minion_damage_dealt = 0.0;
+	rare.minion_damage_received = 0.0;
+	rare.minion_damage_mitigated = 0.0;
+
 	unit.taunt_target_id = 0;
 	unit.taunt_remaining = 0.0;
 	unit.forced_target_id = 0;
 	unit.forced_target_remaining = 0.0;
 	cold.forced_target_kind = StringName();
-	cold.damage_sources.clear();
-	cold.recent_benefactors.clear();
-	cold.last_hit_time = 0.0;
 	std::fill(cold.on_tick_effect_accumulators.begin(), cold.on_tick_effect_accumulators.end(), 0.0);
 	unit.regen_accumulator = 0.0;
 	host.finalize_reflect_passives(host.user_data, unit, cold);
-	return { unit, std::move(cold) };
+	return { unit, std::move(cold), std::move(rare) };
 }
 
 } // namespace unit_builder

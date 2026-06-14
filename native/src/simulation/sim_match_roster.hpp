@@ -30,7 +30,7 @@ void remove_alive_index(SimWorld &world, MatchRosterState &state, const StringNa
 int64_t register_built_unit(
 		SimWorld &world,
 		MatchRosterState &state,
-		std::pair<UnitState, UnitStateCold> built,
+		unit_builder::BuiltUnit built,
 		const StringName &team,
 		int64_t instance_id);
 

@@ -24,8 +24,8 @@ const godot::StringName &sn_stealth();
 const godot::StringName &sn_stun();
 const godot::StringName &sn_reflect();
 
-void record_shielding_by_action_kind(UnitStateCold &source_cold, double amount, const godot::StringName &action_kind);
-void record_healing_by_action_kind(UnitStateCold &source_cold, double gained, const godot::StringName &action_kind);
+void record_shielding_by_action_kind(UnitStateRare &source_rare, double amount, const godot::StringName &action_kind);
+void record_healing_by_action_kind(UnitStateRare &source_rare, double gained, const godot::StringName &action_kind);
 void record_benefactor(SimWorld &world, UnitState &source, UnitState &target);
 
 EffectRecord make_circle_self_aoe(double radius);

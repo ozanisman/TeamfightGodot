@@ -82,6 +82,14 @@ UnitStateCold &GeneratedMatchHost::uc(TeamfightSimulationCore *core, UnitState &
 	return CoordinatorHostAccess::uc(core, unit);
 }
 
+UnitStateRare &GeneratedMatchHost::unit_rare_at(TeamfightSimulationCore *core, size_t index) {
+	return CoordinatorHostAccess::unit_rare_at(core, index);
+}
+
+UnitStateRare &GeneratedMatchHost::ur(TeamfightSimulationCore *core, UnitState &unit) {
+	return CoordinatorHostAccess::ur(core, unit);
+}
+
 StringName &GeneratedMatchHost::winner_team(TeamfightSimulationCore *core) {
 	return core->_winner_team;
 }

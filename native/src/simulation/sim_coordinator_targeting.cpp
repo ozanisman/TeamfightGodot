@@ -79,24 +79,24 @@ sim::UnitState *TeamfightSimulationCore::_select_ally_target(sim::UnitState &uni
 
 void TeamfightSimulationCore::_prune_assist_window(sim::UnitState &unit) {
 	const double cutoff = _time - sim::ASSIST_WINDOW;
-	sim::UnitStateCold &c = _uc(unit);
+	sim::UnitStateRare &r = _ur(unit);
 	std::vector<int64_t> remove_ids;
-	remove_ids.reserve(c.damage_sources.size());
-	for (const auto &entry : c.damage_sources) {
+	remove_ids.reserve(r.damage_sources.size());
+	for (const auto &entry : r.damage_sources) {
 		if (entry.second.last_time <= cutoff) {
 			remove_ids.push_back(entry.first);
 		}
 	}
 	for (int64_t id : remove_ids) {
-		c.damage_sources.erase(id);
+		r.damage_sources.erase(id);
 	}
 	remove_ids.clear();
-	for (const auto &entry : c.recent_benefactors) {
+	for (const auto &entry : r.recent_benefactors) {
 		if (entry.second <= cutoff) {
 			remove_ids.push_back(entry.first);
 		}
 	}
 	for (int64_t id : remove_ids) {
-		c.recent_benefactors.erase(id);
+		r.recent_benefactors.erase(id);
 	}
 }

@@ -14,7 +14,7 @@ void add_shield(SimWorld &world, UnitState &source, UnitState &target, double am
 		return;
 	}
 	target.shield += amount;
-	record_shielding_by_action_kind(uc(world, source), amount, action_kind);
+	record_shielding_by_action_kind(ur(world, source), amount, action_kind);
 	record_benefactor(world, source, target);
 	if (amount > 1e-9 && host != nullptr && host->viewer_record_shield_fx != nullptr) {
 		host->viewer_record_shield_fx(host->user_data, target, amount);
@@ -34,7 +34,7 @@ double heal_unit(SimWorld &world, UnitState &source, UnitState &target, double a
 	const double gained = new_hp - old_hp;
 
 	if (gained > 1e-9) {
-		record_healing_by_action_kind(uc(world, source), gained, action_kind);
+		record_healing_by_action_kind(ur(world, source), gained, action_kind);
 		record_benefactor(world, source, target);
 		if (host != nullptr && host->viewer_record_heal_fx != nullptr) {
 			host->viewer_record_heal_fx(host->user_data, target, gained);

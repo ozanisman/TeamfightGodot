@@ -139,6 +139,8 @@ public:
 	void _sync_targeting_frame_unit(const sim::UnitState &unit);
 	sim::UnitStateCold &_uc(sim::UnitState &u);
 	const sim::UnitStateCold &_uc(const sim::UnitState &u) const;
+	sim::UnitStateRare &_ur(sim::UnitState &u);
+	const sim::UnitStateRare &_ur(const sim::UnitState &u) const;
 
 	sim::SimWorld _sim_world() const;
 	struct CoordinatorMatchContext {
@@ -222,6 +224,7 @@ private:
 	/// `_uc(u)` is only valid when `u` references an element stored in `_units` (never a stack copy of `UnitState`).
 	std::vector<sim::UnitState> _units;
 	std::vector<sim::UnitStateCold> _unit_cold;
+	std::vector<sim::UnitStateRare> _unit_rare;
 
 public:
 	TeamfightSimulationCore();

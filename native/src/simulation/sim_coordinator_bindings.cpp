@@ -62,6 +62,7 @@ void TeamfightSimulationCore::_refresh_match_context() {
 void TeamfightSimulationCore::_bind_effect_exec_bindings() {
 	_effect_exec_bindings.units = &_units;
 	_effect_exec_bindings.unit_cold = &_unit_cold;
+	_effect_exec_bindings.unit_rare = &_unit_rare;
 	_effect_exec_bindings.unit_index_map = &_unit_index_map;
 	_effect_exec_bindings.targeting_frame = &_targeting_frame;
 	_effect_exec_bindings.tick_ctx = &_tick_ctx;

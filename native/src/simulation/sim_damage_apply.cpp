@@ -66,8 +66,8 @@ double apply_damage(
 	target.shield = Math::max(0.0, shield_before - absorbed);
 	const double hp_loss = Math::max(0.0, final_damage - absorbed);
 	
-	uc(world, target).damage_received += final_damage;
-	uc(world, target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
+	ur(world, target).damage_received += final_damage;
+	ur(world, target).damage_mitigated += Math::max(0.0, pre_res - final_damage);
 	target.hp = Math::max(0.0, target.hp - hp_loss);
 	
 	const double max_hp = target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp;
@@ -78,20 +78,20 @@ double apply_damage(
 		host.sync_targeting_frame_unit(host.user_data, target);
 	}
 	if (source.instance_id != target.instance_id) {
-		uc(world, source).damage_dealt += final_damage;
+		ur(world, source).damage_dealt += final_damage;
 		if (action_is_auto) {
-			uc(world, source).damage_dealt_auto += final_damage;
+			ur(world, source).damage_dealt_auto += final_damage;
 		} else if (action_is_ability) {
-			uc(world, source).damage_dealt_ability += final_damage;
+			ur(world, source).damage_dealt_ability += final_damage;
 		} else if (action_is_ultimate) {
-			uc(world, source).damage_dealt_ultimate += final_damage;
+			ur(world, source).damage_dealt_ultimate += final_damage;
 		} else if (action_is_passive) {
-			uc(world, source).damage_dealt_passive += final_damage;
+			ur(world, source).damage_dealt_passive += final_damage;
 		}
 	}
 	if (hp_loss > 0.0 || absorbed > 0.0) {
 		touch_damage_source(world, target, source.instance_id, final_damage);
-		uc(world, target).last_hit_time = world.time;
+		ur(world, target).last_hit_time = world.time;
 	}
 	if (final_damage > 1e-9 && host.viewer_record_damage_fx != nullptr) {
 		host.viewer_record_damage_fx(host.user_data, source, target, final_damage, action_kind, damage_type);
@@ -205,7 +205,7 @@ void touch_damage_source(SimWorld &world, UnitState &target, int64_t source_id, 
 	if (source_id == target.instance_id) {
 		return;
 	}
-	UnitStateCold::DamageSourceEntry &entry = uc(world, target).damage_sources[source_id];
+	UnitStateRare::DamageSourceEntry &entry = ur(world, target).damage_sources[source_id];
 	entry.damage += incoming_damage;
 	entry.last_time = world.time;
 }
@@ -282,7 +282,7 @@ double trigger_ally_defense_effects(
 
 				if (mitigated_damage > 1e-9) {
 					const double mitigated_amount = redirected_damage - mitigated_damage;
-					uc(world, ally).damage_mitigated += mitigated_amount;
+					ur(world, ally).damage_mitigated += mitigated_amount;
 
 					EffectContext redirect_context = context;
 					redirect_context.source = &source;

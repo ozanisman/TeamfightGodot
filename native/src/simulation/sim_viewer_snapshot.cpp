@@ -53,19 +53,21 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 	root["enemy_kills"] = input.enemy_kills;
 	root["live_winner"] = String(input.live_winner);
 
-	if (input.units == nullptr || input.unit_cold == nullptr || input.projectiles == nullptr || input.viewer_fx == nullptr ||
+	if (input.units == nullptr || input.unit_cold == nullptr || input.unit_rare == nullptr || input.projectiles == nullptr || input.viewer_fx == nullptr ||
 			input.world == nullptr) {
 		return root;
 	}
 
 	const std::vector<UnitState> &units = *input.units;
 	const std::vector<UnitStateCold> &unit_cold = *input.unit_cold;
+	const std::vector<UnitStateRare> &unit_rare = *input.unit_rare;
 	const SimWorld &world = *input.world;
 
 	Array units_arr;
 	for (size_t i = 0; i < units.size(); ++i) {
 		const UnitState &u = units[i];
 		const UnitStateCold &uc = unit_cold[i];
+		const UnitStateRare &ur = unit_rare[i];
 		Dictionary d;
 		d["id"] = u.instance_id;
 		d["instance_id"] = u.instance_id;
@@ -124,14 +126,14 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 			d["target_distance"] = -1.0;
 		}
 		d["in_range"] = in_range;
-		d["kills"] = uc.kills;
-		d["deaths"] = uc.deaths;
-		d["assists"] = uc.assists;
+		d["kills"] = ur.kills;
+		d["deaths"] = ur.deaths;
+		d["assists"] = ur.assists;
 		d["respawn_timer"] = u.respawn_timer;
 		d["taunt_remaining"] = u.taunt_remaining;
-		d["damage_dealt"] = uc.damage_dealt;
-		d["healing_done"] = uc.healing_done;
-		d["damage_mitigated"] = uc.damage_mitigated;
+		d["damage_dealt"] = ur.damage_dealt;
+		d["healing_done"] = ur.healing_done;
+		d["damage_mitigated"] = ur.damage_mitigated;
 		d["role"] = String(uc.role_id);
 		units_arr.append(d);
 	}

@@ -47,7 +47,7 @@ void apply_stun(SimWorld &world, UnitState &source, UnitState &target, double du
 		return;
 	}
 	target.stun_remaining = Math::max(target.stun_remaining, effective_duration);
-	uc(world, source).stuns += 1;
+	ur(world, source).stuns += 1;
 }
 
 void apply_slow(SimWorld &world, UnitState &source, UnitState &target, double slow_percentage, double duration, const String &reason) {

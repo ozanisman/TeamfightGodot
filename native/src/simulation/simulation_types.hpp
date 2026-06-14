@@ -250,30 +250,12 @@ struct PassiveReflectEntry {
 	StringName action_kind; // "passive", "ability", "ultimate"
 };
 
-/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
-struct UnitStateCold {
+/// Rarely-accessed telemetry and damage tracking data (updated on events, not inner targeting loops).
+struct UnitStateRare {
 	struct DamageSourceEntry {
 		double damage = 0.0;
 		double last_time = 0.0;
 	};
-	StringName unit_id;
-	StringName role_id;
-	Dictionary stats;
-	std::array<std::vector<EffectRecord>, 10> passive_effects;
-	double on_ally_defense_radius = 0.0; // Radius for on_ally_defense triggers
-	// Passive AOE radius information for visualization
-	struct PassiveAoeInfo {
-		StringName passive_id;
-		double radius;
-	};
-	std::vector<PassiveAoeInfo> passive_aoe_info;
-	std::vector<PassiveReflectEntry> passive_reflect_entries;
-	EffectRecord ability_effect;
-	EffectRecord ultimate_effect;
-	double spawn_pos_x = 0.0;
-	double spawn_pos_y = 0.0;
-	StringName casting_kind;
-	EffectRecord casting_effect;
 	double damage_dealt = 0.0;
 	double damage_dealt_auto = 0.0;
 	double damage_dealt_ability = 0.0;
@@ -299,13 +281,35 @@ struct UnitStateCold {
 	int64_t deaths = 0;
 	int64_t assists = 0;
 	std::unordered_map<int64_t, DamageSourceEntry> damage_sources;
+	std::unordered_map<int64_t, double> recent_benefactors;
+	double last_hit_time = 0.0;
 
-	// Minion stats aggregated to this summoner
+	// Minion stats aggregated to this summoner (currently unused, kept for potential future use)
 	double minion_damage_dealt = 0.0;
 	double minion_damage_received = 0.0;
 	double minion_damage_mitigated = 0.0;
-	std::unordered_map<int64_t, double> recent_benefactors;
-	double last_hit_time = 0.0;
+};
+
+/// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
+struct UnitStateCold {
+	StringName unit_id;
+	StringName role_id;
+	Dictionary stats;
+	std::array<std::vector<EffectRecord>, 10> passive_effects;
+	double on_ally_defense_radius = 0.0; // Radius for on_ally_defense triggers
+	// Passive AOE radius information for visualization
+	struct PassiveAoeInfo {
+		StringName passive_id;
+		double radius;
+	};
+	std::vector<PassiveAoeInfo> passive_aoe_info;
+	std::vector<PassiveReflectEntry> passive_reflect_entries;
+	EffectRecord ability_effect;
+	EffectRecord ultimate_effect;
+	double spawn_pos_x = 0.0;
+	double spawn_pos_y = 0.0;
+	StringName casting_kind;
+	EffectRecord casting_effect;
 	int64_t respawn_slot_index = -1; // -1 = no assigned slot
 	StringName forced_target_kind;
 

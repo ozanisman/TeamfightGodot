@@ -19,18 +19,18 @@ namespace stats_internal {
 
 godot::Dictionary make_stat_entry();
 godot::Dictionary make_role_entry();
-void accumulate_common(godot::Dictionary &entry, const UnitStateCold &c);
-void add_record(godot::Dictionary &entry, const UnitStateCold &c, bool won, bool draw, bool include_kda);
+void accumulate_common(godot::Dictionary &entry, const UnitStateRare &r);
+void add_record(godot::Dictionary &entry, const UnitStateRare &r, bool won, bool draw, bool include_kda);
 void accumulate_common_with_minions(
 		godot::Dictionary &entry,
-		const UnitStateCold &c,
+		const UnitStateRare &r,
 		int64_t instance_id,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_dealt,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_received,
 		const std::unordered_map<int64_t, double> &summoner_minion_damage_mitigated);
 void add_record_with_minions(
 		godot::Dictionary &entry,
-		const UnitStateCold &c,
+		const UnitStateRare &r,
 		int64_t instance_id,
 		bool won,
 		bool draw,

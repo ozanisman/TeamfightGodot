@@ -91,7 +91,7 @@ bool start_cast(
 		target_ally = hooks.select_ally_target(hooks.user_data, unit);
 	}
 	if (action_kind == sn_ability()) {
-		uc(world, unit).abilities += 1;
+		ur(world, unit).abilities += 1;
 	} else {
 		unit.mana = Math::max(0.0, unit.mana - (unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost));
 	}
@@ -166,7 +166,7 @@ void perform_auto_attack(
 	if (target.stealth_remaining > 0.0) {
 		return;
 	}
-	uc(world, unit).auto_attacks += 1;
+	ur(world, unit).auto_attacks += 1;
 	unit.attack_count += 1;
 	double damage = unit.stats_dirty ? get_effective_attack_damage(unit) : unit.cached_attack_damage;
 	damage = damage::apply_attack_modifiers(world, host, unit, target, distance, damage);

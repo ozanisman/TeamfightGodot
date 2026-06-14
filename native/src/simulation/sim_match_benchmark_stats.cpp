@@ -62,7 +62,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 		spawn_spec.clear();
 		spawn_spec["unit_id"] = archetype;
 		sim::SimWorld w = GeneratedMatchHost::sim_world(&core);
-		std::pair<UnitState, UnitStateCold> built = sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, team, next_instance_id);
+		sim::unit_builder::BuiltUnit built = sim::unit_builder::build_unit(GeneratedMatchHost::unit_builder_host(&core), spawn_spec, team, next_instance_id);
 		const int64_t unit_index = sim::match_roster::register_built_unit(w, roster, std::move(built), team, next_instance_id);
 		if (unit_index < 0) {
 			return;
@@ -141,10 +141,10 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 		std::unordered_map<int64_t, double> summoner_minion_damage_mitigated;
 		for (UnitState &unit : GeneratedMatchHost::units(&core)) {
 			if (unit.summoner_instance_id != 0) {
-				const UnitStateCold &c = GeneratedMatchHost::uc(&core, unit);
-				summoner_minion_damage_dealt[unit.summoner_instance_id] += c.damage_dealt;
-				summoner_minion_damage_received[unit.summoner_instance_id] += c.damage_received;
-				summoner_minion_damage_mitigated[unit.summoner_instance_id] += c.damage_mitigated;
+				const UnitStateRare &r = GeneratedMatchHost::ur(&core, unit);
+				summoner_minion_damage_dealt[unit.summoner_instance_id] += r.damage_dealt;
+				summoner_minion_damage_received[unit.summoner_instance_id] += r.damage_received;
+				summoner_minion_damage_mitigated[unit.summoner_instance_id] += r.damage_mitigated;
 			}
 		}
 
@@ -177,6 +177,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 		Array enemy_roles;
 		for (UnitState &unit : GeneratedMatchHost::units(&core)) {
 			const UnitStateCold &c = GeneratedMatchHost::uc(&core, unit);
+			const UnitStateRare &r = GeneratedMatchHost::ur(&core, unit);
 			if (c.role_id == StringName("minion")) {
 				continue;
 			}
@@ -186,7 +187,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 				hero_entry = make_stat_entry();
 			}
 			const bool unit_won = GeneratedMatchHost::winner_team(&core) != StringName() && unit.team == GeneratedMatchHost::winner_team(&core);
-			add_record_with_minions(hero_entry, c, unit.instance_id, unit_won, draw, true, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
+			add_record_with_minions(hero_entry, r, unit.instance_id, unit_won, draw, true, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			heroes[hero] = hero_entry;
 
 			const String role = String(c.role_id);
@@ -194,7 +195,7 @@ Dictionary run_generated_matches_stats_partial(TeamfightSimulationCore &core, in
 			if (role_entry.is_empty()) {
 				role_entry = make_role_entry();
 			}
-			add_record_with_minions(role_entry, c, unit.instance_id, unit_won, draw, false, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
+			add_record_with_minions(role_entry, r, unit.instance_id, unit_won, draw, false, summoner_minion_damage_dealt, summoner_minion_damage_received, summoner_minion_damage_mitigated);
 			roles[role] = role_entry;
 
 			// Collect roles for matchup tracking

@@ -11,6 +11,7 @@ SimWorld MatchRuntimeState::sim_world() const {
 	return SimWorld(
 			units,
 			unit_cold,
+			unit_rare,
 			unit_index_map,
 			targeting_frame,
 			tick_ctx,
@@ -28,6 +29,7 @@ MatchLoopState MatchRuntimeState::match_loop_state() const {
 	MatchLoopState state{
 		units,
 		unit_cold,
+		unit_rare,
 		unit_index_map,
 		targeting_frame,
 		tick_ctx,
@@ -59,6 +61,7 @@ MatchRuntimeState runtime_from(TeamfightSimulationCore &core) {
 	return MatchRuntimeState{
 		CoordinatorHostAccess::units(&core),
 		CoordinatorHostAccess::unit_cold(&core),
+		CoordinatorHostAccess::unit_rare(&core),
 		core._unit_index_map,
 		core._targeting_frame,
 		core._tick_ctx,

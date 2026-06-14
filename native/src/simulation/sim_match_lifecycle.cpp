@@ -165,12 +165,12 @@ void handle_death(
 
 	target.alive = false;
 	target.respawn_timer = target.stats_dirty ? get_effective_respawn_time(target) : target.cached_respawn_time;
-	uc(world, target).deaths += 1;
+	ur(world, target).deaths += 1;
 	sync_targeting_frame_index(host, target_index, target);
 
 	periodic::clear_periodic_effects(world, target);
 
-	const std::unordered_map<int64_t, UnitStateCold::DamageSourceEntry> &damage_sources = uc(world, target).damage_sources;
+	const std::unordered_map<int64_t, UnitStateRare::DamageSourceEntry> &damage_sources = ur(world, target).damage_sources;
 	int64_t killer_id = 0;
 	double killer_damage = -1.0;
 	for (const auto &entry : damage_sources) {
@@ -205,7 +205,7 @@ void handle_death(
 		// Minion deaths do not count for KDA stats or trigger takedown effects
 		static const StringName sn_minion("minion");
 		if (uc(world, target).role_id != sn_minion) {
-			uc(world, *killer_unit).kills += 1;
+			ur(world, *killer_unit).kills += 1;
 		}
 		// Minion deaths do not count for team score
 		if (score.player_kills != nullptr && killer_unit->team == sn_player() && uc(world, target).role_id != sn_minion) {
@@ -235,7 +235,7 @@ void handle_death(
 				// Minion deaths do not count for assist stats
 				static const StringName sn_minion("minion");
 				if (uc(world, target).role_id != sn_minion) {
-					uc(world, *assist_unit).assists += 1;
+					ur(world, *assist_unit).assists += 1;
 				}
 				assist_ids.insert(source_id);
 				assist_damage_map[source_id] = entry.second.damage;
@@ -245,7 +245,7 @@ void handle_death(
 
 	const std::unordered_map<int64_t, double> empty_benefactors;
 	const std::unordered_map<int64_t, double> &recent_benefactors =
-			killer_unit != nullptr ? uc(world, *killer_unit).recent_benefactors : empty_benefactors;
+			killer_unit != nullptr ? ur(world, *killer_unit).recent_benefactors : empty_benefactors;
 	for (const auto &entry : recent_benefactors) {
 		const int64_t benefactor_id = entry.first;
 		const double benefactor_time = entry.second;
@@ -257,7 +257,7 @@ void handle_death(
 			// Minion deaths do not count for assist stats
 			static const StringName sn_minion("minion");
 			if (uc(world, target).role_id != sn_minion) {
-				uc(world, *assist_unit).assists += 1;
+				ur(world, *assist_unit).assists += 1;
 			}
 			assist_ids.insert(benefactor_id);
 			if (assist_damage_map.find(benefactor_id) == assist_damage_map.end()) {
@@ -327,9 +327,9 @@ void respawn_unit(
 
 	stats_modifiers::clear_all_stat_modifiers(unit);
 
-	cold.damage_sources.clear();
-	cold.recent_benefactors.clear();
-	cold.last_hit_time = 0.0;
+	ur(world, unit).damage_sources.clear();
+	ur(world, unit).recent_benefactors.clear();
+	ur(world, unit).last_hit_time = 0.0;
 	std::fill(cold.on_tick_effect_accumulators.begin(), cold.on_tick_effect_accumulators.end(), 0.0);
 	unit.respawned_this_tick = true;
 	unit.cast_resolved_this_tick = false;

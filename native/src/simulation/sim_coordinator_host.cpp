@@ -69,6 +69,22 @@ const UnitStateCold &CoordinatorHostAccess::uc(TeamfightSimulationCore *core, co
 	return core->_uc(unit);
 }
 
+std::vector<UnitStateRare> &CoordinatorHostAccess::unit_rare(TeamfightSimulationCore *core) {
+	return core->_unit_rare;
+}
+
+UnitStateRare &CoordinatorHostAccess::unit_rare_at(TeamfightSimulationCore *core, size_t index) {
+	return core->_unit_rare[index];
+}
+
+UnitStateRare &CoordinatorHostAccess::ur(TeamfightSimulationCore *core, UnitState &unit) {
+	return core->_ur(unit);
+}
+
+const UnitStateRare &CoordinatorHostAccess::ur(TeamfightSimulationCore *core, const UnitState &unit) {
+	return core->_ur(unit);
+}
+
 void sim_host_viewer_record_damage_fx(
 		void *user_data,
 		const UnitState &source,

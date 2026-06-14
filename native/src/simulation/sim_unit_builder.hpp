@@ -23,7 +23,13 @@ struct UnitBuilderHost {
 	Vector2 (*get_random_spawn_position)(void *user_data, const StringName &team, bool is_respawn) = nullptr;
 };
 
-std::pair<UnitState, UnitStateCold> build_unit(
+struct BuiltUnit {
+	UnitState unit;
+	UnitStateCold cold;
+	UnitStateRare rare;
+};
+
+BuiltUnit build_unit(
 		const UnitBuilderHost &host,
 		const Dictionary &spawn_spec,
 		const StringName &team,

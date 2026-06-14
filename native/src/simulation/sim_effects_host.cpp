@@ -11,6 +11,7 @@ SimWorld EffectExecBindings::make_world() const {
 	return SimWorld(
 			*units,
 			*unit_cold,
+			*unit_rare,
 			*unit_index_map,
 			*targeting_frame,
 			*tick_ctx,

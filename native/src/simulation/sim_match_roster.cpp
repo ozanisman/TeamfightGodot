@@ -57,16 +57,17 @@ void remove_alive_index(SimWorld &world, MatchRosterState &state, const StringNa
 int64_t register_built_unit(
 		SimWorld &world,
 		MatchRosterState &state,
-		std::pair<UnitState, UnitStateCold> built,
+		unit_builder::BuiltUnit built,
 		const StringName &team,
 		int64_t instance_id) {
-	if (built.first.instance_id == 0) {
+	if (built.unit.instance_id == 0) {
 		return -1;
 	}
 
 	const int64_t unit_index = int64_t(world.units.size());
-	world.units.push_back(std::move(built.first));
-	world.unit_cold.push_back(std::move(built.second));
+	world.units.push_back(std::move(built.unit));
+	world.unit_cold.push_back(std::move(built.cold));
+	world.unit_rare.push_back(std::move(built.rare));
 	world.unit_index_map[instance_id] = unit_index;
 	add_alive_index(world, state, team, unit_index);
 	world.targeting_frame.push_back(targeting::make_targeting_frame_entry(world.units[static_cast<size_t>(unit_index)]));
@@ -102,7 +103,7 @@ void append_team_units(
 		void *coerce_user_data) {
 	for (int64_t index = 0; index < spawn_specs.size(); ++index) {
 		Dictionary spawn_spec = coerce_spawn_spec(coerce_user_data, spawn_specs[index]);
-		std::pair<UnitState, UnitStateCold> built = unit_builder::build_unit(builder, spawn_spec, team, next_instance_id);
+		unit_builder::BuiltUnit built = unit_builder::build_unit(builder, spawn_spec, team, next_instance_id);
 		const int64_t unit_index = register_built_unit(world, state, std::move(built), team, next_instance_id);
 		if (unit_index < 0) {
 			continue;
@@ -125,9 +126,9 @@ void process_pending_spawns(
 	int64_t next_instance_id = state.max_instance_id + 1;
 
 	for (const PendingSpawn &pending : state.pending_spawns) {
-		std::pair<UnitState, UnitStateCold> built =
+		unit_builder::BuiltUnit built =
 				unit_builder::build_unit(builder, pending.spawn_spec, pending.team, next_instance_id);
-		if (built.first.instance_id == 0) {
+		if (built.unit.instance_id == 0) {
 			UtilityFunctions::push_error(vformat("Pending spawn failed: build_unit returned instance_id=0"));
 			continue;
 		}

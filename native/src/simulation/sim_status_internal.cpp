@@ -71,35 +71,35 @@ const StringName &sn_reflect() {
 	return s;
 }
 
-void record_shielding_by_action_kind(UnitStateCold &source_cold, double amount, const StringName &action_kind) {
-	source_cold.shielding_done += amount;
+void record_shielding_by_action_kind(UnitStateRare &source_rare, double amount, const StringName &action_kind) {
+	source_rare.shielding_done += amount;
 	if (action_kind == sn_auto()) {
-		source_cold.shielding_done_auto += amount;
+		source_rare.shielding_done_auto += amount;
 	} else if (action_kind == sn_ability()) {
-		source_cold.shielding_done_ability += amount;
+		source_rare.shielding_done_ability += amount;
 	} else if (action_kind == sn_ultimate()) {
-		source_cold.shielding_done_ultimate += amount;
+		source_rare.shielding_done_ultimate += amount;
 	} else if (action_kind == sn_passive()) {
-		source_cold.shielding_done_passive += amount;
+		source_rare.shielding_done_passive += amount;
 	}
 }
 
-void record_healing_by_action_kind(UnitStateCold &source_cold, double gained, const StringName &action_kind) {
-	source_cold.healing_done += gained;
+void record_healing_by_action_kind(UnitStateRare &source_rare, double gained, const StringName &action_kind) {
+	source_rare.healing_done += gained;
 	if (action_kind == sn_auto()) {
-		source_cold.healing_done_auto += gained;
+		source_rare.healing_done_auto += gained;
 	} else if (action_kind == sn_ability()) {
-		source_cold.healing_done_ability += gained;
+		source_rare.healing_done_ability += gained;
 	} else if (action_kind == sn_ultimate()) {
-		source_cold.healing_done_ultimate += gained;
+		source_rare.healing_done_ultimate += gained;
 	} else if (action_kind == sn_passive()) {
-		source_cold.healing_done_passive += gained;
+		source_rare.healing_done_passive += gained;
 	}
 }
 
 void record_benefactor(SimWorld &world, UnitState &source, UnitState &target) {
 	if (source.instance_id != target.instance_id) {
-		uc(world, target).recent_benefactors[source.instance_id] = world.time;
+		ur(world, target).recent_benefactors[source.instance_id] = world.time;
 	}
 }
 

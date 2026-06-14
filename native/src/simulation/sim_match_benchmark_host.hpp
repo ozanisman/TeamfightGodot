@@ -36,6 +36,8 @@ struct GeneratedMatchHost {
 	static std::vector<UnitState> &units(TeamfightSimulationCore *core);
 	static UnitStateCold &unit_cold_at(TeamfightSimulationCore *core, size_t index);
 	static UnitStateCold &uc(TeamfightSimulationCore *core, UnitState &unit);
+	static UnitStateRare &unit_rare_at(TeamfightSimulationCore *core, size_t index);
+	static UnitStateRare &ur(TeamfightSimulationCore *core, UnitState &unit);
 	static godot::StringName &winner_team(TeamfightSimulationCore *core);
 	static int64_t &seed(TeamfightSimulationCore *core);
 	static double &time(TeamfightSimulationCore *core);

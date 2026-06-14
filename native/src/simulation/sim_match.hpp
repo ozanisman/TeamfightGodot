@@ -28,13 +28,15 @@ Dictionary build_summary(
 		const MatchSnapshot &match,
 		const std::vector<UnitState> &units,
 		const std::vector<UnitStateCold> &unit_cold,
+		const std::vector<UnitStateRare> &unit_rare,
 		Dictionary &summary_cache,
 		Array &summary_unit_stats);
 
 Dictionary build_stats_summary(
 		const MatchSnapshot &match,
 		const std::vector<UnitState> &units,
-		const std::vector<UnitStateCold> &unit_cold);
+		const std::vector<UnitStateCold> &unit_cold,
+		const std::vector<UnitStateRare> &unit_rare);
 
 } // namespace match
 } // namespace sim

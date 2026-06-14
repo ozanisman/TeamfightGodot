@@ -50,6 +50,7 @@ void TeamfightSimulationCore::_reset_runtime_state() {
 
 	_units.clear();
 	_unit_cold.clear();
+	_unit_rare.clear();
 	_projectiles.clear();
 	_projectiles.reserve(128);
 	_scratch_projectiles.clear();

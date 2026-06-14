@@ -21,6 +21,7 @@ namespace match {
 struct MatchRuntimeState {
 	std::vector<UnitState> &units;
 	std::vector<UnitStateCold> &unit_cold;
+	std::vector<UnitStateRare> &unit_rare;
 	std::unordered_map<int64_t, int64_t> &unit_index_map;
 	std::vector<TargetingFrameEntry> &targeting_frame;
 	TickContext &tick_ctx;

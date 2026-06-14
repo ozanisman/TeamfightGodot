@@ -24,6 +24,7 @@ struct SpatialBucketFillCache {
 struct SimWorld {
 	std::vector<UnitState> &units;
 	std::vector<UnitStateCold> &unit_cold;
+	std::vector<UnitStateRare> &unit_rare;
 	std::unordered_map<int64_t, int64_t> &unit_index_map;
 	std::vector<TargetingFrameEntry> &targeting_frame;
 	TickContext &tick_ctx;
@@ -40,6 +41,7 @@ struct SimWorld {
 	SimWorld(
 			std::vector<UnitState> &p_units,
 			std::vector<UnitStateCold> &p_unit_cold,
+			std::vector<UnitStateRare> &p_unit_rare,
 			std::unordered_map<int64_t, int64_t> &p_unit_index_map,
 			std::vector<TargetingFrameEntry> &p_targeting_frame,
 			TickContext &p_tick_ctx,
@@ -53,6 +55,7 @@ struct SimWorld {
 			SpatialBucketFillCache *p_spatial_fill_cache = nullptr) :
 			units(p_units),
 			unit_cold(p_unit_cold),
+			unit_rare(p_unit_rare),
 			unit_index_map(p_unit_index_map),
 			targeting_frame(p_targeting_frame),
 			tick_ctx(p_tick_ctx),
@@ -74,6 +77,16 @@ inline UnitStateCold &uc(SimWorld &world, UnitState &unit) {
 inline const UnitStateCold &uc(const SimWorld &world, const UnitState &unit) {
 	const size_t index = static_cast<size_t>(&unit - world.units.data());
 	return world.unit_cold[index];
+}
+
+inline UnitStateRare &ur(SimWorld &world, UnitState &unit) {
+	const size_t index = static_cast<size_t>(&unit - world.units.data());
+	return world.unit_rare[index];
+}
+
+inline const UnitStateRare &ur(const SimWorld &world, const UnitState &unit) {
+	const size_t index = static_cast<size_t>(&unit - world.units.data());
+	return world.unit_rare[index];
 }
 
 struct EffectContext;

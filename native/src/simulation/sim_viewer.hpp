@@ -99,6 +99,7 @@ struct TickSnapshotInput {
 	StringName live_winner;
 	const std::vector<UnitState> *units = nullptr;
 	const std::vector<UnitStateCold> *unit_cold = nullptr;
+	const std::vector<UnitStateRare> *unit_rare = nullptr;
 	const std::vector<ProjectileState> *projectiles = nullptr;
 	const ViewerFxBuffer *viewer_fx = nullptr;
 	const SimWorld *world = nullptr;

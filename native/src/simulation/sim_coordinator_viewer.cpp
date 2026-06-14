@@ -42,6 +42,7 @@ Dictionary TeamfightSimulationCore::get_tick_snapshot() const {
 	input.live_winner = sim::match::determine_winner(_player_kills, _enemy_kills);
 	input.units = &_units;
 	input.unit_cold = &_unit_cold;
+	input.unit_rare = &_unit_rare;
 	input.projectiles = &_projectiles;
 	input.viewer_fx = &_viewer_fx;
 	sim::SimWorld w = _sim_world();

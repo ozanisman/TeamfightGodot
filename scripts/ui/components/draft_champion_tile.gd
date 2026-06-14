@@ -47,17 +47,17 @@ func refresh_state(is_taken: bool, is_banned: bool, team_owner: StringName) -> v
 	text = _champion_display_name(champion_id)
 
 	if _is_banned:
-		var gray := _role_color.get_luminance()
-		var dimmed_color := Color(gray, gray, gray, _role_color.a * 0.5)
-		var border_color := Color(gray, gray, gray, 0.50)
+		var fixed_gray := 0.4
+		var dimmed_color := Color(fixed_gray, fixed_gray, fixed_gray, 0.5)
+		var border_color := Color(fixed_gray, fixed_gray, fixed_gray, 0.5)
 		_apply_style(Styles.bordered(dimmed_color, border_color, 6))
 		add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 		add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
 		disabled = true
 	elif _is_taken:
-		var gray := _role_color.get_luminance()
-		var pastel_bg := Color(gray, gray, gray, _role_color.a * 0.7)
-		var border_color := Color(gray, gray, gray, 0.8)
+		var fixed_gray := 0.65
+		var pastel_bg := Color(fixed_gray, fixed_gray, fixed_gray, 0.7)
+		var border_color := Color(fixed_gray, fixed_gray, fixed_gray, 0.8)
 		if _team_owner == &"player":
 			border_color = Tokens.COLOR_PLAYER
 		elif _team_owner == &"enemy":
@@ -142,7 +142,7 @@ func _draw() -> void:
 		line_color = Tokens.COLOR_PLAYER
 	elif _team_owner == &"enemy":
 		line_color = Tokens.COLOR_ENEMY
-	line_color.a = 0.75
+	line_color.a = 0.5
 	var w := 5.0
 
 	# Top-left to bottom-right

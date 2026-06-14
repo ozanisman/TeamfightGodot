@@ -184,6 +184,9 @@ void clear_all_stat_modifiers(UnitState &unit) {
 }
 
 void update_stat_modifier_durations(UnitState &unit, double delta) {
+	if (unit.stat_modifiers.is_empty()) {
+		return;
+	}
 	Array keys_to_remove;
 	Array modifier_keys = unit.stat_modifiers.keys();
 	for (int i = 0; i < modifier_keys.size(); i++) {
@@ -365,6 +368,9 @@ void set_stat_stacks(UnitState &unit, StringName stat_name, const String &reason
 
 void update_stacks(UnitState &unit, double delta, double current_time) {
 	(void)current_time;
+	if (unit.stat_stacks.is_empty()) {
+		return;
+	}
 	Array keys_to_remove;
 	Array stack_keys = unit.stat_stacks.keys();
 	for (int i = 0; i < stack_keys.size(); i++) {

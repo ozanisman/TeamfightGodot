@@ -30,6 +30,9 @@ inline UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 
 
 inline void merge_accumulated_results(Dictionary &target, const Dictionary &source) {
+	if (source.is_empty()) {
+		return;
+	}
 	Array keys = source.keys();
 	for (int64_t i = 0; i < keys.size(); ++i) {
 		Variant key = keys[i];
@@ -128,6 +131,9 @@ enum class ExecRoute : uint8_t {
 ExecRoute exec_route_for_opcode(int64_t opcode);
 
 inline void merge_result(Dictionary &target_result, const Dictionary &source_result) {
+	if (source_result.is_empty()) {
+		return;
+	}
 	Array keys = source_result.keys();
 	for (int64_t i = 0; i < keys.size(); ++i) {
 		Variant key = keys[i];

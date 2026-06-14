@@ -98,7 +98,7 @@ void sync_targeting_frame_index(SimWorld &world, int64_t index, const UnitState 
 	frame.pos_x = unit.pos_x;
 	frame.pos_y = unit.pos_y;
 	frame.hp = unit.hp;
-	frame.max_hp = get_effective_max_hp(unit);
+	frame.max_hp = unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp;
 	frame.alive = unit.alive;
 	frame.target_id = unit.target_id;
 	frame.incoming_target_count = unit.incoming_target_count;

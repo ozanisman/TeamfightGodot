@@ -30,6 +30,9 @@ void apply_stat_modifier(UnitState &source, UnitState &target, StringName stat_n
 		return;
 	}
 
+	// Invalidate cache when stat modifier is applied
+	target.stats_dirty = true;
+
 	if (additive < -10000.0) {
 		additive = -10000.0;
 	}
@@ -147,6 +150,9 @@ void clear_all_stat_modifiers(UnitState &unit) {
 	unit.stat_multiplicative_##name = 1.0;
 	STAT_LIST
 #undef X
+
+	// Invalidate cache
+	unit.stats_dirty = true;
 
 	// Clear stacks (match-duration stacks are restored below)
 	unit.stat_stacks.clear();

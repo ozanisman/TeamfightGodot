@@ -454,6 +454,12 @@ struct UnitState {
 	STAT_LIST
 #undef X
 
+	// Cached effective stats (invalidated when stat modifiers change)
+	bool stats_dirty = true;
+#define X(name, def, min_val, max_val) double cached_##name = def;
+STAT_LIST
+#undef X
+
 	// Per-source stack tracking for stat modifiers
 	Dictionary stat_stacks; // key: "stat_name|reason", value: StackInfo
 	Dictionary stat_modifiers; // key: "stat_name|reason", value: simple modifier info

@@ -1,6 +1,8 @@
 #include "sim_targeting.hpp"
 
 #include "sim_constants.hpp"
+#include "../stat_definitions.hpp"
+#include "sim_stats.inl.hpp"
 
 namespace sim {
 namespace targeting {
@@ -114,6 +116,19 @@ void prepare_tick_context(SimWorld &world, const SimHostCallbacks &host) {
 			sync_targeting_frame_index(world, idx, u);
 		}
 	}
+
+	// Recalculate cached effective stats for dirty units
+	for (size_t i = 0; i < world.units.size(); ++i) {
+		UnitState &u = world.units[i];
+		if (u.stats_dirty && u.alive) {
+#define X(name, def, min_val, max_val) \
+			u.cached_##name = get_effective_##name(u);
+			STAT_LIST
+#undef X
+			u.stats_dirty = false;
+		}
+	}
+
 	(void)host;
 }
 

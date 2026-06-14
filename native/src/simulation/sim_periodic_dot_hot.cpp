@@ -373,7 +373,8 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 		}
 
 		if (effect.remaining_duration <= 0.0) {
-			periodic_effects.erase(periodic_effects.begin() + static_cast<std::ptrdiff_t>(index));
+			periodic_effects[index] = periodic_effects.back();
+			periodic_effects.pop_back();
 		} else {
 			periodic_effects[index] = effect;
 			++index;

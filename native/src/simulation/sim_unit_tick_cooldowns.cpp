@@ -69,7 +69,8 @@ void cooldowns_and_cc(
 		while (index < slow_buffs.size()) {
 			slow_buffs[index].remaining_duration = Math::max(0.0, slow_buffs[index].remaining_duration - tick_rate);
 			if (slow_buffs[index].remaining_duration <= 0.0) {
-				slow_buffs.erase(slow_buffs.begin() + static_cast<std::ptrdiff_t>(index));
+				slow_buffs[index] = slow_buffs.back();
+				slow_buffs.pop_back();
 			} else {
 				++index;
 			}
@@ -127,7 +128,8 @@ void cooldowns_and_cc(
 		while (index < reflect_buffs.size()) {
 			reflect_buffs[index].remaining_duration = Math::max(0.0, reflect_buffs[index].remaining_duration - tick_rate);
 			if (reflect_buffs[index].remaining_duration <= 0.0) {
-				reflect_buffs.erase(reflect_buffs.begin() + static_cast<std::ptrdiff_t>(index));
+				reflect_buffs[index] = reflect_buffs.back();
+				reflect_buffs.pop_back();
 			} else {
 				++index;
 			}

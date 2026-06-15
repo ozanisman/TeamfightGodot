@@ -89,7 +89,7 @@ If minion count grows significantly (e.g., hundreds of minions per match), consi
 
 ### C++
 
-- `EFFECT_OPCODE_SUMMON_ALLY = 55`: Effect opcode for summoning minions
+- `EFFECT_OPCODE_SUMMON_ALLY = 16`: Effect opcode for summoning minions
 - `MINION_SCHEMA_PATH`: Path to `minion_schema.json` fixture file
 - `_minion_catalog`: Dictionary member storing minion data loaded from separate schema
 - `_find_random_spawn_position_near_excluding_with_expansion()`: Finds valid spawn positions with collision checking and radius expansion fallback

@@ -182,62 +182,12 @@ Full comp 3: tank + tank + marksman + mage + support → YES (2+ tanks)
 3. **Add unknown role diagnostic:** Create direct test for unknown-only role case
 4. **Consider caching:** If profiling shows need, add caching by partial fingerprint
 
-## Experimental Lookahead Status (Phase 37)
+## Experimental Lookahead Status
 
-### Decision
-Lookahead variants are **NOT promoted** to default. The baseline `native` strategy remains the default.
+See [native_draft_ai_lookahead_experiment.md](native_draft_ai_lookahead_experiment.md) for full details.
+Summary: lookahead variants (Phases 34–37) were quarantined due to unacceptable side bias (>20%).
 
-### Reason
-All lookahead variants introduced unacceptable side bias:
-- native_lookahead: Up to 42.0% side bias (severe)
-- native_lookahead_continuation: Up to 42.0% side bias (worse than original)
-- native_lookahead_ban_only: 21-25% side bias (moderate but exceeds threshold)
+## Draft Order Bias Baseline
 
-The baseline `native` strategy has the lowest measured bias (~18.4% draft-order advantage) and strong performance against random.
-
-### Current Status
-- **Default:** native (baseline)
-- **Experimental:** native_lookahead, native_lookahead_pick_only, native_lookahead_ban_only (kept for research)
-- **Removed:** native_lookahead_continuation, native_baseline, native_baseline_ban_lookahead
-
-### References
-- `phase34_lookahead_bias_isolation_report.md` - Bias isolation analysis
-- `phase35_lookahead_trace_report.md` - Turn diagnostic and opportunity analysis
-- `phase36_lookahead_variants_report.md` - Safer variants test results
-
-## Draft Order Bias Baseline (Phase 38)
-
-### Decision
-The current draft order is retained as the production/default order. All tested alternate draft orders have worse bias.
-
-### Reason
-Current draft order has the lowest native self-play bias among tested variants:
-- current: 19.6% bias (best)
-- mirrored_current: 23.6% bias (worse)
-- red_first_pick_variant: 88.6% bias (much worse)
-- no_final_blue_pair_variant: 47.4% bias (worse)
-
-### Key Findings
-
-**Current order native self-play:**
-- Blue: 59.8%
-- Red: 40.2%
-- Bias: 19.6%
-
-**Current order random self-play:**
-- Blue: 48.7%
-- Red: 51.3%
-- Bias: 2.6%
-
-**Conclusion:** The ~18-20% Blue-side advantage is a strategy-specific structural draft-order advantage, not a game-side combat bias. Random is fair across all draft orders, confirming the game itself is not inherently biased.
-
-### Known Limitation
-Baseline native self-play has a known ~18-20% Blue-side structural advantage due to the snake draft order. This is:
-- Not a bug in the scoring logic
-- Structural to the snake draft order
-- Expected for this type of draft format
-- Manageable and well-understood
-
-### References
-- `phase38_draft_order_bias_audit_report.md` - Full audit results and analysis
-- `wiki/notes/draft_order_bias_audit.md` - Comprehensive audit documentation
+See [draft_order_bias_audit.md](draft_order_bias_audit.md) for full details.
+Summary: current snake draft order retained; ~19.6% Blue-side structural advantage is expected and manageable.

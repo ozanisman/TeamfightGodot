@@ -1,9 +1,14 @@
 # Role Configs
 
-Role-specific stat modifiers and passive hooks. **NOT CURRENTLY IN USE**
+Role-specific stat modifiers and passive hooks loaded from `champion_schema.json` at catalog build time.
 
-RoleConfig defines: stat_modifiers (stat → value), passive_on_tick (effect per tick), passive_post_take_damage (effect after taking damage). Roles: tank, fighter, assassin, marksman, mage, support.
+The native catalog loader (`sim_catalog.cpp`) reads the `role_configs` dictionary from the schema. For each champion, it looks up the role config matching the champion's `role` and applies:
+- `stat_mods`: additive stat modifiers merged into base stats.
+- `passive_on_tick`: an effect pushed into the `on_tick` passive slot.
+- `passive_post_take_damage`: an effect pushed into the `post_take_damage` passive slot.
 
-Stat modifiers apply to all champions of role. Tank gains mana from damage taken (TANK_MANA_GAIN_DAMAGE_RATIO). Mage has passive mana regen (MAGE_MANA_REGEN_TICK). Stat mod types defined in SimConstants: tenacity/life_steal/ability_cd are additive, attack_speed/move_speed are multiplicative.
+Roles: tank, fighter, assassin, marksman, mage, support.
 
-Passive hooks trigger on role-specific events: on_tick (regeneration, mana gain), post_take_damage (ally defense redirect). Role configs loaded from role_kits.json, merged into effective champion data.
+Stat modifiers apply to all champions of that role. Tank gains mana from damage taken. Mage has passive mana regen. Stat mod types: tenacity/life_steal/ability_cd are additive; attack_speed/move_speed are multiplicative.
+
+Passive hooks trigger on role-specific events: on_tick (regeneration, mana gain), post_take_damage (ally defense redirect).

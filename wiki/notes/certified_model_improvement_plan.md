@@ -1,5 +1,7 @@
 # Certified Model Improvement Plan
 
+> **Status:** Speculative plan — not actively pursued. For the current certified model status, see [draft_prediction_context.md](draft_prediction_context.md).
+
 ## Goal
 Improve certified model accuracy from 76.1% to 90%+ to enable statistical confidence in champion ranking validation.
 
@@ -8,7 +10,7 @@ Improve certified model accuracy from 76.1% to 90%+ to enable statistical confid
 - **Accuracy:** 76.1% test accuracy on draft_ceiling_holdout_5000.csv
 - **MSE:** 0.0484
 - **Features:** Simple averages of pairwise winrates
-- **Implementation:** Baked weights in native/src/simulation/sim_draft_recommender.cpp (lines 436-513)
+- **Implementation:** Baked weights in `native/src/simulation/sim_draft_recommender.cpp` (`calculate_certified_pairwise_probability()`)
 - **Training Data:** 5000 compositions from draft_ceiling_holdout_5000.csv
 
 ## Available but Unused Features
@@ -39,7 +41,7 @@ Improve certified model accuracy from 76.1% to 90%+ to enable statistical confid
 
 **Implementation Details:**
 - File: `native/src/simulation/sim_draft_recommender.cpp`
-  - Extend `CertifiedPairwiseFeatures` struct (currently lines 93-97):
+  - Extend `CertifiedPairwiseFeatures` struct (see `sim_draft_recommender.hpp`):
     ```cpp
     struct CertifiedPairwiseFeatures {
         double base = 0.5;
@@ -56,13 +58,13 @@ Improve certified model accuracy from 76.1% to 90%+ to enable statistical confid
     ```
 
 - File: `native/src/simulation/sim_draft_recommender.cpp`
-  - Modify `extract()` function in `calculate_certified_pairwise_probability()` (lines 475-502)
+  - Modify `extract()` lambda inside `calculate_certified_pairwise_probability()`
   - Use `RelationshipAggregate` which already computes variance and min/max
   - Update feature array from 6 to 12 elements
   - Update weights, means, stddevs arrays from size 6 to 12
 
 - File: `scripts/tools/verify_pairwise_signal.gd`
-  - Modify `_extract_pairwise_team_features()` (lines 335-359)
+  - Modify `_extract_pairwise_team_features()`
   - Add variance and specificity extraction
   - Add helper functions: `_compute_variance()`, `_compute_max()`, `_compute_min()`
 
@@ -124,7 +126,7 @@ If needed later:
   - Generate new weights, means, stddevs
 
 - File: `native/src/simulation/sim_draft_recommender.cpp`
-  - Update baked weights in `calculate_certified_pairwise_probability()` (lines 439-463)
+  - Update baked weights in `calculate_certified_pairwise_probability()`
   - Update array sizes from 6 to 24
   - Update feature extraction to match new feature set
 

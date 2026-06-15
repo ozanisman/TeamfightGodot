@@ -39,11 +39,13 @@ Release build, **2000 matches**, **5v5**, **`--bench-skip-summaries`**, **worker
 
 | Metric | Value |
 |--------|-------|
-| Matches/sec | **142.4** |
-| `duration_sec` | 14.04 |
+| Matches/sec | **~103–110** |
+| `duration_sec` | ~18–19 |
 | Fixtures | **7/7** |
 
-Recorded after native refactor + hygiene pass on a quiet host. Re-run the gate before merge or when claiming a perf change; numbers vary with background load.
+Recorded after native refactor + hygiene pass. Re-run the gate before merge or when claiming a perf change; numbers vary with background load.
+
+> **Note:** An earlier 142.4 m/s result was an outlier. Consistent results are ~103–110 m/s. Always run the gate multiple times and flag discrepancies >10-15% before claiming an optimization.
 
 **Regression compare (optional):** [`scripts/tools/run_perf_iteration_gate.ps1`](../../scripts/tools/run_perf_iteration_gate.ps1) vs [`scripts/tools/perf_gate_baseline.json`](../../scripts/tools/perf_gate_baseline.json) (2026-05-28 capture: w=1 median **146.2** m/s, w=8 median **628.7** m/s).
 

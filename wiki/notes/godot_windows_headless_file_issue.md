@@ -1,5 +1,6 @@
-#
-**RESOLVED** - Both scripts had parse errors or were invoked via the wrong launcher path.
+# Godot Windows Headless File Issue
+
+> **RESOLVED** - Both scripts had parse errors or were invoked via the wrong launcher path.
 
 ### Solution Implemented
 

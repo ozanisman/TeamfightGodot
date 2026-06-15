@@ -29,6 +29,38 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 
 **Coordinator:** [`native/src/teamfight_simulation_core.{hpp,cpp}`](../native/src/teamfight_simulation_core.hpp) (~270 / ~293 lines) plus `sim_coordinator_{match,state,catalog,targeting,viewer,tick,bindings,host}.cpp`. Shared host API: [`sim_coordinator_host.hpp`](../native/src/simulation/sim_coordinator_host.hpp) only (no per-TU empty coordinator headers).
 
+## Concepts
+
+| Doc | Purpose |
+|-----|---------|
+| [effect_system.md](concepts/effect_system.md) | Modular opcode-based ability/ultimate/passive execution |
+| [targeting_ai.md](concepts/targeting_ai.md) | Scoring-based enemy/ally selection with role strategies |
+| [combat_pipeline.md](concepts/combat_pipeline.md) | Tick-based simulation loop and match end conditions |
+| [champion_system.md](concepts/champion_system.md) | Champion data structure, roles, kit system |
+| [damage_calculation.md](concepts/damage_calculation.md) | Damage types, defense multipliers, lifesteal, reflect |
+| [status_effects.md](concepts/status_effects.md) | Crowd control and state modifiers |
+| [periodic_effects.md](concepts/periodic_effects.md) | DoT/HoT effects, stacking, tick modes |
+| [projectile_system.md](concepts/projectile_system.md) | Projectile movement, collision, splash damage |
+| [shield_system.md](concepts/shield_system.md) | Shield mechanics, decay, tracking |
+| [mana_system.md](concepts/mana_system.md) | Mana resource mechanics |
+| [channel_system.md](concepts/channel_system.md) | Sustained interruptible channel effects |
+| [spawn_system.md](concepts/spawn_system.md) | Initial team composition and positioning |
+| [respawn_system.md](concepts/respawn_system.md) | Death, respawn timing, spawn slots |
+| [movement_system.md](concepts/movement_system.md) | Unit movement, collision avoidance, kiting |
+| [minion_system.md](concepts/minion_system.md) | Minion definitions, summon ally effects, lifecycle |
+| [assist_system.md](concepts/assist_system.md) | Assist credit based on damage contribution |
+| [balance_patches.md](concepts/balance_patches.md) | Versioned champion stat/ability overrides |
+| [kit_system.md](concepts/kit_system.md) | Ability/ultimate/passive swap mechanism |
+| [matchup_tracking.md](concepts/matchup_tracking.md) | Winrate tracking for champion relationships |
+| [schema_contract.md](concepts/schema_contract.md) | Parity testing framework and signatures |
+| [rng_streams.md](concepts/rng_streams.md) | Deterministic RNG and seeding |
+| [spatial_grid.md](concepts/spatial_grid.md) | Spatial grid optimization for targeting/AOE |
+| [stat_modifiers.md](concepts/stat_modifiers.md) | Temporary and permanent stat modifiers |
+| [aoe_shapes.md](concepts/aoe_shapes.md) | Area-of-effect targeting shapes |
+| [role_configs.md](concepts/role_configs.md) | Role-specific stat modifiers and passive hooks |
+| [determinism.md](concepts/determinism.md) | Determinism requirements and parity testing |
+| [native_gdscript_duality.md](concepts/native_gdscript_duality.md) | Native C++ backend via GDExtension |
+
 ## Principles
 
 - Write ideas down as they emerge

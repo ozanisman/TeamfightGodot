@@ -1,5 +1,7 @@
 # Algorithmic Optimization Analysis
 
+> **Note:** Baseline numbers here (106.68 m/s) differ from [performance_optimization_status.md](performance_optimization_status.md) (142.4 m/s) because they were measured under different conditions (different build states, host load, and worker counts). See the anomaly warning in the perf status doc before comparing numbers across dates.
+
 ## Current Performance
 - Baseline: 106.68 matches/sec (41.4% improvement from micro-optimizations)
 - Goal: 226 matches/sec (3x from original baseline)

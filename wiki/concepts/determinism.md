@@ -6,4 +6,4 @@ No nondeterminism allowed: time dependence, unordered iteration, uncontrolled ra
 
 Parity testing compares GDScript validation path against native production path using golden fixtures. Fixtures include schema signature (contract hash) and fixture signature (per-match hash). Float tolerance accounts for cross-platform precision limits.
 
-Determinism regression (`--check-determinism`) runs same match twice and compares outputs.
+Determinism is validated via fixture parity tests (`--fixture-file=res://fixtures/goldens/match_fixtures.json`) and the `--check-only` gate, which compare GDScript and native outputs for identical inputs and seeds.

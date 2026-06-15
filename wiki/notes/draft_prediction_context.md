@@ -193,7 +193,7 @@ These paths are intentionally recorded but not active defaults:
 - Run smoke probe: `.\run_godot.ps1 --generate-draft-probe-signals -- --templates=4 --seeds-per-template=20 --mirror --output=res://stats_output/draft_probe_signals_smoke.csv`
 - Run full probe: `.\run_godot.ps1 --generate-draft-probe-signals -- --templates=12 --seeds-per-template=100 --mirror --output=res://stats_output/draft_probe_signals.csv`
 - Run archetype validation through verifier: `.\run_godot.ps1 --verify-pairwise-signal -- --ceiling-input=res://stats_output/draft_ceiling.csv --stats-dir=res://stats_output --probe-input=res://stats_output/draft_probe_signals.csv --output=res://stats_output/pairwise_verification.csv`
-- Run rollout pick validation: `.\run_godot.ps1 --validate-pick-recommendations -- --states=500 --rollouts-per-candidate=100 --draft-depth=4 --base-seed=70000 --stats-dir=res://stats_output_baseline --output=res://stats_output/pick_recommendation_validation_depth4.csv`
+- Run rollout pick validation: `.\run_godot.ps1 --validate-pick-recommendations -- --states=500 --rollouts-per-candidate=100 --draft-depth=4 --base-seed=70000 --stats-dir=res://stats_output --output=res://stats_output/pick_recommendation_validation_depth4.csv`
 - Mechanical signals are extracted in `analyze_signal_variance.gd` via `_load_mechanical_signals()` and written to `mechanical_signals.csv` for C++ loading
 - C++ recommender loads mechanical signals via `_load_mechanical_signals()` in `sim_draft_recommender.cpp`
 

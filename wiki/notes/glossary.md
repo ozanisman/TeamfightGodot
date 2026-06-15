@@ -2,7 +2,7 @@
 
 Snapshot = capture of mutable state at a point in time
 
-Opcode = numeric identifier for effect kind (damage=2, projectile=3, stun=4, etc.)
+Opcode = numeric identifier for effect kind. Core: damage=2, projectile=3, multi_target=4, stat_modifier=12, etc. Status: stun=100, shield=101, heal=102, etc. AOE: aoe_damage=201, aoe_stun=208, etc. See [effect_system.md](../concepts/effect_system.md) for full list.
 
 Fixture = golden test case with input, expected summary, and signatures
 

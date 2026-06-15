@@ -6,13 +6,17 @@ The native draft AI provides C++-based pick and ban recommendations for the Team
 
 ## Files/Classes Involved
 
-### Native C++ Core
-- `native/src/simulation/sim_draft_ai_recommender.hpp` - Draft recommender class declaration
-- `native/src/simulation/sim_draft_ai_recommender.cpp` - Pick/ban scoring logic
-- `native/src/simulation/sim_draft_ai_stats_database.hpp/cpp` - Stats database for champion win rates
-- `native/src/simulation/sim_draft_ai_evaluator.hpp/cpp` - Draft evaluation logic
-- `native/src/simulation/sim_draft_ai_types.hpp` - Type definitions
-- `native/src/teamfight_simulation_core.cpp` - Godot binding for draft recommendations
+### Production Recommender (Current Default)
+- `native/src/simulation/sim_draft_recommender.hpp/cpp` (namespace `sim::draft`) — Current production recommender
+  - `ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY` — complete-draft winner prediction
+  - `ScoringMode::DRAFT_AWARE_PAIRWISE_PROBABILITY` — draft-aware pick/ban ranking
+- `native/src/teamfight_simulation_core.cpp` — Godot binding for draft recommendations
+
+### Experimental / Deprecated
+- `native/src/simulation/sim_draft_ai_recommender.hpp/cpp` — Older experimental recommender (kept for reference, not the production path)
+- `native/src/simulation/sim_draft_ai_stats_database.hpp/cpp` — Stats database for champion win rates
+- `native/src/simulation/sim_draft_ai_evaluator.hpp/cpp` — Draft evaluation logic
+- `native/src/simulation/sim_draft_ai_types.hpp` — Type definitions
 
 ### GDScript Integration
 - `scripts/simulation/native_simulation_backend.gd` - Godot-C++ bridge
@@ -147,12 +151,11 @@ var strategy = DraftStrategyNative.new("res://stats_output_100k")
 ```
 
 Available strategies:
-- `DraftStrategyNative` - Full native picks and bans
-- `DraftStrategyNativeArchetype` - Experimental native picks and bans with small additive archetype scoring profiles
+- `DraftStrategyNative` - Full native picks and bans (default)
 - `DraftStrategyNativePicksRandomBans` - Native picks, random bans
 - `DraftStrategyRandomPicksNativeBans` - Random picks, native bans
 - `DraftStrategyRandom` - Full random (baseline)
-- `DraftStrategyCertified` - Old GDScript prototype (backward compatibility)
+- `DraftStrategyCertified` - Certified pairwise probability model (complete-draft default)
 
 ### Native Backend Call
 ```gdscript
@@ -214,178 +217,28 @@ Tested multiple weight profiles to optimize ban scoring:
 
 - **Pick scoring:** Constant weights, validated as effective
 - **Ban scoring:** Phase-specific weights with side-aware fallback
-- **Archetype scoring:** Experimental and opt-in only through `native_archetype`
 - **Weight overrides:** Opt-in only via `set_weight_overrides()`
 - **Default profile:** Current baseline (no multipliers applied)
 - **Fallback multiplier:** 0.30 (applied in early ban phase)
 
-## Experimental Archetype Scoring (Phase 45)
+## Archetype Scoring (Removed)
 
-`native_archetype` adds a small archetype term on top of baseline native scoring. The default `native` strategy does not use this term.
-
-### Weights
-
-- Pick archetype weight: `0.06`
-- Ban archetype weight: `0.04`
-
-### Pair Table
-
-Each pair applies at most once per candidate:
-
-| Pair | Raw score |
-|------|-----------|
-| frontline + backline | +0.030 |
-| frontline + poke | +0.020 |
-| frontline + protect | +0.015 |
-| cc + aoe | +0.020 |
-| control + poke | +0.020 |
-| dive + mobility | +0.015 |
-| dive + protect | +0.015 |
-| sustain + frontline | +0.015 |
-| protect + backline | +0.015 |
-
-Pick scoring compares candidate tags with ally tags, applies small overstack penalties, clamps the raw score to `[-0.08, +0.08]`, then multiplies by `0.06`.
-
-Ban scoring compares candidate tags with enemy tags, applies the same positive pair table plus a `+0.020` completion bonus when the enemy already has 2+ champions with one candidate major tag, clamps the raw score to `[0.00, +0.08]`, then multiplies by `0.04`.
-
-Major tags for ban completion are:
-
-`dive`, `poke`, `burst`, `sustain`, `cc`, `control`, `protect`, `aoe`
-
-### Debug Output
-
-Pick recommendations include:
-
-- `candidate_tags`
-- `archetype_score`
-- `archetype_weight`
-- `archetype_contribution`
-- `archetype_reasons`
-
-Ban recommendations include:
-
-- `candidate_tags`
-- `enemy_archetype_score`
-- `enemy_archetype_weight`
-- `enemy_archetype_contribution`
-- `archetype_reasons`
-
-### Phase 45 Validation
-
-- Tag validation: PASS. 26 champions, 0 missing tags, 0 unknown tags, 0 champions with more than 5 tags, 0 `needs_review`.
-- Native tag loading validation: PASS. 26 champions, 26 with tags, 0 missing tags, 0 unknown tags.
-- Native draft AI tag/debug validation: PASS. Baseline output still exposes `candidate_tags`; `native_archetype` exposes archetype scores, weights, contributions, and readable reasons.
-- Full draft validation with `native`: PASS, 0 invalid selections.
-- Full draft validation with `native_archetype`: PASS, 0 invalid selections.
-
-### 25x25 A/B Summary
-
-| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
-|---------------|--------------|---------------|--------------|----------------|
-| native_archetype | random | 89.9% | 10.1% | 0 |
-| random | native_archetype | 17.0% | 83.0% | 0 |
-| native_archetype | native | 61.8% | 38.2% | 0 |
-| native | native_archetype | 68.2% | 31.8% | 0 |
-| native_archetype | native_archetype | 68.0% | 32.0% | 0 |
-| native | native | 61.3% | 38.7% | 0 |
-
-`native_archetype` beats random from both sides and remains competitive with `native`, but its self-play result shows about +6.7 percentage points more Blue-side win rate than `native` self-play in this screen. Keep it experimental; do not promote it to default without further tuning and validation.
-
-## Tuned Archetype Profiles (Phase 46)
-
-Additional experimental profiles were added to isolate the side-bias source. These are test-only strategy names and are not exposed in production UI.
-
-| Profile | Pick weight | Ban weight |
-|---------|-------------|------------|
-| `archetype_full` | 0.06 | 0.04 |
-| `archetype_light` | 0.03 | 0.02 |
-| `archetype_pick_light` | 0.03 | 0.00 |
-| `archetype_ban_light` | 0.00 | 0.02 |
-
-### Contribution Diagnostic
-
-Report: `archetype_scoring_diagnostic_report.md`
-
-| Profile | Avg contribution | Max | Min | Top recommendation changes |
-|---------|------------------|-----|-----|----------------------------|
-| `archetype_full` | 0.001175 | 0.004800 | -0.001200 | 2 of 20 |
-| `archetype_light` | 0.000588 | 0.002400 | -0.000600 | 1 of 20 |
-| `archetype_pick_light` | 0.000403 | 0.002400 | -0.000600 | 1 of 20 |
-| `archetype_ban_light` | 0.000185 | 0.001600 | 0.000000 | 0 of 20 |
-
-### 25x25 Screening
-
-| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
-|---------------|--------------|---------------|--------------|----------------|
-| native | native | 63.4% | 36.6% | 0 |
-| archetype_full | archetype_full | 73.4% | 26.6% | 0 |
-| archetype_light | archetype_light | 74.6% | 25.4% | 0 |
-| archetype_pick_light | archetype_pick_light | 67.8% | 32.2% | 0 |
-| archetype_ban_light | archetype_ban_light | 62.1% | 37.9% | 0 |
-| archetype_full | native | 60.8% | 39.2% | 0 |
-| native | archetype_full | 68.8% | 31.2% | 0 |
-| archetype_light | native | 61.1% | 38.9% | 0 |
-| native | archetype_light | 71.5% | 28.5% | 0 |
-| archetype_pick_light | native | 57.0% | 43.0% | 0 |
-| native | archetype_pick_light | 70.2% | 29.8% | 0 |
-| archetype_ban_light | native | 62.7% | 37.3% | 0 |
-| native | archetype_ban_light | 59.0% | 41.0% | 0 |
-| archetype_light | random | 86.4% | 13.6% | 0 |
-| random | archetype_light | 21.1% | 78.9% | 0 |
-| archetype_ban_light | random | 89.8% | 10.2% | 0 |
-| random | archetype_ban_light | 9.4% | 90.6% | 0 |
-
-### 50x25 Confirmation
-
-`archetype_ban_light` was the only profile promoted to confirmation.
-
-| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
-|---------------|--------------|---------------|--------------|----------------|
-| native | native | 62.5% | 37.5% | 0 |
-| archetype_ban_light | archetype_ban_light | 62.5% | 37.5% | 0 |
-| archetype_ban_light | native | 58.3% | 41.7% | 0 |
-| native | archetype_ban_light | 61.7% | 38.3% | 0 |
-| archetype_ban_light | random | 85.8% | 14.2% | 0 |
-| random | archetype_ban_light | 14.4% | 85.6% | 0 |
-
-Recommendation: keep all archetype scoring experimental, but use `archetype_ban_light` as the preferred experimental profile for the next phase. It preserves native self-play bias in the 50x25 confirmation while still beating random from both sides and staying competitive with native. Default `native` remains unchanged.
-
-### Phase 47 Checkpoint
-
-Preferred experimental archetype profile: `archetype_ban_light`.
-
-The weaker profiles remain available only for test comparisons:
-
-- `archetype_full`
-- `archetype_light`
-- `archetype_pick_light`
-
-They are not recommended options and are not production defaults. Archetype scoring is still opt-in, and no archetype profile is promoted to default. The known native draft-order Blue-side bias remains accepted baseline context; future archetype experiments should compare against that baseline rather than treating absolute side fairness as the goal.
-
-### Phase 51 Closure
-
-Phase 50 audited `native` vs `archetype_ban_light` on 9 representative draft states. The audit found:
-
-- 0 of 9 top recommendation changes.
-- Max observed top archetype contribution: 0.001600.
-- 0 invalid drafts in full draft validation for both `native` and `archetype_ban_light`.
-- No suspicious recommendations.
-- No pick top recommendation changes.
-
-Conclusion: `archetype_ban_light` is safe but low-impact. Keep it as the preferred experimental archetype profile and do not promote it to default.
+The archetype tag scoring experiment (phases 45-51) has been removed. Champion tags remain in the schema as inactive metadata, but the native draft AI no longer applies archetype scoring to picks or bans. The previous profiles (`archetype_full`, `archetype_light`, `archetype_pick_light`, `archetype_ban_light`) are no longer available.
 
 Current strategy status:
 
 | Strategy/profile | Status |
 |------------------|--------|
 | `native` | Default strategy. |
-| `archetype_ban_light` | Preferred experimental archetype profile; opt-in only. |
-| `archetype_full` | Test-only comparison profile. |
-| `archetype_light` | Test-only comparison profile. |
-| `archetype_pick_light` | Test-only comparison profile. |
 | Lookahead variants | Quarantined experimental due to side-bias results. |
 
-The repeatable audit script is `scripts/tools/audit_archetype_recommendations.gd`. Its generated root-level markdown report is a disposable local artifact; durable conclusions should live in this wiki note and `wiki/notes/draft_archetype_tags.md`.
+## Current A/B Baseline (Phase 65)
+
+- **Report path:** `draft_ai_current_ab_baseline_report.md`
+- **Date:** 2026-06-15
+- **Strategy matchups tested:** native vs random, random vs native, native vs native
+- **Native self-play bias:** 59.8% Blue / 40.2% Red (~19.6 pp)
+- **Default changed:** No. `native` remains default. Archetype scoring removed.
 
 ## Weight Override Behavior
 
@@ -410,7 +263,7 @@ strategy.set_weight_overrides({
 
 1. **No lookahead/minimax** - Current scoring does not simulate future enemy responses
 2. **Ban lookahead** - Bans do not explicitly consider how enemy will respond
-3. **Archetypes** - Mechanical tags are implemented; archetype-based scoring is experimental and opt-in only
+3. **Archetypes** - Champion tags remain as inactive metadata; archetype-based scoring has been removed
 4. **Backward compatibility** - Old GDScript prototype still exists for comparison
 5. **Opt-in strategy** - Native strategy is opt-in in tools/test runner (not default in production)
 6. **Synergy depth** - Current synergy model is pairwise (no higher-order synergies)
@@ -525,31 +378,77 @@ When evaluating future strategy changes:
 
 
 
+## Validation Suite
+
+### Validation Suite Script
+
+The standardized validation suite is `scripts/tools/run_draft_ai_validation_suite.gd`. It runs all available validation checks and generates a comprehensive report.
+
+### File-Based Status
+
+The validation suite is file-based and does not depend on stdout parsing. Each validation script writes a report file with a `STATUS: PASS` or `STATUS: FAIL` line. The suite reads these files to determine check results.
+
+**Headless Execution Caveat:** When running Godot headless scripts, use direct Godot executable invocation with `--headless --path . --script`. The PowerShell wrapper (`run_godot.ps1`) runs the main scene instead of the specified script when `run/main_scene` is set in `project.godot`.
+
+### Running the Suite
+
+```bash
+godot --headless --script res://scripts/tools/run_draft_ai_validation_suite.gd
+```
+
+### Required Checks
+
+The suite runs the following required checks:
+
+1. **Native Draft AI Tag Validation** (`validate_native_draft_ai_tags.gd`)
+   - Report: `native_draft_ai_tag_path_report.md`
+   - Validates native draft AI tag output
+   - Compares candidate tags to schema
+
+2. **Full Draft Validation (native)** (`full_draft_validation.gd --strategy=native`)
+   - Report: `full_draft_validation_report_native.txt`
+   - Simulates complete snake draft with native baseline strategy
+   - Checks for duplicate picks, duplicate bans, pick/ban overlap
+   - Validates all selections are from available pool
+
+3. **Native Recommendation Explanations Audit** (`audit_native_recommendation_explanations.gd`)
+   - Report: `native_recommendation_explanations_audit_report.md`
+   - Audits native recommendation debug output for completeness and validity
+   - Checks for missing required debug fields, suspicious zero fields, invalid values
+   - Covers representative draft states (empty draft, early bans, first picks, mid draft, phase-2 bans, late picks, near-complete draft)
+
+4. **Native Ban Quality Audit** (`audit_native_ban_quality.gd`)
+   - Report: `native_ban_quality_audit_report.md`
+   - Audits native ban recommendations for quality and suspicious patterns
+   - Checks for self-denial risk, denial ratio, suspicious value patterns
+   - Covers representative ban states (empty draft, early bans, phase 1/2 bans, enemy team shells, ally vulnerability)
+
+### Report Output
+
+The suite generates `draft_ai_validation_suite_report.md` with:
+
+- Backend availability status
+- Individual check results (PASS/FAIL/SKIPPED) with report file paths
+- Overall result (PASS/FAIL)
+- Timestamp
+
+### Exit Codes
+
+- Exit code 0: All required checks passed
+- Exit code 1: One or more required checks failed, or backend unavailable
+
 ## Suggested Future Phases
 
-### Phase 23: Lookahead/Minimax
-- Implement 1-2 step lookahead for picks
-- Simulate enemy responses to candidate picks
-- Consider counter-picks in scoring
+### Completed
+- ~~Partial comp scoring (2-4 unit combinations)~~ — **COMPLETED in Phase 29**
 
-### Phase 24: Enhanced Comp Fit
-- ~~Add partial comp scoring (2-4 unit combinations)~~ **COMPLETED in Phase 29**
-- Implement archetype-based comp detection
+### Quarantined (not promoted to default)
+- ~~Lookahead/Minimax~~ — Implemented in Phases 34–37; all variants introduced unacceptable side bias (>20%). See [native_draft_ai_lookahead_experiment.md](native_draft_ai_lookahead_experiment.md).
+- ~~Ban Lookahead~~ — Same quarantine as above.
+
+### Open
 - Dynamic comp building based on available champions
-
-### Phase 25: Ban Lookahead
-- Simulate enemy response to bans
-- Consider ban impact on enemy's likely picks
-- Optimize bans to force enemy into weak comps
-
-### Phase 26: Archetype Integration
-- Add mechanical tags (e.g., "aoe", "burst", "sustain")
-- Implement archetype synergy scoring
-- Add archetype counter relationships
-
-### Phase 27: Production Integration
-- Make native strategy default in production
-- Remove GDScript prototype
+- Make `native` strategy default in production UI
 - Add telemetry for draft quality monitoring
 
 ## References

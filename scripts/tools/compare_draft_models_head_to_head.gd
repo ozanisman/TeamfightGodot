@@ -16,6 +16,15 @@ const CERTIFIED_STATS_DIR := "res://model_stats/certified_pairwise_testing_250k"
 var _backend: RefCounted = null
 var _champion_ids: Array[StringName] = []
 
+# Greedy CSV caches (loaded once in _run)
+var _base_power: Dictionary = {}       # champion_id -> win_rate (float)
+var _matchup_vs: Dictionary = {}       # champion_id -> opponent_id -> winrate (float)
+var _matchup_with: Dictionary = {}   # champion_id -> ally_id -> winrate (float)
+
+# Hybrid strategy instances
+var _hybrid_native_picks: RefCounted = null
+var _hybrid_random_picks: RefCounted = null
+
 
 func _extract_argument(prefix: String, default_value: String) -> String:
 	for a in OS.get_cmdline_user_args():
@@ -53,7 +62,18 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var models: Array[String] = ["native", "certified", "draft_aware", "random"]
+	_load_greedy_csvs()
+
+	var HybridNativePicksRandomBans := preload("res://scripts/tools/draft_strategy_native_picks_random_bans.gd")
+	var HybridRandomPicksNativeBans := preload("res://scripts/tools/draft_strategy_random_picks_native_bans.gd")
+	_hybrid_native_picks = HybridNativePicksRandomBans.new(NATIVE_STATS_DIR)
+	_hybrid_random_picks = HybridRandomPicksNativeBans.new(NATIVE_STATS_DIR)
+
+	var models: Array[String] = [
+		"native", "random",
+		"native_picks_random_bans", "random_picks_native_bans",
+		"greedy_base_power", "greedy_synergy", "greedy_counter"
+	]
 	var pairs: Array[Array] = []
 	var only_pair := _extract_argument("--pair=", "")
 	if only_pair.is_empty():
@@ -134,6 +154,15 @@ func _run() -> void:
 		var wr: float = float(t["wins"]) / float(t["matches"]) * 100.0 if t["matches"] > 0 else 0.0
 		print("  %-15s %.1f%%  (%d matches)" % [m, wr, int(t["matches"])])
 	print("CSV written to: %s" % output_path)
+	print("")
+	print("--- Greedy Scoring Formulas (diagnostic only) ---")
+	print("  greedy_base_power:  score = combat_stats.win_rate")
+	print("  greedy_synergy:     score = avg(matchup_with.winrate vs context)")
+	print("                      fallback to base_power if context is empty")
+	print("  greedy_counter:     score = avg(matchup_vs.winrate vs context)")
+	print("                      fallback to base_power if context is empty")
+	print("  Tie-breaking:       alphabetical sort, first max kept")
+	print("  Data source:        %s" % CERTIFIED_STATS_DIR)
 	print("============================================================")
 	quit(0)
 
@@ -199,6 +228,16 @@ func _get_recommendation(
 			return _get_draft_aware_recommendation(allies, enemies, available, is_ban)
 		"random":
 			return _get_random_recommendation(available)
+		"native_picks_random_bans":
+			return _get_hybrid_recommendation(_hybrid_native_picks, allies, enemies, available, draft_step, acting_side, is_ban)
+		"random_picks_native_bans":
+			return _get_hybrid_recommendation(_hybrid_random_picks, allies, enemies, available, draft_step, acting_side, is_ban)
+		"greedy_base_power":
+			return _get_greedy_base_power_recommendation(available, is_ban)
+		"greedy_synergy":
+			return _get_greedy_synergy_recommendation(allies, enemies, available, is_ban)
+		"greedy_counter":
+			return _get_greedy_counter_recommendation(allies, enemies, available, is_ban)
 		_:
 			return _get_random_recommendation(available)
 
@@ -305,6 +344,169 @@ func _get_random_recommendation(available: Array[StringName]) -> StringName:
 		return StringName("")
 	var idx := randi() % available.size()
 	return StringName(available[idx])
+
+
+func _get_hybrid_recommendation(
+	hybrid: RefCounted,
+	allies: Array[StringName],
+	enemies: Array[StringName],
+	available: Array[StringName],
+	draft_step: int,
+	acting_side: String,
+	is_ban: bool
+) -> StringName:
+	if available.is_empty():
+		return StringName("")
+	if is_ban:
+		return hybrid.recommend_next_ban(allies, enemies, available, draft_step, acting_side)
+	else:
+		return hybrid.recommend_next_pick(allies, enemies, available, draft_step)
+
+
+func _get_greedy_base_power_recommendation(available: Array[StringName], is_ban: bool) -> StringName:
+	if available.is_empty():
+		return StringName("")
+	# Sort alphabetically for deterministic tie-breaking
+	var sorted := available.duplicate()
+	sorted.sort_custom(func(a: StringName, b: StringName) -> int: return String(a) < String(b))
+	var best := StringName(sorted[0])
+	var best_score := float(_base_power.get(String(best), 0.5))
+	for i in range(1, sorted.size()):
+		var candidate := StringName(sorted[i])
+		var score := float(_base_power.get(String(candidate), 0.5))
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
+
+func _get_greedy_synergy_recommendation(
+	allies: Array[StringName],
+	enemies: Array[StringName],
+	available: Array[StringName],
+	is_ban: bool
+) -> StringName:
+	if available.is_empty():
+		return StringName("")
+	var context: Array[StringName] = enemies if is_ban else allies
+	# Fallback to base_power if no context
+	if context.is_empty():
+		return _get_greedy_base_power_recommendation(available, is_ban)
+	var sorted := available.duplicate()
+	sorted.sort_custom(func(a: StringName, b: StringName) -> int: return String(a) < String(b))
+	var best := StringName(sorted[0])
+	var best_score := _avg_matchup_with(sorted[0], context)
+	for i in range(1, sorted.size()):
+		var candidate := StringName(sorted[i])
+		var score := _avg_matchup_with(candidate, context)
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
+
+func _get_greedy_counter_recommendation(
+	allies: Array[StringName],
+	enemies: Array[StringName],
+	available: Array[StringName],
+	is_ban: bool
+) -> StringName:
+	if available.is_empty():
+		return StringName("")
+	var context: Array[StringName] = allies if is_ban else enemies
+	# Fallback to base_power if no context
+	if context.is_empty():
+		return _get_greedy_base_power_recommendation(available, is_ban)
+	var sorted := available.duplicate()
+	sorted.sort_custom(func(a: StringName, b: StringName) -> int: return String(a) < String(b))
+	var best := StringName(sorted[0])
+	var best_score := _avg_matchup_vs(sorted[0], context)
+	for i in range(1, sorted.size()):
+		var candidate := StringName(sorted[i])
+		var score := _avg_matchup_vs(candidate, context)
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
+
+func _avg_matchup_with(candidate: StringName, allies: Array[StringName]) -> float:
+	var c := String(candidate)
+	if not _matchup_with.has(c):
+		return 0.5
+	var total := 0.0
+	var count := 0
+	for ally in allies:
+		var a := String(ally)
+		if _matchup_with[c].has(a):
+			total += float(_matchup_with[c][a])
+			count += 1
+	return total / float(count) if count > 0 else 0.5
+
+
+func _avg_matchup_vs(candidate: StringName, enemies: Array[StringName]) -> float:
+	var c := String(candidate)
+	if not _matchup_vs.has(c):
+		return 0.5
+	var total := 0.0
+	var count := 0
+	for enemy in enemies:
+		var e := String(enemy)
+		if _matchup_vs[c].has(e):
+			total += float(_matchup_vs[c][e])
+			count += 1
+	return total / float(count) if count > 0 else 0.5
+
+
+func _load_greedy_csvs() -> void:
+	var stats_dir := CERTIFIED_STATS_DIR
+
+	# combat_stats.csv: team_size,hero,role,wins,losses,draws,total_games,win_rate,...
+	var combat_path := stats_dir.path_join("combat_stats.csv")
+	var f1 := FileAccess.open(combat_path, FileAccess.READ)
+	if f1 != null:
+		var headers: Array = f1.get_csv_line()
+		var hero_idx := headers.find("hero")
+		var winrate_idx := headers.find("win_rate")
+		while not f1.eof_reached():
+			var row: Array = f1.get_csv_line()
+			if row.size() > max(hero_idx, winrate_idx):
+				_base_power[row[hero_idx]] = float(row[winrate_idx])
+		f1.close()
+
+	# matchup_vs.csv: champion,opponent,wins,losses,winrate
+	var vs_path := stats_dir.path_join("matchup_vs.csv")
+	var f2 := FileAccess.open(vs_path, FileAccess.READ)
+	if f2 != null:
+		var vs_headers: Array = f2.get_csv_line()
+		var c_idx := vs_headers.find("champion")
+		var o_idx := vs_headers.find("opponent")
+		var wr_idx := vs_headers.find("winrate")
+		while not f2.eof_reached():
+			var row: Array = f2.get_csv_line()
+			if row.size() > max(c_idx, o_idx, wr_idx):
+				var champ: String = row[c_idx]
+				if not _matchup_vs.has(champ):
+					_matchup_vs[champ] = {}
+				_matchup_vs[champ][row[o_idx]] = float(row[wr_idx])
+		f2.close()
+
+	# matchup_with.csv: champion,ally,wins,losses,winrate
+	var with_path := stats_dir.path_join("matchup_with.csv")
+	var f3 := FileAccess.open(with_path, FileAccess.READ)
+	if f3 != null:
+		var with_headers: Array = f3.get_csv_line()
+		var ch_idx := with_headers.find("champion")
+		var a_idx := with_headers.find("ally")
+		var w_idx := with_headers.find("winrate")
+		while not f3.eof_reached():
+			var row: Array = f3.get_csv_line()
+			if row.size() > max(ch_idx, a_idx, w_idx):
+				var champ: String = row[ch_idx]
+				if not _matchup_with.has(champ):
+					_matchup_with[champ] = {}
+				_matchup_with[champ][row[a_idx]] = float(row[w_idx])
+		f3.close()
 
 
 func _simulate_match(blue_team: Array[StringName], red_team: Array[StringName], sims: int, seed: int) -> Dictionary:

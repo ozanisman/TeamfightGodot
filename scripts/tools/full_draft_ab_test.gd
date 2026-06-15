@@ -6,11 +6,14 @@ extends SceneTree
 ## Usage:
 ##   godot --headless --script res://scripts/tools/full_draft_ab_test.gd \
 ##     -- --trials=25 --sims-per-draft=25 --strategies=native,random
+##   godot --headless --script res://scripts/tools/full_draft_ab_test.gd \
+##     -- --trials=25 --sims-per-draft=25 --matchups=native:native,random:native
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
+const DraftStrategyNativeArchetypePath := "res://scripts/tools/draft_strategy_native_archetype.gd"
 const DraftStrategyNativeLookaheadPath := "res://scripts/tools/draft_strategy_native_lookahead.gd"
 const DraftStrategyNativeLookaheadPickPath := "res://scripts/tools/draft_strategy_native_lookahead_pick.gd"
 const DraftStrategyNativeLookaheadBanPath := "res://scripts/tools/draft_strategy_native_lookahead_ban.gd"
@@ -74,11 +77,31 @@ func _run() -> void:
 	var trials := maxi(1, int(_extract_argument("--trials=", "25")))
 	var sims_per_draft := maxi(1, int(_extract_argument("--sims-per-draft=", "25")))
 	var strategies_str := _extract_argument("--strategies=", "native,random")
+	var matchups_str := _extract_argument("--matchups=", "")
 	var base_seed := int(_extract_argument("--base-seed=", "90000"))
 
 	var strategy_names: Array[String] = []
-	for s in strategies_str.split(","):
-		strategy_names.append(s.strip_edges())
+	var requested_matchups: Array[Dictionary] = []
+	if not matchups_str.is_empty():
+		for matchup in matchups_str.split(","):
+			var sides := matchup.split(":")
+			if sides.size() != 2:
+				push_error("full_draft_ab_test: invalid matchup '%s'" % matchup)
+				await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+				return
+			var blue_name := sides[0].strip_edges()
+			var red_name := sides[1].strip_edges()
+			requested_matchups.append({"blue": blue_name, "red": red_name})
+			if not strategy_names.has(blue_name):
+				strategy_names.append(blue_name)
+			if not strategy_names.has(red_name):
+				strategy_names.append(red_name)
+	else:
+		for s in strategies_str.split(","):
+			strategy_names.append(s.strip_edges())
+		for i in range(strategy_names.size()):
+			for j in range(strategy_names.size()):
+				requested_matchups.append({"blue": strategy_names[i], "red": strategy_names[j]})
 
 	_backend = NativeSimulationBackendScript.new()
 	if not _backend.is_available():
@@ -108,6 +131,16 @@ func _run() -> void:
 				strategies[name] = load(DraftStrategyRandomPath).new()
 			"native":
 				strategies[name] = load(DraftStrategyNativePath).new(_stats_dir)
+			"native_archetype":
+				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir)
+			"archetype_full":
+				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 4, "archetype_full")
+			"archetype_light":
+				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 5, "archetype_light")
+			"archetype_pick_light":
+				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 6, "archetype_pick_light")
+			"archetype_ban_light":
+				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 7, "archetype_ban_light")
 			"native_lookahead":
 				strategies[name] = load(DraftStrategyNativeLookaheadPath).new(_stats_dir)
 			"native_lookahead_pick_only":
@@ -129,41 +162,39 @@ func _run() -> void:
 	report_lines.append("Trials: %d" % trials)
 	report_lines.append("Simulations per draft: %d" % sims_per_draft)
 	report_lines.append("Strategies: %s" % ",".join(strategy_names))
+	if not matchups_str.is_empty():
+		report_lines.append("Matchups: %s" % matchups_str)
 	report_lines.append("")
 
-	for i in range(strategy_names.size()):
-		for j in range(strategy_names.size()):
-			if i == j:
-				continue
-			
-			var strategy_a = strategy_names[i]
-			var strategy_b = strategy_names[j]
-			
-			report_lines.append("--- Matchup: %s (Blue) vs %s (Red) ---" % [strategy_a, strategy_b])
-			
-			var results = _run_matchup(
-				strategies[strategy_a], 
-				strategies[strategy_b], 
-				trials, 
-				sims_per_draft, 
-				base_seed + i * 1000 + j * 100,
-				champion_ids
-			)
-			
-			report_lines.append("Blue (%s) wins: %d (%.1f%%)" % [strategy_a, results.blue_wins, results.blue_winrate * 100.0])
-			report_lines.append("Red (%s) wins: %d (%.1f%%)" % [strategy_b, results.red_wins, results.red_winrate * 100.0])
-			report_lines.append("Draws: %d (%.1f%%)" % [results.draws, results.drawrate * 100.0])
-			report_lines.append("Invalid drafts: %d" % results.invalid_drafts)
-			report_lines.append("Average duration: %.2f ticks" % results.avg_duration)
+	for matchup_index in range(requested_matchups.size()):
+		var strategy_a = String(requested_matchups[matchup_index]["blue"])
+		var strategy_b = String(requested_matchups[matchup_index]["red"])
+
+		report_lines.append("--- Matchup: %s (Blue) vs %s (Red) ---" % [strategy_a, strategy_b])
+
+		var results = _run_matchup(
+			strategies[strategy_a],
+			strategies[strategy_b],
+			trials,
+			sims_per_draft,
+			base_seed + matchup_index * 100,
+			champion_ids
+		)
+
+		report_lines.append("Blue (%s) wins: %d (%.1f%%)" % [strategy_a, results.blue_wins, results.blue_winrate * 100.0])
+		report_lines.append("Red (%s) wins: %d (%.1f%%)" % [strategy_b, results.red_wins, results.red_winrate * 100.0])
+		report_lines.append("Draws: %d (%.1f%%)" % [results.draws, results.drawrate * 100.0])
+		report_lines.append("Invalid drafts: %d" % results.invalid_drafts)
+		report_lines.append("Average duration: %.2f ticks" % results.avg_duration)
+		report_lines.append("")
+
+		if results.sample_draft.size() > 0:
+			report_lines.append("Sample draft:")
+			report_lines.append("  Blue picks: " + str(results.sample_draft.blue_picks))
+			report_lines.append("  Red picks: " + str(results.sample_draft.red_picks))
+			report_lines.append("  Blue bans: " + str(results.sample_draft.blue_bans))
+			report_lines.append("  Red bans: " + str(results.sample_draft.red_bans))
 			report_lines.append("")
-			
-			if results.sample_draft.size() > 0:
-				report_lines.append("Sample draft:")
-				report_lines.append("  Blue picks: " + str(results.sample_draft.blue_picks))
-				report_lines.append("  Red picks: " + str(results.sample_draft.red_picks))
-				report_lines.append("  Blue bans: " + str(results.sample_draft.blue_bans))
-				report_lines.append("  Red bans: " + str(results.sample_draft.red_bans))
-				report_lines.append("")
 
 	report_lines.append("=== TEST COMPLETE ===")
 	_write_report(report_lines)

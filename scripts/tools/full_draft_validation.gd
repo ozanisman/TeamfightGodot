@@ -4,12 +4,21 @@ extends SceneTree
 ## Simulates complete League-style snake draft with picks and bans
 
 const DraftStrategyNative := preload("res://scripts/tools/draft_strategy_native.gd")
+const DraftStrategyNativeArchetype := preload("res://scripts/tools/draft_strategy_native_archetype.gd")
 const ChampionCatalog := preload("res://scripts/simulation/champion_catalog.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 var _strategy: RefCounted = null
 var _catalog: RefCounted = null
 var _stats_dir: String = "res://stats_output_100k"
+
+
+func _extract_argument(prefix: String, default_value: String) -> String:
+	for a in OS.get_cmdline_user_args():
+		var arg: String = str(a)
+		if arg.begins_with(prefix):
+			return arg.substr(prefix.length())
+	return default_value
 
 ## Draft sequence: side (B=blue, R=red) and action type
 var _draft_sequence = [
@@ -40,7 +49,24 @@ func _init() -> void:
 
 func _run() -> void:
 	print("Full draft validation: starting...")
-	_strategy = DraftStrategyNative.new(_stats_dir)
+	var strategy_name := _extract_argument("--strategy=", "native")
+	match strategy_name:
+		"native":
+			_strategy = DraftStrategyNative.new(_stats_dir)
+		"native_archetype":
+			_strategy = DraftStrategyNativeArchetype.new(_stats_dir)
+		"archetype_full":
+			_strategy = DraftStrategyNativeArchetype.new(_stats_dir, 4, "archetype_full")
+		"archetype_light":
+			_strategy = DraftStrategyNativeArchetype.new(_stats_dir, 5, "archetype_light")
+		"archetype_pick_light":
+			_strategy = DraftStrategyNativeArchetype.new(_stats_dir, 6, "archetype_pick_light")
+		"archetype_ban_light":
+			_strategy = DraftStrategyNativeArchetype.new(_stats_dir, 7, "archetype_ban_light")
+		_:
+			push_error("Full draft validation: unknown strategy '%s'" % strategy_name)
+			await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+			return
 	print("Full draft validation: strategy created")
 	_catalog = ChampionCatalog.new()
 	print("Full draft validation: catalog created")

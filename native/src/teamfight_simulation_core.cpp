@@ -1244,12 +1244,20 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["next_pick_side"] = String(rec.next_pick_side);
 		dict["next_pick_is_enemy"] = rec.next_pick_is_enemy;
 
-		// Add archetype tags (debug-only)
+		// Add archetype debug fields
 		Array tags_array;
 		for (const StringName &tag : rec.candidate_tags) {
 			tags_array.append(String(tag));
 		}
 		dict["candidate_tags"] = tags_array;
+		dict["archetype_score"] = rec.archetype_score;
+		dict["archetype_weight"] = rec.archetype_weight;
+		dict["archetype_contribution"] = rec.archetype_contribution;
+		Array archetype_reasons;
+		for (const String &reason : rec.archetype_reasons) {
+			archetype_reasons.append(reason);
+		}
+		dict["archetype_reasons"] = archetype_reasons;
 
 		result.append(dict);
 	}
@@ -1347,12 +1355,20 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["current_side"] = String(rec.current_side);
 		dict["enemy_next_pick_step"] = rec.enemy_next_pick_step;
 
-		// Add archetype tags (debug-only)
+		// Add archetype debug fields
 		Array tags_array;
 		for (const StringName &tag : rec.candidate_tags) {
 			tags_array.append(String(tag));
 		}
 		dict["candidate_tags"] = tags_array;
+		dict["enemy_archetype_score"] = rec.enemy_archetype_score;
+		dict["enemy_archetype_weight"] = rec.enemy_archetype_weight;
+		dict["enemy_archetype_contribution"] = rec.enemy_archetype_contribution;
+		Array archetype_reasons;
+		for (const String &reason : rec.archetype_reasons) {
+			archetype_reasons.append(reason);
+		}
+		dict["archetype_reasons"] = archetype_reasons;
 
 		result.append(dict);
 	}

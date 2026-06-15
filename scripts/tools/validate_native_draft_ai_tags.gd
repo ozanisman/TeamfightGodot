@@ -160,6 +160,42 @@ func _run() -> void:
 			report_lines.append("  " + str(unknown_tags))
 	
 	report_lines.append("")
+	report_lines.append("## Archetype Strategy Debug Field Test")
+	var archetype_pick_recs: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 3, -1, 4)
+	if archetype_pick_recs.is_empty():
+		report_lines.append("ERROR: No native_archetype pick recommendations returned")
+	else:
+		var top_archetype_pick: Dictionary = archetype_pick_recs[0]
+		report_lines.append("Top native_archetype pick: " + String(top_archetype_pick.candidate))
+		report_lines.append("candidate_tags: " + str(top_archetype_pick.get("candidate_tags", [])))
+		report_lines.append("archetype_score: " + str(top_archetype_pick.get("archetype_score", null)))
+		report_lines.append("archetype_weight: " + str(top_archetype_pick.get("archetype_weight", null)))
+		report_lines.append("archetype_contribution: " + str(top_archetype_pick.get("archetype_contribution", null)))
+		report_lines.append("archetype_reasons: " + str(top_archetype_pick.get("archetype_reasons", [])))
+		var missing_pick_fields: Array = []
+		for field in ["candidate_tags", "archetype_score", "archetype_weight", "archetype_contribution", "archetype_reasons"]:
+			if not top_archetype_pick.has(field):
+				missing_pick_fields.append(field)
+		report_lines.append("Pick debug fields present: " + ("PASS" if missing_pick_fields.is_empty() else "FAIL " + str(missing_pick_fields)))
+
+	var archetype_ban_recs: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, 3, -1, "blue", {}, 4)
+	if archetype_ban_recs.is_empty():
+		report_lines.append("ERROR: No native_archetype ban recommendations returned")
+	else:
+		var top_archetype_ban: Dictionary = archetype_ban_recs[0]
+		report_lines.append("Top native_archetype ban: " + String(top_archetype_ban.candidate))
+		report_lines.append("candidate_tags: " + str(top_archetype_ban.get("candidate_tags", [])))
+		report_lines.append("enemy_archetype_score: " + str(top_archetype_ban.get("enemy_archetype_score", null)))
+		report_lines.append("enemy_archetype_weight: " + str(top_archetype_ban.get("enemy_archetype_weight", null)))
+		report_lines.append("enemy_archetype_contribution: " + str(top_archetype_ban.get("enemy_archetype_contribution", null)))
+		report_lines.append("archetype_reasons: " + str(top_archetype_ban.get("archetype_reasons", [])))
+		var missing_ban_fields: Array = []
+		for field in ["candidate_tags", "enemy_archetype_score", "enemy_archetype_weight", "enemy_archetype_contribution", "archetype_reasons"]:
+			if not top_archetype_ban.has(field):
+				missing_ban_fields.append(field)
+		report_lines.append("Ban debug fields present: " + ("PASS" if missing_ban_fields.is_empty() else "FAIL " + str(missing_ban_fields)))
+
+	report_lines.append("")
 	
 	# Print report
 	for line in report_lines:

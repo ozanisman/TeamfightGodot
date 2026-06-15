@@ -783,3 +783,185 @@ Native validation emitted existing effective-champion fallback messages for unsu
 ### Readiness
 
 The reviewed tags are ready for a small scoring experiment. Scoring remains unchanged in this phase; tags are still data/debug-only until a separate scoring change is made.
+
+---
+
+## Phase 45: Experimental Archetype Scoring
+
+### Date/Phase
+Phase 45: Experimental Archetype Scoring
+Date: June 14, 2026
+
+### Status
+
+Archetype scoring is implemented only for the opt-in `native_archetype` strategy. The default `native` strategy remains unchanged.
+
+### Weights
+
+- Pick archetype weight: `0.06`
+- Ban archetype weight: `0.04`
+
+### Pair Table
+
+Each pair applies at most once per candidate.
+
+| Pair | Raw score |
+|------|-----------|
+| frontline + backline | +0.030 |
+| frontline + poke | +0.020 |
+| frontline + protect | +0.015 |
+| cc + aoe | +0.020 |
+| control + poke | +0.020 |
+| dive + mobility | +0.015 |
+| dive + protect | +0.015 |
+| sustain + frontline | +0.015 |
+| protect + backline | +0.015 |
+
+### Pick Scoring
+
+For `native_archetype`, candidate tags are compared with ally tags using the pair table. Small overstack penalties apply for:
+
+- `overstack_backline`: ally backline count >= 4 and candidate has `backline` (`-0.030`)
+- `no_frontline_backline`: ally frontline count == 0 and candidate has `backline` (`-0.020`)
+- `overstack_poke`: ally poke count >= 3 and candidate has `poke` (`-0.020`)
+- `overstack_dive`: ally dive count >= 3 and candidate has `dive` (`-0.020`)
+
+Raw pick archetype score is clamped to `[-0.08, +0.08]`, then multiplied by `0.06`.
+
+### Ban Scoring
+
+For `native_archetype`, candidate tags are compared with enemy tags using the same pair table. A `+0.020` completion bonus applies when the enemy already has 2+ champions with one of the candidate's major tags:
+
+`dive`, `poke`, `burst`, `sustain`, `cc`, `control`, `protect`, `aoe`
+
+Raw ban archetype score is clamped to `[0.00, +0.08]`, then multiplied by `0.04`.
+
+### Debug Fields
+
+Pick recommendations expose:
+
+- `candidate_tags`
+- `archetype_score`
+- `archetype_weight`
+- `archetype_contribution`
+- `archetype_reasons`
+
+Ban recommendations expose:
+
+- `candidate_tags`
+- `enemy_archetype_score`
+- `enemy_archetype_weight`
+- `enemy_archetype_contribution`
+- `archetype_reasons`
+
+Example validated debug reasons:
+
+- Pick `colossus`: `frontline+backline`, `frontline+poke`, `cc+aoe`
+- Ban `wizard`: `frontline+backline`, `protect+backline`
+
+### Validation Results
+
+- `validate_archetype_tags.gd`: PASS. 26 champions, 0 missing tags, 0 unknown tags, 0 champions with more than 5 tags, 0 `needs_review`.
+- `validate_native_archetype_tags.gd`: PASS. 26 champions, 26 with tags, 0 missing tags, 0 unknown tags, 0 `needs_review`.
+- `validate_native_draft_ai_tags.gd`: PASS. Current native output still includes `candidate_tags`; `native_archetype` output includes archetype score, weight, contribution, and readable reasons for pick and ban recommendations.
+- Full draft validation with `native`: PASS. 0 invalid selections.
+- Full draft validation with `native_archetype`: PASS. 0 invalid selections.
+
+Native validation still emits existing effective-champion fallback messages for unsupported ability kinds while building recommendation inputs. Those messages did not prevent tag validation, debug-field validation, or full draft validity checks from passing.
+
+### 25x25 A/B Summary
+
+| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
+|---------------|--------------|---------------|--------------|----------------|
+| native_archetype | random | 89.9% | 10.1% | 0 |
+| random | native_archetype | 17.0% | 83.0% | 0 |
+| native_archetype | native | 61.8% | 38.2% | 0 |
+| native | native_archetype | 68.2% | 31.8% | 0 |
+| native_archetype | native_archetype | 68.0% | 32.0% | 0 |
+| native | native | 61.3% | 38.7% | 0 |
+
+`native_archetype` beats random from both sides and stays competitive with `native`. However, self-play side bias increased from the known native 61.3%/38.7% result in this 25x25 run to 68.0%/32.0%, which is about +6.7 percentage points of Blue-side win rate.
+
+### Recommendation
+
+Keep `native_archetype` experimental. Tags and debug output are ready for further scoring experiments, but this version should not be promoted to default because the initial screen shows a side-bias increase slightly above the requested ~5 percentage point guardrail.
+
+---
+
+## Phase 46: Tuned Experimental Archetype Scoring
+
+### Date/Phase
+Phase 46: Tune Experimental Archetype Scoring
+Date: June 14, 2026
+
+### Scope
+
+Added experimental weight profiles for archetype scoring. The default `native` strategy, draft order, lookahead, tag data, champion stats, champion abilities, and production UI were not changed.
+
+### Weight Profiles
+
+| Profile | Pick weight | Ban weight | Notes |
+|---------|-------------|------------|-------|
+| `archetype_full` | 0.06 | 0.04 | Same behavior as Phase 45 `native_archetype`. |
+| `archetype_light` | 0.03 | 0.02 | Half-strength pick and ban archetype scoring. |
+| `archetype_pick_light` | 0.03 | 0.00 | Half-strength pick-only archetype scoring. |
+| `archetype_ban_light` | 0.00 | 0.02 | Half-strength ban-only archetype scoring. |
+
+### Contribution Diagnostics
+
+Report: `archetype_scoring_diagnostic_report.md`
+
+| Profile | Avg contribution | Max | Min | Top recommendation changes |
+|---------|------------------|-----|-----|----------------------------|
+| `archetype_full` | 0.001175 | 0.004800 | -0.001200 | 2 of 20 |
+| `archetype_light` | 0.000588 | 0.002400 | -0.000600 | 1 of 20 |
+| `archetype_pick_light` | 0.000403 | 0.002400 | -0.000600 | 1 of 20 |
+| `archetype_ban_light` | 0.000185 | 0.001600 | 0.000000 | 0 of 20 |
+
+Most common reasons across profiles were `frontline+backline`, `protect+backline`, `cc+aoe`, `frontline+protect`, `frontline+poke`, and `sustain+frontline`. The reasons remained readable.
+
+### 25x25 Screening
+
+| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
+|---------------|--------------|---------------|--------------|----------------|
+| native | native | 63.4% | 36.6% | 0 |
+| archetype_full | archetype_full | 73.4% | 26.6% | 0 |
+| archetype_light | archetype_light | 74.6% | 25.4% | 0 |
+| archetype_pick_light | archetype_pick_light | 67.8% | 32.2% | 0 |
+| archetype_ban_light | archetype_ban_light | 62.1% | 37.9% | 0 |
+| archetype_full | native | 60.8% | 39.2% | 0 |
+| native | archetype_full | 68.8% | 31.2% | 0 |
+| archetype_light | native | 61.1% | 38.9% | 0 |
+| native | archetype_light | 71.5% | 28.5% | 0 |
+| archetype_pick_light | native | 57.0% | 43.0% | 0 |
+| native | archetype_pick_light | 70.2% | 29.8% | 0 |
+| archetype_ban_light | native | 62.7% | 37.3% | 0 |
+| native | archetype_ban_light | 59.0% | 41.0% | 0 |
+| archetype_light | random | 86.4% | 13.6% | 0 |
+| random | archetype_light | 21.1% | 78.9% | 0 |
+
+Additional 25x25 random check for the only qualifying profile:
+
+| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
+|---------------|--------------|---------------|--------------|----------------|
+| archetype_ban_light | random | 89.8% | 10.2% | 0 |
+| random | archetype_ban_light | 9.4% | 90.6% | 0 |
+
+### 50x25 Confirmation
+
+`archetype_ban_light` qualified for confirmation because it had 0 invalid drafts, beat random from both sides, remained competitive with native, and did not increase self-play Blue-side bias in the 25x25 screen.
+
+| Blue strategy | Red strategy | Blue win rate | Red win rate | Invalid drafts |
+|---------------|--------------|---------------|--------------|----------------|
+| native | native | 62.5% | 37.5% | 0 |
+| archetype_ban_light | archetype_ban_light | 62.5% | 37.5% | 0 |
+| archetype_ban_light | native | 58.3% | 41.7% | 0 |
+| native | archetype_ban_light | 61.7% | 38.3% | 0 |
+| archetype_ban_light | random | 85.8% | 14.2% | 0 |
+| random | archetype_ban_light | 14.4% | 85.6% | 0 |
+
+### Recommendation
+
+Use `archetype_ban_light` as the preferred experimental archetype profile for the next scoring experiment. Keep `native_archetype`/`archetype_full` experimental and do not promote it, because both full and light pick-including profiles worsened self-play Blue-side bias in the 25x25 screen.
+
+Default `native` remains unchanged.

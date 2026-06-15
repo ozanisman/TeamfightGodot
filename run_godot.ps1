@@ -175,18 +175,6 @@ elseif ($validateNativeStrategy) {
 elseif ($validateFullDraft) {
 	$timeoutSeconds = 60
 }
-elseif ($fullDraftABTest) {
-	$timeoutSeconds = 300
-}
-elseif ($fullDraftAblationTest) {
-	$timeoutSeconds = 300
-}
-elseif ($fullDraftBanDiagnostic) {
-	$timeoutSeconds = 300
-}
-elseif ($testPartialCompScoring) {
-	$timeoutSeconds = 120
-}
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
@@ -354,18 +342,6 @@ elseif ($validateNativeStrategy) {
 elseif ($validateFullDraft) {
 	$godotArgs += @("--script", "res://scripts/tools/full_draft_validation.gd")
 }
-elseif ($fullDraftABTest) {
-	$godotArgs += @("--script", "res://scripts/tools/full_draft_ab_test.gd")
-}
-elseif ($fullDraftAblationTest) {
-	$godotArgs += @("--script", "res://scripts/tools/full_draft_ablation_test.gd")
-}
-elseif ($fullDraftBanDiagnostic) {
-	$godotArgs += @("--script", "res://scripts/tools/full_draft_ban_diagnostic.gd")
-}
-elseif ($testPartialCompScoring) {
-	$godotArgs += @("--script", "res://scripts/tools/test_partial_comp_scoring.gd")
-}
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
@@ -452,18 +428,6 @@ try {
 	}
 	elseif ($validateFullDraft) {
 		$outputPath = Convert-ProjectPath "res://draft_validation_report.txt"
-		Assert-DurableOutput $outputPath 100 10 0
-	}
-	elseif ($fullDraftABTest) {
-		$outputPath = Convert-ProjectPath "res://full_draft_ab_test_report.txt"
-		Assert-DurableOutput $outputPath 100 10 0
-	}
-	elseif ($fullDraftAblationTest) {
-		$outputPath = Convert-ProjectPath "res://full_draft_ablation_report.txt"
-		Assert-DurableOutput $outputPath 100 10 0
-	}
-	elseif ($fullDraftBanDiagnostic) {
-		$outputPath = Convert-ProjectPath "res://full_draft_ban_diagnostic_report.txt"
 		Assert-DurableOutput $outputPath 100 10 0
 	}
 	exit $process.ExitCode

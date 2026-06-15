@@ -173,7 +173,10 @@
 			"unit_id": "artillery"
 		},
 		"tags": [
-			"needs_review"
+			"backline",
+			"poke",
+			"burst",
+			"aoe"
 		],
 		"ultimate": {
 			"kind": "projectile",
@@ -604,7 +607,10 @@
 			"unit_id": "earthbender"
 		},
 		"tags": [
-			"needs_review"
+			"frontline",
+			"cc",
+			"control",
+			"aoe"
 		],
 		"ultimate": {
 			"kind": "multi_effect",
@@ -891,7 +897,9 @@
 			"unit_id": "mirror_knight"
 		},
 		"tags": [
-			"needs_review"
+			"frontline",
+			"protect",
+			"aoe"
 		],
 		"ultimate": {
 			"kind": "aoe_reflect",
@@ -956,7 +964,10 @@
 			"unit_id": "mistcaller"
 		},
 		"tags": [
-			"needs_review"
+			"backline",
+			"protect",
+			"sustain",
+			"aoe"
 		],
 		"ultimate": {
 			"kind": "aoe_heal_over_time",
@@ -1876,7 +1887,8 @@
 			"unit_id": "rogue"
 		},
 		"tags": [
-			"needs_review"
+			"burst",
+			"single_target"
 		],
 		"ultimate": {
 			"kind": "damage",
@@ -2524,7 +2536,8 @@
 			"unit_id": "warlock"
 		},
 		"tags": [
-			"needs_review"
+			"sustain",
+			"aoe"
 		],
 		"ultimate": null,
 		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",

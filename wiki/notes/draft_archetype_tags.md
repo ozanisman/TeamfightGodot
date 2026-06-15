@@ -693,3 +693,93 @@ Date: June 14, 2026
 - Implement tag-based ban scoring
 - A/B test tag-based vs baseline recommendations
 - Monitor win rates by tag composition
+
+---
+
+## Phase 44: Reviewed Archetype Tags
+
+### Date/Phase
+Phase 44: Review and Finalize Archetype Tags
+Date: June 14, 2026
+
+### Scope
+
+Reviewed the six champions previously tagged only as `needs_review`. This phase changed tag data only. Native draft scoring, pick recommendations, ban recommendations, weights, lookahead, draft order, production UI, and stats files were not changed.
+
+### Reviewed Decisions
+
+| Champion | Previous tags | Reviewed tags | Remove needs_review? | Reason |
+|----------|---------------|---------------|----------------------|--------|
+| rogue | needs_review | burst, single_target | yes | Current kit is a melee assassin with 200% ability damage, 600% ultimate damage, and dodge. It has no dash/blink or target-selection mechanic, so it is not `dive` or `mobility` based on current mechanics. |
+| warlock | needs_review | sustain, aoe | yes | Current active kit is a melee channel with repeated AOE damage, damage-based healing, and max-HP growth from self-healing. The ultimate is missing, but the implemented kit is clear enough for sustain/AOE and does not show burst or control. |
+| artillery | needs_review | backline, poke, burst, aoe | yes | Current kit has 6.0 range, very low durability/mobility, explosive splash, 150% shell damage with short stun/knockback, and a 330% ultimate shell. It is long-range poke with burst and AOE splash, not primarily single-target. |
+| earthbender | needs_review | frontline, cc, control, aoe | yes | Current kit is a tank with stacking defenses, single-target root, and AOE root/damage ultimate. Root is hard CC and the AOE root gives battlefield control. |
+| mirror_knight | needs_review | frontline, protect, aoe | yes | Current kit is a high-durability tank with self shield/reflect and an AOE ally reflect ultimate. There is no approved `reflect` tag, so the current defensive ally utility maps to `protect`; the ally-radius ultimate supports `aoe`. |
+| mistcaller | needs_review | backline, protect, sustain, aoe | yes | Current kit is a low-durability ranged support with single-target HoT, AOE HoT, overheal-to-temp-HP, and periodic AOE healing. This is sustained protective support with AOE healing. |
+
+### Final Champion-to-Tag Mapping
+
+| Champion | Tags |
+|----------|------|
+| swordsman | frontline, burst, single_target |
+| archer | backline, poke, aoe |
+| guardian | frontline, protect, cc |
+| ninja | dive, burst, single_target, mobility |
+| sniper | backline, poke, single_target |
+| berserker | frontline, burst, sustain |
+| paladin | frontline, protect, sustain |
+| rogue | burst, single_target |
+| oracle | backline, protect, cc |
+| colossus | frontline, cc, aoe |
+| wraith | dive, sustain, single_target, mobility |
+| warlock | sustain, aoe |
+| wizard | backline, burst, aoe |
+| monk | frontline, cc, single_target |
+| artillery | backline, poke, burst, aoe |
+| cleric | backline, protect, sustain |
+| siren | backline, control, aoe |
+| valkyrie | frontline, protect, mobility |
+| frost_mage | backline, control, aoe |
+| earthbender | frontline, cc, control, aoe |
+| silencer | backline, cc, control |
+| disarmer | frontline, cc, single_target |
+| windcaller | backline, control, aoe |
+| mirror_knight | frontline, protect, aoe |
+| mistcaller | backline, protect, sustain, aoe |
+| necromancer | backline, summon, aoe |
+
+### Remaining needs_review Champions
+
+None.
+
+### Tag Distribution After Review
+
+- frontline: 10
+- backline: 12
+- dive: 2
+- poke: 3
+- burst: 6
+- sustain: 6
+- cc: 7
+- control: 5
+- summon: 1
+- aoe: 12
+- single_target: 7
+- protect: 7
+- mobility: 3
+- needs_review: 0
+
+### Validation Results
+
+Commands were run through Godot 4.6.2 headless with explicit workspace log files because direct headless runs can fail around `user://logs`.
+
+- `validate_archetype_tags.gd`: PASS. 26 champions, 0 missing tags, 0 unknown tags, 0 champions with more than 5 tags, 0 `needs_review`.
+- `validate_native_archetype_tags.gd`: PASS. 26 champions, 26 with tags, 0 missing tags, 0 unknown tags, 0 `needs_review`.
+- `validate_native_draft_ai_tags.gd`: PASS for the tag path. Current native draft AI output still includes `candidate_tags`; top pick `colossus` and top ban `wizard` matched schema tags with 0 missing and 0 unknown tags.
+- Full draft validation with native strategy: PASS. 5 blue picks, 5 red picks, 10 bans, no duplicate picks, no duplicate bans, no pick/ban overlap, 0 invalid selections.
+
+Native validation emitted existing effective-champion fallback messages for unsupported ability kinds while building recommendation inputs. Those messages did not prevent the tag-path checks or full draft validity checks from passing.
+
+### Readiness
+
+The reviewed tags are ready for a small scoring experiment. Scoring remains unchanged in this phase; tags are still data/debug-only until a separate scoring change is made.

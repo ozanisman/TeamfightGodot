@@ -9,7 +9,7 @@ extends SceneTree
 const ChampionCatalog := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
-const STATS_DIR := "res://stats_output_100k"
+const STATS_DIR := "res://model_stats/stats_output_100k"
 const STRATEGY_NATIVE := 0
 const REPORT_PATH := "res://logs/native_recommendation_explanations_audit_report.md"
 

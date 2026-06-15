@@ -5,7 +5,7 @@ extends SceneTree
 
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
-const STATS_DIR := "res://stats_output_100k"
+const STATS_DIR := "res://model_stats/stats_output_100k"
 
 func _init() -> void:
 	print("=== Partial Composition Scoring Diagnostic ===")

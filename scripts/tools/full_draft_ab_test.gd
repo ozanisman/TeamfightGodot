@@ -49,7 +49,7 @@ var _draft_sequence = [
 	{"side": "R", "action": "PICK"}  # Step 19
 ]
 
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 var _backend: RefCounted = null
 
 
@@ -121,6 +121,17 @@ func _run() -> void:
 	print("full_draft_ab_test: trials=%d sims/draft=%d strategies=%s" % [
 		trials, sims_per_draft, ",".join(strategy_names)
 	])
+
+	# Guard: validate native stats directory if any native strategy is used
+	if strategy_names.has("native") or strategy_names.has("native_lookahead") or strategy_names.has("native_lookahead_pick_only") or strategy_names.has("native_lookahead_ban_only") or strategy_names.has("native_picks_random_bans") or strategy_names.has("random_picks_native_bans"):
+		var required_files := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
+		for f in required_files:
+			var path := _stats_dir.path_join(f)
+			if not FileAccess.file_exists(path):
+				push_error("full_draft_ab_test: missing required stats file '%s'" % path)
+				await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+				return
+		print("full_draft_ab_test: required stats files found in %s" % _stats_dir)
 
 	# Build strategy instances
 	var strategies: Dictionary = {}

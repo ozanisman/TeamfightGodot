@@ -16,7 +16,7 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var stats_dir := "res://stats_output_100k"
+	var stats_dir := "res://model_stats/stats_output_100k"
 
 	output_lines.append("\n1. Testing draft AI stats loading...")
 	if backend.has_method("debug_test_draft_ai_stats"):

@@ -22,7 +22,7 @@ func _run() -> void:
 
 	report_lines.append("Backend available: OK")
 
-	var stats_dir := "res://stats_output_100k"
+	var stats_dir := "res://model_stats/stats_output_100k"
 	report_lines.append("Stats directory: " + stats_dir)
 
 	# Test state

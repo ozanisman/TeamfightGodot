@@ -25,6 +25,10 @@ var _matchup_with: Dictionary = {}   # champion_id -> ally_id -> winrate (float)
 var _hybrid_native_picks: RefCounted = null
 var _hybrid_random_picks: RefCounted = null
 
+# Diagnostic tracking (Task 1)
+var _invalid_drafts: int = 0
+var _side_wins: Dictionary = {}  # model -> {"blue_wins": float, "blue_matches": float, "red_wins": float, "red_matches": float}
+
 
 func _extract_argument(prefix: String, default_value: String) -> String:
 	for a in OS.get_cmdline_user_args():
@@ -64,6 +68,16 @@ func _run() -> void:
 
 	_load_greedy_csvs()
 
+	# Guard: validate native stats files exist
+	var native_required := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
+	for f in native_required:
+		var path := NATIVE_STATS_DIR.path_join(f)
+		if not FileAccess.file_exists(path):
+			push_error("head_to_head: missing required native stats file '%s'" % path)
+			quit(1)
+			return
+	print("head_to_head: native stats files found in %s" % NATIVE_STATS_DIR)
+
 	var HybridNativePicksRandomBans := preload("res://scripts/tools/draft_strategy_native_picks_random_bans.gd")
 	var HybridRandomPicksNativeBans := preload("res://scripts/tools/draft_strategy_random_picks_native_bans.gd")
 	_hybrid_native_picks = HybridNativePicksRandomBans.new(NATIVE_STATS_DIR)
@@ -99,6 +113,7 @@ func _run() -> void:
 	var model_totals: Dictionary = {}
 	for m in models:
 		model_totals[m] = {"wins": 0.0, "matches": 0}
+		_side_wins[m] = {"blue_wins": 0.0, "blue_matches": 0.0, "red_wins": 0.0, "red_matches": 0.0}
 
 	for pair_index in range(pairs.size()):
 		var pair: Array = pairs[pair_index]
@@ -116,6 +131,10 @@ func _run() -> void:
 			var blue_team: Array[StringName] = draft["blue"]
 			var red_team: Array[StringName] = draft["red"]
 
+			# Diagnostic: invalid draft check
+			if blue_team.size() != TEAM_SIZE or red_team.size() != TEAM_SIZE:
+				_invalid_drafts += 1
+
 			var result := _simulate_match(blue_team, red_team, sims_per_draft, seed)
 			var blue_wins: float = result["blue_wins"]
 			var total_decisive: float = result["total"]
@@ -126,6 +145,12 @@ func _run() -> void:
 			model_totals[blue_model]["matches"] += 1.0
 			model_totals[red_model]["wins"] += red_winrate
 			model_totals[red_model]["matches"] += 1.0
+
+			# Side bias tracking
+			_side_wins[blue_model]["blue_wins"] += blue_winrate
+			_side_wins[blue_model]["blue_matches"] += 1.0
+			_side_wins[red_model]["red_wins"] += red_winrate
+			_side_wins[red_model]["red_matches"] += 1.0
 
 			csv_lines.append("%d,%s,%s,%d,%s,%s,%.2f,%.0f,%.4f" % [
 				pair_index, model_a, model_b, seed, blue_model, red_model,
@@ -154,6 +179,14 @@ func _run() -> void:
 		var wr: float = float(t["wins"]) / float(t["matches"]) * 100.0 if t["matches"] > 0 else 0.0
 		print("  %-15s %.1f%%  (%d matches)" % [m, wr, int(t["matches"])])
 	print("CSV written to: %s" % output_path)
+	print("Invalid drafts: %d" % _invalid_drafts)
+	print("")
+	print("--- Side Bias (winrate as blue vs red) ---")
+	for m in models:
+		var sw: Dictionary = _side_wins[m]
+		var blue_wr: float = float(sw["blue_wins"]) / float(sw["blue_matches"]) * 100.0 if sw["blue_matches"] > 0 else 0.0
+		var red_wr: float = float(sw["red_wins"]) / float(sw["red_matches"]) * 100.0 if sw["red_matches"] > 0 else 0.0
+		print("  %-15s blue=%.1f%% (%d)  red=%.1f%% (%d)" % [m, blue_wr, int(sw["blue_matches"]), red_wr, int(sw["red_matches"])])
 	print("")
 	print("--- Greedy Scoring Formulas (diagnostic only) ---")
 	print("  greedy_base_power:  score = combat_stats.win_rate")

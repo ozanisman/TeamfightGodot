@@ -44,7 +44,7 @@ var _draft_sequence = [
 	{"side": "R", "action": "PICK"}  # Step 19
 ]
 
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 var _backend: RefCounted = null
 
 ## Weight profiles to test

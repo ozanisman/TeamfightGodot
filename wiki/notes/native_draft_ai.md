@@ -35,7 +35,7 @@ The native draft AI loads statistics from the draft stats database:
 - **Role combinations** - Pre-computed 5-unit comp win rates from `role_combinations.csv`
 - **Champion metadata** - Roles, tags, and other static properties
 
-Stats directory: `res://stats_output_100k/` (configurable per strategy)
+Stats directory: `res://model_stats/stats_output_100k/` (configurable per strategy)
 
 ## Pick Scoring Formula
 
@@ -147,7 +147,7 @@ The native strategy is opt-in and must be explicitly selected in test runners:
 
 ```gdscript
 # In test runners (e.g., full_draft_ablation_test.gd)
-var strategy = DraftStrategyNative.new("res://stats_output_100k")
+var strategy = DraftStrategyNative.new("res://model_stats/stats_output_100k")
 ```
 
 Available strategies:
@@ -231,6 +231,28 @@ Current strategy status:
 |------------------|--------|
 | `native` | Default strategy. |
 | Lookahead variants | Quarantined experimental due to side-bias results. |
+
+## Trusted A/B Tooling (Phase 70)
+
+### Correct Stats Path
+All A/B test tools must use `res://model_stats/stats_output_100k/` as the native stats directory. The old path `res://stats_output_100k/` was fixed across 13 files in Phase 70.
+
+### Missing-Stats Guard
+A/B tools now validate required CSVs (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`) at startup. If any are missing, the tool prints a clear error and exits with code 1 instead of silently falling back to weak/random-like behavior.
+
+### Trusted Commands
+
+**Head-to-head (recommended for controlled pairwise comparisons):**
+```powershell
+godot --headless --path . --script res://scripts/tools/compare_draft_models_head_to_head.gd -- --pair=native,native --seeds=50 --sims-per-draft=10 --output=res://model_stats/draft_h2h_native_selfplay.csv
+```
+
+**Full draft A/B (for multi-matchup reports):**
+```powershell
+godot --headless --path . --script res://scripts/tools/full_draft_ab_test.gd -- --trials=50 --sims-per-draft=10 --matchups="native:native,native:random,random:native"
+```
+
+**Note:** Both tools now produce consistent results (native self-play blue win rate ~60%). Prior to Phase 70, `full_draft_ab_test` produced ~47% blue due to the broken stats path.
 
 ## Current A/B Baseline (Phase 65)
 

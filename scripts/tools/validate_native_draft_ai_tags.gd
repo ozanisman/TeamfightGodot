@@ -5,7 +5,7 @@ extends SceneTree
 
 var _backend: RefCounted = null
 var _catalog: RefCounted = null
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 
 func _init() -> void:
 	call_deferred("_run")

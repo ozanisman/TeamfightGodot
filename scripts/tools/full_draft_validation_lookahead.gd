@@ -9,7 +9,7 @@ const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.g
 
 var _strategy: RefCounted = null
 var _catalog: RefCounted = null
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 
 ## Draft sequence: side (B=blue, R=red) and action type
 var _draft_sequence = [

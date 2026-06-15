@@ -115,7 +115,7 @@ var _draft_orders: Dictionary = {
 ## Draft sequence: side (B=blue, R=red) and action type (default: current)
 var _draft_sequence = []
 
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 var _backend: RefCounted = null
 
 
@@ -174,6 +174,16 @@ func _run() -> void:
 		push_error("full_draft_ablation_test: backend missing run_matches_stats()")
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
+
+	# Guard: validate native stats files exist
+	var required_files := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
+	for f in required_files:
+		var path := _stats_dir.path_join(f)
+		if not FileAccess.file_exists(path):
+			push_error("full_draft_ablation_test: missing required stats file '%s'" % path)
+			await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+			return
+	print("full_draft_ablation_test: required stats files found in %s" % _stats_dir)
 
 	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 	if champion_ids.size() < TEAM_SIZE * 2:

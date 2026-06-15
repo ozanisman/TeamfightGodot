@@ -12,7 +12,7 @@ func _init() -> void:
 func _run() -> void:
 	print("=== Native Draft Strategy Validation ===")
 
-	var stats_dir := "res://stats_output_100k"
+	var stats_dir := "res://model_stats/stats_output_100k"
 	print("Stats directory: %s" % stats_dir)
 
 	# Test 1: Backend availability

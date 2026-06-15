@@ -31,6 +31,6 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array) -> Str
 ## available: Array[StringName] — champions still in the pool
 ## Returns: StringName of the selected champion to ban.
 ## TODO: Currently returns random - needs strategy implementation for intelligent bans.
-func recommend_next_ban(allies: Array, enemies: Array, available: Array) -> StringName:
+func recommend_next_ban(allies: Array, enemies: Array, available: Array, draft_step: int = -1, side: String = "blue") -> StringName:
 	push_error("DraftStrategy.recommend_next_ban() not implemented")
 	return StringName("")

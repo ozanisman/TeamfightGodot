@@ -19,6 +19,10 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 |-----|---------|
 | [native_agent_guide.md](notes/native_agent_guide.md) | **Agent entry** — routing, invariants, do-not-read list |
 | [simulation_module_map.md](notes/simulation_module_map.md) | Module ownership, coordinator split, where to add features |
+| [native_draft_ai.md](notes/native_draft_ai.md) | Draft AI architecture, scoring model, validation results |
+| [native_draft_ai_baseline.md](notes/native_draft_ai_baseline.md) | Draft AI baseline metrics (Phase 29 partial comp scoring) |
+| [draft_order_bias_audit.md](notes/draft_order_bias_audit.md) | Draft order bias audit (Phase 38) — structural advantage analysis |
+| [draft_archetype_tags.md](notes/draft_archetype_tags.md) | Archetype tag design (Phase 40) — tag schema, mapping, scoring ideas |
 | [performance_optimization_status.md](notes/performance_optimization_status.md) | Dated benchmark + validation gate |
 | [algorithmic_optimization_analysis.md](notes/algorithmic_optimization_analysis.md) | Deferred perf ideas (profiling backlog) |
 | [ui_architecture_roadmap.md](notes/ui_architecture_roadmap.md) | UI theme/component direction, deferred ideas, and current avoid-list |

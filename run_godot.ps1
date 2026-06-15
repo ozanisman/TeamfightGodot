@@ -32,6 +32,12 @@ $abTestDraftStrategies = $Arguments -contains "--ab-test-draft-strategies"
 $checkMatchTelemetry = $Arguments -contains "--check-match-telemetry"
 $checkLargeProjectileDamage = $Arguments -contains "--check-large-projectile-damage"
 $checkProjectilePayloads = $Arguments -contains "--check-projectile-payloads"
+$validateNativeStrategy = $Arguments -contains "--validate-native-strategy"
+$validateFullDraft = $Arguments -contains "--validate-full-draft"
+$fullDraftABTest = $Arguments -contains "--full-draft-ab-test"
+$fullDraftAblationTest = $Arguments -contains "--full-draft-ablation-test"
+$fullDraftBanDiagnostic = $Arguments -contains "--full-draft-ban-diagnostic"
+$testPartialCompScoring = $Arguments -contains "--test-partial-comp-scoring"
 $checkFixtureFile = $false
 foreach ($argument in $Arguments) {
 	if ($argument -like "--fixture-file=*") {
@@ -162,6 +168,24 @@ elseif ($verifyDraftAwareSignal) {
 }
 elseif ($validateRolloutConvergence) {
 	$timeoutSeconds = 600
+}
+elseif ($validateNativeStrategy) {
+	$timeoutSeconds = 30
+}
+elseif ($validateFullDraft) {
+	$timeoutSeconds = 60
+}
+elseif ($fullDraftABTest) {
+	$timeoutSeconds = 300
+}
+elseif ($fullDraftAblationTest) {
+	$timeoutSeconds = 300
+}
+elseif ($fullDraftBanDiagnostic) {
+	$timeoutSeconds = 300
+}
+elseif ($testPartialCompScoring) {
+	$timeoutSeconds = 120
 }
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
@@ -324,6 +348,24 @@ elseif ($validateRolloutConvergence) {
 	$godotArgs += "--rollout-counts=$rolloutCountsArg"
 	$Arguments = $Arguments | Where-Object { $_ -notlike "--rollout-counts=*" }
 }
+elseif ($validateNativeStrategy) {
+	$godotArgs += @("--script", "res://scripts/tools/file_based_validation.gd")
+}
+elseif ($validateFullDraft) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_validation.gd")
+}
+elseif ($fullDraftABTest) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ab_test.gd")
+}
+elseif ($fullDraftAblationTest) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ablation_test.gd")
+}
+elseif ($fullDraftBanDiagnostic) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ban_diagnostic.gd")
+}
+elseif ($testPartialCompScoring) {
+	$godotArgs += @("--script", "res://scripts/tools/test_partial_comp_scoring.gd")
+}
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
@@ -403,6 +445,26 @@ try {
 	elseif ($verifyDraftAwareSignal) {
 		$outputPath = Convert-ProjectPath (Get-ArgString "--output=" "res://stats_output/draft_aware_model.csv")
 		Assert-DurableOutput $outputPath 2 2 0
+	}
+	elseif ($validateNativeStrategy) {
+		$outputPath = Convert-ProjectPath "res://draft_ai_validation_report.txt"
+		Assert-DurableOutput $outputPath 100 10 0
+	}
+	elseif ($validateFullDraft) {
+		$outputPath = Convert-ProjectPath "res://draft_validation_report.txt"
+		Assert-DurableOutput $outputPath 100 10 0
+	}
+	elseif ($fullDraftABTest) {
+		$outputPath = Convert-ProjectPath "res://full_draft_ab_test_report.txt"
+		Assert-DurableOutput $outputPath 100 10 0
+	}
+	elseif ($fullDraftAblationTest) {
+		$outputPath = Convert-ProjectPath "res://full_draft_ablation_report.txt"
+		Assert-DurableOutput $outputPath 100 10 0
+	}
+	elseif ($fullDraftBanDiagnostic) {
+		$outputPath = Convert-ProjectPath "res://full_draft_ban_diagnostic_report.txt"
+		Assert-DurableOutput $outputPath 100 10 0
 	}
 	exit $process.ExitCode
 }

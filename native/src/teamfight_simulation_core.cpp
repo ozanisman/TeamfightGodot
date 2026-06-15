@@ -143,6 +143,14 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_stats", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_stats, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_eval, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_recommendations, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_eval, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_recommendations, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_lookahead_turn_diagnostic"), &TeamfightSimulationCore::debug_lookahead_turn_diagnostic);
+	ClassDB::bind_method(D_METHOD("get_draft_ai_pick_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "strategy"), &TeamfightSimulationCore::get_draft_ai_pick_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_draft_ai_ban_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "acting_side", "weight_overrides", "strategy"), &TeamfightSimulationCore::get_draft_ai_ban_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL("blue"), DEFVAL(Dictionary()), DEFVAL(0));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -329,12 +337,18 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 	config.early_pick_base_weight = early_pick_base_weight;
 	config.late_pick_counter_weight = late_pick_counter_weight;
 
+	// Load catalog for tag access
+	sim::catalog::CatalogState catalog;
+	sim::catalog::CatalogHooks hooks;
+	sim::catalog::ensure_loaded(catalog, hooks);
+
 	sim::draft::DraftEvaluator evaluator(database, config);
 	sim::draft::DraftRecommender recommender(evaluator, false);
-	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
+	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend_with_tags(
 			array_to_string_names(allies),
 			array_to_string_names(enemies),
-			array_to_string_names(available));
+			array_to_string_names(available),
+			catalog);
 
 	Array result;
 	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
@@ -348,6 +362,14 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		breakdown["counter"] = eval.avg_counter;
 		breakdown["counter_variance"] = eval.counter_variance;
 		breakdown["final"] = eval.score;
+		
+		// Add archetype tags (debug-only)
+		Array tags_array;
+		for (const StringName &tag : eval.candidate_tags) {
+			tags_array.append(String(tag));
+		}
+		breakdown["candidate_tags"] = tags_array;
+		
 		result.push_back(breakdown);
 	}
 	return result;
@@ -900,4 +922,440 @@ void TeamfightSimulationCore::_debug_print_stack_state(const sim::UnitState &uni
 	}
 
 	UtilityFunctions::push_warning(debug_output);
+}
+
+void TeamfightSimulationCore::debug_test_draft_ai_stats(const String &stats_dir) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return;
+	}
+
+	UtilityFunctions::print(vformat("=== Draft AI Stats Database Test ==="));
+	UtilityFunctions::print(vformat("Loaded from: %s", stats_dir));
+	UtilityFunctions::print(vformat("Load status: success"));
+
+	// Test base query
+	StringName test_champion = "swordsman";
+	auto base_stat = database.base_winrate_for(test_champion);
+	UtilityFunctions::print(vformat("\nBase query for '%s':", test_champion));
+	UtilityFunctions::print(vformat("  raw_winrate: %.4f", base_stat.raw_winrate));
+	UtilityFunctions::print(vformat("  adjusted_winrate: %.4f", base_stat.adjusted_winrate));
+	UtilityFunctions::print(vformat("  centered_value: %.4f", base_stat.centered_value));
+	UtilityFunctions::print(vformat("  samples: %d", base_stat.samples));
+	UtilityFunctions::print(vformat("  confidence: %.4f", base_stat.confidence));
+	UtilityFunctions::print(vformat("  found: %s", base_stat.found ? "true" : "false"));
+
+	// Test synergy query
+	StringName test_ally = "archer";
+	auto synergy_stat = database.synergy_winrate_for(test_champion, test_ally);
+	UtilityFunctions::print(vformat("\nSynergy query for '%s' with '%s':", test_champion, test_ally));
+	UtilityFunctions::print(vformat("  raw_winrate: %.4f", synergy_stat.raw_winrate));
+	UtilityFunctions::print(vformat("  adjusted_winrate: %.4f", synergy_stat.adjusted_winrate));
+	UtilityFunctions::print(vformat("  centered_value: %.4f", synergy_stat.centered_value));
+	UtilityFunctions::print(vformat("  samples: %d", synergy_stat.samples));
+	UtilityFunctions::print(vformat("  confidence: %.4f", synergy_stat.confidence));
+	UtilityFunctions::print(vformat("  found: %s", synergy_stat.found ? "true" : "false"));
+
+	// Test counter query
+	StringName test_enemy = "berserker";
+	auto counter_stat = database.counter_winrate_for(test_champion, test_enemy);
+	UtilityFunctions::print(vformat("\nCounter query for '%s' vs '%s':", test_champion, test_enemy));
+	UtilityFunctions::print(vformat("  raw_winrate: %.4f", counter_stat.raw_winrate));
+	UtilityFunctions::print(vformat("  adjusted_winrate: %.4f", counter_stat.adjusted_winrate));
+	UtilityFunctions::print(vformat("  centered_value: %.4f", counter_stat.centered_value));
+	UtilityFunctions::print(vformat("  samples: %d", counter_stat.samples));
+	UtilityFunctions::print(vformat("  confidence: %.4f", counter_stat.confidence));
+	UtilityFunctions::print(vformat("  found: %s", counter_stat.found ? "true" : "false"));
+
+	// Test missing champion
+	StringName missing_champion = "nonexistent_champion";
+	auto missing_stat = database.base_winrate_for(missing_champion);
+	UtilityFunctions::print(vformat("\nMissing champion query for '%s':", missing_champion));
+	UtilityFunctions::print(vformat("  raw_winrate: %.4f", missing_stat.raw_winrate));
+	UtilityFunctions::print(vformat("  adjusted_winrate: %.4f", missing_stat.adjusted_winrate));
+	UtilityFunctions::print(vformat("  centered_value: %.4f", missing_stat.centered_value));
+	UtilityFunctions::print(vformat("  samples: %d", missing_stat.samples));
+	UtilityFunctions::print(vformat("  confidence: %.4f", missing_stat.confidence));
+	UtilityFunctions::print(vformat("  found: %s", missing_stat.found ? "true" : "false"));
+
+	UtilityFunctions::print(vformat("\n=== Test Complete ==="));
+}
+
+void TeamfightSimulationCore::debug_test_draft_ai_pick_eval(const String &stats_dir) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return;
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+
+	UtilityFunctions::print(vformat("=== Draft AI Pick Evaluation Test ==="));
+	UtilityFunctions::print(vformat("Loaded from: %s", stats_dir));
+
+	// Hardcoded test case
+	StringName candidate = "swordsman";
+	std::vector<StringName> allies;
+	allies.push_back("archer");
+	std::vector<StringName> enemies;
+	enemies.push_back("berserker");
+
+	auto breakdown = evaluator.evaluate_candidate_pick(candidate, allies, enemies);
+
+	UtilityFunctions::print(vformat("\ncandidate: %s", candidate));
+	UtilityFunctions::print(vformat("allies: [archer]"));
+	UtilityFunctions::print(vformat("enemies: [berserker]"));
+	UtilityFunctions::print(vformat("total_score: %.4f", breakdown.total_score));
+	UtilityFunctions::print(vformat("base_power: %.4f", breakdown.base_power));
+	UtilityFunctions::print(vformat("ally_synergy: %.4f", breakdown.ally_synergy));
+	UtilityFunctions::print(vformat("enemy_counter_value: %.4f", breakdown.enemy_counter_value));
+	UtilityFunctions::print(vformat("counter_risk: %.4f", breakdown.counter_risk));
+	UtilityFunctions::print(vformat("synergy_pairs: %d", breakdown.synergy_pairs));
+	UtilityFunctions::print(vformat("counter_pairs: %d", breakdown.counter_pairs));
+
+	UtilityFunctions::print(vformat("\n=== Test Complete ==="));
+}
+
+void TeamfightSimulationCore::debug_test_draft_ai_pick_recommendations(const String &stats_dir) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return;
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+
+	UtilityFunctions::print(vformat("=== Draft AI Pick Recommendation Test ==="));
+	UtilityFunctions::print(vformat("Loaded from: %s", stats_dir));
+
+	// Hardcoded test case
+	std::vector<StringName> allies;
+	allies.push_back("archer");
+
+	std::vector<StringName> enemies;
+	enemies.push_back("berserker");
+
+	std::vector<StringName> available;
+	available.push_back("swordsman");
+	available.push_back("cleric");
+	available.push_back("colossus");
+	available.push_back("frost_mage");
+
+	UtilityFunctions::print(vformat("\nallies: [archer]"));
+	UtilityFunctions::print(vformat("enemies: [berserker]"));
+	UtilityFunctions::print(vformat("available: [swordsman, cleric, colossus, frost_mage]"));
+
+	auto recommendations = recommender.recommend_picks(available, allies, enemies, 0);
+
+	UtilityFunctions::print(vformat("\nRanked recommendations (%d):", static_cast<int>(recommendations.size())));
+
+	for (size_t i = 0; i < recommendations.size(); ++i) {
+		const auto &rec = recommendations[i];
+		UtilityFunctions::print(vformat("%d. %s", static_cast<int>(i + 1), rec.candidate));
+		UtilityFunctions::print(vformat("   total_score: %.4f", rec.total_score));
+		UtilityFunctions::print(vformat("   base_power: %.4f", rec.base_power));
+		UtilityFunctions::print(vformat("   ally_synergy: %.4f", rec.ally_synergy));
+		UtilityFunctions::print(vformat("   enemy_counter_value: %.4f", rec.enemy_counter_value));
+		UtilityFunctions::print(vformat("   counter_risk: %.4f", rec.counter_risk));
+		UtilityFunctions::print(vformat("   synergy_pairs: %d", rec.synergy_pairs));
+		UtilityFunctions::print(vformat("   counter_pairs: %d", rec.counter_pairs));
+	}
+
+	UtilityFunctions::print(vformat("\n=== Test Complete ==="));
+}
+
+void TeamfightSimulationCore::debug_test_draft_ai_ban_eval(const String &stats_dir) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return;
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+
+	UtilityFunctions::print(vformat("=== Draft AI Ban Evaluation Test ==="));
+	UtilityFunctions::print(vformat("Loaded from: %s", stats_dir));
+
+	// Hardcoded test case
+	StringName candidate = "cleric";
+	std::vector<StringName> allies;
+	allies.push_back("swordsman");
+	allies.push_back("archer");
+	std::vector<StringName> enemies;
+	enemies.push_back("berserker");
+
+	auto breakdown = evaluator.evaluate_candidate_ban(candidate, allies, enemies);
+
+	UtilityFunctions::print(vformat("\ncandidate: %s", candidate));
+	UtilityFunctions::print(vformat("allies: [swordsman, archer]"));
+	UtilityFunctions::print(vformat("enemies: [berserker]"));
+	UtilityFunctions::print(vformat("total_score: %.4f", breakdown.total_score));
+	UtilityFunctions::print(vformat("enemy_pick_value: %.4f", breakdown.enemy_pick_value));
+	UtilityFunctions::print(vformat("enemy_synergy: %.4f", breakdown.enemy_synergy));
+	UtilityFunctions::print(vformat("counters_my_team: %.4f", breakdown.counters_my_team));
+	UtilityFunctions::print(vformat("own_pick_value_penalty: %.4f", breakdown.own_pick_value_penalty));
+	UtilityFunctions::print(vformat("enemy_synergy_pairs: %d", breakdown.enemy_synergy_pairs));
+	UtilityFunctions::print(vformat("counter_pairs: %d", breakdown.counter_pairs));
+
+	UtilityFunctions::print(vformat("\n=== Test Complete ==="));
+}
+
+void TeamfightSimulationCore::debug_test_draft_ai_ban_recommendations(const String &stats_dir) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_error(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return;
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+
+	UtilityFunctions::print(vformat("=== Draft AI Ban Recommendation Test ==="));
+	UtilityFunctions::print(vformat("Loaded from: %s", stats_dir));
+
+	// Hardcoded test case
+	std::vector<StringName> allies;
+	allies.push_back("swordsman");
+	allies.push_back("archer");
+
+	std::vector<StringName> enemies;
+	enemies.push_back("berserker");
+
+	std::vector<StringName> available;
+	available.push_back("cleric");
+	available.push_back("colossus");
+	available.push_back("frost_mage");
+	available.push_back("assassin");
+
+	UtilityFunctions::print(vformat("\nallies: [swordsman, archer]"));
+	UtilityFunctions::print(vformat("enemies: [berserker]"));
+	UtilityFunctions::print(vformat("available: [cleric, colossus, frost_mage, assassin]"));
+
+	auto recommendations = recommender.recommend_bans(available, allies, enemies, 0);
+
+	UtilityFunctions::print(vformat("\nRanked ban recommendations (%d):", static_cast<int>(recommendations.size())));
+
+	for (size_t i = 0; i < recommendations.size(); ++i) {
+		const auto &rec = recommendations[i];
+		UtilityFunctions::print(vformat("%d. %s", static_cast<int>(i + 1), rec.candidate));
+		UtilityFunctions::print(vformat("   total_score: %.4f", rec.total_score));
+		UtilityFunctions::print(vformat("   enemy_pick_value: %.4f", rec.enemy_pick_value));
+		UtilityFunctions::print(vformat("   enemy_synergy: %.4f", rec.enemy_synergy));
+		UtilityFunctions::print(vformat("   counters_my_team: %.4f", rec.counters_my_team));
+		UtilityFunctions::print(vformat("   own_pick_value_penalty: %.4f", rec.own_pick_value_penalty));
+		UtilityFunctions::print(vformat("   enemy_synergy_pairs: %d", rec.enemy_synergy_pairs));
+		UtilityFunctions::print(vformat("   counter_pairs: %d", rec.counter_pairs));
+	}
+
+	UtilityFunctions::print(vformat("\n=== Test Complete ==="));
+}
+
+void TeamfightSimulationCore::debug_lookahead_turn_diagnostic() {
+	sim::draft_ai::DraftRecommender::generate_lookahead_turn_diagnostic();
+}
+
+Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
+	const String &stats_dir,
+	const Array &available,
+	const Array &allies,
+	const Array &enemies,
+	int max_results,
+	int draft_step,
+	int strategy
+) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return Array();
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+
+	// Load catalog for tag access
+	sim::catalog::CatalogState catalog;
+	sim::catalog::CatalogHooks hooks;
+	sim::catalog::ensure_loaded(catalog, hooks);
+	database.set_catalog(&catalog);
+
+	// Convert strategy int to enum
+	sim::draft_ai::DraftStrategy draft_strategy = static_cast<sim::draft_ai::DraftStrategy>(strategy);
+
+	// Convert Godot Arrays to native vectors
+	std::vector<StringName> available_native;
+	for (int i = 0; i < available.size(); ++i) {
+		available_native.push_back(available[i]);
+	}
+
+	std::vector<StringName> allies_native;
+	for (int i = 0; i < allies.size(); ++i) {
+		allies_native.push_back(allies[i]);
+	}
+
+	std::vector<StringName> enemies_native;
+	for (int i = 0; i < enemies.size(); ++i) {
+		enemies_native.push_back(enemies[i]);
+	}
+
+	// Get recommendations with draft step and strategy
+	auto recommendations = recommender.recommend_picks(available_native, allies_native, enemies_native, max_results, draft_step, draft_strategy);
+
+	// Convert to Array[Dictionary]
+	Array result;
+	for (const auto &rec : recommendations) {
+		Dictionary dict;
+		dict["candidate"] = String(rec.candidate);
+		dict["total_score"] = rec.total_score;
+		dict["base_power"] = rec.base_power;
+		dict["ally_synergy"] = rec.ally_synergy;
+		dict["enemy_counter_value"] = rec.enemy_counter_value;
+		dict["counter_risk"] = rec.counter_risk;
+		dict["base_power_weight"] = rec.base_power_weight;
+		dict["ally_synergy_weight"] = rec.ally_synergy_weight;
+		dict["enemy_counter_value_weight"] = rec.enemy_counter_value_weight;
+		dict["counter_risk_weight"] = rec.counter_risk_weight;
+		dict["role_fit"] = rec.role_fit;
+		dict["role_fit_weight"] = rec.role_fit_weight;
+		dict["candidate_role"] = String(rec.candidate_role);
+		dict["comp_fit"] = rec.comp_fit;
+		dict["comp_fit_weight"] = rec.comp_fit_weight;
+		dict["comp_fingerprint"] = String(rec.comp_fingerprint);
+		dict["comp_samples"] = rec.comp_samples;
+		dict["comp_match_count"] = rec.comp_match_count;
+		dict["synergy_pairs"] = rec.synergy_pairs;
+		dict["counter_pairs"] = rec.counter_pairs;
+		dict["draft_step"] = rec.draft_step;
+		dict["phase_label"] = String(rec.phase_label);
+		// Lookahead debug fields
+		dict["immediate_score"] = rec.immediate_score;
+		dict["lookahead_adjustment"] = rec.lookahead_adjustment;
+		dict["opponent_response_candidate"] = String(rec.opponent_response_candidate);
+		dict["opponent_response_score"] = rec.opponent_response_score;
+		dict["current_side"] = String(rec.current_side);
+		dict["next_pick_step"] = rec.next_pick_step;
+		dict["next_pick_side"] = String(rec.next_pick_side);
+		dict["next_pick_is_enemy"] = rec.next_pick_is_enemy;
+
+		// Add archetype tags (debug-only)
+		Array tags_array;
+		for (const StringName &tag : rec.candidate_tags) {
+			tags_array.append(String(tag));
+		}
+		dict["candidate_tags"] = tags_array;
+
+		result.append(dict);
+	}
+
+	return result;
+}
+
+Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
+	const String &stats_dir,
+	const Array &available,
+	const Array &allies,
+	const Array &enemies,
+	int max_results,
+	int draft_step,
+	const String &acting_side,
+	const Dictionary &weight_overrides,
+	int strategy
+) {
+	sim::draft_ai::DraftStatsDatabase database;
+
+	if (!database.load_from_dir(stats_dir)) {
+		UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
+		return Array();
+	}
+
+	sim::draft_ai::DraftEvaluator evaluator(&database);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+
+	// Load catalog for tag access
+	sim::catalog::CatalogState catalog;
+	sim::catalog::CatalogHooks hooks;
+	sim::catalog::ensure_loaded(catalog, hooks);
+	database.set_catalog(&catalog);
+
+	// Convert strategy int to enum
+	sim::draft_ai::DraftStrategy draft_strategy = static_cast<sim::draft_ai::DraftStrategy>(strategy);
+
+	// Convert Godot Arrays to native vectors
+	std::vector<StringName> available_native;
+	for (int i = 0; i < available.size(); ++i) {
+		available_native.push_back(available[i]);
+	}
+
+	std::vector<StringName> allies_native;
+	for (int i = 0; i < allies.size(); ++i) {
+		allies_native.push_back(allies[i]);
+	}
+
+	std::vector<StringName> enemies_native;
+	for (int i = 0; i < enemies.size(); ++i) {
+		enemies_native.push_back(enemies[i]);
+	}
+
+	// Get recommendations with draft step and strategy
+	auto recommendations = recommender.recommend_bans(available_native, allies_native, enemies_native, max_results, draft_step, acting_side, weight_overrides, draft_strategy);
+
+	// Convert to Array[Dictionary]
+	Array result;
+	for (const auto &rec : recommendations) {
+		Dictionary dict;
+		dict["candidate"] = String(rec.candidate);
+		dict["total_score"] = rec.total_score;
+		dict["enemy_pick_value"] = rec.enemy_pick_value;
+		dict["own_pick_value"] = rec.own_pick_value;
+		dict["denial_value"] = rec.denial_value;
+		dict["enemy_synergy"] = rec.enemy_synergy;
+		dict["counters_my_team"] = rec.counters_my_team;
+		dict["denial_value_weight"] = rec.denial_value_weight;
+		dict["enemy_synergy_weight"] = rec.enemy_synergy_weight;
+		dict["counters_my_team_weight"] = rec.counters_my_team_weight;
+		dict["own_pick_value_penalty"] = rec.own_pick_value_penalty;
+		dict["fills_enemy_role_need"] = rec.fills_enemy_role_need;
+		dict["fills_enemy_role_need_weight"] = rec.fills_enemy_role_need_weight;
+		dict["candidate_role"] = String(rec.candidate_role);
+		dict["enemy_comp_fit"] = rec.enemy_comp_fit;
+		dict["enemy_comp_fit_weight"] = rec.enemy_comp_fit_weight;
+		dict["enemy_comp_fingerprint"] = String(rec.enemy_comp_fingerprint);
+		dict["enemy_comp_samples"] = rec.enemy_comp_samples;
+		dict["enemy_comp_match_count"] = rec.enemy_comp_match_count;
+		dict["enemy_synergy_pairs"] = rec.enemy_synergy_pairs;
+		dict["counter_pairs"] = rec.counter_pairs;
+		dict["draft_step"] = rec.draft_step;
+		dict["phase_label"] = String(rec.phase_label);
+		dict["acting_side"] = String(rec.acting_side);
+		dict["enemy_gets_first_pick_after_ban_phase"] = rec.enemy_gets_first_pick_after_ban_phase;
+		dict["early_ban_fallback_component"] = rec.early_ban_fallback_component;
+		// Lookahead debug fields
+		dict["immediate_score"] = rec.immediate_score;
+		dict["lookahead_adjustment"] = rec.lookahead_adjustment;
+		dict["enemy_best_pick_before"] = String(rec.enemy_best_pick_before);
+		dict["enemy_best_pick_score_before"] = rec.enemy_best_pick_score_before;
+		dict["enemy_best_pick_after"] = String(rec.enemy_best_pick_after);
+		dict["enemy_best_pick_score_after"] = rec.enemy_best_pick_score_after;
+		dict["denied_enemy_pick_value"] = rec.denied_enemy_pick_value;
+		dict["current_side"] = String(rec.current_side);
+		dict["enemy_next_pick_step"] = rec.enemy_next_pick_step;
+
+		// Add archetype tags (debug-only)
+		Array tags_array;
+		for (const StringName &tag : rec.candidate_tags) {
+			tags_array.append(String(tag));
+		}
+		dict["candidate_tags"] = tags_array;
+
+		result.append(dict);
+	}
+
+	return result;
 }

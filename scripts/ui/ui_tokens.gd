@@ -48,4 +48,4 @@ const DRAFT_CHAMPION_GAP_PX: int = 30
 const DRAFT_CHAMPION_MAX_COLUMNS: int = 9
 
 # Recommendation panel (draft testing only)
-const DRAFT_RECOMMENDATION_HEIGHT_RATIO: float = 0.10
+const DRAFT_RECOMMENDATION_HEIGHT_RATIO: float = 0.32

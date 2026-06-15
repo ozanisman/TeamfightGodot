@@ -6,7 +6,7 @@ extends SceneTree
 ## Usage:
 ##   godot --headless --script res://scripts/tools/ab_test_draft_strategies.gd \
 ##     -- --trials=500 --sims-per-trial=50 --depths=1,2,3 \
-##     --strategies=random,certified --output=res://model_stats/draft_ab_test.csv
+##     --strategies=random,certified,native --output=res://model_stats/draft_ab_test.csv
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
@@ -15,6 +15,7 @@ const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyCertifiedPath := "res://scripts/tools/draft_strategy_certified.gd"
+const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
 
 const TEAM_SIZE: int = 5
 
@@ -87,6 +88,8 @@ func _run() -> void:
 				strategies[name] = load(DraftStrategyRandomPath).new()
 			"certified":
 				strategies[name] = load(DraftStrategyCertifiedPath).new(stats_dir)
+			"native":
+				strategies[name] = load(DraftStrategyNativePath).new(stats_dir)
 			_:
 				push_error("ab_test_draft_strategies: unknown strategy '%s'" % name)
 				quit(1)

@@ -30,6 +30,17 @@ native/build_ninja/
 wiki/.obsidian/
 compile_commands.json
 
+# Generated validation/calibration reports
+*_validation_report.md
+*_calibration_report.md
+*_ablation_report.md
+*_diagnostic_report.md
+draft_ai_validation_report.txt
+full_draft_ab_test_report.txt
+full_draft_ablation_report.txt
+full_draft_ban_diagnostic_report.txt
+draft_validation_report.txt
+
 # IDE/editor specific
 .cache/
 .cursor/

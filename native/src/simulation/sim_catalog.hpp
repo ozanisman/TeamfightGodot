@@ -25,6 +25,7 @@ struct CatalogState {
 	Dictionary ability_kits;
 	Dictionary effective_champion_by_archetype;
 	Dictionary passive_registry;
+	Dictionary champion_tags; // champion_id -> Array of tag strings
 	bool catalog_loaded = false;
 };
 
@@ -35,6 +36,8 @@ Dictionary effective_champion_for(const CatalogState &state, const StringName &u
 Dictionary champion_for(const CatalogState &state, const StringName &unit_id);
 void set_balance_patches(CatalogState &state, const Array &patches, const CatalogHooks &hooks);
 Array get_balance_patches(const CatalogState &state);
+std::vector<StringName> tags_for(const CatalogState &state, const StringName &champion);
+bool champion_has_tag(const CatalogState &state, const StringName &champion, const StringName &tag);
 
 } // namespace catalog
 } // namespace sim

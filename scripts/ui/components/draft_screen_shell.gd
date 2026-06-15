@@ -36,6 +36,7 @@ const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 @onready var recommendation_panel: Panel = $RecommendationPanel
 @onready var recommendation_title: Label = $RecommendationPanel/RecommendationTitle
 @onready var recommendation_list: VBoxContainer = $RecommendationPanel/RecommendationList
+@onready var native_ai_toggle: CheckBox = $RecommendationPanel/NativeAIToggle
 
 
 func _ready() -> void:
@@ -122,6 +123,33 @@ func _apply_static_styles() -> void:
 	recommendation_title.add_theme_color_override("font_color", Tokens.COLOR_HIGHLIGHT)
 	recommendation_title.add_theme_font_size_override("font_size", 24)
 	recommendation_list.add_theme_constant_override("separation", 8)
+
+	# Strip all formatting from native AI toggle
+	if native_ai_toggle != null:
+		native_ai_toggle.theme = null  # Disable theme inheritance
+		native_ai_toggle.remove_theme_color_override("font_color")
+		native_ai_toggle.remove_theme_color_override("font_pressed_color")
+		native_ai_toggle.remove_theme_color_override("font_hover_color")
+		native_ai_toggle.remove_theme_color_override("font_disabled_color")
+		native_ai_toggle.remove_theme_color_override("font_focus_color")
+		native_ai_toggle.remove_theme_stylebox_override("normal")
+		native_ai_toggle.remove_theme_stylebox_override("pressed")
+		native_ai_toggle.remove_theme_stylebox_override("hover")
+		native_ai_toggle.remove_theme_stylebox_override("disabled")
+		native_ai_toggle.remove_theme_stylebox_override("focus")
+		native_ai_toggle.remove_theme_stylebox_override("hover_pressed")
+		native_ai_toggle.remove_theme_constant_override("h_separation")
+		native_ai_toggle.remove_theme_constant_override("v_separation")
+		native_ai_toggle.remove_theme_icon_override("checked")
+		native_ai_toggle.remove_theme_icon_override("unchecked")
+		native_ai_toggle.remove_theme_icon_override("checked_disabled")
+		native_ai_toggle.remove_theme_icon_override("unchecked_disabled")
+		native_ai_toggle.remove_theme_icon_override("hover_checked")
+		native_ai_toggle.remove_theme_icon_override("hover_unchecked")
+		native_ai_toggle.remove_theme_icon_override("hover_pressed_checked")
+		native_ai_toggle.remove_theme_icon_override("hover_pressed_unchecked")
+		native_ai_toggle.remove_theme_font_size_override("font_size")
+		native_ai_toggle.remove_theme_font_override("font")
 
 
 func _on_back_pressed() -> void:

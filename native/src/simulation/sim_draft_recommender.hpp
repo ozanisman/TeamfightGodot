@@ -1,6 +1,8 @@
 #ifndef SIM_DRAFT_RECOMMENDER_HPP
 #define SIM_DRAFT_RECOMMENDER_HPP
 
+#include "sim_catalog.hpp"
+
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 
@@ -140,6 +142,9 @@ struct DraftEvaluation {
 	// Relationship counts (number of allies/enemies evaluated)
 	int64_t synergy_relationships = 0;
 	int64_t counter_relationships = 0;
+
+	// Archetype tags (debug-only, not used in scoring)
+	std::vector<StringName> candidate_tags;
 };
 
 struct EvalDebug {
@@ -324,6 +329,7 @@ class DraftEvaluator {
 public:
 	explicit DraftEvaluator(const DraftStatsDatabase &database, PredictionConfig config = PredictionConfig());
 	DraftEvaluation evaluate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
+	DraftEvaluation evaluate_with_tags(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const catalog::CatalogState &catalog) const;
 	double evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug = nullptr) const;
 	SignalInfluenceReport analyze_signal_influence(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies) const;
 	ControlledEvaluationReport run_controlled_evaluation(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const;
@@ -341,6 +347,7 @@ public:
 	explicit DraftRecommender(const DraftEvaluator &evaluator, bool debug_mode = false);
 	void set_debug_mode(bool enabled);
 	std::vector<DraftEvaluation> recommend(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available) const;
+	std::vector<DraftEvaluation> recommend_with_tags(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, const catalog::CatalogState &catalog) const;
 	void print_top(const std::vector<DraftEvaluation> &ranked, int64_t top_n) const;
 	void run_debug_evaluation_batch(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, int64_t num_runs = 50) const;
 

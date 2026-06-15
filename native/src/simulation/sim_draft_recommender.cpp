@@ -909,6 +909,12 @@ DraftEvaluation DraftEvaluator::evaluate(const StringName &candidate, const std:
 	return result;
 }
 
+DraftEvaluation DraftEvaluator::evaluate_with_tags(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const catalog::CatalogState &catalog) const {
+	DraftEvaluation result = evaluate(candidate, allies, enemies);
+	result.candidate_tags = catalog::tags_for(catalog, candidate);
+	return result;
+}
+
 double DraftEvaluator::evaluate_candidate(const StringName &candidate, const std::vector<StringName> &allies, const std::vector<StringName> &enemies, EvalDebug *out_debug) const {
 	DraftEvaluation evaluation = evaluate(candidate, allies, enemies);
 	if (out_debug != nullptr) {
@@ -1736,6 +1742,27 @@ std::vector<DraftEvaluation> DraftRecommender::recommend(const std::vector<Strin
 	ranked.reserve(available.size());
 	for (const StringName &candidate : available) {
 		ranked.push_back(_evaluator.evaluate(candidate, allies, enemies));
+	}
+	std::sort(ranked.begin(), ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
+		constexpr double kTieEpsilon = 0.005;
+		if (std::abs(a.score - b.score) < kTieEpsilon) {
+			int64_t a_rels = a.synergy_relationships + a.counter_relationships;
+			int64_t b_rels = b.synergy_relationships + b.counter_relationships;
+			if (a_rels != b_rels) {
+				return a_rels > b_rels;  // More data = more reliable pick
+			}
+			return String(a.champion) < String(b.champion);
+		}
+		return a.score > b.score;
+	});
+	return ranked;
+}
+
+std::vector<DraftEvaluation> DraftRecommender::recommend_with_tags(const std::vector<StringName> &allies, const std::vector<StringName> &enemies, const std::vector<StringName> &available, const catalog::CatalogState &catalog) const {
+	std::vector<DraftEvaluation> ranked;
+	ranked.reserve(available.size());
+	for (const StringName &candidate : available) {
+		ranked.push_back(_evaluator.evaluate_with_tags(candidate, allies, enemies, catalog));
 	}
 	std::sort(ranked.begin(), ranked.end(), [](const DraftEvaluation &a, const DraftEvaluation &b) {
 		constexpr double kTieEpsilon = 0.005;

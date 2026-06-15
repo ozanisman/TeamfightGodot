@@ -266,6 +266,28 @@ void ensure_loaded(CatalogState &state, const CatalogHooks &hooks) {
 	// This ensures stats generation uses the most recent champion data
 	Dictionary champion_catalog = load_json_required(String(CHAMPION_SCHEMA_PATH));
 
+	// Extract tags from champion catalog
+	Dictionary champion_tags;
+	Array champion_keys = champion_catalog.keys();
+	for (int64_t i = 0; i < champion_keys.size(); ++i) {
+		Variant key_var = champion_keys[i];
+		String key_str = String(key_var);
+
+		// Skip non-champion entries like "passives", "role_configs", and "minions"
+		if (key_str == "passives" || key_str == "role_configs" || key_str == "minions") {
+			continue;
+		}
+
+		Dictionary champion = Dictionary(champion_catalog[key_var]);
+		Variant tags_var = champion.get("tags", Variant());
+		if (tags_var.get_type() == Variant::ARRAY) {
+			champion_tags[key_var] = Array(tags_var).duplicate();
+		} else {
+			// Empty array if no tags
+			champion_tags[key_var] = Array();
+		}
+	}
+
 	// role_configs
 	Dictionary role_configs;
 	if (!champion_catalog.has("role_configs")) {
@@ -333,6 +355,7 @@ void ensure_loaded(CatalogState &state, const CatalogHooks &hooks) {
 	state.role_configs = role_configs;
 	state.passive_registry = passive_registry;
 	state.ability_kits = ability_kits;
+	state.champion_tags = champion_tags;
 	// On first load, use file patches; on hot reload preserve programmatic patches.
 	if (!state.catalog_loaded) {
 		state.balance_patches = balance_patches;
@@ -404,6 +427,32 @@ Array get_balance_patches(const CatalogState &state) {
 		result.append(pd);
 	}
 	return result;
+}
+
+std::vector<StringName> tags_for(const CatalogState &state, const StringName &champion) {
+	std::vector<StringName> result;
+	if (!state.champion_tags.has(champion)) {
+		return result;
+	}
+	Variant tags_var = state.champion_tags[champion];
+	if (tags_var.get_type() != Variant::ARRAY) {
+		return result;
+	}
+	Array tags = Array(tags_var);
+	for (int64_t i = 0; i < tags.size(); ++i) {
+		result.push_back(StringName(String(tags[i])));
+	}
+	return result;
+}
+
+bool champion_has_tag(const CatalogState &state, const StringName &champion, const StringName &tag) {
+	std::vector<StringName> tags = tags_for(state, champion);
+	for (const StringName &t : tags) {
+		if (t == tag) {
+			return true;
+		}
+	}
+	return false;
 }
 
 } // namespace catalog

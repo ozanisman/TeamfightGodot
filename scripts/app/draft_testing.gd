@@ -5,25 +5,67 @@ const RECOMMENDATION_STATS_DIR := "res://model_stats/certified_pairwise_testing_
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
 const RECOMMENDATION_BASE_SEED := 81000
 
+# Native draft AI configuration
+@export var native_draft_stats_dir := "res://stats_output_100k"
+
+# Required stats files for native draft AI
+const REQUIRED_STATS_FILES := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
+const OPTIONAL_STATS_FILES := ["role_combinations.csv"]
+
+# Error state tracking
+var _validated_stats_dir := ""
+var _stats_validation_error := ""
+
 # Recommendation UI node paths
 @export var _recommendation_panel_path: NodePath = NodePath("RecommendationPanel")
 @export var _recommendation_title_path: NodePath = NodePath("RecommendationPanel/RecommendationTitle")
 @export var _recommendation_list_path: NodePath = NodePath("RecommendationPanel/RecommendationList")
+@export var _native_ai_toggle_path: NodePath = NodePath("RecommendationPanel/NativeAIToggle")
 
 # Recommendation UI references
 var _recommendation_panel: Panel
 var _recommendation_title: Label
 var _recommendation_list: VBoxContainer
+var _native_ai_toggle: CheckBox
+
+# Native draft AI backend
+var _native_backend: RefCounted = null
+var _use_native_ai: bool = false
 
 
 func _on_draft_shell_created() -> void:
 	_recommendation_panel = _draft_shell.get_node(_recommendation_panel_path)
 	_recommendation_title = _draft_shell.get_node(_recommendation_title_path)
 	_recommendation_list = _draft_shell.get_node(_recommendation_list_path)
+	
+	# Initialize native backend
+	const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+	_native_backend = NativeSimulationBackendScript.new()
+	
+	# Try to get native AI toggle if it exists
+	if _draft_shell.has_node(_native_ai_toggle_path):
+		_native_ai_toggle = _draft_shell.get_node(_native_ai_toggle_path)
+		_native_ai_toggle.toggled.connect(_on_native_ai_toggle_changed)
+		# Enable native AI by default if backend is available
+		if _native_backend != null and _native_backend.is_available():
+			_native_ai_toggle.button_pressed = true
+			_use_native_ai = true
+	
+	# Only show toggle if native backend is available
+	if _native_ai_toggle != null:
+		_native_ai_toggle.visible = _native_backend != null and _native_backend.is_available()
+		if not _native_ai_toggle.visible:
+			push_warning("Native draft AI backend unavailable, toggle hidden")
+	
 	_draft_shell.apply_layout(get_viewport_rect().size, true)
 
 
 func _on_ready_extra() -> void:
+	_update_draft_recommendations()
+
+
+func _on_native_ai_toggle_changed(toggled_on: bool) -> void:
+	_use_native_ai = toggled_on
 	_update_draft_recommendations()
 
 
@@ -106,22 +148,23 @@ func _update_draft_recommendations() -> void:
 	# Make panel visible during draft
 	_recommendation_panel.visible = true
 
-	# Determine which team is picking next
-	var next_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index] if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size() else ""
+	var draft_step := _draft_step_index
+	var is_ban_turn := _is_ban_step(draft_step)
+	var acting_side := _acting_side_for_step(draft_step)
 
-	# Set allies and enemies based on who is picking next
+	# Set allies and enemies based on who is acting
 	var allies: Array[StringName] = []
 	var enemies: Array[StringName] = []
 	var team_label: String = ""
 
-	if next_turn == "P1_PICK":
+	if acting_side == "B":
 		allies = _player_picks
 		enemies = _enemy_picks
-		team_label = "PLAYER 1"
-	elif next_turn == "P2_PICK":
+		team_label = "PLAYER 1" + (" (BAN)" if is_ban_turn else " (PICK)")
+	else:
 		allies = _enemy_picks
 		enemies = _player_picks
-		team_label = "PLAYER 2"
+		team_label = "PLAYER 2" + (" (BAN)" if is_ban_turn else " (PICK)")
 
 	var available: Array[StringName] = _get_available_champions()
 
@@ -131,9 +174,225 @@ func _update_draft_recommendations() -> void:
 
 	# Update title with team info and color
 	_recommendation_title.text = "RECOMMENDATIONS FOR " + team_label
-	var title_color := UiTokensScript.COLOR_PLAYER if team_label == "PLAYER 1" else UiTokensScript.COLOR_ENEMY
+	var title_color := UiTokensScript.COLOR_PLAYER if team_label.begins_with("PLAYER 1") else UiTokensScript.COLOR_ENEMY
 	_recommendation_title.add_theme_color_override("font_color", title_color)
 
+	# Use native AI if enabled and available
+	if _use_native_ai and _native_backend != null and _native_backend.is_available():
+		# Validate stats directory
+		var validation_error := _validate_native_stats_dir()
+		if not validation_error.is_empty():
+			_show_native_error_message(validation_error)
+		else:
+			_show_native_recommendations(allies, enemies, available, draft_step, acting_side)
+	else:
+		_show_legacy_recommendations(allies, enemies, available)
+
+
+func _get_available_champions() -> Array[StringName]:
+	var all_champions: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+	var available: Array[StringName] = []
+	for champion_id in all_champions:
+		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _player_bans and champion_id not in _enemy_bans:
+			available.append(champion_id)
+	return available
+
+
+# Draft step helper functions
+func _is_ban_step(step: int) -> bool:
+	# Ban steps: 0-5 (phase 1), 12-15 (phase 2)
+	return (step >= 0 and step <= 5) or (step >= 12 and step <= 15)
+
+
+func _is_pick_step(step: int) -> bool:
+	# Pick steps: 6-11 (phase 1), 16-19 (phase 2)
+	return (step >= 6 and step <= 11) or (step >= 16 and step <= 19)
+
+
+func _acting_side_for_step(step: int) -> String:
+	# Return "B" or "R" based on fixed draft order
+	# 0 B_BAN, 1 R_BAN, 2 B_BAN, 3 R_BAN, 4 B_BAN, 5 R_BAN
+	# 6 B_PICK, 7 R_PICK, 8 R_PICK, 9 B_PICK, 10 B_PICK, 11 R_PICK
+	# 12 R_BAN, 13 B_BAN, 14 R_BAN, 15 B_BAN
+	# 16 R_PICK, 17 B_PICK, 18 B_PICK, 19 R_PICK
+	
+	# Blue acts on: 0, 2, 4, 6, 9, 10, 13, 15, 17, 18
+	# Red acts on: 1, 3, 5, 7, 8, 11, 12, 14, 16, 19
+	
+	var blue_steps := [0, 2, 4, 6, 9, 10, 13, 15, 17, 18]
+	if step in blue_steps:
+		return "B"
+	else:
+		return "R"
+
+
+func _validate_native_stats_dir() -> String:
+	# Check if stats directory exists and contains required files
+	# Returns empty string if valid, error message otherwise
+	# Caches validation result by stats directory path
+	
+	# Return cached result if stats dir unchanged
+	if native_draft_stats_dir == _validated_stats_dir:
+		return _stats_validation_error
+	
+	# Revalidate if stats dir changed
+	if not DirAccess.dir_exists_absolute(native_draft_stats_dir):
+		_validated_stats_dir = native_draft_stats_dir
+		_stats_validation_error = "Native Draft AI unavailable: stats directory not found."
+		return _stats_validation_error
+	
+	var missing_files := []
+	for file_name in REQUIRED_STATS_FILES:
+		var file_path := native_draft_stats_dir.path_join(file_name)
+		if not FileAccess.file_exists(file_path):
+			missing_files.append(file_name)
+	
+	if not missing_files.is_empty():
+		_validated_stats_dir = native_draft_stats_dir
+		_stats_validation_error = "Native Draft AI unavailable: missing required files: " + ", ".join(missing_files)
+		return _stats_validation_error
+	
+	# Validation passed
+	_validated_stats_dir = native_draft_stats_dir
+	_stats_validation_error = ""
+	return ""  # No error
+
+
+func _show_native_error_message(error_message: String) -> void:
+	var error_label := Label.new()
+	error_label.text = error_message
+	error_label.add_theme_color_override("font_color", UiTokensScript.COLOR_WARNING)
+	error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_recommendation_list.add_child(error_label)
+
+
+func _show_native_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName], draft_step: int, acting_side: String) -> void:
+	var is_ban_turn := _is_ban_step(draft_step)
+	
+	var recommendations: Array = []
+	if is_ban_turn:
+		recommendations = _native_backend.get_draft_ai_ban_recommendations(
+			native_draft_stats_dir,
+			available,
+			allies,
+			enemies,
+			5,  # max_results
+			draft_step,
+			acting_side,
+			{}  # weight_overrides (empty for default)
+		)
+	else:
+		recommendations = _native_backend.get_draft_ai_pick_recommendations(
+			native_draft_stats_dir,
+			available,
+			allies,
+			enemies,
+			5,  # max_results
+			draft_step
+		)
+	
+	# Handle empty recommendations
+	if recommendations.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "Native Draft AI returned no recommendations."
+		empty_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
+		_recommendation_list.add_child(empty_label)
+		return
+	
+	for i in range(mini(5, recommendations.size())):
+		var recommendation: Dictionary = recommendations[i]
+		var label := Label.new()
+		var champion_name := String(recommendation.get("candidate", ""))
+		var score := float(recommendation.get("total_score", 0.0))
+		label.text = "%d. %s (score: %.3f)" % [i + 1, champion_name, score]
+		_recommendation_list.add_child(label)
+		
+		# Show breakdown for all recommendations
+		var breakdown_label := Label.new()
+		if is_ban_turn:
+			breakdown_label.text = _format_ban_breakdown(recommendation)
+		else:
+			breakdown_label.text = _format_pick_breakdown(recommendation)
+		breakdown_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
+		breakdown_label.add_theme_font_size_override("font_size", 16)
+		_recommendation_list.add_child(breakdown_label)
+	
+	# Add separator
+	var separator := HSeparator.new()
+	_recommendation_list.add_child(separator)
+	
+	# Add model label with explanation
+	var model_label := Label.new()
+	model_label.text = "Model: Native Draft AI (higher score is better)"
+	model_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
+	_recommendation_list.add_child(model_label)
+
+
+func _format_pick_breakdown(rec: Dictionary) -> String:
+	var parts := []
+	
+	var base_power: float = rec.get("base_power")
+	if base_power != null:
+		parts.append("base %+.3f" % float(base_power))
+	
+	var ally_synergy: float = rec.get("ally_synergy")
+	if ally_synergy != null:
+		parts.append("syn %+.3f" % float(ally_synergy))
+	
+	var enemy_counter_value: float = rec.get("enemy_counter_value")
+	if enemy_counter_value != null:
+		parts.append("ctr %+.3f" % float(enemy_counter_value))
+	
+	var counter_risk: float = rec.get("counter_risk")
+	if counter_risk != null:
+		parts.append("risk %+.3f" % float(counter_risk))
+	
+	var role_fit: float = rec.get("role_fit")
+	if role_fit != null:
+		parts.append("role %+.3f" % float(role_fit))
+	
+	var comp_fit: float = rec.get("comp_fit")
+	if comp_fit != null:
+		parts.append("comp %+.3f" % float(comp_fit))
+	
+	if parts.is_empty():
+		return ""
+	return "   " + " | ".join(parts)
+
+
+func _format_ban_breakdown(rec: Dictionary) -> String:
+	var parts := []
+	
+	var denial_value: float = rec.get("denial_value")
+	if denial_value != null:
+		parts.append("denial %+.3f" % float(denial_value))
+	
+	var enemy_synergy: float = rec.get("enemy_synergy")
+	if enemy_synergy != null:
+		parts.append("syn %+.3f" % float(enemy_synergy))
+	
+	var counters_my_team: float = rec.get("counters_my_team")
+	if counters_my_team != null:
+		parts.append("counters %+.3f" % float(counters_my_team))
+	
+	var fills_enemy_role_need: float = rec.get("fills_enemy_role_need")
+	if fills_enemy_role_need != null:
+		parts.append("role %+.3f" % float(fills_enemy_role_need))
+	
+	var enemy_comp_fit: float = rec.get("enemy_comp_fit")
+	if enemy_comp_fit != null:
+		parts.append("comp %+.3f" % float(enemy_comp_fit))
+	
+	var early_ban_fallback: float = rec.get("early_ban_fallback_component")
+	if early_ban_fallback != null:
+		parts.append("fallback %+.3f" % float(early_ban_fallback))
+	
+	if parts.is_empty():
+		return ""
+	return "   " + " | ".join(parts)
+
+
+func _show_legacy_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName]) -> void:
 	var recommendations: Array[Dictionary] = _rollout_recommendations(allies, enemies, available)
 	var using_rollout := not recommendations.is_empty()
 	if not using_rollout:
@@ -191,15 +450,6 @@ func _update_draft_recommendations() -> void:
 	prediction_label.fit_content = true
 	_recommendation_list.add_child(prediction_label)
 	_add_prediction_model_label(prediction)
-
-
-func _get_available_champions() -> Array[StringName]:
-	var all_champions: Array[StringName] = ChampionCatalogScript.get_champion_ids()
-	var available: Array[StringName] = []
-	for champion_id in all_champions:
-		if champion_id not in _player_picks and champion_id not in _enemy_picks and champion_id not in _player_bans and champion_id not in _enemy_bans:
-			available.append(champion_id)
-	return available
 
 
 func _rollout_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName]) -> Array[Dictionary]:

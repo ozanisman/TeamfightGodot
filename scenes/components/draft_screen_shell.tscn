@@ -118,12 +118,20 @@ grow_vertical = 2
 visible = false
 layout_mode = 0
 
-[node name="RecommendationTitle" type="Label" parent="RecommendationPanel"]
+[node name="NativeAIToggle" type="CheckBox" parent="RecommendationPanel"]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 20.0
+offset_right = 200.0
+offset_bottom = 40.0
+text = "Use Native AI"
+
+[node name="RecommendationTitle" type="Label" parent="RecommendationPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 50.0
 offset_right = 320.0
-offset_bottom = 52.0
+offset_bottom = 82.0
 text = "RECOMMENDATIONS"
 
 [node name="RecommendationList" type="VBoxContainer" parent="RecommendationPanel"]
@@ -131,7 +139,7 @@ layout_mode = 0
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 20.0
-offset_top = 60.0
+offset_top = 90.0
 offset_right = -20.0
 offset_bottom = -20.0
 grow_horizontal = 2

@@ -29,7 +29,7 @@ public:
 	DraftStatValue partial_role_combination_value_for(const std::vector<StringName> &roles, int &out_match_count) const;
 	static String build_role_fingerprint(const std::vector<StringName> &roles);
 
-	// Archetype tag access (delegates to catalog)
+	// Tag access (delegates to catalog)
 	std::vector<StringName> tags_for(const StringName &champion) const;
 	bool champion_has_tag(const StringName &champion, const StringName &tag) const;
 	void set_catalog(const catalog::CatalogState *catalog);

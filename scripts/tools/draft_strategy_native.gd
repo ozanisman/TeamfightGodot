@@ -7,11 +7,11 @@ extends "res://scripts/tools/draft_strategy.gd"
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
 var _backend: RefCounted = null
-var _stats_dir: String = "res://stats_output_100k"
+var _stats_dir: String = "res://model_stats/stats_output_100k"
 var _weight_overrides: Dictionary = {}
 
 
-func _init(stats_dir: String = "res://stats_output_100k") -> void:
+func _init(stats_dir: String = "res://model_stats/stats_output_100k") -> void:
 	_stats_dir = stats_dir
 	_backend = NativeSimulationBackendScript.new()
 

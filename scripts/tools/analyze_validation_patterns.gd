@@ -45,7 +45,7 @@ func _run() -> void:
 
 	var header := lines[0].split(",")
 	var analysis_lines: Array[String] = []
-	
+
 	var agree_count := 0
 	var disagree_count := 0
 	var total_regret := 0.0
@@ -57,22 +57,22 @@ func _run() -> void:
 		var line := lines[i].strip_edges()
 		if line.is_empty():
 			continue
-		
+
 		var parts := line.split(",")
 		if parts.size() < 11:
 			continue
-		
+
 		var regret := float(parts[9])
 		var top1_overlap := int(parts[11])
 		var rollout_score := float(parts[8])
-		
+
 		if top1_overlap == 1:
 			agree_count += 1
 		else:
 			disagree_count += 1
 			total_regret += regret
 			regret_values.append(regret)
-		
+
 		max_regret = maxf(max_regret, regret)
 		score_values.append(rollout_score)
 
@@ -83,16 +83,16 @@ func _run() -> void:
 	analysis_lines.append("agree_rate,%.4f" % (float(agree_count) / float(agree_count + disagree_count)))
 	analysis_lines.append("avg_regret_when_disagree,%.6f" % (total_regret / float(disagree_count) if disagree_count > 0 else 0.0))
 	analysis_lines.append("max_regret,%.6f" % max_regret)
-	
+
 	if regret_values.size() > 0:
 		regret_values.sort()
 		var median_idx := regret_values.size() / 2
 		var median_regret := regret_values[median_idx]
 		analysis_lines.append("median_regret,%.6f" % median_regret)
-		
+
 		var regret_std := _std_dev(regret_values)
 		analysis_lines.append("regret_std,%.6f" % regret_std)
-	
+
 	if score_values.size() > 0:
 		var score_std := _std_dev(score_values)
 		var score_mean := _mean(score_values)

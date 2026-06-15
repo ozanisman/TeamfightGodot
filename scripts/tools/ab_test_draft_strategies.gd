@@ -200,14 +200,14 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 	var player: Array[StringName] = []
 	var enemy: Array[StringName] = []
 	var banned: Array[StringName] = []
-	
+
 	# Simulate draft sequence up to draft_depth steps
 	var steps_to_simulate := mini(draft_depth, SimConstantsScript.DRAFT_SEQUENCE.size())
 	for i in range(steps_to_simulate):
 		var turn := SimConstantsScript.DRAFT_SEQUENCE[i]
 		if pool.is_empty():
 			break
-		
+
 		if turn.ends_with("_BAN"):
 			var ban_champion := pool.pop_back()
 			banned.append(ban_champion)
@@ -218,11 +218,11 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int,
 			elif turn.begins_with("R_"):
 				if enemy.size() < TEAM_SIZE:
 					enemy.append(pool.pop_back())
-	
+
 	# Calculate global draft position from the next step index (next pick to recommend)
 	var next_step_index := steps_to_simulate
 	var draft_position := SimConstantsScript.get_global_pick_position(next_step_index)
-	
+
 	var picking_player := (seed % 2) == 0
 	return {
 		"allies": player if picking_player else enemy,
@@ -256,19 +256,19 @@ func _evaluate_pick(
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_offset
 	_shuffle(pool, rng)
-	
+
 	# Simulate snake draft order for remaining picks
 	# Full pick sequence: B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK, R_PICK, B_PICK, B_PICK, R_PICK
 	var pick_sequence := ["B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK"]
-	
+
 	# Calculate starting position in sequence based on current team sizes
 	var total_picks := completed_allies.size() + completed_enemies.size()
 	var sequence_index := total_picks
-	
+
 	while completed_allies.size() < TEAM_SIZE or completed_enemies.size() < TEAM_SIZE:
 		if sequence_index >= pick_sequence.size():
 			break
-		
+
 		var turn: String = pick_sequence[sequence_index]
 		if turn == "B_PICK" and completed_allies.size() < TEAM_SIZE:
 			if not pool.is_empty():

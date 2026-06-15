@@ -1,4 +1,3 @@
-class_name SimulationBackend
 extends RefCounted
 
 func run_match(_match_input):

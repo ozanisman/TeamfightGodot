@@ -80,6 +80,8 @@ EffectRecord compile_effect(const Dictionary &effect) {
 		kind = sn_consume_stacks_shield();
 	} else if (kind_str == "set_stacks") {
 		kind = sn_set_stacks();
+	} else if (kind_str == "channel") {
+		kind = sn_channel();
 	} else if (kind_str == "mana_restore_on_hit") {
 		kind = sn_mana_restore_on_hit();
 	} else if (kind_str == "drain_target_mana_on_hit") {

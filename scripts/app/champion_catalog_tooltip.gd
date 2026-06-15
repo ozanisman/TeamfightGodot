@@ -20,8 +20,6 @@ const COLOR_STAT_BUFF := Color(0.4, 0.9, 0.4, 1.0)
 const COLOR_STAT_NERF := Color(0.9, 0.4, 0.4, 1.0)
 const STAT_DIFF_EPSILON := 0.01
 
-const SimConstants := preload("res://scripts/simulation/sim_constants.gd")
-
 var _ui_parent: Control
 var _tt_style: StyleBoxFlat
 var _tt_panel: PanelContainer
@@ -90,7 +88,7 @@ func _on_tt_enter(ctl: Control) -> void:
 	
 	# Auto-generate satellite specs if not provided
 	if satellite_specs.is_empty():
-		satellite_specs = ChampionSatelliteGeneratorScript.generate_satellites.call(champion_id, unit_data)
+		satellite_specs = ChampionSatelliteGeneratorScript.generate_satellites(champion_id, unit_data)
 	
 	_active_satellite_specs = satellite_specs
 	_show_for_champion(champion_id, unit_data)

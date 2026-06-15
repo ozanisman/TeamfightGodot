@@ -33,7 +33,7 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array) -> Str
 		var result: Dictionary = _backend.predict_draft_winner(
 			hypothetical_allies, enemies, _stats_dir,
 			0.50, 0.25, 0.25, 0.25, 0.0, 10.0, false,
-			1.2, 1.2, 1.0, 0.0, 4  # scoring_mode=4 = DRAFT_AWARE_PAIRWISE_PROBABILITY
+			1.2, 1.2, 4, 0.0, 0.0  # scoring_mode=4 = DRAFT_AWARE_PAIRWISE_PROBABILITY
 		)
 		var score := float(result.get("team1_prob", 0.5))
 		if score > best_score:

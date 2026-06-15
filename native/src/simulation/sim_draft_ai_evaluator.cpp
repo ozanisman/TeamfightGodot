@@ -52,7 +52,7 @@ DraftPickScoreBreakdown DraftEvaluator::evaluate_candidate_pick(
 		ENEMY_COUNTER_VALUE_WEIGHT * result.enemy_counter_value -
 		COUNTER_RISK_WEIGHT * result.counter_risk;
 
-	// Populate archetype tags (debug-only)
+	// Populate candidate tags (debug-only)
 	result.candidate_tags = _stats_database->tags_for(candidate);
 
 	return result;
@@ -110,7 +110,7 @@ DraftBanScoreBreakdown DraftEvaluator::evaluate_candidate_ban(
 		ENEMY_SYNERGY_WEIGHT * result.enemy_synergy +
 		COUNTERS_MY_TEAM_WEIGHT * result.counters_my_team;
 
-	// Populate archetype tags (debug-only)
+	// Populate candidate tags (debug-only)
 	result.candidate_tags = _stats_database->tags_for(candidate);
 
 	return result;

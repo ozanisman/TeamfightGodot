@@ -8,7 +8,7 @@ const NativeSimulationBackendScript := preload("res://scripts/simulation/native_
 func _init() -> void:
 	pass
 
-func run_test(stats_dir: String = "res://stats_output_100k") -> void:
+func run_test(stats_dir: String = "res://model_stats/stats_output_100k") -> void:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
 		push_error("Native backend unavailable")
@@ -23,7 +23,7 @@ func run_test(stats_dir: String = "res://stats_output_100k") -> void:
 	else:
 		push_error("debug_test_draft_ai_stats method not found on native backend")
 
-func test_pick_recommendations(stats_dir: String = "res://stats_output_100k") -> void:
+func test_pick_recommendations(stats_dir: String = "res://model_stats/stats_output_100k") -> void:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
 		push_error("Native backend unavailable")
@@ -50,7 +50,7 @@ func test_pick_recommendations(stats_dir: String = "res://stats_output_100k") ->
 	else:
 		push_error("get_draft_ai_pick_recommendations method not found on native backend")
 
-func test_ban_recommendations(stats_dir: String = "res://stats_output_100k") -> void:
+func test_ban_recommendations(stats_dir: String = "res://model_stats/stats_output_100k") -> void:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
 		push_error("Native backend unavailable")
@@ -77,7 +77,7 @@ func test_ban_recommendations(stats_dir: String = "res://stats_output_100k") -> 
 	else:
 		push_error("get_draft_ai_ban_recommendations method not found on native backend")
 
-func test_native_strategy(stats_dir: String = "res://stats_output_100k") -> void:
+func test_native_strategy(stats_dir: String = "res://model_stats/stats_output_100k") -> void:
 	print("=== Testing Native Draft Strategy Integration ===")
 	print("Stats directory: %s" % stats_dir)
 
@@ -102,15 +102,15 @@ func test_native_strategy(stats_dir: String = "res://stats_output_100k") -> void
 func _main() -> void:
 	var args := OS.get_cmdline_user_args()
 	var test_type := "native_strategy"
-	var stats_dir := "res://stats_output_100k"
-	
+	var stats_dir := "res://model_stats/stats_output_100k"
+
 	for arg in args:
 		var arg_str := str(arg)
 		if arg_str.begins_with("--test="):
 			test_type = arg_str.substr(7)
 		elif arg_str.begins_with("--stats-dir="):
 			stats_dir = arg_str.substr(12)
-	
+
 	match test_type:
 		"data_layer":
 			run_test(stats_dir)
@@ -123,7 +123,7 @@ func _main() -> void:
 		_:
 			push_error("Unknown test type: %s" % test_type)
 			print("Available tests: data_layer, pick_recommendations, ban_recommendations, native_strategy")
-	
+
 	quit(0)
 
 # Auto-run if executed as script

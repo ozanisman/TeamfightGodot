@@ -1,4 +1,3 @@
-class_name HeadlessRunner
 extends RefCounted
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")

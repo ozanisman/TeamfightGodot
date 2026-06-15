@@ -13,7 +13,6 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
-const DraftStrategyNativeArchetypePath := "res://scripts/tools/draft_strategy_native_archetype.gd"
 const DraftStrategyNativeLookaheadPath := "res://scripts/tools/draft_strategy_native_lookahead.gd"
 const DraftStrategyNativeLookaheadPickPath := "res://scripts/tools/draft_strategy_native_lookahead_pick.gd"
 const DraftStrategyNativeLookaheadBanPath := "res://scripts/tools/draft_strategy_native_lookahead_ban.gd"
@@ -131,17 +130,6 @@ func _run() -> void:
 				strategies[name] = load(DraftStrategyRandomPath).new()
 			"native":
 				strategies[name] = load(DraftStrategyNativePath).new(_stats_dir)
-			"native_archetype":
-				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir)
-			# Experimental/test-only archetype profiles. Do not expose as production defaults.
-			"archetype_full":
-				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 4, "archetype_full")
-			"archetype_light":
-				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 5, "archetype_light")
-			"archetype_pick_light":
-				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 6, "archetype_pick_light")
-			"archetype_ban_light":
-				strategies[name] = load(DraftStrategyNativeArchetypePath).new(_stats_dir, 7, "archetype_ban_light")
 			"native_lookahead":
 				strategies[name] = load(DraftStrategyNativeLookaheadPath).new(_stats_dir)
 			"native_lookahead_pick_only":
@@ -199,7 +187,7 @@ func _run() -> void:
 
 	report_lines.append("=== TEST COMPLETE ===")
 	_write_report(report_lines)
-	
+
 	print("Full draft A/B test complete. Report written to full_draft_ab_test_report.txt")
 	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)
 
@@ -211,57 +199,57 @@ func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, trials: int, s
 	var invalid_drafts = 0
 	var total_duration = 0.0
 	var total_matches = 0
-	
+
 	var sample_draft = {}
-	
+
 	for trial in range(trials):
 		var seed = base_seed + trial
 		seed_rng(seed)
-		
+
 		if trial % 5 == 0:
 			print("Matchup %s vs %s: Trial %d/%d" % [strategy_a.get_strategy_name(), strategy_b.get_strategy_name(), trial, trials])
-		
+
 		var available = champion_ids.duplicate()
 		available.shuffle()
-		
+
 		var blue_picks = []
 		var red_picks = []
 		var blue_bans = []
 		var red_bans = []
-		
+
 		var draft_valid = true
-		
+
 		# Run full snake draft
 		for step_idx in range(_draft_sequence.size()):
 			var step_data = _draft_sequence[step_idx]
 			var side = step_data.side
 			var action = step_data.action
 			var draft_step = step_idx
-			
+
 			var allies = []
 			var enemies = []
-			
+
 			if side == "B":
 				allies = blue_picks.duplicate()
 				enemies = red_picks.duplicate()
 			else:
 				allies = red_picks.duplicate()
 				enemies = blue_picks.duplicate()
-			
+
 			var strategy = strategy_a if side == "B" else strategy_b
 			var selected_champion = ""
-			
+
 			if action == "PICK":
 				selected_champion = strategy.recommend_next_pick(allies, enemies, available, draft_step)
 			else:
 				selected_champion = strategy.recommend_next_ban(allies, enemies, available, draft_step, side)
-			
+
 			if selected_champion.is_empty() or not selected_champion in available:
 				draft_valid = false
 				break
-			
+
 			available.erase(selected_champion)
-			
+
 			if action == "PICK":
 				if side == "B":
 					blue_picks.append(selected_champion)
@@ -272,11 +260,11 @@ func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, trials: int, s
 					blue_bans.append(selected_champion)
 				else:
 					red_bans.append(selected_champion)
-		
+
 		if not draft_valid or blue_picks.size() != TEAM_SIZE or red_picks.size() != TEAM_SIZE:
 			invalid_drafts += 1
 			continue
-		
+
 		# Save sample draft from first valid trial
 		if sample_draft.is_empty():
 			sample_draft = {
@@ -285,28 +273,28 @@ func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, trials: int, s
 				"blue_bans": blue_bans.duplicate(),
 				"red_bans": red_bans.duplicate()
 			}
-		
+
 		# Simulate the matchup
 		var match_result = _simulate_matchup(blue_picks, red_picks, sims_per_draft, seed)
-		
+
 		blue_wins += match_result.blue_wins
 		red_wins += match_result.red_wins
 		draws += match_result.draws
 		total_duration += match_result.total_duration
 		total_matches += match_result.total_matches
-	
+
 	var total_trials = trials - invalid_drafts
 	var blue_winrate = 0.0
 	var red_winrate = 0.0
 	var drawrate = 0.0
 	var avg_duration = 0.0
-	
+
 	if total_matches > 0:
 		blue_winrate = float(blue_wins) / float(total_matches)
 		red_winrate = float(red_wins) / float(total_matches)
 		drawrate = float(draws) / float(total_matches)
 		avg_duration = total_duration / float(total_matches)
-	
+
 	return {
 		"blue_wins": blue_wins,
 		"red_wins": red_wins,
@@ -325,11 +313,11 @@ func _simulate_matchup(blue_team: Array, red_team: Array, sims: int, seed: int) 
 	var red_wins = 0
 	var draws = 0
 	var total_duration = 0.0
-	
+
 	# Build units
 	var player_units = _build_units(blue_team, &"player")
 	var enemy_units = _build_units(red_team, &"enemy")
-	
+
 	# Build simulation inputs
 	var inputs: Array = []
 	for s in range(sims):
@@ -337,16 +325,16 @@ func _simulate_matchup(blue_team: Array, red_team: Array, sims: int, seed: int) 
 			seed + s * 1000, SimConstantsScript.DEFAULT_TICK_RATE,
 			player_units, enemy_units
 		))
-	
+
 	var summaries_var: Variant = _backend.run_matches_stats(inputs)
 	if typeof(summaries_var) != TYPE_ARRAY:
 		push_error("full_draft_ab_test: run_matches_stats did not return array")
 		return {"blue_wins": 0, "red_wins": 0, "draws": 0, "total_duration": 0.0, "total_matches": 0}
-	
+
 	var summaries: Array = summaries_var
 	if summaries.is_empty():
 		return {"blue_wins": 0, "red_wins": 0, "draws": 0, "total_duration": 0.0, "total_matches": 0}
-	
+
 	for summary in summaries:
 		if summary.has("winner_team"):
 			if summary.winner_team == "player":
@@ -355,10 +343,10 @@ func _simulate_matchup(blue_team: Array, red_team: Array, sims: int, seed: int) 
 				red_wins += 1
 			else:
 				draws += 1
-		
+
 		if summary.has("duration"):
 			total_duration += summary.duration
-	
+
 	return {
 		"blue_wins": blue_wins,
 		"red_wins": red_wins,
@@ -381,7 +369,7 @@ func seed_rng(seed: int) -> void:
 
 
 func _write_report(lines: Array) -> void:
-	var output_path = "res://full_draft_ab_test_report.txt"
+	var output_path = "res://logs/full_draft_ab_test_report.txt"
 	var f = FileAccess.open(ProjectSettings.globalize_path(output_path), FileAccess.WRITE)
 	if f:
 		f.store_string("\n".join(lines))

@@ -16,11 +16,11 @@ func _run() -> void:
 		push_error("Lookahead diagnostic: native backend unavailable")
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
-	
+
 	print("Running lookahead turn logic diagnostic...")
 	print("Writing to lookahead_turn_logic_report.txt...")
-	
+
 	_backend.debug_lookahead_turn_diagnostic()
-	
+
 	print("Diagnostic complete. Output above.")
 	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

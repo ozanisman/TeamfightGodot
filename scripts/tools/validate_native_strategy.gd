@@ -11,10 +11,10 @@ func _init() -> void:
 
 func _run() -> void:
 	print("=== Native Draft Strategy Validation ===")
-	
+
 	var stats_dir := "res://stats_output_100k"
 	print("Stats directory: %s" % stats_dir)
-	
+
 	# Test 1: Backend availability
 	print("\n1. Testing backend availability...")
 	var backend := NativeSimulationBackendScript.new()
@@ -23,7 +23,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Backend available: OK")
-	
+
 	# Test 2: Strategy instantiation
 	print("\n2. Testing strategy instantiation...")
 	var strategy := DraftStrategyNativeScript.new(stats_dir)
@@ -32,7 +32,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Strategy instantiated: OK")
-	
+
 	# Test 3: Pick recommendation with normal state
 	print("\n3. Testing pick recommendation (normal state)...")
 	var available := ["swordsman", "cleric", "colossus", "frost_mage", "berserker"]
@@ -48,7 +48,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Recommended pick: %s (in available: %s)" % [pick1, pick1 in available])
-	
+
 	# Test 4: Pick recommendation with empty allies/enemies
 	print("\n4. Testing pick recommendation (empty allies/enemies)...")
 	var pick2 := strategy.recommend_next_pick([], [], available)
@@ -61,7 +61,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Recommended pick: %s (in available: %s)" % [pick2, pick2 in available])
-	
+
 	# Test 5: Ban recommendation
 	print("\n5. Testing ban recommendation...")
 	var ban1 := strategy.recommend_next_ban(allies, enemies, available)
@@ -74,7 +74,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Recommended ban: %s (in available: %s)" % [ban1, ban1 in available])
-	
+
 	# Test 6: Deterministic recommendations
 	print("\n6. Testing deterministic recommendations...")
 	var pick3a := strategy.recommend_next_pick(allies, enemies, available)
@@ -84,7 +84,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print("   Deterministic: OK (both returned %s)" % pick3a)
-	
+
 	# Test 7: Direct API call for breakdown
 	print("\n7. Testing direct API with breakdown...")
 	var api_results := backend.get_draft_ai_pick_recommendations(stats_dir, available, allies, enemies, 3)
@@ -99,6 +99,6 @@ func _run() -> void:
 		print("      base_power: %.4f, ally_synergy: %.4f, enemy_counter_value: %.4f, counter_risk: %.4f" % [
 			rec.base_power, rec.ally_synergy, rec.enemy_counter_value, rec.counter_risk
 		])
-	
+
 	print("\n=== All Validation Tests Passed ===")
 	quit(0)

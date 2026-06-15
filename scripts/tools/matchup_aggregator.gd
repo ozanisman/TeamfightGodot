@@ -27,7 +27,7 @@ func consume_chunk_result(chunk_result: Variant) -> void:
 			var match_results = chunk_result["match_results"]
 			if match_results is Array:
 				total_matches += match_results.size()
-		
+
 		if chunk_result.has("matchup_data"):
 			var matchup_data = chunk_result["matchup_data"]
 			if matchup_data is Dictionary:
@@ -38,18 +38,18 @@ func _merge_matchup_data(chunk_matchup_data: Dictionary) -> void:
 	for champion_id in chunk_matchup_data:
 		if not global_matchup_tracker.matchup_data.has(champion_id):
 			continue
-		
+
 		for matchup_key in chunk_matchup_data[champion_id]:
 			if not global_matchup_tracker.matchup_data[champion_id].has(matchup_key):
 				continue
-			
+
 			var chunk_data = chunk_matchup_data[champion_id][matchup_key]
 			var global_data = global_matchup_tracker.matchup_data[champion_id][matchup_key]
-			
+
 			# Merge wins and losses
 			global_data.wins += chunk_data.wins
 			global_data.losses += chunk_data.losses
-			
+
 			# Update winrate
 			var total = global_data.wins + global_data.losses
 			if total > 0:
@@ -77,15 +77,15 @@ func export_matchup_json() -> Dictionary:
 func _serialize_matchup_data_ordered() -> Dictionary:
 	var ordered_data: Dictionary = {}
 	var matchup_data = global_matchup_tracker.get_matchup_data()
-	
+
 	for champion_id in matchup_data.keys():
 		var champion_data: Dictionary = {}
 		var matchups = matchup_data[champion_id]
-		
+
 		# Sort keys to ensure consistent ordering
 		var sorted_keys = matchups.keys()
 		sorted_keys.sort()
-		
+
 		for key in sorted_keys:
 			var data = matchups[key]
 			# Create ordered dictionary with wins -> losses -> winrate
@@ -94,27 +94,27 @@ func _serialize_matchup_data_ordered() -> Dictionary:
 				"losses": data.losses,
 				"winrate": data.winrate
 			}
-		
+
 		ordered_data[champion_id] = champion_data
-	
+
 	return ordered_data
 
 func write_matchup_csv_files(output_dir: String) -> bool:
 	var matchup_data = global_matchup_tracker.get_matchup_data()
-	
+
 	# Write matchup_vs.csv
 	var vs_lines: PackedStringArray = []
 	vs_lines.append("champion,opponent,wins,losses,winrate")
-	
+
 	# Write matchup_with.csv
 	var with_lines: PackedStringArray = []
 	with_lines.append("champion,ally,wins,losses,winrate")
-	
+
 	for champion_id in matchup_data.keys():
 		var matchups = matchup_data[champion_id]
 		var sorted_keys = matchups.keys()
 		sorted_keys.sort()
-		
+
 		for key in sorted_keys:
 			var data = matchups[key]
 			if key.begins_with("vs_"):
@@ -123,7 +123,7 @@ func write_matchup_csv_files(output_dir: String) -> bool:
 			elif key.begins_with("with_"):
 				var ally = key.substr(5)
 				with_lines.append("%s,%s,%d,%d,%s" % [champion_id, ally, data.wins, data.losses, _fmt_f(data.winrate)])
-	
+
 	# Write vs file
 	var vs_path = output_dir + "/matchup_vs.csv"
 	var vs_file = FileAccess.open(vs_path, FileAccess.WRITE)
@@ -133,7 +133,7 @@ func write_matchup_csv_files(output_dir: String) -> bool:
 	vs_file.store_string("\n".join(vs_lines))
 	vs_file.close()
 	print("Matchup vs data exported successfully to: %s" % vs_path)
-	
+
 	# Write with file
 	var with_path = output_dir + "/matchup_with.csv"
 	var with_file = FileAccess.open(with_path, FileAccess.WRITE)
@@ -143,7 +143,7 @@ func write_matchup_csv_files(output_dir: String) -> bool:
 	with_file.store_string("\n".join(with_lines))
 	with_file.close()
 	print("Matchup with data exported successfully to: %s" % with_path)
-	
+
 	return true
 
 func _fmt_f(value: float) -> String:

@@ -6,9 +6,8 @@ const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
 const RECOMMENDATION_BASE_SEED := 81000
 
 # Native draft AI configuration
-@export var native_draft_stats_dir := "res://stats_output_100k"
+@export var native_draft_stats_dir := "res://model_stats/stats_output_100k"
 const NATIVE_STRATEGY_BASELINE := 0
-const NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT := 7
 
 # Required stats files for native draft AI
 const REQUIRED_STATS_FILES := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
@@ -65,7 +64,6 @@ func _on_draft_shell_created() -> void:
 		_native_ai_strategy_selector = _draft_shell.get_node(_native_ai_strategy_selector_path)
 		_native_ai_strategy_selector.clear()
 		_native_ai_strategy_selector.add_item("Native baseline", NATIVE_STRATEGY_BASELINE)
-		_native_ai_strategy_selector.add_item("Archetype ban light experimental", NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT)
 		_native_ai_strategy_selector.select(0)
 		_native_ai_strategy_selector.item_selected.connect(_on_native_ai_strategy_selected)
 	if _draft_shell.has_node(_compare_baseline_toggle_path):
@@ -377,8 +375,6 @@ func _show_native_recommendations(allies: Array[StringName], enemies: Array[Stri
 	# Add model label with explanation
 	var model_label := Label.new()
 	model_label.text = "Model: Native Draft AI (higher score is better)"
-	if strategy == NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
-		model_label.text = "Model: Native Draft AI - archetype ban light experimental"
 	model_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 	_recommendation_list.add_child(model_label)
 
@@ -430,21 +426,10 @@ func _render_native_recommendation_block(title: String, recommendations: Array, 
 		breakdown_label.add_theme_font_size_override("font_size", 16)
 		_recommendation_list.add_child(breakdown_label)
 
-		if strategy == NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
-			var archetype_label := Label.new()
-			archetype_label.text = _format_archetype_debug(recommendation, is_ban_turn)
-			archetype_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
-			archetype_label.add_theme_font_size_override("font_size", 14)
-			if not archetype_label.text.is_empty():
-				_recommendation_list.add_child(archetype_label)
 
 
-func _native_strategy_display_name(strategy: int) -> String:
-	match strategy:
-		NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
-			return "Archetype ban light experimental"
-		_:
-			return "Native baseline"
+func _native_strategy_display_name(_strategy: int) -> String:
+	return "Native baseline"
 
 
 func _format_pick_breakdown(rec: Dictionary) -> String:
@@ -509,29 +494,6 @@ func _format_ban_breakdown(rec: Dictionary) -> String:
 	if parts.is_empty():
 		return ""
 	return "   " + " | ".join(parts)
-
-
-func _format_archetype_debug(rec: Dictionary, is_ban_turn: bool) -> String:
-	var lines: Array[String] = []
-	var tags: Array = rec.get("candidate_tags", [])
-	if not tags.is_empty():
-		var tag_strings: Array[String] = []
-		for tag in tags:
-			tag_strings.append(String(tag))
-		lines.append("   tags: " + ", ".join(tag_strings))
-
-	var contribution_key := "enemy_archetype_contribution" if is_ban_turn else "archetype_contribution"
-	if rec.has(contribution_key):
-		var reason_strings: Array[String] = []
-		for reason in rec.get("archetype_reasons", []):
-			reason_strings.append(String(reason))
-		var reason_text := ", ".join(reason_strings)
-		if reason_text.is_empty():
-			lines.append("   archetype: %+.4f" % float(rec.get(contribution_key, 0.0)))
-		else:
-			lines.append("   archetype: %+.4f | %s" % [float(rec.get(contribution_key, 0.0)), reason_text])
-
-	return "\n".join(lines)
 
 
 func _show_legacy_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName]) -> void:

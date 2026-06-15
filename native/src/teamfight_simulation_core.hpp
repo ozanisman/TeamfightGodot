@@ -284,11 +284,11 @@ public:
 	Dictionary run_controlled_draft_evaluation(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
 	Dictionary run_stress_test(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", int64_t num_iterations = 50, double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2);
 	Dictionary run_stress_test_with_perturbations(const Array &allies, const Array &enemies, const Array &available, const String &stats_dir = "res://stats_output", int64_t seed = 42, int64_t scenario_count = 30, double base_weight = 0.50, double synergy_weight = 0.25, double matchup_weight = 0.25, double synergy_amplification = 1.2, double matchup_amplification = 1.2, int64_t scoring_mode = 0, int64_t smoothing_mode = 0);
-	void debug_test_draft_ai_stats(const String &stats_dir = "res://stats_output_100k");
-	void debug_test_draft_ai_pick_eval(const String &stats_dir = "res://stats_output_100k");
-	void debug_test_draft_ai_pick_recommendations(const String &stats_dir = "res://stats_output_100k");
-	void debug_test_draft_ai_ban_eval(const String &stats_dir = "res://stats_output_100k");
-	void debug_test_draft_ai_ban_recommendations(const String &stats_dir = "res://stats_output_100k");
+	void debug_test_draft_ai_stats(const String &stats_dir = "res://model_stats/stats_output_100k");
+	void debug_test_draft_ai_pick_eval(const String &stats_dir = "res://model_stats/stats_output_100k");
+	void debug_test_draft_ai_pick_recommendations(const String &stats_dir = "res://model_stats/stats_output_100k");
+	void debug_test_draft_ai_ban_eval(const String &stats_dir = "res://model_stats/stats_output_100k");
+	void debug_test_draft_ai_ban_recommendations(const String &stats_dir = "res://model_stats/stats_output_100k");
 	void debug_lookahead_turn_diagnostic();
 	Array get_draft_ai_pick_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, int strategy = 0);
 	Array get_draft_ai_ban_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, const String &acting_side = "blue", const Dictionary &weight_overrides = Dictionary(), int strategy = 0);

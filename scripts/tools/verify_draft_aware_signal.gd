@@ -95,7 +95,7 @@ func _run() -> void:
 			for role in ROLES:
 				ally_roles[role] = int(row.get("ally_%s" % role, 0)) if row.has("ally_%s" % role) else 0
 				enemy_roles[role] = int(row.get("enemy_%s" % role, 0)) if row.has("enemy_%s" % role) else 0
-			
+
 			# Extract synergy/counter features if available
 			var syn_cnt: Dictionary = {}
 			syn_cnt["avg_synergy"] = float(row.get("avg_synergy", 0.5)) if row.has("avg_synergy") else 0.5
@@ -103,7 +103,7 @@ func _run() -> void:
 			syn_cnt["synergy_variance"] = float(row.get("synergy_variance", 0.0)) if row.has("synergy_variance") else 0.0
 			syn_cnt["counter_variance"] = float(row.get("counter_variance", 0.0)) if row.has("counter_variance") else 0.0
 			syn_cnt["net_matchup"] = float(row.get("net_matchup", 0.5)) if row.has("net_matchup") else 0.5
-			
+
 			# Extract composition balance features if available
 			var comp_balance: Dictionary = {}
 			comp_balance["ally_role_diversity"] = float(row.get("ally_role_diversity", 0.0)) if row.has("ally_role_diversity") else 0.0
@@ -114,7 +114,7 @@ func _run() -> void:
 			comp_balance["enemy_support_ratio"] = float(row.get("enemy_support_ratio", 0.0)) if row.has("enemy_support_ratio") else 0.0
 			comp_balance["ally_damage_ratio"] = float(row.get("ally_damage_ratio", 0.0)) if row.has("ally_damage_ratio") else 0.0
 			comp_balance["enemy_damage_ratio"] = float(row.get("enemy_damage_ratio", 0.0)) if row.has("enemy_damage_ratio") else 0.0
-			
+
 			var feature_vec := _extract_pairwise_features(allies, enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
 			train_features.append(feature_vec)
 			train_labels.append(float(row["expected_win"]))
@@ -131,7 +131,7 @@ func _run() -> void:
 			for role in ROLES:
 				ally_roles[role] = int(row.get("ally_%s" % role, 0)) if row.has("ally_%s" % role) else 0
 				enemy_roles[role] = int(row.get("enemy_%s" % role, 0)) if row.has("enemy_%s" % role) else 0
-			
+
 			# Extract synergy/counter features if available
 			var syn_cnt: Dictionary = {}
 			syn_cnt["avg_synergy"] = float(row.get("avg_synergy", 0.5)) if row.has("avg_synergy") else 0.5
@@ -139,7 +139,7 @@ func _run() -> void:
 			syn_cnt["synergy_variance"] = float(row.get("synergy_variance", 0.0)) if row.has("synergy_variance") else 0.0
 			syn_cnt["counter_variance"] = float(row.get("counter_variance", 0.0)) if row.has("counter_variance") else 0.0
 			syn_cnt["net_matchup"] = float(row.get("net_matchup", 0.5)) if row.has("net_matchup") else 0.5
-			
+
 			# Extract composition balance features if available
 			var comp_balance: Dictionary = {}
 			comp_balance["ally_role_diversity"] = float(row.get("ally_role_diversity", 0.0)) if row.has("ally_role_diversity") else 0.0
@@ -150,7 +150,7 @@ func _run() -> void:
 			comp_balance["enemy_support_ratio"] = float(row.get("enemy_support_ratio", 0.0)) if row.has("enemy_support_ratio") else 0.0
 			comp_balance["ally_damage_ratio"] = float(row.get("ally_damage_ratio", 0.0)) if row.has("ally_damage_ratio") else 0.0
 			comp_balance["enemy_damage_ratio"] = float(row.get("enemy_damage_ratio", 0.0)) if row.has("enemy_damage_ratio") else 0.0
-			
+
 			var feature_vec := _extract_pairwise_features(allies, enemies, combat_stats, synergy_stats, counter_stats, ally_roles, enemy_roles, syn_cnt, comp_balance)
 			test_features.append(feature_vec)
 			test_labels.append(float(row["expected_win"]))
@@ -164,7 +164,7 @@ func _run() -> void:
 		# Train logistic regression on full training data
 		var weights := _train_logistic(train_stdized, train_labels)
 		trained_weights[depth] = weights
-		
+
 		var train_preds := _predict_logistic(train_stdized, weights)
 		var test_preds := _predict_logistic(test_stdized, weights)
 
@@ -199,7 +199,7 @@ func _run() -> void:
 		return
 	f.store_string("\n".join(csv_lines) + "\n")
 	f.close()
-	
+
 	print("")
 	print("================ DRAFT-AWARE VERIFICATION COMPLETE ================")
 	print("CSV written to: %s" % output_path)
@@ -323,14 +323,14 @@ func _extract_pairwise_features(allies: Array, enemies: Array, combat_stats: Dic
 
 	# Build result with pick-focused features only (no ban features)
 	var result := [base_winrate, avg_synergy, avg_counter, synergy_variance, counter_variance, net_matchup]
-	
+
 	# Add ally role counts
 	for role in ROLES:
 		result.append(float(ally_roles.get(role, 0)))
 	# Add enemy role counts
 	for role in ROLES:
 		result.append(float(enemy_roles.get(role, 0)))
-	
+
 	# Add precomputed synergy/counter features if available
 	if not syn_cnt.is_empty():
 		result.append(syn_cnt.get("avg_synergy", 0.5))
@@ -343,7 +343,7 @@ func _extract_pairwise_features(allies: Array, enemies: Array, combat_stats: Dic
 		result.append(avg_counter)
 		result.append(synergy_variance)
 		result.append(counter_variance)
-	
+
 	# Add composition balance features if available
 	if not comp_balance.is_empty():
 		result.append(comp_balance.get("ally_role_diversity", 0.0))
@@ -358,7 +358,7 @@ func _extract_pairwise_features(allies: Array, enemies: Array, combat_stats: Dic
 		# Add zeros for compatibility
 		for i in range(8):
 			result.append(0.0)
-	
+
 	return result
 
 
@@ -494,7 +494,7 @@ func recommend_ban(allies: Array, enemies: Array, banned_allies: Array, banned_e
 	# TODO: Replace with ban-specific model training and recommendation
 	# Current simplified model does not support ban-related features
 	# Returns: {champion: StringName, predicted_win_rate: float, all_predictions: Dictionary}
-	
+
 	if available.is_empty():
 		return {
 			"champion": "",
@@ -502,11 +502,11 @@ func recommend_ban(allies: Array, enemies: Array, banned_allies: Array, banned_e
 			"all_predictions": {},
 			"team_banning": team_banning
 		}
-	
+
 	# Random fallback until ban model is implemented
 	var random_index := randi() % available.size()
 	var random_champion: StringName = available[random_index]
-	
+
 	return {
 		"champion": random_champion,
 		"predicted_win_rate": 0.5,

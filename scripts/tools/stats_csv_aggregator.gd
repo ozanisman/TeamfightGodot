@@ -39,7 +39,7 @@ func consume_summary(team_size: int, summary_value: Variant) -> void:
 		if _matchup_aggregator == null:
 			_matchup_aggregator = MatchupAggregatorScript.new()
 		_matchup_aggregator.consume_chunk_result(summary_value)
-		
+
 		var match_results: Array = Array(summary_value.get("match_results", []))
 		for result in match_results:
 			_consume_individual_summary(team_size, result)
@@ -745,5 +745,5 @@ func _build_match_log_csv() -> String:
 func write_matchup_file(output_dir: String) -> bool:
 	if _matchup_aggregator == null:
 		return false
-	
+
 	return _matchup_aggregator.write_matchup_csv_files(output_dir)

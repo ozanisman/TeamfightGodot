@@ -143,11 +143,11 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test", "allies", "enemies", "available", "stats_dir", "num_iterations", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_stress_test, DEFVAL("res://stats_output"), DEFVAL(50), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_stress_test_with_perturbations", "allies", "enemies", "available", "stats_dir", "seed", "scenario_count", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification", "scoring_mode", "smoothing_mode"), &TeamfightSimulationCore::run_stress_test_with_perturbations, DEFVAL("res://stats_output"), DEFVAL(42), DEFVAL(30), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_stats", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_stats, DEFVAL("res://stats_output_100k"));
-	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_eval, DEFVAL("res://stats_output_100k"));
-	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_recommendations, DEFVAL("res://stats_output_100k"));
-	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_eval, DEFVAL("res://stats_output_100k"));
-	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_recommendations, DEFVAL("res://stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_stats", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_stats, DEFVAL("res://model_stats/stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_eval, DEFVAL("res://model_stats/stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_pick_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_pick_recommendations, DEFVAL("res://model_stats/stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_eval, DEFVAL("res://model_stats/stats_output_100k"));
+	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_recommendations, DEFVAL("res://model_stats/stats_output_100k"));
 	ClassDB::bind_method(D_METHOD("debug_lookahead_turn_diagnostic"), &TeamfightSimulationCore::debug_lookahead_turn_diagnostic);
 	ClassDB::bind_method(D_METHOD("get_draft_ai_pick_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "strategy"), &TeamfightSimulationCore::get_draft_ai_pick_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_draft_ai_ban_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "acting_side", "weight_overrides", "strategy"), &TeamfightSimulationCore::get_draft_ai_ban_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL("blue"), DEFVAL(Dictionary()), DEFVAL(0));
@@ -339,7 +339,7 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 
 	// Load catalog for tag access
 	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks;
+	sim::catalog::CatalogHooks hooks = _catalog_hooks();
 	sim::catalog::ensure_loaded(catalog, hooks);
 
 	sim::draft::DraftEvaluator evaluator(database, config);
@@ -363,7 +363,7 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		breakdown["counter_variance"] = eval.counter_variance;
 		breakdown["final"] = eval.score;
 		
-		// Add archetype tags (debug-only)
+		// Add candidate tags (debug-only)
 		Array tags_array;
 		for (const StringName &tag : eval.candidate_tags) {
 			tags_array.append(String(tag));
@@ -1182,7 +1182,7 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 
 	// Load catalog for tag access
 	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks;
+	sim::catalog::CatalogHooks hooks = _catalog_hooks();
 	sim::catalog::ensure_loaded(catalog, hooks);
 	database.set_catalog(&catalog);
 
@@ -1244,20 +1244,12 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["next_pick_side"] = String(rec.next_pick_side);
 		dict["next_pick_is_enemy"] = rec.next_pick_is_enemy;
 
-		// Add archetype debug fields
+		// Add candidate tags (general debug metadata)
 		Array tags_array;
 		for (const StringName &tag : rec.candidate_tags) {
 			tags_array.append(String(tag));
 		}
 		dict["candidate_tags"] = tags_array;
-		dict["archetype_score"] = rec.archetype_score;
-		dict["archetype_weight"] = rec.archetype_weight;
-		dict["archetype_contribution"] = rec.archetype_contribution;
-		Array archetype_reasons;
-		for (const String &reason : rec.archetype_reasons) {
-			archetype_reasons.append(reason);
-		}
-		dict["archetype_reasons"] = archetype_reasons;
 
 		result.append(dict);
 	}
@@ -1288,7 +1280,7 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 
 	// Load catalog for tag access
 	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks;
+	sim::catalog::CatalogHooks hooks = _catalog_hooks();
 	sim::catalog::ensure_loaded(catalog, hooks);
 	database.set_catalog(&catalog);
 
@@ -1355,20 +1347,12 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["current_side"] = String(rec.current_side);
 		dict["enemy_next_pick_step"] = rec.enemy_next_pick_step;
 
-		// Add archetype debug fields
+		// Add candidate tags (general debug metadata)
 		Array tags_array;
 		for (const StringName &tag : rec.candidate_tags) {
 			tags_array.append(String(tag));
 		}
 		dict["candidate_tags"] = tags_array;
-		dict["enemy_archetype_score"] = rec.enemy_archetype_score;
-		dict["enemy_archetype_weight"] = rec.enemy_archetype_weight;
-		dict["enemy_archetype_contribution"] = rec.enemy_archetype_contribution;
-		Array archetype_reasons;
-		for (const String &reason : rec.archetype_reasons) {
-			archetype_reasons.append(reason);
-		}
-		dict["archetype_reasons"] = archetype_reasons;
 
 		result.append(dict);
 	}

@@ -13,11 +13,7 @@ enum class DraftStrategy {
 	NATIVE_FULL,                    // Current baseline: no lookahead
 	NATIVE_LOOKAHEAD,              // Experimental: 1-ply lookahead (both picks and bans)
 	NATIVE_LOOKAHEAD_PICK,         // Experimental: lookahead only for picks
-	NATIVE_LOOKAHEAD_BAN,          // Experimental: lookahead only for bans
-	NATIVE_ARCHETYPE,              // Experimental: full archetype tag scoring
-	NATIVE_ARCHETYPE_LIGHT,        // Experimental: light archetype tag scoring
-	NATIVE_ARCHETYPE_PICK_LIGHT,   // Experimental: light pick-only archetype tag scoring
-	NATIVE_ARCHETYPE_BAN_LIGHT     // Experimental: light ban-only archetype tag scoring
+	NATIVE_LOOKAHEAD_BAN          // Experimental: lookahead only for bans
 };
 
 struct DraftStatValue {
@@ -88,12 +84,8 @@ struct DraftPickScoreBreakdown {
 	String next_pick_side;
 	bool next_pick_is_enemy = false;
 
-	// Archetype tags
+	// Candidate tags (general debug metadata)
 	std::vector<StringName> candidate_tags;
-	double archetype_score = 0.0;
-	double archetype_weight = 0.0;
-	double archetype_contribution = 0.0;
-	std::vector<String> archetype_reasons;
 };
 
 struct DraftBanScoreBreakdown {
@@ -142,12 +134,8 @@ struct DraftBanScoreBreakdown {
 	String current_side;
 	int enemy_next_pick_step = -1;
 
-	// Archetype tags
+	// Candidate tags (general debug metadata)
 	std::vector<StringName> candidate_tags;
-	double enemy_archetype_score = 0.0;
-	double enemy_archetype_weight = 0.0;
-	double enemy_archetype_contribution = 0.0;
-	std::vector<String> archetype_reasons;
 };
 
 } // namespace draft_ai

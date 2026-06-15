@@ -62,17 +62,17 @@ func _run() -> void:
 		var allies: Array[StringName] = state["allies"]
 		var enemies: Array[StringName] = state["enemies"]
 		var available: Array[StringName] = state["available"]
-		
+
 		# Pick first available champion for analysis
 		var test_champion: StringName = available[0]
-		
+
 		for var_index in range(completion_variations):
 			var completion_seed := base_seed + state_index * 10000 + var_index
 			var winrate := _evaluate_single_completion(
 				backend, allies, enemies, available, test_champion, completion_seed
 			)
 			csv_lines.append("%d,%s,%d,%.6f" % [state_index, test_champion, var_index, winrate])
-		
+
 		if (state_index + 1) % 5 == 0:
 			print("  State %d/%d" % [state_index + 1, state_count])
 

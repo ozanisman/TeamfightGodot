@@ -63,7 +63,7 @@ func _run() -> void:
 	ChampionCatalogScript.build_passive_registry()
 	ChampionCatalogScript.build_minion_catalog()
 	ChampionCatalogScript.freeze_built_specs_for_worker_reuse()
-	
+
 	var out_dir := _extract_argument("--out-dir=", "res://model_stats/certified_pairwise_training_250k")
 	var sizes_raw := _extract_argument("--team-sizes=", "1,2,3,4,5")
 	var matches := int(_extract_argument("--matches-per-size=", "100"))

@@ -347,7 +347,7 @@ func run(
 		return csv_err
 	if profile_stats:
 		profile_state["csv_write_ns"] = _now_ns() - csv_start_ns
-	
+
 	# Write matchup data file
 	var matchup_start_ns: int = _now_ns()
 	var matchup_success: bool = aggregator.write_matchup_file(output_dir)

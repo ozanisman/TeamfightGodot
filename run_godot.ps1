@@ -221,6 +221,17 @@ elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
 }
 
+# Ensure global class cache exists so headless script compilation can resolve class_name types.
+$godotCacheFile = Join-Path $projectRoot ".godot\global_script_class_cache.cfg"
+if (-not (Test-Path $godotCacheFile)) {
+	Write-Host "Building Godot global class cache..."
+	& $godotExe --path $projectRoot --headless --editor --quit
+	if ($LASTEXITCODE -ne 0) {
+		Write-Error "Godot editor cache generation failed with exit code $LASTEXITCODE"
+		exit $LASTEXITCODE
+	}
+}
+
 $godotArgs = @("--path", $projectRoot, "--log-file", $logFile)
 $isSimulationViewer = $Arguments -contains "--simulation-viewer"
 if (-not $isSimulationViewer) {

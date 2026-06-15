@@ -4,192 +4,9 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <map>
-#include <set>
 
 namespace sim {
 namespace draft_ai {
-
-namespace {
-
-constexpr double PICK_ARCHETYPE_WEIGHT = 0.06;
-constexpr double BAN_ARCHETYPE_WEIGHT = 0.04;
-constexpr double LIGHT_PICK_ARCHETYPE_WEIGHT = 0.03;
-constexpr double LIGHT_BAN_ARCHETYPE_WEIGHT = 0.02;
-
-bool is_archetype_strategy(DraftStrategy strategy) {
-	return strategy == DraftStrategy::NATIVE_ARCHETYPE ||
-			strategy == DraftStrategy::NATIVE_ARCHETYPE_LIGHT ||
-			strategy == DraftStrategy::NATIVE_ARCHETYPE_PICK_LIGHT ||
-			strategy == DraftStrategy::NATIVE_ARCHETYPE_BAN_LIGHT;
-}
-
-double pick_archetype_weight_for(DraftStrategy strategy) {
-	switch (strategy) {
-		case DraftStrategy::NATIVE_ARCHETYPE:
-			return PICK_ARCHETYPE_WEIGHT;
-		case DraftStrategy::NATIVE_ARCHETYPE_LIGHT:
-		case DraftStrategy::NATIVE_ARCHETYPE_PICK_LIGHT:
-			return LIGHT_PICK_ARCHETYPE_WEIGHT;
-		default:
-			return 0.0;
-	}
-}
-
-double ban_archetype_weight_for(DraftStrategy strategy) {
-	switch (strategy) {
-		case DraftStrategy::NATIVE_ARCHETYPE:
-			return BAN_ARCHETYPE_WEIGHT;
-		case DraftStrategy::NATIVE_ARCHETYPE_LIGHT:
-		case DraftStrategy::NATIVE_ARCHETYPE_BAN_LIGHT:
-			return LIGHT_BAN_ARCHETYPE_WEIGHT;
-		default:
-			return 0.0;
-	}
-}
-
-bool has_tag(const std::vector<StringName> &tags, const char *tag) {
-	const StringName tag_name(tag);
-	return std::find(tags.begin(), tags.end(), tag_name) != tags.end();
-}
-
-std::set<String> build_tag_set(
-	const DraftStatsDatabase *database,
-	const std::vector<StringName> &champions
-) {
-	std::set<String> tags;
-	if (database == nullptr) {
-		return tags;
-	}
-	for (const StringName &champion : champions) {
-		for (const StringName &tag : database->tags_for(champion)) {
-			tags.insert(String(tag));
-		}
-	}
-	return tags;
-}
-
-std::map<String, int> build_tag_counts(
-	const DraftStatsDatabase *database,
-	const std::vector<StringName> &champions
-) {
-	std::map<String, int> counts;
-	if (database == nullptr) {
-		return counts;
-	}
-	for (const StringName &champion : champions) {
-		for (const StringName &tag : database->tags_for(champion)) {
-			counts[String(tag)]++;
-		}
-	}
-	return counts;
-}
-
-void add_pair_bonus(
-	double &score,
-	std::vector<String> &reasons,
-	const std::vector<StringName> &candidate_tags,
-	const std::set<String> &team_tags,
-	const char *a,
-	const char *b,
-	double bonus
-) {
-	const bool candidate_has_a = has_tag(candidate_tags, a);
-	const bool candidate_has_b = has_tag(candidate_tags, b);
-	if ((candidate_has_a && team_tags.find(String(b)) != team_tags.end()) ||
-			(candidate_has_b && team_tags.find(String(a)) != team_tags.end())) {
-		score += bonus;
-		reasons.push_back(vformat("%s+%s", a, b));
-	}
-}
-
-void add_pair_bonuses(
-	double &score,
-	std::vector<String> &reasons,
-	const std::vector<StringName> &candidate_tags,
-	const std::set<String> &team_tags
-) {
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "frontline", "backline", 0.030);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "frontline", "poke", 0.020);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "frontline", "protect", 0.015);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "cc", "aoe", 0.020);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "control", "poke", 0.020);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "dive", "mobility", 0.015);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "dive", "protect", 0.015);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "sustain", "frontline", 0.015);
-	add_pair_bonus(score, reasons, candidate_tags, team_tags, "protect", "backline", 0.015);
-}
-
-double clamp_double(double value, double min_value, double max_value) {
-	return std::max(min_value, std::min(max_value, value));
-}
-
-double compute_pick_archetype_score(
-	const DraftStatsDatabase *database,
-	const std::vector<StringName> &candidate_tags,
-	const std::vector<StringName> &allies,
-	std::vector<String> &reasons
-) {
-	const std::set<String> ally_tags = build_tag_set(database, allies);
-	const std::map<String, int> ally_tag_counts = build_tag_counts(database, allies);
-	double score = 0.0;
-
-	add_pair_bonuses(score, reasons, candidate_tags, ally_tags);
-
-	const int backline_count = ally_tag_counts.count("backline") ? ally_tag_counts.at("backline") : 0;
-	const int frontline_count = ally_tag_counts.count("frontline") ? ally_tag_counts.at("frontline") : 0;
-	const int poke_count = ally_tag_counts.count("poke") ? ally_tag_counts.at("poke") : 0;
-	const int dive_count = ally_tag_counts.count("dive") ? ally_tag_counts.at("dive") : 0;
-
-	if (backline_count >= 4 && has_tag(candidate_tags, "backline")) {
-		score -= 0.030;
-		reasons.push_back("overstack_backline");
-	}
-	if (frontline_count == 0 && has_tag(candidate_tags, "backline")) {
-		score -= 0.020;
-		reasons.push_back("no_frontline_backline");
-	}
-	if (poke_count >= 3 && has_tag(candidate_tags, "poke")) {
-		score -= 0.020;
-		reasons.push_back("overstack_poke");
-	}
-	if (dive_count >= 3 && has_tag(candidate_tags, "dive")) {
-		score -= 0.020;
-		reasons.push_back("overstack_dive");
-	}
-
-	return clamp_double(score, -0.08, 0.08);
-}
-
-bool is_major_tag(const String &tag) {
-	return tag == "dive" || tag == "poke" || tag == "burst" || tag == "sustain" ||
-			tag == "cc" || tag == "control" || tag == "protect" || tag == "aoe";
-}
-
-double compute_ban_archetype_score(
-	const DraftStatsDatabase *database,
-	const std::vector<StringName> &candidate_tags,
-	const std::vector<StringName> &enemies,
-	std::vector<String> &reasons
-) {
-	const std::set<String> enemy_tags = build_tag_set(database, enemies);
-	const std::map<String, int> enemy_tag_counts = build_tag_counts(database, enemies);
-	double score = 0.0;
-
-	add_pair_bonuses(score, reasons, candidate_tags, enemy_tags);
-
-	for (const StringName &tag_name : candidate_tags) {
-		const String tag(tag_name);
-		if (is_major_tag(tag) && enemy_tag_counts.count(tag) && enemy_tag_counts.at(tag) >= 2) {
-			score += 0.020;
-			reasons.push_back("complete_" + tag);
-			break;
-		}
-	}
-
-	return clamp_double(score, 0.0, 0.08);
-}
-
-} // namespace
 
 DraftRecommender::DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database)
 	: _evaluator(evaluator), _database(database) {
@@ -307,13 +124,6 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 			role_fit_weight * role_fit +
 			comp_fit_weight * breakdown.comp_fit;
 
-		if (is_archetype_strategy(strategy)) {
-			breakdown.archetype_score = compute_pick_archetype_score(_database, breakdown.candidate_tags, allies, breakdown.archetype_reasons);
-			breakdown.archetype_weight = pick_archetype_weight_for(strategy);
-			breakdown.archetype_contribution = breakdown.archetype_weight * breakdown.archetype_score;
-			breakdown.total_score += breakdown.archetype_contribution;
-		}
-		
 		// Set weight fields for debug output
 		breakdown.base_power_weight = base_power_weight;
 		breakdown.ally_synergy_weight = ally_synergy_weight;
@@ -586,13 +396,6 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 			fills_enemy_role_need_weight * fills_enemy_role_need +
 			enemy_comp_fit_weight * breakdown.enemy_comp_fit;
 
-		if (is_archetype_strategy(strategy)) {
-			breakdown.enemy_archetype_score = compute_ban_archetype_score(_database, breakdown.candidate_tags, enemies, breakdown.archetype_reasons);
-			breakdown.enemy_archetype_weight = ban_archetype_weight_for(strategy);
-			breakdown.enemy_archetype_contribution = breakdown.enemy_archetype_weight * breakdown.enemy_archetype_score;
-			breakdown.total_score += breakdown.enemy_archetype_contribution;
-		}
-		
 		// Set weight fields for debug output
 		breakdown.denial_value_weight = denial_value_weight;
 		breakdown.enemy_synergy_weight = enemy_synergy_weight;

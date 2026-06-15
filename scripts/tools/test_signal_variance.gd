@@ -7,7 +7,7 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var log_path := "res://test_log.txt"
+	var log_path := "res://logs/test_log.txt"
 	var f := FileAccess.open(ProjectSettings.globalize_path(log_path), FileAccess.WRITE)
 	f.store_string("Starting test...\n")
 	f.flush()

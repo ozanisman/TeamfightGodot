@@ -350,6 +350,43 @@ Report: `archetype_scoring_diagnostic_report.md`
 
 Recommendation: keep all archetype scoring experimental, but use `archetype_ban_light` as the preferred experimental profile for the next phase. It preserves native self-play bias in the 50x25 confirmation while still beating random from both sides and staying competitive with native. Default `native` remains unchanged.
 
+### Phase 47 Checkpoint
+
+Preferred experimental archetype profile: `archetype_ban_light`.
+
+The weaker profiles remain available only for test comparisons:
+
+- `archetype_full`
+- `archetype_light`
+- `archetype_pick_light`
+
+They are not recommended options and are not production defaults. Archetype scoring is still opt-in, and no archetype profile is promoted to default. The known native draft-order Blue-side bias remains accepted baseline context; future archetype experiments should compare against that baseline rather than treating absolute side fairness as the goal.
+
+### Phase 51 Closure
+
+Phase 50 audited `native` vs `archetype_ban_light` on 9 representative draft states. The audit found:
+
+- 0 of 9 top recommendation changes.
+- Max observed top archetype contribution: 0.001600.
+- 0 invalid drafts in full draft validation for both `native` and `archetype_ban_light`.
+- No suspicious recommendations.
+- No pick top recommendation changes.
+
+Conclusion: `archetype_ban_light` is safe but low-impact. Keep it as the preferred experimental archetype profile and do not promote it to default.
+
+Current strategy status:
+
+| Strategy/profile | Status |
+|------------------|--------|
+| `native` | Default strategy. |
+| `archetype_ban_light` | Preferred experimental archetype profile; opt-in only. |
+| `archetype_full` | Test-only comparison profile. |
+| `archetype_light` | Test-only comparison profile. |
+| `archetype_pick_light` | Test-only comparison profile. |
+| Lookahead variants | Quarantined experimental due to side-bias results. |
+
+The repeatable audit script is `scripts/tools/audit_archetype_recommendations.gd`. Its generated root-level markdown report is a disposable local artifact; durable conclusions should live in this wiki note and `wiki/notes/draft_archetype_tags.md`.
+
 ## Weight Override Behavior
 
 Weight overrides are applied as multipliers to phase-specific base weights:

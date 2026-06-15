@@ -965,3 +965,70 @@ Additional 25x25 random check for the only qualifying profile:
 Use `archetype_ban_light` as the preferred experimental archetype profile for the next scoring experiment. Keep `native_archetype`/`archetype_full` experimental and do not promote it, because both full and light pick-including profiles worsened self-play Blue-side bias in the 25x25 screen.
 
 Default `native` remains unchanged.
+
+---
+
+## Phase 47: Experimental Archetype Scoring Checkpoint
+
+### Date/Phase
+Phase 47: Finalize Experimental Archetype Scoring Checkpoint
+Date: June 14, 2026
+
+### Final Checkpoint Decision
+
+Preferred experimental archetype profile: `archetype_ban_light`.
+
+Reason: `archetype_ban_light` matched native self-play Blue-side win rate in the 50x25 confirmation (`62.5%` Blue for both `native` self-play and `archetype_ban_light` self-play), beat random from both sides, and stayed competitive with native from both sides.
+
+### Default Behavior
+
+- Default strategy remains `native`.
+- Baseline native scoring remains unchanged.
+- Archetype scoring applies only when an archetype profile is explicitly selected.
+- Production UI does not default to any archetype profile.
+- The known native draft-order Blue-side bias remains accepted baseline context.
+
+### Profile Status
+
+| Profile | Status |
+|---------|--------|
+| `archetype_ban_light` | Preferred experimental profile for future archetype scoring work. |
+| `archetype_full` | Kept for test-only comparison; not recommended. |
+| `archetype_light` | Kept for test-only comparison; not recommended. |
+| `archetype_pick_light` | Kept for test-only comparison; not recommended. |
+
+Archetype scoring is not promoted to default in this checkpoint.
+
+---
+
+## Phase 51: Archetype Scoring Experiment Closure
+
+### Date/Phase
+Phase 51: Close Archetype Scoring Experiment
+Date: June 14, 2026
+
+### Phase 50 Audit Result
+
+`archetype_ban_light` remains the preferred experimental archetype profile, but it is low-impact and is not promoted to default.
+
+- Audit states checked: 9 representative draft states.
+- Top recommendation changes: 0 of 9.
+- Max observed top archetype contribution: 0.001600.
+- Invalid drafts: 0 in native and `archetype_ban_light` validation.
+- Suspicious recommendations: none found.
+- Pick top recommendations did not move, matching the ban-only profile intent.
+
+The audit supports keeping `archetype_ban_light` available as an opt-in debug/experimental profile. It does not justify default promotion because it did not show clear recommendation improvement over `native`.
+
+### Strategy Status
+
+| Strategy/profile | Status |
+|------------------|--------|
+| `native` | Default production/native draft AI strategy. |
+| `archetype_ban_light` | Preferred experimental archetype profile; opt-in only. |
+| `archetype_full` | Test-only comparison profile; not recommended. |
+| `archetype_light` | Test-only comparison profile; not recommended. |
+| `archetype_pick_light` | Test-only comparison profile; not recommended. |
+| Lookahead variants | Quarantined experimental due to side-bias results. |
+
+Archetype scoring remains experimental-only. Native scoring, archetype weights, draft order, lookahead, champion tags, UI behavior, manual draft behavior, and stats files were not changed in this closure.

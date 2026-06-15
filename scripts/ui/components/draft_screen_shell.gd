@@ -37,6 +37,9 @@ const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 @onready var recommendation_title: Label = $RecommendationPanel/RecommendationTitle
 @onready var recommendation_list: VBoxContainer = $RecommendationPanel/RecommendationList
 @onready var native_ai_toggle: CheckBox = $RecommendationPanel/NativeAIToggle
+@onready var native_ai_strategy_label: Label = $RecommendationPanel/NativeAIStrategyLabel
+@onready var native_ai_strategy_selector: OptionButton = $RecommendationPanel/NativeAIStrategySelector
+@onready var compare_baseline_toggle: CheckBox = $RecommendationPanel/CompareBaselineToggle
 
 
 func _ready() -> void:
@@ -150,6 +153,12 @@ func _apply_static_styles() -> void:
 		native_ai_toggle.remove_theme_icon_override("hover_pressed_unchecked")
 		native_ai_toggle.remove_theme_font_size_override("font_size")
 		native_ai_toggle.remove_theme_font_override("font")
+	if native_ai_strategy_label != null:
+		native_ai_strategy_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
+	if native_ai_strategy_selector != null:
+		native_ai_strategy_selector.custom_minimum_size = Vector2(212, 28)
+	if compare_baseline_toggle != null:
+		compare_baseline_toggle.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
 
 
 func _on_back_pressed() -> void:

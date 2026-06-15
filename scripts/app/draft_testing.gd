@@ -7,6 +7,8 @@ const RECOMMENDATION_BASE_SEED := 81000
 
 # Native draft AI configuration
 @export var native_draft_stats_dir := "res://stats_output_100k"
+const NATIVE_STRATEGY_BASELINE := 0
+const NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT := 7
 
 # Required stats files for native draft AI
 const REQUIRED_STATS_FILES := ["combat_stats.csv", "matchup_with.csv", "matchup_vs.csv"]
@@ -21,12 +23,18 @@ var _stats_validation_error := ""
 @export var _recommendation_title_path: NodePath = NodePath("RecommendationPanel/RecommendationTitle")
 @export var _recommendation_list_path: NodePath = NodePath("RecommendationPanel/RecommendationList")
 @export var _native_ai_toggle_path: NodePath = NodePath("RecommendationPanel/NativeAIToggle")
+@export var _native_ai_strategy_label_path: NodePath = NodePath("RecommendationPanel/NativeAIStrategyLabel")
+@export var _native_ai_strategy_selector_path: NodePath = NodePath("RecommendationPanel/NativeAIStrategySelector")
+@export var _compare_baseline_toggle_path: NodePath = NodePath("RecommendationPanel/CompareBaselineToggle")
 
 # Recommendation UI references
 var _recommendation_panel: Panel
 var _recommendation_title: Label
 var _recommendation_list: VBoxContainer
 var _native_ai_toggle: CheckBox
+var _native_ai_strategy_label: Label
+var _native_ai_strategy_selector: OptionButton
+var _compare_baseline_toggle: CheckBox
 
 # Native draft AI backend
 var _native_backend: RefCounted = null
@@ -50,12 +58,27 @@ func _on_draft_shell_created() -> void:
 		if _native_backend != null and _native_backend.is_available():
 			_native_ai_toggle.button_pressed = true
 			_use_native_ai = true
+
+	if _draft_shell.has_node(_native_ai_strategy_label_path):
+		_native_ai_strategy_label = _draft_shell.get_node(_native_ai_strategy_label_path)
+	if _draft_shell.has_node(_native_ai_strategy_selector_path):
+		_native_ai_strategy_selector = _draft_shell.get_node(_native_ai_strategy_selector_path)
+		_native_ai_strategy_selector.clear()
+		_native_ai_strategy_selector.add_item("Native baseline", NATIVE_STRATEGY_BASELINE)
+		_native_ai_strategy_selector.add_item("Archetype ban light experimental", NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT)
+		_native_ai_strategy_selector.select(0)
+		_native_ai_strategy_selector.item_selected.connect(_on_native_ai_strategy_selected)
+	if _draft_shell.has_node(_compare_baseline_toggle_path):
+		_compare_baseline_toggle = _draft_shell.get_node(_compare_baseline_toggle_path)
+		_compare_baseline_toggle.button_pressed = false
+		_compare_baseline_toggle.toggled.connect(_on_compare_baseline_toggled)
 	
 	# Only show toggle if native backend is available
 	if _native_ai_toggle != null:
 		_native_ai_toggle.visible = _native_backend != null and _native_backend.is_available()
 		if not _native_ai_toggle.visible:
 			push_warning("Native draft AI backend unavailable, toggle hidden")
+	_update_native_ai_strategy_visibility()
 	
 	_draft_shell.apply_layout(get_viewport_rect().size, true)
 
@@ -66,7 +89,43 @@ func _on_ready_extra() -> void:
 
 func _on_native_ai_toggle_changed(toggled_on: bool) -> void:
 	_use_native_ai = toggled_on
+	_update_native_ai_strategy_visibility()
 	_update_draft_recommendations()
+
+
+func _on_native_ai_strategy_selected(_index: int) -> void:
+	_update_native_ai_strategy_visibility()
+	_update_draft_recommendations()
+
+
+func _on_compare_baseline_toggled(_toggled_on: bool) -> void:
+	_update_draft_recommendations()
+
+
+func _update_native_ai_strategy_visibility() -> void:
+	var should_show_selector: bool = _use_native_ai and _native_backend != null and _native_backend.is_available()
+	if _native_ai_strategy_label != null:
+		_native_ai_strategy_label.visible = should_show_selector
+	if _native_ai_strategy_selector != null:
+		_native_ai_strategy_selector.visible = should_show_selector
+	var should_show_compare := should_show_selector and _selected_native_ai_strategy() != NATIVE_STRATEGY_BASELINE
+	if _compare_baseline_toggle != null:
+		_compare_baseline_toggle.visible = should_show_compare
+		if not should_show_compare:
+			_compare_baseline_toggle.button_pressed = false
+
+
+func _selected_native_ai_strategy() -> int:
+	if _native_ai_strategy_selector == null:
+		return NATIVE_STRATEGY_BASELINE
+	var selected_id := _native_ai_strategy_selector.get_selected_id()
+	if selected_id < 0:
+		return NATIVE_STRATEGY_BASELINE
+	return selected_id
+
+
+func _should_compare_with_baseline() -> bool:
+	return _compare_baseline_toggle != null and _compare_baseline_toggle.visible and _compare_baseline_toggle.button_pressed
 
 
 func _on_reset_to_draft_extra() -> void:
@@ -268,28 +327,8 @@ func _show_native_error_message(error_message: String) -> void:
 
 func _show_native_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName], draft_step: int, acting_side: String) -> void:
 	var is_ban_turn := _is_ban_step(draft_step)
-	
-	var recommendations: Array = []
-	if is_ban_turn:
-		recommendations = _native_backend.get_draft_ai_ban_recommendations(
-			native_draft_stats_dir,
-			available,
-			allies,
-			enemies,
-			5,  # max_results
-			draft_step,
-			acting_side,
-			{}  # weight_overrides (empty for default)
-		)
-	else:
-		recommendations = _native_backend.get_draft_ai_pick_recommendations(
-			native_draft_stats_dir,
-			available,
-			allies,
-			enemies,
-			5,  # max_results
-			draft_step
-		)
+	var strategy := _selected_native_ai_strategy()
+	var recommendations := _get_native_recommendations(allies, enemies, available, draft_step, acting_side, strategy)
 	
 	# Handle empty recommendations
 	if recommendations.is_empty():
@@ -298,7 +337,82 @@ func _show_native_recommendations(allies: Array[StringName], enemies: Array[Stri
 		empty_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		_recommendation_list.add_child(empty_label)
 		return
-	
+
+	var compare_recommendations: Array = []
+	if strategy != NATIVE_STRATEGY_BASELINE and _should_compare_with_baseline():
+		compare_recommendations = _get_native_recommendations(
+			allies,
+			enemies,
+			available,
+			draft_step,
+			acting_side,
+			NATIVE_STRATEGY_BASELINE
+		)
+
+	if not compare_recommendations.is_empty():
+		var selected_top := String((recommendations[0] as Dictionary).get("candidate", ""))
+		var baseline_top := String((compare_recommendations[0] as Dictionary).get("candidate", ""))
+		if selected_top != baseline_top:
+			var change_label := Label.new()
+			change_label.text = "changed top recommendation: %s -> %s" % [baseline_top, selected_top]
+			change_label.add_theme_color_override("font_color", UiTokensScript.COLOR_WARNING)
+			_recommendation_list.add_child(change_label)
+
+	_render_native_recommendation_block(_native_strategy_display_name(strategy), recommendations, is_ban_turn, strategy)
+
+	if not compare_recommendations.is_empty():
+		var separator_between_models := HSeparator.new()
+		_recommendation_list.add_child(separator_between_models)
+		_render_native_recommendation_block(
+			_native_strategy_display_name(NATIVE_STRATEGY_BASELINE),
+			compare_recommendations,
+			is_ban_turn,
+			NATIVE_STRATEGY_BASELINE
+		)
+
+	# Add separator
+	var separator := HSeparator.new()
+	_recommendation_list.add_child(separator)
+
+	# Add model label with explanation
+	var model_label := Label.new()
+	model_label.text = "Model: Native Draft AI (higher score is better)"
+	if strategy == NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
+		model_label.text = "Model: Native Draft AI - archetype ban light experimental"
+	model_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
+	_recommendation_list.add_child(model_label)
+
+
+func _get_native_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName], draft_step: int, acting_side: String, strategy: int) -> Array:
+	if _is_ban_step(draft_step):
+		return _native_backend.get_draft_ai_ban_recommendations(
+			native_draft_stats_dir,
+			available,
+			allies,
+			enemies,
+			5,  # max_results
+			draft_step,
+			acting_side,
+			{},  # weight_overrides (empty for default)
+			strategy
+		)
+	return _native_backend.get_draft_ai_pick_recommendations(
+		native_draft_stats_dir,
+		available,
+		allies,
+		enemies,
+		5,  # max_results
+		draft_step,
+		strategy
+	)
+
+
+func _render_native_recommendation_block(title: String, recommendations: Array, is_ban_turn: bool, strategy: int) -> void:
+	var section_label := Label.new()
+	section_label.text = title
+	section_label.add_theme_font_size_override("font_size", 18)
+	_recommendation_list.add_child(section_label)
+
 	for i in range(mini(5, recommendations.size())):
 		var recommendation: Dictionary = recommendations[i]
 		var label := Label.new()
@@ -306,8 +420,7 @@ func _show_native_recommendations(allies: Array[StringName], enemies: Array[Stri
 		var score := float(recommendation.get("total_score", 0.0))
 		label.text = "%d. %s (score: %.3f)" % [i + 1, champion_name, score]
 		_recommendation_list.add_child(label)
-		
-		# Show breakdown for all recommendations
+
 		var breakdown_label := Label.new()
 		if is_ban_turn:
 			breakdown_label.text = _format_ban_breakdown(recommendation)
@@ -316,16 +429,22 @@ func _show_native_recommendations(allies: Array[StringName], enemies: Array[Stri
 		breakdown_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		breakdown_label.add_theme_font_size_override("font_size", 16)
 		_recommendation_list.add_child(breakdown_label)
-	
-	# Add separator
-	var separator := HSeparator.new()
-	_recommendation_list.add_child(separator)
-	
-	# Add model label with explanation
-	var model_label := Label.new()
-	model_label.text = "Model: Native Draft AI (higher score is better)"
-	model_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
-	_recommendation_list.add_child(model_label)
+
+		if strategy == NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
+			var archetype_label := Label.new()
+			archetype_label.text = _format_archetype_debug(recommendation, is_ban_turn)
+			archetype_label.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
+			archetype_label.add_theme_font_size_override("font_size", 14)
+			if not archetype_label.text.is_empty():
+				_recommendation_list.add_child(archetype_label)
+
+
+func _native_strategy_display_name(strategy: int) -> String:
+	match strategy:
+		NATIVE_STRATEGY_ARCHETYPE_BAN_LIGHT:
+			return "Archetype ban light experimental"
+		_:
+			return "Native baseline"
 
 
 func _format_pick_breakdown(rec: Dictionary) -> String:
@@ -390,6 +509,29 @@ func _format_ban_breakdown(rec: Dictionary) -> String:
 	if parts.is_empty():
 		return ""
 	return "   " + " | ".join(parts)
+
+
+func _format_archetype_debug(rec: Dictionary, is_ban_turn: bool) -> String:
+	var lines: Array[String] = []
+	var tags: Array = rec.get("candidate_tags", [])
+	if not tags.is_empty():
+		var tag_strings: Array[String] = []
+		for tag in tags:
+			tag_strings.append(String(tag))
+		lines.append("   tags: " + ", ".join(tag_strings))
+
+	var contribution_key := "enemy_archetype_contribution" if is_ban_turn else "archetype_contribution"
+	if rec.has(contribution_key):
+		var reason_strings: Array[String] = []
+		for reason in rec.get("archetype_reasons", []):
+			reason_strings.append(String(reason))
+		var reason_text := ", ".join(reason_strings)
+		if reason_text.is_empty():
+			lines.append("   archetype: %+.4f" % float(rec.get(contribution_key, 0.0)))
+		else:
+			lines.append("   archetype: %+.4f | %s" % [float(rec.get(contribution_key, 0.0)), reason_text])
+
+	return "\n".join(lines)
 
 
 func _show_legacy_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName]) -> void:

@@ -55,6 +55,7 @@ func _run() -> void:
 			_strategy = DraftStrategyNative.new(_stats_dir)
 		"native_archetype":
 			_strategy = DraftStrategyNativeArchetype.new(_stats_dir)
+		# Experimental/test-only archetype profiles. Do not expose as production defaults.
 		"archetype_full":
 			_strategy = DraftStrategyNativeArchetype.new(_stats_dir, 4, "archetype_full")
 		"archetype_light":

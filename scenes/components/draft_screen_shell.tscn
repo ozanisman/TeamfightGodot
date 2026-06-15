@@ -126,12 +126,38 @@ offset_right = 200.0
 offset_bottom = 40.0
 text = "Use Native AI"
 
-[node name="RecommendationTitle" type="Label" parent="RecommendationPanel"]
+[node name="NativeAIStrategyLabel" type="Label" parent="RecommendationPanel"]
+visible = false
 layout_mode = 0
 offset_left = 20.0
 offset_top = 50.0
+offset_right = 160.0
+offset_bottom = 76.0
+text = "Native AI Strategy:"
+
+[node name="NativeAIStrategySelector" type="OptionButton" parent="RecommendationPanel"]
+visible = false
+layout_mode = 0
+offset_left = 168.0
+offset_top = 46.0
+offset_right = 380.0
+offset_bottom = 78.0
+
+[node name="CompareBaselineToggle" type="CheckBox" parent="RecommendationPanel"]
+visible = false
+layout_mode = 0
+offset_left = 20.0
+offset_top = 82.0
+offset_right = 220.0
+offset_bottom = 110.0
+text = "Compare with baseline"
+
+[node name="RecommendationTitle" type="Label" parent="RecommendationPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 120.0
 offset_right = 320.0
-offset_bottom = 82.0
+offset_bottom = 152.0
 text = "RECOMMENDATIONS"
 
 [node name="RecommendationList" type="VBoxContainer" parent="RecommendationPanel"]
@@ -139,7 +165,7 @@ layout_mode = 0
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 20.0
-offset_top = 90.0
+offset_top = 160.0
 offset_right = -20.0
 offset_bottom = -20.0
 grow_horizontal = 2

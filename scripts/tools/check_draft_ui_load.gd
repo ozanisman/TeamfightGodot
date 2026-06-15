@@ -55,6 +55,57 @@ func _run() -> void:
 	if shell.get_node_or_null("RecommendationPanel") == null:
 		_fail(inst, "draft_ui: RecommendationPanel missing")
 		return
+	var strategy_selector := shell.get_node_or_null("RecommendationPanel/NativeAIStrategySelector") as OptionButton
+	if strategy_selector == null:
+		_fail(inst, "draft_ui: NativeAIStrategySelector missing")
+		return
+	if not strategy_selector.visible:
+		_fail(inst, "draft_ui: NativeAIStrategySelector hidden while native AI is enabled")
+		return
+	if strategy_selector.get_selected_id() != 0:
+		_fail(inst, "draft_ui: native strategy default is not baseline")
+		return
+	if strategy_selector.item_count < 2 or strategy_selector.get_item_id(1) != 7:
+		_fail(inst, "draft_ui: archetype_ban_light option missing")
+		return
+	var compare_toggle := shell.get_node_or_null("RecommendationPanel/CompareBaselineToggle") as CheckBox
+	if compare_toggle == null:
+		_fail(inst, "draft_ui: CompareBaselineToggle missing")
+		return
+	if compare_toggle.visible:
+		_fail(inst, "draft_ui: CompareBaselineToggle visible for native baseline")
+		return
+	if compare_toggle.button_pressed:
+		_fail(inst, "draft_ui: CompareBaselineToggle default is not off")
+		return
+
+	strategy_selector.select(1)
+	strategy_selector.emit_signal("item_selected", 1)
+	await process_frame
+	if not compare_toggle.visible:
+		_fail(inst, "draft_ui: CompareBaselineToggle hidden for experimental strategy")
+		return
+	if compare_toggle.button_pressed:
+		_fail(inst, "draft_ui: CompareBaselineToggle enabled after strategy switch")
+		return
+	if not _recommendation_text_contains(shell, "tags:"):
+		_fail(inst, "draft_ui: archetype candidate_tags did not render")
+		return
+	if not _recommendation_text_contains(shell, "archetype:"):
+		_fail(inst, "draft_ui: archetype reasons did not render")
+		return
+	if _recommendation_text_contains(shell, "Native baseline"):
+		_fail(inst, "draft_ui: baseline comparison rendered while toggle is off")
+		return
+
+	compare_toggle.button_pressed = true
+	await process_frame
+	if not _recommendation_text_contains(shell, "Archetype ban light experimental"):
+		_fail(inst, "draft_ui: experimental comparison section missing")
+		return
+	if not _recommendation_text_contains(shell, "Native baseline"):
+		_fail(inst, "draft_ui: native baseline comparison section missing")
+		return
 
 	var champion_grid := shell.get_node_or_null("DraftPanel/ChampionScroll/ChampionGrid") as GridContainer
 	if champion_grid == null:
@@ -88,6 +139,16 @@ func _first_draft_tile(grid: GridContainer) -> Button:
 		if child is Button and child.has_signal("champion_pressed"):
 			return child as Button
 	return null
+
+
+func _recommendation_text_contains(shell: Control, needle: String) -> bool:
+	var recommendation_list := shell.get_node_or_null("RecommendationPanel/RecommendationList")
+	if recommendation_list == null:
+		return false
+	for child in recommendation_list.get_children():
+		if child is Label and String((child as Label).text).contains(needle):
+			return true
+	return false
 
 
 func _fail(inst: Node, message: String) -> void:

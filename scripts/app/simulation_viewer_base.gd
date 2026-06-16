@@ -16,8 +16,8 @@ const DraftChampionTileScene := preload("res://scenes/components/draft_champion_
 const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
 
 # Viewer-specific colors (not in ui_tokens.gd)
-const COLOR_ZONE_P1 := Color(0.157, 0.196, 0.314, 1.0)
-const COLOR_ZONE_P2 := Color(0.314, 0.157, 0.157, 1.0)
+const COLOR_ZONE_P1 := Color(0.2, 0.4, 0.8, 1.0)  # Brighter blue
+const COLOR_ZONE_P2 := Color(0.8, 0.2, 0.2, 1.0)  # Brighter red
 const COLOR_HP_BG := Color(0.314, 0.314, 0.314, 1.0)
 const COLOR_HP_FILL := Color(0.314, 0.824, 0.314, 1.0)
 const COLOR_TARGET_LINE := Color(0.824, 0.824, 0.431, 1.0)
@@ -52,6 +52,12 @@ enum GameState {
 
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
+const AI_SELECTION_TEMPERATURE: float = 0.5  # Softmax temperature (0.3=very top-heavy, 0.5=top-heavy, 1.0=balanced, 2.0=random)
+const AI_SCORE_SCALE: float = 100.0  # Multiply raw scores before softmax so small-magnitude differences matter
+
+# Which side is human vs AI. Can be "blue" or "red".
+var _player_side: String = "blue"
+var _ai_side: String = "red"
 
 # Simulation configuration
 var _backend: RefCounted = null
@@ -64,6 +70,7 @@ var _combat_paused: bool = false
 var _player_picks: Array[StringName] = []
 var _enemy_picks: Array[StringName] = []
 var _draft_step_index: int = 0
+var _ai_draft_processing: bool = false
 
 # Unit visualization
 var _unit_nodes: Dictionary = {}  # instance_id -> Node2D
@@ -1738,17 +1745,46 @@ func _update_turn_display() -> void:
 	if _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
 		var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 		var phase := "BAN PHASE" if current_turn.ends_with("_BAN") else "PICK PHASE"
-		var team := "BLUE" if current_turn.begins_with("B_") else "RED"
+		var team := "BLUE" if _turn_belongs_to_player(current_turn) else "RED"
+		
+		# Set team color for entire label
+		var team_color := COLOR_ZONE_P1 if _turn_belongs_to_player(current_turn) else COLOR_ZONE_P2
+		_turn_label.modulate = team_color
+		
+		# Add dark background for better contrast
+		_turn_label.add_theme_color_override("font_color", team_color)
+		_turn_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
+		_turn_label.add_theme_constant_override("shadow_offset_x", 2)
+		_turn_label.add_theme_constant_override("shadow_offset_y", 2)
+		# Add white border/outline
+		_turn_label.add_theme_color_override("font_outline_color", Color.WHITE)
+		_turn_label.add_theme_constant_override("outline_size", 2)
+		
+		# Add spacing between turn label and action box by setting fixed offset
+		if _draft_action_box != null:
+			_draft_action_box.offset_top = UiTokensScript.DRAFT_ACTION_TOP_PX + 30
+		
+		# Set larger font size for entire label
+		_turn_label.remove_theme_font_size_override("font_size")
+		_turn_label.add_theme_font_size_override("font_size", 48)
 
 		if current_turn.ends_with("_BAN"):
 			_turn_label.text = "%s - %s BAN" % [phase, team]
 		elif current_turn.ends_with("_PICK"):
-			var pick_count := _player_picks.size() if current_turn.begins_with("B_") else _enemy_picks.size()
+			var pick_count := _player_picks.size() if _turn_belongs_to_player(current_turn) else _enemy_picks.size()
 			_turn_label.text = "%s - %s PICK (%d/%d)" % [phase, team, pick_count + 1, MAX_TEAM_SIZE]
 		else:
 			_turn_label.text = "TURN: %s" % current_turn.replace("_", " ")
 	else:
 		_turn_label.text = "TEAMS READY - START MATCH"
+		_turn_label.modulate = Color.WHITE
+		_turn_label.add_theme_font_size_override("font_size", 24)
+		_turn_label.remove_theme_color_override("font_color")
+		_turn_label.remove_theme_color_override("font_shadow_color")
+		_turn_label.remove_theme_constant_override("shadow_offset_x")
+		_turn_label.remove_theme_constant_override("shadow_offset_y")
+		_turn_label.remove_theme_color_override("font_outline_color")
+		_turn_label.remove_theme_constant_override("outline_size")
 	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
@@ -1836,10 +1872,163 @@ func _power_score_for_pick(champion_id: StringName) -> float:
 	return max_hp * ad * as_sp
 
 
+func _softmax_select(recommendations: Array, temperature: float = 1.0) -> StringName:
+	if temperature <= 0.0:
+		push_error("_softmax_select: temperature must be positive, got %f" % temperature)
+		temperature = 0.01
+	elif temperature > 100.0:
+		push_warning("_softmax_select: temperature unusually high (%f), clamping to 100.0" % temperature)
+		temperature = 100.0
+	
+	var scores: Array[float] = []
+	var champions: Array[StringName] = []
+	for rec in recommendations:
+		var score: float = rec.get("total_score", 0.0)
+		var champion: StringName = StringName(rec.get("candidate", ""))
+		if not champion.is_empty():
+			scores.append(score)
+			champions.append(champion)
+	
+	if champions.is_empty():
+		return StringName()
+	
+	# Numerical stability: subtract max scaled score before exp
+	var max_scaled: float = scores[0] * AI_SCORE_SCALE
+	for score in scores:
+		var scaled: float = score * AI_SCORE_SCALE
+		if scaled > max_scaled:
+			max_scaled = scaled
+	
+	var exp_values: Array[float] = []
+	var exp_sum: float = 0.0
+	for score in scores:
+		var temp_score: float = (score * AI_SCORE_SCALE - max_scaled) / temperature
+		var exp_val: float = exp(temp_score)
+		exp_values.append(exp_val)
+		exp_sum += exp_val
+	
+	var probabilities: Array[float] = []
+	for exp_val in exp_values:
+		probabilities.append(exp_val / exp_sum)
+	
+	if _debug_mode:
+		print("  --- Softmax Details (temp=%.2f, scale=%.1f) ---" % [temperature, AI_SCORE_SCALE])
+		for i in range(champions.size()):
+			print("    #%d: %s | raw_score=%.4f | scaled=%.4f | exp_val=%.4f | prob=%.2f%%" % [i + 1, champions[i], scores[i], scores[i] * AI_SCORE_SCALE, exp_values[i], probabilities[i] * 100])
+	
+	var rand_val: float = randf()
+	if _debug_mode:
+		print("  Random sample: %.4f" % rand_val)
+	var cumulative: float = 0.0
+	for i in range(probabilities.size()):
+		cumulative += probabilities[i]
+		if rand_val <= cumulative:
+			if _debug_mode:
+				print("  Selected rank #%d (score: %.4f, prob: %.2f%%)" % [i + 1, scores[i], probabilities[i] * 100])
+			return champions[i]
+	
+	return champions[champions.size() - 1]
+
+
+## Returns true if the given draft turn string (e.g. "B_PICK", "R_BAN") belongs to the player side.
+func _turn_belongs_to_player(current_turn: String) -> bool:
+	if _player_side == "blue":
+		return current_turn.begins_with("B_")
+	return current_turn.begins_with("R_")
+
+
 func _try_enemy_draft_ai() -> void:
-	# AI disabled - manual selection for both teams
-	# This function is intentionally left empty to allow manual team selection
-	pass
+	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
+		return
+	if _ai_draft_processing:
+		return
+	
+	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
+	
+	# Only act on AI turns
+	if _turn_belongs_to_player(current_turn):
+		return
+	
+	# Get available champions
+	var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
+	var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+	var available: Array[StringName] = []
+	for cid in champion_ids:
+		if cid not in taken:
+			available.append(cid)
+	
+	if available.is_empty():
+		if _debug_mode:
+			print("No champions available for AI draft")
+		return
+	
+	# Get draft recommendations from backend
+	var is_ban: bool = current_turn.ends_with("_BAN")
+	var stats_dir: String = "res://model_stats/stats_output_100k"
+	
+	var recommendations: Array
+	if is_ban:
+		recommendations = _backend.get_draft_ai_ban_recommendations(
+			stats_dir,
+			available,
+			_enemy_picks,
+			_player_picks,
+			5,  # max_results
+			_draft_step_index,
+			_ai_side,  # acting_side
+			Dictionary(),  # weight_overrides
+			0  # strategy (NATIVE)
+		)
+	else:
+		recommendations = _backend.get_draft_ai_pick_recommendations(
+			stats_dir,
+			available,
+			_enemy_picks,
+			_player_picks,
+			5,  # max_results
+			_draft_step_index,
+			0  # strategy (NATIVE)
+		)
+	
+	if _debug_mode:
+		print("\n=== Team 2 (RED) AI Draft Recommendation ===")
+		print("Turn: ", current_turn)
+		print("Available champions: ", available)
+		print("Full recommendation output:")
+		print(JSON.stringify(recommendations, "\t"))
+	
+	var selected_champion: StringName
+	if recommendations.is_empty():
+		push_error("_try_enemy_draft_ai: no recommendations returned from draft AI")
+		var random_index: int = randi() % available.size()
+		selected_champion = available[random_index]
+		if _debug_mode:
+			print("Random fallback selected: ", selected_champion)
+	else:
+		selected_champion = _softmax_select(recommendations, AI_SELECTION_TEMPERATURE)
+		if selected_champion.is_empty():
+			push_error("_try_enemy_draft_ai: softmax selection failed")
+			var random_index: int = randi() % available.size()
+			selected_champion = available[random_index]
+			if _debug_mode:
+				print("Random fallback selected: ", selected_champion)
+	
+	if selected_champion.is_empty():
+		push_error("_try_enemy_draft_ai: failed to select champion")
+		return
+	
+	if _debug_mode:
+		print("\nAI selected: ", selected_champion)
+		print("===========================================\n")
+	
+	_ai_draft_processing = true
+	var delay: float = randf_range(1.0, 2.0)
+	if _debug_mode:
+		print("AI thinking... (delay: %.2fs)" % delay)
+	await get_tree().create_timer(delay).timeout
+	_ai_draft_processing = false
+	
+	_perform_draft_action(selected_champion)
 
 
 func _pick_p2_champion(available: Array[StringName]) -> StringName:
@@ -1899,6 +2088,15 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 
 func _on_random_draft_clicked() -> void:
 	while _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
+		var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
+		
+		if not _turn_belongs_to_player(current_turn):
+			# AI turn: trigger if not already running, then yield frame to let it progress
+			if not _ai_draft_processing:
+				_try_enemy_draft_ai()
+			await get_tree().process_frame
+			continue
+		
 		var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
 		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
 		var available: Array[StringName] = []
@@ -2012,21 +2210,23 @@ func _update_inspection_panel(instance_id: int) -> void:
 	label.text = "Unit %d not found in snapshot" % instance_id
 
 
-func _on_champion_clicked(champion_id: StringName) -> void:
+## Applies a champion selection for the current draft turn, advancing state and UI.
+## Called directly by both human clicks and the AI after its delay.
+func _perform_draft_action(champion_id: StringName) -> void:
 	if _game_state != GameState.DRAFTING:
 		return
-
 	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
 		return
 
 	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
+	var is_player_turn: bool = _turn_belongs_to_player(current_turn)
 
 	# Handle ban phases
 	if current_turn.ends_with("_BAN"):
 		if champion_id not in _player_bans and champion_id not in _enemy_bans and champion_id not in _player_picks and champion_id not in _enemy_picks:
-			if current_turn.begins_with("B_"):
+			if is_player_turn:
 				_player_bans.append(champion_id)
-			elif current_turn.begins_with("R_"):
+			else:
 				_enemy_bans.append(champion_id)
 		_draft_step_index += 1
 		_update_turn_display()
@@ -2036,10 +2236,10 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 		_try_enemy_draft_ai()
 	# Handle pick phases
 	elif current_turn.ends_with("_PICK"):
-		if current_turn.begins_with("B_"):
+		if is_player_turn:
 			if _player_picks.size() < MAX_TEAM_SIZE:
 				_player_picks.append(champion_id)
-		elif current_turn.begins_with("R_"):
+		else:
 			if _enemy_picks.size() < MAX_TEAM_SIZE:
 				_enemy_picks.append(champion_id)
 
@@ -2049,6 +2249,22 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 		_update_champion_button_style(champion_id)
 		_update_start_match_enabled()
 		_try_enemy_draft_ai()
+
+
+func _on_champion_clicked(champion_id: StringName) -> void:
+	if _ai_draft_processing:
+		return
+	if _game_state != GameState.DRAFTING:
+		return
+	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
+		return
+
+	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
+	# Only allow human input on player turns
+	if not _turn_belongs_to_player(current_turn):
+		return
+
+	_perform_draft_action(champion_id)
 
 
 

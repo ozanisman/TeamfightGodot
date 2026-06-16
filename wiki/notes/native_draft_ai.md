@@ -7,23 +7,49 @@ The native draft AI provides C++-based pick and ban recommendations for the Team
 ## Files/Classes Involved
 
 ### Production Recommender (Current Default)
-- `native/src/simulation/sim_draft_recommender.hpp/cpp` (namespace `sim::draft`) — Current production recommender
+- `native/src/simulation/sim_draft_ai_recommender.hpp/cpp` (namespace `sim::draft_ai`) — Current production recommender for pick/ban recommendations
+  - Routes through `get_draft_ai_pick_recommendations()` and `get_draft_ai_ban_recommendations()`
+  - Multiple strategies: NATIVE, GREEDY_BASE_POWER, GREEDY_SYNERGY, GREEDY_COUNTER, etc.
+- `native/src/simulation/sim_draft_recommender.hpp/cpp` (namespace `sim::draft`) — Winner prediction and analysis tools (kept for analysis, not pick/ban routing)
   - `ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY` — complete-draft winner prediction
   - `ScoringMode::DRAFT_AWARE_PAIRWISE_PROBABILITY` — draft-aware pick/ban ranking
 - `native/src/teamfight_simulation_core.cpp` — Godot binding for draft recommendations
 
-### Experimental / Deprecated
-- `native/src/simulation/sim_draft_ai_recommender.hpp/cpp` — Older experimental recommender (kept for reference, not the production path)
+### Legacy / Analysis-Only
 - `native/src/simulation/sim_draft_ai_stats_database.hpp/cpp` — Stats database for champion win rates
 - `native/src/simulation/sim_draft_ai_evaluator.hpp/cpp` — Draft evaluation logic
 - `native/src/simulation/sim_draft_ai_types.hpp` — Type definitions
 
 ### GDScript Integration
 - `scripts/simulation/native_simulation_backend.gd` - Godot-C++ bridge
-- `scripts/tools/draft_strategy_native.gd` - Native strategy wrapper
+- `scripts/tools/draft_strategy_native.gd` - Native strategy wrapper (uses `sim::draft_ai`)
 - `scripts/tools/draft_strategy_native_picks_random_bans.gd` - Hybrid strategy (native picks, random bans)
 - `scripts/tools/draft_strategy_random_picks_native_bans.gd` - Hybrid strategy (random picks, native bans)
 - `scripts/tools/full_draft_ablation_test.gd` - Test runner for validation
+
+**Note:** Main recommendation methods (`get_draft_recommendation_names`, `get_draft_recommendations_with_breakdowns`) now route to `sim::draft_ai` system by default. `sim::draft` system is retained for winner prediction and analysis tools only.
+
+## API Breaking Changes (Phase 71)
+
+### Field Mapping Changes
+The routing to `sim::draft_ai` system introduced field name mapping changes in `get_draft_recommendations_with_breakdowns()`:
+
+- `candidate` → `champion` (output field name)
+- `base_power` → `base` (output field name)  
+- `ally_synergy` → `synergy` (output field name)
+- `enemy_counter_value` → `counter` (output field name)
+- `total_score` → `final` (output field name)
+
+### Variance Fields
+Variance fields (`synergy_variance`, `counter_variance`) are currently set to 0.0 as the `sim::draft_ai` system does not provide variance calculations. This is a temporary state - either variance calculation will be implemented in draft_ai or these fields will be removed entirely.
+
+### Parameter Changes
+- Weight parameters (`base_weight`, `synergy_weight`, `counter_weight`, etc.) are currently ignored by the routing methods (kept for API compatibility)
+- `draft_position` parameter maps to `draft_step` in the underlying draft_ai system
+- Default strategy is set to NATIVE (strategy parameter = 0)
+
+### Error Handling
+Both routing methods now check for empty results from the draft_ai system and log warnings when database load failures occur. Callers should handle empty array returns as potential failure conditions.
 
 ## Data Inputs Loaded
 

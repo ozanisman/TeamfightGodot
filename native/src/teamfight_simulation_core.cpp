@@ -197,6 +197,13 @@ std::vector<StringName> array_to_string_names(const Array &values) {
 	return out;
 }
 
+// Shared thread-local cache for draft_ai database and catalog
+// Used by both get_draft_ai_pick_recommendations and get_draft_ai_ban_recommendations
+static thread_local String s_draft_ai_cached_stats_dir;
+static thread_local sim::draft_ai::DraftStatsDatabase s_draft_ai_cached_database;
+static thread_local sim::catalog::CatalogState s_draft_ai_cached_catalog;
+static thread_local bool s_draft_ai_cache_loaded = false;
+
 }
 
 void TeamfightSimulationCore::debug_print_draft_recommendations(
@@ -279,30 +286,26 @@ Array TeamfightSimulationCore::get_draft_recommendation_names(
 		double counter_weight,
 		double synergy_amplification,
 		double matchup_amplification) {
-	sim::draft::DraftStatsDatabase database;
-	if (!database.load_from_dir(stats_dir)) {
-		UtilityFunctions::push_error(database.last_error());
+	// Route to sim::draft_ai system (experimental draft AI)
+	// Note: weight parameters are not used by draft_ai system, kept for API compatibility
+	// draft_step parameter: -1 means not specified (use default behavior)
+	// strategy parameter: 0 = NATIVE strategy (default)
+	(void)base_weight; (void)synergy_weight; (void)counter_weight; 
+	(void)synergy_amplification; (void)matchup_amplification; // Suppress unused parameter warnings
+	
+	auto recommendations = get_draft_ai_pick_recommendations(stats_dir, available, allies, enemies, top_n, -1, 0);
+	
+	// Check for failure (empty array indicates database load failure)
+	if (recommendations.is_empty()) {
+		UtilityFunctions::push_warning("get_draft_recommendation_names: draft_ai system returned empty results (possible database load failure)");
 		return Array();
 	}
-
-	sim::draft::PredictionConfig config;
-	config.base_weight = base_weight;
-	config.synergy_weight = synergy_weight;
-	config.matchup_weight = counter_weight;
-	config.synergy_amplification = synergy_amplification;
-	config.matchup_amplification = matchup_amplification;
-
-	sim::draft::DraftEvaluator evaluator(database, config);
-	sim::draft::DraftRecommender recommender(evaluator, false);
-	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend(
-			array_to_string_names(allies),
-			array_to_string_names(enemies),
-			array_to_string_names(available));
-
+	
 	Array result;
-	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	int64_t count = std::min(top_n, static_cast<int64_t>(recommendations.size()));
 	for (int64_t i = 0; i < count; ++i) {
-		result.push_back(String(ranked[static_cast<size_t>(i)].champion));
+		Dictionary rec = recommendations[i];
+		result.push_back(rec["candidate"]);
 	}
 	return result;
 }
@@ -321,54 +324,38 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		int draft_position,
 		double early_pick_base_weight,
 		double late_pick_counter_weight) {
-	sim::draft::DraftStatsDatabase database;
-	if (!database.load_from_dir(stats_dir)) {
-		UtilityFunctions::push_error(database.last_error());
+	// Route to sim::draft_ai system (experimental draft AI)
+	// Note: weight parameters are not used by draft_ai system, kept for API compatibility
+	// draft_position maps to draft_step parameter (both represent position in draft order)
+	// strategy parameter: 0 = NATIVE strategy (default)
+	(void)base_weight; (void)synergy_weight; (void)counter_weight; 
+	(void)synergy_amplification; (void)matchup_amplification;
+	(void)early_pick_base_weight; (void)late_pick_counter_weight; // Suppress unused parameter warnings
+	
+	auto recommendations = get_draft_ai_pick_recommendations(stats_dir, available, allies, enemies, top_n, draft_position, 0);
+	
+	// Check for failure (empty array indicates database load failure)
+	if (recommendations.is_empty()) {
+		UtilityFunctions::push_warning("get_draft_recommendations_with_breakdowns: draft_ai system returned empty results (possible database load failure)");
 		return Array();
 	}
-
-	sim::draft::PredictionConfig config;
-	config.base_weight = base_weight;
-	config.synergy_weight = synergy_weight;
-	config.matchup_weight = counter_weight;
-	config.synergy_amplification = synergy_amplification;
-	config.matchup_amplification = matchup_amplification;
-	config.draft_position = draft_position;
-	config.early_pick_base_weight = early_pick_base_weight;
-	config.late_pick_counter_weight = late_pick_counter_weight;
-
-	// Load catalog for tag access
-	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks = _catalog_hooks();
-	sim::catalog::ensure_loaded(catalog, hooks);
-
-	sim::draft::DraftEvaluator evaluator(database, config);
-	sim::draft::DraftRecommender recommender(evaluator, false);
-	std::vector<sim::draft::DraftEvaluation> ranked = recommender.recommend_with_tags(
-			array_to_string_names(allies),
-			array_to_string_names(enemies),
-			array_to_string_names(available),
-			catalog);
-
+	
 	Array result;
-	int64_t count = std::min(top_n, static_cast<int64_t>(ranked.size()));
+	int64_t count = std::min(top_n, static_cast<int64_t>(recommendations.size()));
 	for (int64_t i = 0; i < count; ++i) {
-		const sim::draft::DraftEvaluation &eval = ranked[static_cast<size_t>(i)];
+		Dictionary rec = recommendations[i];
 		Dictionary breakdown;
-		breakdown["champion"] = String(eval.champion);
-		breakdown["base"] = eval.base_winrate;
-		breakdown["synergy"] = eval.avg_synergy;
-		breakdown["synergy_variance"] = eval.synergy_variance;
-		breakdown["counter"] = eval.avg_counter;
-		breakdown["counter_variance"] = eval.counter_variance;
-		breakdown["final"] = eval.score;
-		
-		// Add candidate tags (debug-only)
-		Array tags_array;
-		for (const StringName &tag : eval.candidate_tags) {
-			tags_array.append(String(tag));
-		}
-		breakdown["candidate_tags"] = tags_array;
+		// Map draft_ai field names to expected output format
+		// Field mapping: candidate->champion, base_power->base, ally_synergy->synergy, enemy_counter_value->counter
+		breakdown["champion"] = rec["candidate"];
+		breakdown["base"] = rec["base_power"];
+		breakdown["synergy"] = rec["ally_synergy"];
+		// TODO: Variance fields not implemented in draft_ai system. Remove or implement variance calculation.
+		breakdown["synergy_variance"] = 0.0; 
+		breakdown["counter"] = rec["enemy_counter_value"];
+		breakdown["counter_variance"] = 0.0;
+		breakdown["final"] = rec["total_score"];
+		breakdown["candidate_tags"] = rec["candidate_tags"];
 		
 		result.push_back(breakdown);
 	}
@@ -1170,20 +1157,31 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 	int draft_step,
 	int strategy
 ) {
-	sim::draft_ai::DraftStatsDatabase database;
-
-	if (!database.load_from_dir(stats_dir)) {
-		UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
-		return Array();
+	// Use shared thread-local cache for database and catalog
+	if (!s_draft_ai_cache_loaded || s_draft_ai_cached_stats_dir != stats_dir) {
+		sim::draft_ai::DraftStatsDatabase fresh;
+		if (!fresh.load_from_dir(stats_dir)) {
+			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
+			return Array();
+		}
+		
+		// Load catalog for tag access
+		sim::catalog::CatalogState catalog;
+		sim::catalog::CatalogHooks hooks = _catalog_hooks();
+		sim::catalog::ensure_loaded(catalog, hooks);
+		fresh.set_catalog(&catalog);
+		
+		s_draft_ai_cached_database = std::move(fresh);
+		s_draft_ai_cached_catalog = std::move(catalog);
+		s_draft_ai_cached_stats_dir = stats_dir;
+		s_draft_ai_cache_loaded = true;
 	}
+	
+	sim::draft_ai::DraftStatsDatabase &database = s_draft_ai_cached_database;
+	sim::catalog::CatalogState &catalog = s_draft_ai_cached_catalog;
 
 	sim::draft_ai::DraftEvaluator evaluator(&database);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
-
-	// Load catalog for tag access
-	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks = _catalog_hooks();
-	sim::catalog::ensure_loaded(catalog, hooks);
 	database.set_catalog(&catalog);
 
 	// Convert strategy int to enum
@@ -1268,20 +1266,31 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 	const Dictionary &weight_overrides,
 	int strategy
 ) {
-	sim::draft_ai::DraftStatsDatabase database;
-
-	if (!database.load_from_dir(stats_dir)) {
-		UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, database.last_error()));
-		return Array();
+	// Use shared thread-local cache with pick recommendations (same database and catalog)
+	if (!s_draft_ai_cache_loaded || s_draft_ai_cached_stats_dir != stats_dir) {
+		sim::draft_ai::DraftStatsDatabase fresh;
+		if (!fresh.load_from_dir(stats_dir)) {
+			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
+			return Array();
+		}
+		
+		// Load catalog for tag access
+		sim::catalog::CatalogState catalog;
+		sim::catalog::CatalogHooks hooks = _catalog_hooks();
+		sim::catalog::ensure_loaded(catalog, hooks);
+		fresh.set_catalog(&catalog);
+		
+		s_draft_ai_cached_database = std::move(fresh);
+		s_draft_ai_cached_catalog = std::move(catalog);
+		s_draft_ai_cached_stats_dir = stats_dir;
+		s_draft_ai_cache_loaded = true;
 	}
+	
+	sim::draft_ai::DraftStatsDatabase &database = s_draft_ai_cached_database;
+	sim::catalog::CatalogState &catalog = s_draft_ai_cached_catalog;
 
 	sim::draft_ai::DraftEvaluator evaluator(&database);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
-
-	// Load catalog for tag access
-	sim::catalog::CatalogState catalog;
-	sim::catalog::CatalogHooks hooks = _catalog_hooks();
-	sim::catalog::ensure_loaded(catalog, hooks);
 	database.set_catalog(&catalog);
 
 	// Convert strategy int to enum

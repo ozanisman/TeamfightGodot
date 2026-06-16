@@ -98,7 +98,7 @@ static func clear_export_caches() -> void:
 	clear_all_caches()
 
 
-## Builds catalog/role/passive/minion on the caller thread once, deep-copies once; workers reuse snapshots from [method build_catalog] / [method build_role_configs] / [method build_passive_registry] / [method build_minion_catalog].[br]Must not mutate shared champion specs after freezing. [method clear_all_caches] clears snapshots.
+## Builds catalog/role/passive/minion
 static func freeze_built_specs_for_worker_reuse() -> void:
 	var cat := build_catalog()
 	var roles := build_role_configs()

@@ -207,14 +207,6 @@ void process_channel_tick(SimWorld &world, SimHostCallbacks &host, const Channel
 			if (result.has("damage")) {
 				cold.channel_accumulated_damage += double(result["damage"]);
 			}
-		} else if (hooks.debug_combat_trace != nullptr && hooks.debug_combat_trace(hooks.user_data)) {
-			String warning_msg = "Channel tick skipped: no valid target. Unit ID: ";
-			warning_msg += String::num_int64(unit.instance_id);
-			warning_msg += ", Channel reason: ";
-			warning_msg += cold.channel_reason;
-			warning_msg += ", Target mode: ";
-			warning_msg += cold.channel_target_mode;
-			UtilityFunctions::push_warning(warning_msg);
 		}
 	}
 

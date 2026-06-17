@@ -197,12 +197,27 @@ std::vector<StringName> array_to_string_names(const Array &values) {
 	return out;
 }
 
-// Shared thread-local cache for draft_ai database and catalog
-// Used by both get_draft_ai_pick_recommendations and get_draft_ai_ban_recommendations
-static thread_local String s_draft_ai_cached_stats_dir;
-static thread_local sim::draft_ai::DraftStatsDatabase s_draft_ai_cached_database;
-static thread_local sim::catalog::CatalogState s_draft_ai_cached_catalog;
-static thread_local bool s_draft_ai_cache_loaded = false;
+// Shared thread-local cache for draft_ai database and catalog.
+// Used by both get_draft_ai_pick_recommendations and get_draft_ai_ban_recommendations.
+//
+// NOTE: these MUST be function-local statics, not namespace-scope thread_local objects.
+// Namespace-scope thread_local objects holding Godot types (String/Dictionary/StringName)
+// are dynamically initialized via TLS callbacks during DllMain, before the GDExtension
+// interface is available. That default-construction calls into a null interface and the
+// library fails to load with "Error 1114: A dynamic link library (DLL) initialization
+// routine failed.". Function-local thread_local statics initialize lazily on first use,
+// after the extension is fully loaded, so they are safe.
+struct DraftAiThreadCache {
+	String cached_stats_dir;
+	sim::draft_ai::DraftStatsDatabase cached_database;
+	sim::catalog::CatalogState cached_catalog;
+	bool cache_loaded = false;
+};
+
+DraftAiThreadCache &draft_ai_thread_cache() {
+	static thread_local DraftAiThreadCache cache;
+	return cache;
+}
 
 }
 
@@ -1158,7 +1173,8 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 	int strategy
 ) {
 	// Use shared thread-local cache for database and catalog
-	if (!s_draft_ai_cache_loaded || s_draft_ai_cached_stats_dir != stats_dir) {
+	DraftAiThreadCache &cache = draft_ai_thread_cache();
+	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir) {
 		sim::draft_ai::DraftStatsDatabase fresh;
 		if (!fresh.load_from_dir(stats_dir)) {
 			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
@@ -1171,14 +1187,14 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		sim::catalog::ensure_loaded(catalog, hooks);
 		fresh.set_catalog(&catalog);
 		
-		s_draft_ai_cached_database = std::move(fresh);
-		s_draft_ai_cached_catalog = std::move(catalog);
-		s_draft_ai_cached_stats_dir = stats_dir;
-		s_draft_ai_cache_loaded = true;
+		cache.cached_database = std::move(fresh);
+		cache.cached_catalog = std::move(catalog);
+		cache.cached_stats_dir = stats_dir;
+		cache.cache_loaded = true;
 	}
 	
-	sim::draft_ai::DraftStatsDatabase &database = s_draft_ai_cached_database;
-	sim::catalog::CatalogState &catalog = s_draft_ai_cached_catalog;
+	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
+	sim::catalog::CatalogState &catalog = cache.cached_catalog;
 
 	sim::draft_ai::DraftEvaluator evaluator(&database);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
@@ -1267,7 +1283,8 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 	int strategy
 ) {
 	// Use shared thread-local cache with pick recommendations (same database and catalog)
-	if (!s_draft_ai_cache_loaded || s_draft_ai_cached_stats_dir != stats_dir) {
+	DraftAiThreadCache &cache = draft_ai_thread_cache();
+	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir) {
 		sim::draft_ai::DraftStatsDatabase fresh;
 		if (!fresh.load_from_dir(stats_dir)) {
 			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
@@ -1280,14 +1297,14 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		sim::catalog::ensure_loaded(catalog, hooks);
 		fresh.set_catalog(&catalog);
 		
-		s_draft_ai_cached_database = std::move(fresh);
-		s_draft_ai_cached_catalog = std::move(catalog);
-		s_draft_ai_cached_stats_dir = stats_dir;
-		s_draft_ai_cache_loaded = true;
+		cache.cached_database = std::move(fresh);
+		cache.cached_catalog = std::move(catalog);
+		cache.cached_stats_dir = stats_dir;
+		cache.cache_loaded = true;
 	}
 	
-	sim::draft_ai::DraftStatsDatabase &database = s_draft_ai_cached_database;
-	sim::catalog::CatalogState &catalog = s_draft_ai_cached_catalog;
+	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
+	sim::catalog::CatalogState &catalog = cache.cached_catalog;
 
 	sim::draft_ai::DraftEvaluator evaluator(&database);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);

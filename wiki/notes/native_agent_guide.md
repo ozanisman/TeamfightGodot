@@ -51,6 +51,7 @@
 - Effect path: `SimHostCallbacks::execute_effect` → `sim::effects::host_execute_effect` → `sim::effects::execution::execute` (avoid new coordinator hops on hot path).
 - After batch matches: call `clear()` on engines so unit refs do not leak across runs.
 - Native hot/cold: keep `_unit_cold` aligned with `_units` (same push/clear pairs).
+- No namespace/file-scope `static`/`thread_local` Godot types (`String`/`StringName`/`Dictionary`/`Array`, or structs holding them): they init in `DllMain` before the API loads → load fails with **Error 1114**. Use function-local `static thread_local` or pointers. See [gdextension_error_1114_thread_local.md](gdextension_error_1114_thread_local.md).
 
 ## Removed — do not recreate
 

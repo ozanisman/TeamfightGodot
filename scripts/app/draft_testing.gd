@@ -1,5 +1,11 @@
 extends "res://scripts/app/simulation_viewer_base.gd"
 
+# Draft testing: skip ban phases, only picks
+const DRAFT_SEQUENCE: Array[String] = [
+	"B_PICK", "R_PICK", "R_PICK", "B_PICK", "B_PICK", "R_PICK",
+	"R_PICK", "B_PICK", "B_PICK", "R_PICK"
+]
+
 # Recommendation-specific constants
 const RECOMMENDATION_STATS_DIR := "res://model_stats/certified_pairwise_testing_250k"
 const RECOMMENDATION_ROLLOUTS_PER_CANDIDATE := 40
@@ -141,14 +147,30 @@ func _on_before_battle_start() -> void:
 		_recommendation_panel.visible = false
 
 
+func _on_random_draft_clicked() -> void:
+	while _draft_step_index < DRAFT_SEQUENCE.size():
+		var taken: Array[StringName] = _player_picks + _enemy_picks + _player_bans + _enemy_bans
+		var champion_ids: Array[StringName] = ChampionCatalogScript.get_champion_ids()
+		var available: Array[StringName] = []
+		for cid in champion_ids:
+			if not cid in taken:
+				available.append(cid)
+
+		if available.is_empty():
+			break
+
+		var random_champion: StringName = available[randi() % available.size()]
+		_on_champion_clicked(random_champion)
+
+
 func _on_champion_clicked(champion_id: StringName) -> void:
 	if _game_state != GameState.DRAFTING:
 		return
 
-	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
+	if _draft_step_index >= DRAFT_SEQUENCE.size():
 		return
 
-	var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
+	var current_turn: String = DRAFT_SEQUENCE[_draft_step_index]
 
 	# Handle ban phases
 	if current_turn.ends_with("_BAN"):
@@ -163,7 +185,6 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 		_update_champion_button_style(champion_id)
 		_update_start_match_enabled()
 		_update_draft_recommendations()
-		_try_enemy_draft_ai()
 	# Handle pick phases
 	elif current_turn.ends_with("_PICK"):
 		if current_turn.begins_with("B_"):
@@ -179,7 +200,6 @@ func _on_champion_clicked(champion_id: StringName) -> void:
 		_update_champion_button_style(champion_id)
 		_update_start_match_enabled()
 		_update_draft_recommendations()
-		_try_enemy_draft_ai()
 
 
 func _update_draft_recommendations() -> void:
@@ -197,7 +217,7 @@ func _update_draft_recommendations() -> void:
 		return
 
 	# If draft is complete, show final prediction for 5v5 teams
-	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
+	if _draft_step_index >= DRAFT_SEQUENCE.size():
 		_show_final_prediction()
 		_recommendation_panel.visible = true
 		return

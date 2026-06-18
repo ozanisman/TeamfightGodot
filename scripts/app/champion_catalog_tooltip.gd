@@ -7,17 +7,13 @@ const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const SatelliteTooltipManagerScript := preload("res://scripts/app/satellite_tooltip_manager.gd")
 const SatelliteContextScript := preload("res://scripts/app/satellite_context.gd")
 const ChampionSatelliteGeneratorScript := preload("res://scripts/app/champion_satellite_generator.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
 # Match stats_dashboard.gd (keep in sync for visual parity).
 const UI_TOOLTIP_MOUSE_OFF := Vector2(16, 20)
 const UI_TOOLTIP_FONT_SIZE := 22
 const UI_TOOLTIP_MIN_WIDTH := 580
 const UI_TOOLTIP_CONTENT_MARGIN := 10
-const COLOR_PANEL := Color(0.11, 0.11, 0.149, 1.0)
-const COLOR_TEXT := Color(0.9, 0.9, 0.9, 1.0)
-const COLOR_SUBTLE := Color(0.71, 0.71, 0.75, 1.0)
-const COLOR_STAT_BUFF := Color(0.4, 0.9, 0.4, 1.0)
-const COLOR_STAT_NERF := Color(0.9, 0.4, 0.4, 1.0)
 const STAT_DIFF_EPSILON := 0.01
 
 var _ui_parent: Control
@@ -26,7 +22,7 @@ var _tt_panel: PanelContainer
 var _tt_rich: RichTextLabel
 var _active_champion: StringName = StringName()
 var _active_unit_data: Dictionary = {}
-var _satellite_manager
+var _satellite_manager: SatelliteTooltipManager
 var _active_satellite_specs: Array = []
 
 
@@ -37,16 +33,16 @@ func _ready() -> void:
 func setup(ui_layer: Control) -> void:
 	_ui_parent = ui_layer
 	_tt_style = StyleBoxFlat.new()
-	_tt_style.bg_color = COLOR_PANEL
+	_tt_style.bg_color = UiTokensScript.COLOR_PANEL
 	_tt_style.set_border_width_all(2)
-	_tt_style.border_color = COLOR_SUBTLE
+	_tt_style.border_color = UiTokensScript.COLOR_SUBTLE
 	_tt_style.set_corner_radius_all(4)
 	_tt_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)
 	_tt_panel = PanelContainer.new()
 	_tt_panel.name = "ChampionCatalogTooltip"
 	_tt_panel.visible = false
 	_tt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tt_panel.z_index = 200
+	_tt_panel.z_index = UiTokensScript.Z_CATALOG_TOOLTIP
 	_tt_rich = RichTextLabel.new()
 	_tt_rich.bbcode_enabled = true
 	_tt_rich.scroll_active = false
@@ -177,11 +173,11 @@ func _create_satellite_context(champion_id: StringName, unit_data: Dictionary):
 func _border_color_for_champion(champion_id: StringName) -> Color:
 	var ch: Variant = ChampionCatalogScript.get_champion(champion_id)
 	if ch == null:
-		return COLOR_SUBTLE
+		return UiTokensScript.COLOR_SUBTLE
 	var d: Dictionary = ch.to_dict()
 	var st: Dictionary = d.get("stats", {})
 	var rk: String = str(st.get("role", "")).to_lower()
-	return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_SUBTLE) as Color
+	return SimConstantsScript.ROLE_COLORS.get(rk, UiTokensScript.COLOR_SUBTLE) as Color
 
 
 static func _escape_bbcode_plain(s: String) -> String:
@@ -302,16 +298,16 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, champion_id: S
 
 func _border_for_dict(st: Dictionary) -> Color:
 	var rk: String = str(st.get("role", "")).to_lower()
-	return SimConstantsScript.ROLE_COLORS.get(rk, COLOR_TEXT) as Color
+	return SimConstantsScript.ROLE_COLORS.get(rk, UiTokensScript.COLOR_TEXT) as Color
 
 
 ## Format stat diff where higher values are better (green for increase, red for decrease)
 func _format_stat_diff_higher_better(base: float, effective: float, format_string: String) -> String:
 	var diff: float = effective - base
 	if diff > STAT_DIFF_EPSILON:
-		return "[color=%s]%s[/color]" % [COLOR_STAT_BUFF.to_html(false), format_string % effective]
+		return "[color=%s]%s[/color]" % [UiTokensScript.COLOR_STAT_BUFF.to_html(false), format_string % effective]
 	elif diff < -STAT_DIFF_EPSILON:
-		return "[color=%s]%s[/color]" % [COLOR_STAT_NERF.to_html(false), format_string % effective]
+		return "[color=%s]%s[/color]" % [UiTokensScript.COLOR_STAT_NERF.to_html(false), format_string % effective]
 	else:
 		return format_string % effective
 
@@ -320,8 +316,8 @@ func _format_stat_diff_higher_better(base: float, effective: float, format_strin
 func _format_stat_diff_lower_better(base: float, effective: float, format_string: String) -> String:
 	var diff: float = effective - base
 	if diff < -STAT_DIFF_EPSILON:
-		return "[color=%s]%s[/color]" % [COLOR_STAT_BUFF.to_html(false), format_string % effective]
+		return "[color=%s]%s[/color]" % [UiTokensScript.COLOR_STAT_BUFF.to_html(false), format_string % effective]
 	elif diff > STAT_DIFF_EPSILON:
-		return "[color=%s]%s[/color]" % [COLOR_STAT_NERF.to_html(false), format_string % effective]
+		return "[color=%s]%s[/color]" % [UiTokensScript.COLOR_STAT_NERF.to_html(false), format_string % effective]
 	else:
 		return format_string % effective

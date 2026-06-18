@@ -1,11 +1,10 @@
 extends Control
 
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
+
 var max_hp: float = 1.0
 var hp: float = 0.0
 var shield: float = 0.0
-
-const COLOR_HP_FILL := Color(0.31, 0.78, 0.31, 1.0)
-const COLOR_SHIELD_FILL := Color(1.0, 1.0, 1.0, 0.9)
 
 func set_data(p_max_hp: float, p_hp: float, p_shield: float) -> void:
 	max_hp = maxf(1.0, p_max_hp)
@@ -35,14 +34,14 @@ func _draw() -> void:
 	# Draw HP bar (green)
 	var hp_width: float = size.x * hp_ratio
 	if hp_width > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(hp_width, size.y)), COLOR_HP_FILL)
+		draw_rect(Rect2(Vector2.ZERO, Vector2(hp_width, size.y)), UiTokensScript.COLOR_HP_FILL)
 	
 	# Draw shield bar (white) layered on top, to the right of HP
 	if shield > 0.0:
 		var shield_x: float = hp_width
 		var shield_width: float = size.x * shield_ratio
 		if shield_width > 0.0:
-			draw_rect(Rect2(Vector2(shield_x, 0.0), Vector2(shield_width, size.y)), COLOR_SHIELD_FILL)
+			draw_rect(Rect2(Vector2(shield_x, 0.0), Vector2(shield_width, size.y)), UiTokensScript.COLOR_SHIELD_FILL)
 	
 	# Draw tick marks on top of everything for visibility
 	_draw_hp_ticks(size, max_hp, hp, shield)

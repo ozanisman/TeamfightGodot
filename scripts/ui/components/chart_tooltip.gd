@@ -11,12 +11,12 @@ const UI_TOOLTIP_CONTENT_MARGIN := 10
 
 @export var _label_path: NodePath = NodePath("RichTextLabel")
 
-@onready var _label: RichTextLabel = get_node(_label_path)
+@onready var _label: RichTextLabel = get_node_or_null(_label_path)
 var _style: StyleBoxFlat
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	z_index = 80
+	z_index = UiTokensScript.Z_CHART_TOOLTIP
 	_style = UiStylesScript.panel(UiTokensScript.COLOR_PANEL, UiTokensScript.COLOR_SUBTLE, 2)
 	_style.set_corner_radius_all(4)
 	_style.set_content_margin_all(UI_TOOLTIP_CONTENT_MARGIN)

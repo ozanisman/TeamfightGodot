@@ -4,13 +4,10 @@ extends PanelContainer
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
-const _NAME_NEUTRAL := Color(0.82, 0.84, 0.88, 1.0)
+const _NAME_NEUTRAL := UiTokensScript.COLOR_NAME_NEUTRAL
 
-const COLOR_HP_BG := Color(0.18, 0.18, 0.2, 1.0)
-const COLOR_HP_FILL := Color(0.31, 0.78, 0.31, 1.0)
-const COLOR_MN_BG := Color(0.12, 0.14, 0.2, 1.0)
-const COLOR_MN_FILL := Color(0.28, 0.48, 0.9, 1.0)
 const MIN_SQUARE_PX: int = 40
 
 ## Bound snapshot id for in-place [method apply_unit_data] when roster order is stable.
@@ -40,11 +37,11 @@ func setup(
 	_square_px = square_px
 
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.11, 0.12, 0.16, 0.95)
+	panel_style.bg_color = UiTokensScript.COLOR_PANEL
 	if p_team_is_player:
-		panel_style.border_color = Color(0.35, 0.5, 0.95, 0.9)
+		panel_style.border_color = UiTokensScript.COLOR_PLAYER
 	else:
-		panel_style.border_color = Color(0.9, 0.38, 0.35, 0.9)
+		panel_style.border_color = UiTokensScript.COLOR_ENEMY
 	panel_style.set_border_width_all(1)
 	panel_style.set_corner_radius_all(3)
 	add_theme_stylebox_override("panel", panel_style)
@@ -89,13 +86,13 @@ func setup(
 
 	_kda_label = Label.new()
 	_kda_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-	_kda_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+	_kda_label.add_theme_color_override("font_color", UiTokensScript.COLOR_KDA_TEXT)
 	_inner.add_child(_kda_label)
 
 	_behavior_label = Label.new()
 	_behavior_label.visible = false
 	_behavior_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-	_behavior_label.add_theme_color_override("font_color", Color(0.6, 0.8, 0.95, 1.0))
+	_behavior_label.add_theme_color_override("font_color", UiTokensScript.COLOR_BEHAVIOR_TEXT)
 	_inner.add_child(_behavior_label)
 
 	_ability_label = Label.new()
@@ -111,7 +108,7 @@ func setup(
 	_respawn_label = Label.new()
 	_respawn_label.visible = false
 	_respawn_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-	_respawn_label.add_theme_color_override("font_color", Color(0.9, 0.72, 0.45, 1.0))
+	_respawn_label.add_theme_color_override("font_color", UiTokensScript.COLOR_RESPAWN_TEXT)
 	_inner.add_child(_respawn_label)
 
 	var spacer := Control.new()
@@ -121,7 +118,7 @@ func setup(
 
 	_hp_shield_bar = _make_hp_shield_bar()
 	_inner.add_child(_hp_shield_bar)
-	_mana_bar = _make_bar(COLOR_MN_BG, COLOR_MN_FILL)
+	_mana_bar = _make_bar(UiTokensScript.COLOR_MN_BG, UiTokensScript.COLOR_MN_FILL)
 	_mana_bar.visible = false
 	_inner.add_child(_mana_bar)
 	_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -140,7 +137,7 @@ func setup(
 	_tt_catch.offset_right = 0.0
 	_tt_catch.offset_bottom = 0.0
 	_tt_catch.mouse_filter = Control.MOUSE_FILTER_STOP
-	_tt_catch.z_index = 20
+	_tt_catch.z_index = UiTokensScript.Z_ROSTER_TOOLTIP_CATCHER
 	stack.add_child(_tt_catch)
 	apply_unit_data(ud, square_px, true)
 	if p_align_right:
@@ -190,7 +187,7 @@ func _make_hp_shield_bar() -> Control:
 	c.size_flags_vertical = Control.SIZE_SHRINK_END
 	c.set_h_size_flags(Control.SIZE_EXPAND_FILL)
 	var st_bg := StyleBoxFlat.new()
-	st_bg.bg_color = COLOR_HP_BG
+	st_bg.bg_color = UiTokensScript.COLOR_HP_BG
 	st_bg.set_content_margin_all(0)
 	c.add_theme_stylebox_override("panel", st_bg)
 	c.set_script(preload("res://scripts/app/hp_shield_bar.gd"))
@@ -261,16 +258,16 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var ability_text := ""
 	if is_channeling and (channel_kind.to_lower().contains("ability") or channel_kind == "ability"):
 		ability_text = "Ability: [CHANNELING %.1fs]" % channel_rem
-		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+		_ability_label.add_theme_color_override("font_color", UiTokensScript.COLOR_CASTING_TEXT)
 	elif casting_rem > 0.0 and (casting_kind.to_lower().contains("ability") or casting_kind == "ability"):
 		ability_text = "Ability: [CASTING %.1fs]" % casting_rem
-		_ability_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+		_ability_label.add_theme_color_override("font_color", UiTokensScript.COLOR_CASTING_TEXT)
 	elif ability_cd <= 0.0:
 		ability_text = "Ability: [READY]"
-		_ability_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4, 1.0))
+		_ability_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ABILITY_READY)
 	else:
 		ability_text = "Ability: %.1fs" % ability_cd
-		_ability_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+		_ability_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ABILITY_TEXT)
 	
 	if not ability_text.is_empty():
 		_ability_label.text = ability_text
@@ -284,13 +281,13 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 	var ultimate_text := ""
 	if is_channeling and (channel_kind.to_lower().contains("ult") or channel_kind == "ultimate"):
 		ultimate_text = "Ultimate: [CHANNELING %.1fs]" % channel_rem
-		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+		_ultimate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_CASTING_TEXT)
 	elif casting_rem > 0.0 and casting_kind.to_lower().contains("ult"):
 		ultimate_text = "Ultimate: [CASTING %.1fs]" % casting_rem
-		_ultimate_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4, 1.0))
+		_ultimate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_CASTING_TEXT)
 	elif mana_cost > SimConstantsScript.EPSILON * 2.0:
 		ultimate_text = "Ultimate: [%d/%d]" % [int(mn), int(mana_cost)]
-		_ultimate_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+		_ultimate_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ABILITY_TEXT)
 	
 	if not ultimate_text.is_empty():
 		_ultimate_label.text = ultimate_text
@@ -304,12 +301,12 @@ func apply_unit_data(ud: Dictionary, square_px: int = 0, p_do_font: bool = false
 		_respawn_label.visible = true
 		_respawn_label.text = "Respawn: %.1fs" % t_rem
 		_name_label.add_theme_color_override("font_color", name_c.darkened(0.45))
-		_kda_label.add_theme_color_override("font_color", Color(0.55, 0.5, 0.5, 1.0))
-		modulate = Color(0.75, 0.75, 0.8, 0.9)
+		_kda_label.add_theme_color_override("font_color", UiTokensScript.COLOR_KDA_DEAD)
+		modulate = UiTokensScript.COLOR_UNIT_DEAD_MODULATE
 	else:
 		_respawn_label.visible = false
 		_name_label.add_theme_color_override("font_color", name_c)
-		_kda_label.add_theme_color_override("font_color", Color(0.78, 0.78, 0.8, 1.0))
+		_kda_label.add_theme_color_override("font_color", UiTokensScript.COLOR_KDA_TEXT)
 		modulate = Color.WHITE
 	var max_hp: float = maxf(1.0, float(ud.get("max_hp", 1.0)))
 	var hp: float = float(ud.get("hp", 0.0))

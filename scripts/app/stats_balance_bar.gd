@@ -1,11 +1,8 @@
 extends Control
 
-## Horizontal P1 (blue) | draws (gray) | P2 (red): percentages, then proportional bar.
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
-const COLOR_P1 := Color(0.275, 0.51, 1.0)
-const COLOR_P2 := Color(0.88, 0.31, 0.31)
-const COLOR_DRAW := Color(0.55, 0.55, 0.55)
-const COLOR_TRACK := Color(0.12, 0.12, 0.14, 1.0)
+## Horizontal P1 (blue) | draws (gray) | P2 (red): percentages, then proportional bar.
 
 const FONT_SIZE_PX: int = 17
 const PERCENT_BASELINE_Y: float = 18.0
@@ -46,10 +43,10 @@ func _draw() -> void:
 	var rp1: float = float(_p1) / float(_total) if _total > 0 else 0.0
 	var rp2: float = float(_p2) / float(_total) if _total > 0 else 0.0
 
-	_draw_segment_label(font, 0.0, half, _pct_label(_total, _p1, "P1"), COLOR_P1)
-	_draw_segment_label(font, half, half, _pct_label(_total, _p2, "P2"), COLOR_P2)
+	_draw_segment_label(font, 0.0, half, _pct_label(_total, _p1, "P1"), UiTokensScript.COLOR_PLAYER)
+	_draw_segment_label(font, half, half, _pct_label(_total, _p2, "P2"), UiTokensScript.COLOR_ENEMY)
 
-	draw_rect(Rect2(0.0, y_bar, bw, BAR_HEIGHT), COLOR_TRACK)
+	draw_rect(Rect2(0.0, y_bar, bw, BAR_HEIGHT), UiTokensScript.COLOR_TRACK)
 	if _total < 1:
 		return
 
@@ -57,9 +54,9 @@ func _draw() -> void:
 	var w2: float = maxf(0.0, bw - w1)
 
 	if w1 > 0.0:
-		draw_rect(Rect2(0.0, y_bar, maxf(1.0, w1), BAR_HEIGHT), COLOR_P1)
+		draw_rect(Rect2(0.0, y_bar, maxf(1.0, w1), BAR_HEIGHT), UiTokensScript.COLOR_PLAYER)
 	if w2 > 0.0:
-		draw_rect(Rect2(w1, y_bar, maxf(1.0, w2), BAR_HEIGHT), COLOR_P2)
+		draw_rect(Rect2(w1, y_bar, maxf(1.0, w2), BAR_HEIGHT), UiTokensScript.COLOR_ENEMY)
 
 
 func _draw_segment_label(font: Font, seg_x: float, seg_w: float, text: String, col: Color) -> void:

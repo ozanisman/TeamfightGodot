@@ -8,6 +8,7 @@ static var _content_builders: Dictionary = {}
 static var _layout_strategies: Dictionary = {}
 static var _style_presets: Dictionary = {}
 static var _initialized: bool = false
+static var _compiled_regexes: Dictionary[String, RegEx] = {}
 
 
 ## Color keywords in text using BBCode tags.
@@ -15,12 +16,17 @@ static var _initialized: bool = false
 static func _color_keywords_in_text(text: String) -> String:
 	var result: String = text
 	
+	# Lazily compile regexes on first call
+	if _compiled_regexes.is_empty():
+		for keyword in SimConstants.EFFECT_METADATA:
+			var regex := RegEx.new()
+			regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
+			_compiled_regexes[keyword] = regex
+	
 	for keyword in SimConstants.EFFECT_METADATA:
 		var metadata: Dictionary = SimConstants.EFFECT_METADATA[keyword]
 		var color: String = metadata.get("color", "#ffffff")
-		# Match word boundaries with case-insensitive flag
-		var regex: RegEx = RegEx.new()
-		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)
+		var regex: RegEx = _compiled_regexes[keyword]
 		result = regex.sub(result, "[color=%s]$1[/color]" % color, true)
 	
 	return result

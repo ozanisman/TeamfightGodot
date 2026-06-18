@@ -16,11 +16,6 @@ const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
 const ChartTooltipScene := preload("res://scenes/components/chart_tooltip.tscn")
 
 
-# Local color constants for stats dashboard visualization (winrate gradients, error labels, section headers).
-# These differ from general UI tokens and should remain local to this script.
-const COLOR_RED := Color(0.88, 0.31, 0.31, 1.0)
-const COLOR_GREEN := Color(0.47, 0.86, 0.55, 1.0)
-const COLOR_BLUE := Color(0.275, 0.51, 1.0)
 
 ## Larger UI; theme default_font_size drives most controls.
 const UI_FONT_BODY := 20
@@ -119,7 +114,6 @@ var _balance_bar: Control
 var _metric_option: OptionButton
 var _view_option: OptionButton
 var _sort_option: OptionButton
-var _ci_button: Button
 var _color_button: Button
 var _search: LineEdit
 var _role_grid: GridContainer
@@ -408,12 +402,6 @@ func _build_ui() -> void:
 		if int(sz) == _current_size:
 			b.button_pressed = true
 	filter_vb.add_child(team_row)
-
-	filter_vb.add_child(_section_label("DATA MODE"))
-	_ci_button = Button.new()
-	_ci_button.custom_minimum_size.y = UI_MIN_CONTROL_H
-	filter_vb.add_child(_ci_button)
-	# TODO: CI feature appears broken - button always disabled, ci_stats empty. Investigate CSV generation.
 
 	filter_vb.add_child(_section_label("SORT BY"))
 	_sort_option = OptionButton.new()
@@ -730,12 +718,6 @@ func _wire_controls() -> void:
 	_sort_option.item_selected.connect(func(_i): _sync_sort_from_ui(); _refresh_all())
 	_search.text_changed.connect(func(t): _search_text = t; _refresh_chart())
 	_search.text_submitted.connect(func(_t): _refresh_chart())
-	_ci_button.pressed.connect(func():
-		if _loader.ci_stats.is_empty():
-			return
-		_use_ci = not _use_ci
-		_refresh_all()
-	)
 	_color_button.pressed.connect(func():
 		_absolute_colors = not _absolute_colors
 		_refresh_chart()
@@ -756,7 +738,7 @@ func _setup_regen_native_confirm_dialog() -> void:
 	_regen_native_confirm.unresizable = true
 	var dlg_lbl: Label = _regen_native_confirm.get_label()
 	dlg_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dlg_lbl.add_theme_color_override("font_color", COLOR_RED)
+	dlg_lbl.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 	_regen_native_confirm.confirmed.connect(_on_regen_native_export_confirmed)
 	_regen_native_confirm.canceled.connect(_on_regen_native_export_canceled)
 	var win: Window = get_viewport().get_window()
@@ -817,7 +799,7 @@ func _read_regen_export_params() -> Variant:
 	var backend := NativeSimulationBackendScript.new()
 	if not backend.is_available():
 		_regen_status.text = "Simulation backend is not available."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var selected_sizes: Array = []
 	for sz in SimConstantsScript.SIMULATION_TEAM_SIZES:
@@ -826,27 +808,27 @@ func _read_regen_export_params() -> Variant:
 			selected_sizes.append(int(sz))
 	if selected_sizes.is_empty():
 		_regen_status.text = "Select at least one mode (1v1 … 5v5)."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var n_text := _regen_sample_edit.text.strip_edges()
 	if n_text.is_empty() or not n_text.is_valid_int():
 		_regen_status.text = "Invalid sample size."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var n: int = int(n_text)
 	if n < 1:
 		_regen_status.text = "Sample size must be >= 1."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var worker_text := _regen_worker_edit.text.strip_edges()
 	if worker_text.is_empty() or not worker_text.is_valid_int():
 		_regen_status.text = "Invalid worker count."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var max_worker_threads: int = int(worker_text)
 	if max_worker_threads < 1:
 		_regen_status.text = "Worker count must be >= 1."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return null
 	var output_dir_text: String = _regen_output_dir_edit.text.strip_edges() if _regen_output_dir_edit != null else ""
 	if output_dir_text.is_empty():
@@ -858,11 +840,11 @@ func _read_regen_export_params() -> Variant:
 		prediction_stats_dir = _regen_prediction_dir_edit.text.strip_edges()
 		if prediction_stats_dir.is_empty():
 			_regen_status.text = "Prediction evaluation needs an out-of-sample stats dir (separate from the output dir)."
-			_regen_status.add_theme_color_override("font_color", COLOR_RED)
+			_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 			return null
 		if prediction_stats_dir == output_dir:
 			_regen_status.text = "Prediction stats dir must differ from the output dir — predicting against stats this run just (re)generated is circular/in-sample."
-			_regen_status.add_theme_color_override("font_color", COLOR_RED)
+			_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 			return null
 	return {
 		"output_dir": output_dir,
@@ -932,7 +914,7 @@ func _on_regenerate_pressed() -> void:
 		_regen_progress.visible = false
 		_set_regen_busy(false)
 		_regen_status.text = "Could not start background thread."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return
 	_regen_wall_start_msec = Time.get_ticks_msec()
 	_regen_poll_timer.start()
@@ -970,7 +952,7 @@ func _on_regen_native_export_confirmed() -> void:
 		_regen_progress.visible = false
 		_set_regen_busy(false)
 		_regen_status.text = "Could not start background thread."
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return
 	_regen_wall_start_msec = Time.get_ticks_msec()
 	_regen_poll_timer.start()
@@ -1003,13 +985,13 @@ func _finish_regen_completed(err: int) -> void:
 	_set_regen_busy(false)
 	if err != OK:
 		_regen_status.text = "Regenerate failed: %s" % error_string(err)
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return
 	_stats_path = _regen_target_dir
 	var lerr: Error = _loader.load_from_dir(_stats_path)
 	if lerr != OK:
 		_regen_status.text = "Wrote CSVs but reload failed: %s" % error_string(lerr)
-		_regen_status.add_theme_color_override("font_color", COLOR_RED)
+		_regen_status.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		return
 	_clamp_current_size_to_loaded()
 	_sync_team_size_buttons()
@@ -1089,9 +1071,6 @@ func _refresh_all() -> void:
 
 
 func _update_sidebar_buttons() -> void:
-	var has_ci: bool = not _loader.ci_stats.is_empty()
-	_ci_button.disabled = not has_ci  # Disabled when CI data missing from CSV bundle
-	_ci_button.text = "Mode: CI" if _use_ci else "Mode: Regular"
 	_color_button.text = "Mode: Absolute" if _absolute_colors else "Mode: Relative"
 	if not _stats_path.is_empty():
 		_error_label.text = "Data: %s" % _stats_path
@@ -1470,9 +1449,9 @@ func _blend_bar_color(ratio: float) -> Color:
 	var r: float = clampf(ratio, 0.0, 1.0)
 	if r <= 0.5:
 		var sub: float = r * 2.0
-		return COLOR_RED.lerp(COLOR_GREEN, sub)
+		return UiTokensScript.COLOR_ENEMY.lerp(UiTokensScript.COLOR_HIGHLIGHT, sub)
 	var sub2: float = (r - 0.5) * 2.0
-	return COLOR_GREEN.lerp(COLOR_BLUE, sub2)
+	return UiTokensScript.COLOR_HIGHLIGHT.lerp(UiTokensScript.COLOR_PLAYER, sub2)
 
 
 func _sort_less(
@@ -2049,7 +2028,7 @@ func _set_matchup_right_panel_to_center() -> void:
 func _show_matchup_error(error_message: String) -> void:
 	var error_label := Label.new()
 	error_label.text = "Error: " + error_message
-	error_label.add_theme_color_override("font_color", COLOR_RED)
+	error_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 	error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_matchup_vb.add_child(error_label)
 
@@ -2264,7 +2243,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 		# Worst section (Strong Against)
 		var worst_label := Label.new()
 		worst_label.text = "Strong Against:"
-		worst_label.add_theme_color_override("font_color", COLOR_GREEN)
+		worst_label.add_theme_color_override("font_color", UiTokensScript.COLOR_HIGHLIGHT)
 		content.add_child(worst_label)
 		
 		if not worst.is_empty():
@@ -2298,7 +2277,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 		# Best section (Weak Against)
 		var best_label := Label.new()
 		best_label.text = "Weak Against:"
-		best_label.add_theme_color_override("font_color", COLOR_RED)
+		best_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		content.add_child(best_label)
 		
 		if not best.is_empty():
@@ -2332,7 +2311,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 		# Best section (Best Synergies)
 		var best_label := Label.new()
 		best_label.text = "Best Synergies:"
-		best_label.add_theme_color_override("font_color", COLOR_GREEN)
+		best_label.add_theme_color_override("font_color", UiTokensScript.COLOR_HIGHLIGHT)
 		content.add_child(best_label)
 		
 		if not best.is_empty():
@@ -2366,7 +2345,7 @@ func _create_summary_card(title: String, champion: String, matchup_type: String)
 		# Worst section (Worst Synergies)
 		var worst_label := Label.new()
 		worst_label.text = "Worst Synergies:"
-		worst_label.add_theme_color_override("font_color", COLOR_RED)
+		worst_label.add_theme_color_override("font_color", UiTokensScript.COLOR_ENEMY)
 		content.add_child(worst_label)
 		
 		if not worst.is_empty():

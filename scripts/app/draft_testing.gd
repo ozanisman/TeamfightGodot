@@ -47,33 +47,32 @@ var _use_native_ai: bool = false
 
 
 func _on_draft_shell_created() -> void:
-	_recommendation_panel = _draft_shell.get_node(_recommendation_panel_path)
-	_recommendation_title = _draft_shell.get_node(_recommendation_title_path)
-	_recommendation_list = _draft_shell.get_node(_recommendation_list_path)
+	_recommendation_panel = _draft_shell.get_node_or_null(_recommendation_panel_path)
+	_recommendation_title = _draft_shell.get_node_or_null(_recommendation_title_path)
+	_recommendation_list = _draft_shell.get_node_or_null(_recommendation_list_path)
 	
 	# Initialize native backend
 	const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 	_native_backend = NativeSimulationBackendScript.new()
 	
 	# Try to get native AI toggle if it exists
-	if _draft_shell.has_node(_native_ai_toggle_path):
-		_native_ai_toggle = _draft_shell.get_node(_native_ai_toggle_path)
+	_native_ai_toggle = _draft_shell.get_node_or_null(_native_ai_toggle_path)
+	if _native_ai_toggle != null:
 		_native_ai_toggle.toggled.connect(_on_native_ai_toggle_changed)
 		# Enable native AI by default if backend is available
 		if _native_backend != null and _native_backend.is_available():
 			_native_ai_toggle.button_pressed = true
 			_use_native_ai = true
 
-	if _draft_shell.has_node(_native_ai_strategy_label_path):
-		_native_ai_strategy_label = _draft_shell.get_node(_native_ai_strategy_label_path)
-	if _draft_shell.has_node(_native_ai_strategy_selector_path):
-		_native_ai_strategy_selector = _draft_shell.get_node(_native_ai_strategy_selector_path)
+	_native_ai_strategy_label = _draft_shell.get_node_or_null(_native_ai_strategy_label_path)
+	_native_ai_strategy_selector = _draft_shell.get_node_or_null(_native_ai_strategy_selector_path)
+	if _native_ai_strategy_selector != null:
 		_native_ai_strategy_selector.clear()
 		_native_ai_strategy_selector.add_item("Native baseline", NATIVE_STRATEGY_BASELINE)
 		_native_ai_strategy_selector.select(0)
 		_native_ai_strategy_selector.item_selected.connect(_on_native_ai_strategy_selected)
-	if _draft_shell.has_node(_compare_baseline_toggle_path):
-		_compare_baseline_toggle = _draft_shell.get_node(_compare_baseline_toggle_path)
+	_compare_baseline_toggle = _draft_shell.get_node_or_null(_compare_baseline_toggle_path)
+	if _compare_baseline_toggle != null:
 		_compare_baseline_toggle.button_pressed = false
 		_compare_baseline_toggle.toggled.connect(_on_compare_baseline_toggled)
 	

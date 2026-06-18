@@ -4,6 +4,8 @@ extends RefCounted
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const Tokens := preload("res://scripts/ui/ui_tokens.gd")
 
+static var _champion_name_width_cache: Dictionary[StringName, float] = {}
+
 
 static func apply_full_rect(control: Control) -> void:
 	control.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -141,18 +143,21 @@ static func calculate_champion_tile_size(champion_ids: Array[StringName]) -> int
 	var font: Font = ThemeDB.fallback_font
 	var max_text_w: float = 0.0
 	for champion_id in champion_ids:
-		var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
-		var champion_name: String = String(champion_id)
-		if champion != null:
-			var champion_dict: Dictionary = champion.to_dict()
-			var stats_dict: Dictionary = champion_dict.get("stats", {})
-			champion_name = String(stats_dict.get("name", String(champion_id)))
-		var text_w: float = font.get_string_size(
-			champion_name,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			-1.0,
-			Tokens.DRAFT_CHAMPION_FONT_SIZE_PX
-		).x
+		var text_w: float = _champion_name_width_cache.get(champion_id, -1.0)
+		if text_w < 0.0:
+			var champion: Variant = ChampionCatalogScript.get_champion(champion_id)
+			var champion_name: String = String(champion_id)
+			if champion != null:
+				var champion_dict: Dictionary = champion.to_dict()
+				var stats_dict: Dictionary = champion_dict.get("stats", {})
+				champion_name = String(stats_dict.get("name", String(champion_id)))
+			text_w = font.get_string_size(
+				champion_name,
+				HORIZONTAL_ALIGNMENT_CENTER,
+				-1.0,
+				Tokens.DRAFT_CHAMPION_FONT_SIZE_PX
+			).x
+			_champion_name_width_cache[champion_id] = text_w
 		max_text_w = maxf(max_text_w, text_w)
 	var content_px: int = ceili(max_text_w) + 24
 	return clampi(maxi(Tokens.DRAFT_CHAMPION_TILE_PX, content_px), Tokens.DRAFT_CHAMPION_TILE_PX, Tokens.DRAFT_CHAMPION_TILE_MAX_PX)

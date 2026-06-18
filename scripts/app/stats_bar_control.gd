@@ -1,7 +1,7 @@
 extends Control
 
-const COLOR_SCALE_MID_TICK := Color(55.0 / 255.0, 55.0 / 255.0, 68.0 / 255.0)
-const COLOR_DRAW_SEGMENT := Color(0.5, 0.5, 0.52, 1.0)
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
+
 const MID_TICK_WIDTH_PX := 3.0
 const MID_TICK_HALF_HEIGHT_PX := 7.0
 
@@ -34,8 +34,8 @@ func set_visual(
 func _draw() -> void:
 	var h: float = maxf(1.0, size.y - 6.0)
 	var y: float = 3.0
-	var outline := Color(0.18, 0.18, 0.22, 1.0)
-	var track := Color(0.12, 0.12, 0.15, 1.0)
+	var outline := UiTokensScript.COLOR_BAR_OUTLINE
+	var track := UiTokensScript.COLOR_BAR_TRACK
 	draw_rect(Rect2(0.0, y, size.x, h), track)
 	if _draw_segment_ratio >= 0.0:
 		var win_w: float = size.x * clampf(_fill_ratio, 0.0, 1.0)
@@ -44,7 +44,7 @@ func _draw() -> void:
 		if win_w > 0.0:
 			draw_rect(Rect2(0.0, y, win_w, h), _bar_color)
 		if draw_w > 0.0:
-			draw_rect(Rect2(win_w, y, draw_w, h), COLOR_DRAW_SEGMENT)
+			draw_rect(Rect2(win_w, y, draw_w, h), UiTokensScript.COLOR_DRAW_SEGMENT)
 	else:
 		var w: float = maxf(0.0, size.x * clampf(_fill_ratio, 0.0, 1.0))
 		if w > 0.0:
@@ -55,11 +55,11 @@ func _draw() -> void:
 		var tick_top: float = ym - MID_TICK_HALF_HEIGHT_PX
 		var tick_h: float = MID_TICK_HALF_HEIGHT_PX * 2.0
 		var tick_left: float = roundf(size.x * 0.5 - MID_TICK_WIDTH_PX * 0.5)
-		draw_rect(Rect2(tick_left, tick_top, MID_TICK_WIDTH_PX, tick_h), COLOR_SCALE_MID_TICK)
+		draw_rect(Rect2(tick_left, tick_top, MID_TICK_WIDTH_PX, tick_h), UiTokensScript.COLOR_SCALE_MID_TICK)
 	if _ci_low_ratio >= 0.0 and _ci_high_ratio >= 0.0:
 		var x0: float = size.x * clampf(_ci_low_ratio, 0.0, 1.0)
 		var x1: float = size.x * clampf(_ci_high_ratio, 0.0, 1.0)
 		var ym: float = y + h * 0.5
-		draw_line(Vector2(x0, ym), Vector2(x1, ym), Color(0.9, 0.9, 0.9), 1.0)
-		draw_line(Vector2(x0, ym - 3.0), Vector2(x0, ym + 3.0), Color(0.9, 0.9, 0.9), 1.0)
-		draw_line(Vector2(x1, ym - 3.0), Vector2(x1, ym + 3.0), Color(0.9, 0.9, 0.9), 1.0)
+		draw_line(Vector2(x0, ym), Vector2(x1, ym), UiTokensScript.COLOR_CI_LINE, 1.0)
+		draw_line(Vector2(x0, ym - 3.0), Vector2(x0, ym + 3.0), UiTokensScript.COLOR_CI_LINE, 1.0)
+		draw_line(Vector2(x1, ym - 3.0), Vector2(x1, ym + 3.0), UiTokensScript.COLOR_CI_LINE, 1.0)

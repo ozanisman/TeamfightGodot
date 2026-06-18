@@ -15,14 +15,6 @@ const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const DraftChampionTileScene := preload("res://scenes/components/draft_champion_tile.tscn")
 const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
 
-# Viewer-specific colors (not in ui_tokens.gd)
-const COLOR_ZONE_P1 := Color(0.2, 0.4, 0.8, 1.0)  # Brighter blue
-const COLOR_ZONE_P2 := Color(0.8, 0.2, 0.2, 1.0)  # Brighter red
-const COLOR_HP_BG := Color(0.314, 0.314, 0.314, 1.0)
-const COLOR_HP_FILL := Color(0.314, 0.824, 0.314, 1.0)
-const COLOR_TARGET_LINE := Color(0.824, 0.824, 0.431, 1.0)
-const COLOR_BUTTON_DISABLED := Color(0.275, 0.275, 0.314, 1.0)
-const COLOR_BUTTON_TEXT := Color(0.941, 0.941, 0.941, 1.0)
 ## World units map to this fraction of min(viewport) for a consistent projectile read.
 const VIEWER_BASE_MIN_AXIS: float = 720.0
 ## Screen-space radius for projectiles (scales slightly with window).
@@ -78,7 +70,7 @@ var _projectile_nodes: Dictionary = {}  # id -> Node2D
 var _projectile_offsets: Dictionary = {}  # projectile_id -> Vector2 (cached spread offsets)
 var _projectile_slot_usage: Dictionary = {}  # pool_key -> Array[int] (used slot indices per pool)
 var _projectile_slot_owners: Dictionary = {}  # projectile_id -> Dictionary {"slot": int, "pool": String}
-var _floating_texts: Array = []  # Array of floating text nodes
+var _floating_texts: Array[Node] = []  # Array of floating text nodes
 var _hot_status_rings: Dictionary = {}  # instance_id -> Node2D (current HoT ring per unit)
 var _passive_aoe_rings: Dictionary = {}  # instance_id -> Array[Node2D] (persistent passive AOE rings)
 var _active_tweens: Array = []  # Array of active Tween nodes
@@ -223,7 +215,7 @@ func _create_ui_structure() -> void:
 	_battle_letterbox.offset_bottom = 0.0
 	_battle_letterbox.color = UiTokensScript.COLOR_BG
 	_battle_letterbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_battle_letterbox.z_index = -1
+	_battle_letterbox.z_index = UiTokensScript.Z_BACKGROUND
 	add_child(_battle_letterbox)
 
 	# Create WorldLayer for combat visualization (behind UI)
@@ -285,7 +277,7 @@ func _create_ui_structure() -> void:
 	_build_combat_overlay_hud()
 	_build_match_over_overlay()
 	_build_preparation_controls()
-	if _battle_letterbox != null and is_instance_valid(_battle_letterbox) and is_instance_valid(self):
+	if _battle_letterbox != null and is_instance_valid(_battle_letterbox):
 		move_child(_battle_letterbox, 0)
 
 
@@ -463,11 +455,11 @@ func _setup_resize_debounce_timer() -> void:
 	style.border_width_top = 8
 	style.border_width_right = 8
 	style.border_width_bottom = 8
-	style.border_color = Color(1.0, 0.2, 0.2, 0.9)
+	style.border_color = UiTokensScript.COLOR_OVERTIME_BORDER
 	border_panel.add_theme_stylebox_override("panel", style)
 	border_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	border_panel.z_index = 40
+	border_panel.z_index = UiTokensScript.Z_OVERTIME_BORDER
 	border_panel.visible = false
 	_ui_layer.add_child(border_panel)
 	_overtime_border = border_panel
@@ -476,11 +468,11 @@ func _setup_resize_debounce_timer() -> void:
 func _build_match_over_overlay() -> void:
 	_match_overlay = ColorRect.new()
 	_match_overlay.name = "MatchOver"
-	_match_overlay.color = Color(0.08, 0.08, 0.1, 0.86)
+	_match_overlay.color = UiTokensScript.COLOR_MATCH_OVERLAY_BG
 	_match_overlay.visible = false
 	_match_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_match_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_match_overlay.z_index = 50
+	_match_overlay.z_index = UiTokensScript.Z_MATCH_OVERLAY
 	_ui_layer.add_child(_match_overlay)
 
 	var vb := VBoxContainer.new()
@@ -797,7 +789,7 @@ func _create_unit_node(instance_id: int, team: StringName) -> Node2D:
 	var target_line := Line2D.new()
 	target_line.name = "TargetLine"
 	target_line.width = 2.0
-	target_line.default_color = COLOR_TARGET_LINE
+	target_line.default_color = UiTokensScript.COLOR_TARGET_LINE
 	target_line.visible = false
 	unit_node.add_child(target_line)
 	return unit_node
@@ -936,7 +928,7 @@ func _create_projectile_node(proj_id: int, projectile_id: int, pos_x: float, pos
 		var a2: float = TAU * float(j) / float(n)
 		inner.append(Vector2(cos(a2), sin(a2)) * r2)
 	core.polygon = inner
-	core.color = Color(0.95, 0.9, 0.45, 0.95)
+	core.color = UiTokensScript.COLOR_PROJECTILE_CORE
 	proj_node.add_child(core)
 	return proj_node
 
@@ -954,7 +946,7 @@ func _refresh_combat_hud(snapshot: Dictionary) -> void:
 		if time_remaining <= 0.0:
 			var overtime: float = time - 60.0
 			_lbl_timer.text = "OVERTIME: %.1fs" % overtime
-			_lbl_timer.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+			_lbl_timer.add_theme_color_override("font_color", UiTokensScript.COLOR_OVERTIME_TEXT)
 			if _overtime_border != null:
 				_overtime_border.visible = true
 		else:
@@ -1123,18 +1115,18 @@ func _apply_tick_fx(snapshot: Dictionary) -> void:
 		if data.damage > 0.0:
 			var color: Color
 			if data.damage_type == "magic":
-				color = Color(0.3, 0.6, 1.0)  # Blue
+				color = UiTokensScript.COLOR_DAMAGE_MAGIC
 			elif data.damage_type == "true":
-				color = Color(1.0, 1.0, 1.0)  # White
+				color = UiTokensScript.COLOR_DAMAGE_TRUE
 			else:
-				color = Color(0.9, 0.45, 0.45)  # Red (physical)
+				color = UiTokensScript.COLOR_DAMAGE_PHYSICAL
 			_spawn_floating_text_screen("-%d" % int(ceil(data.damage)), sp, color)
 		
 		if data.heal > 0.0:
 			_spawn_floating_text_screen("+%d" % int(ceil(data.heal)), sp, UiTokensScript.COLOR_SUCCESS)
 		
 		if data.shield > 0.0:
-			_spawn_floating_text_screen("[%d]" % int(ceil(data.shield)), sp, Color(0.55, 0.75, 1.0))
+			_spawn_floating_text_screen("[%d]" % int(ceil(data.shield)), sp, UiTokensScript.COLOR_SHIELD_TEXT)
 	
 	# Process other events (hot_status, passive_aoe, melee_slash, aoe_*)
 	for d in other_events:
@@ -1260,7 +1252,7 @@ func _spawn_aoe_shape_fx(ev: Dictionary, snapshot: Dictionary) -> void:
 		n.position = world_to_screen(wx, wy)
 		_aoe_fx_layer.add_child(n)
 	else:
-		n.z_index = 20
+		n.z_index = UiTokensScript.Z_AOE_FX
 		n.position = world_to_battle_local(wx, wy)
 		_world_layer.add_child(n)
 	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
@@ -1351,23 +1343,23 @@ func _render_rectangle_aoe(params: Dictionary, wx: float, wy: float, direction: 
 
 func _aoe_ring_color_for(kind: String, team_s: String) -> Color:
 	if kind == "aoe_taunt":
-		return Color(0.72, 0.42, 0.95, 0.62)
+		return UiTokensScript.COLOR_AOE_TAUNT
 	if kind == "aoe_splash":
-		return Color(1.0, 0.78, 0.2, 0.75)
+		return UiTokensScript.COLOR_AOE_SPLASH
 	if kind == "aoe_hot":
-		return Color(0.2, 0.9, 0.3, 0.7)
+		return UiTokensScript.COLOR_AOE_HOT
 	if kind == "passive_aoe":
 		# Team-colored with 50% opacity for both fill and border
 		if team_s == "player":
-			return Color(0.275, 0.51, 1.0, 0.5)
+			return UiTokensScript.COLOR_PLAYER
 		if team_s == "enemy":
-			return Color(0.882, 0.314, 0.314, 0.5)
+			return UiTokensScript.COLOR_ENEMY
 	# aoe_damage: tint by team
 	if team_s == "player":
-		return Color(0.35, 0.55, 1.0, 0.58)
+		return UiTokensScript.COLOR_AOE_PLAYER
 	if team_s == "enemy":
-		return Color(1.0, 0.4, 0.35, 0.58)
-	return Color(0.95, 0.5, 0.35, 0.5)
+		return UiTokensScript.COLOR_AOE_ENEMY
+	return UiTokensScript.COLOR_AOE_NEUTRAL
 
 
 ## Creates a green progress ring around a unit that depletes with HoT duration
@@ -1388,7 +1380,7 @@ func _spawn_hot_status_ring(target_id: int, duration: float, snapshot: Dictionar
 	
 	# Create progress ring around unit (in local space, so it follows unit movement)
 	var ring_radius: float = 24.0  # Fixed screen-space radius
-	var col: Color = Color(0.2, 0.9, 0.3, 0.85)  # Green
+	var col: Color = UiTokensScript.COLOR_HOT_RING
 	var n: Node2D = AoeRingNodeScript.new()
 	n.name = "HotStatusRing"
 	n.position = Vector2.ZERO  # Local space - will follow unit automatically
@@ -1501,7 +1493,7 @@ func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_
 	if _aoe_fx_layer != null and is_instance_valid(_aoe_fx_layer):
 		_aoe_fx_layer.add_child(n)
 	else:
-		n.z_index = 20
+		n.z_index = UiTokensScript.Z_AOE_FX
 		n.position = world_to_battle_local(wx, wy)
 		_world_layer.add_child(n)
 	var dur: float = SimConstantsScript.AOE_VISUAL_MAX_DURATION
@@ -1515,12 +1507,12 @@ func _spawn_aoe_ring_fx(wx: float, wy: float, world_r: float, kind: String, src_
 func _spawn_melee_slash_fx(screen_pos: Vector2) -> void:
 	var s := Node2D.new()
 	s.position = screen_pos
-	s.z_index = 5
+	s.z_index = UiTokensScript.Z_MELEE_SLASH
 	var line := Line2D.new()
 	line.add_point(Vector2(-10, -10))
 	line.add_point(Vector2(10, 10))
 	line.width = 2.0
-	line.default_color = Color(1.0, 0.9, 0.45, 0.85)
+	line.default_color = UiTokensScript.COLOR_MELEE_SLASH
 	s.add_child(line)
 	_world_layer.add_child(s)
 	var tw := create_tween()
@@ -1533,7 +1525,7 @@ func _spawn_floating_text_screen(text: String, screen_pos: Vector2, color: Color
 	var label := Label.new()
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.z_index = 200
+	label.z_index = UiTokensScript.Z_FLOATING_TEXT
 	label.position = screen_pos
 	_ui_layer.add_child(label)
 	_floating_texts.append(label)
@@ -1684,7 +1676,7 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 	
 	if is_active or _active_role_filters.is_empty():
 		# Bright when this specific filter is active OR all filters are empty (see all)
-		var fill_color := _get_fill_color(role_color)
+		var fill_color := UiStylesScript.fill_for_role(role_color)
 		var style_box := UiStylesScript.panel(fill_color, role_color, 6)
 		style_box.set_corner_radius_all(4)
 		button.add_theme_stylebox_override("normal", style_box)
@@ -1708,36 +1700,6 @@ func _update_role_filter_button_style(button: Button, role: StringName, is_activ
 		button.add_theme_color_override("font_color", dimmed_color)
 
 
-func _get_fill_color(role_color: Color) -> Color:
-	var h := role_color.h
-
-	# Preserve more color identity.
-	var s := clampf(role_color.s * 0.90, 0.52, 0.82)
-	var v := clampf(role_color.v * 0.88, 0.56, 0.82)
-
-	# Hue compensation:
-	# yellows/golds get capped harder because they visually flare in dark mode.
-	var yellow_bias := -0.06 * cos(TAU * (h - 0.16))
-	v = clampf(v + yellow_bias, 0.52, 0.84)
-
-	var fill := Color.from_hsv(h, s, v, role_color.a)
-
-	# Instead of blending heavily into the background, blend lightly.
-	# This keeps the color cleaner and less muddy.
-	var bg := Color("#171821")
-	fill = bg.lerp(fill, 0.90)
-
-	# Soft luminance ceiling: prevents overexposed yellow/cyan cards.
-	var max_lum := 0.30
-	var lum := fill.get_luminance()
-
-	if lum > max_lum:
-		var excess := lum - max_lum
-		fill = fill.darkened(clampf(excess * 1.4, 0.02, 0.16))
-
-	return fill
-
-
 func _update_turn_display() -> void:
 	if _turn_label == null:
 		return
@@ -1748,12 +1710,12 @@ func _update_turn_display() -> void:
 		var team := "BLUE" if _turn_belongs_to_player(current_turn) else "RED"
 		
 		# Set team color for entire label
-		var team_color := COLOR_ZONE_P1 if _turn_belongs_to_player(current_turn) else COLOR_ZONE_P2
+		var team_color := UiTokensScript.COLOR_ZONE_P1 if _turn_belongs_to_player(current_turn) else UiTokensScript.COLOR_ZONE_P2
 		_turn_label.modulate = team_color
 		
 		# Add dark background for better contrast
 		_turn_label.add_theme_color_override("font_color", team_color)
-		_turn_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
+		_turn_label.add_theme_color_override("font_shadow_color", UiTokensScript.COLOR_TIMER_SHADOW)
 		_turn_label.add_theme_constant_override("shadow_offset_x", 2)
 		_turn_label.add_theme_constant_override("shadow_offset_y", 2)
 		# Add white border/outline
@@ -2447,7 +2409,7 @@ func _show_match_results(summary: Dictionary) -> void:
 	if sudden_death_ticks > 0:
 		var overtime: float = duration - 60.0
 		duration_line.text = "Duration: %.1fs (OVERTIME: %.1fs)" % [duration, overtime]
-		duration_line.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		duration_line.add_theme_color_override("font_color", UiTokensScript.COLOR_OVERTIME_TEXT)
 	else:
 		duration_line.text = "Duration: %.1fs" % duration
 	_match_stats_container.add_child(duration_line)

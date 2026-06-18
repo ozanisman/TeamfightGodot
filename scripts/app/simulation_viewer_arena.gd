@@ -2,6 +2,7 @@ extends Node2D
 ## Grid + P1/P2 zone tint; preparation shows both zones, combat can hide zones for clarity.
 
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
 ## Match outer edge of square battle map (world space), not the thin grid.
 const BATTLE_OUTLINE_WIDTH_PX: float = 2.5
@@ -19,7 +20,7 @@ var _zone_p2_x_ratio: float = 0.55
 
 func _ready() -> void:
 	# Slightly under units (0); avoid very negative z — global sort with parent Control can hide grid.
-	z_index = -1
+	z_index = UiTokensScript.Z_BACKGROUND
 	set_process(false)
 
 

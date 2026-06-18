@@ -4,10 +4,11 @@ extends Node
 
 const SatelliteSpecScript := preload("res://scripts/app/satellite_spec.gd")
 const SatelliteContextScript := preload("res://scripts/app/satellite_context.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 var SatelliteRegistriesScript = null
 
 var _ui_parent: Control
-var _satellite_pool: Dictionary = {}  # spec_id -> PanelContainer
+var _satellite_pool: Dictionary[StringName, PanelContainer] = {}  # spec_id -> PanelContainer
 var _active_satellites: Dictionary = {}  # spec_id -> {spec, panel, data}
 var _origin: Vector2 = Vector2.ZERO
 var _context: SatelliteContext
@@ -95,7 +96,7 @@ func _show_satellite(spec: SatelliteSpec) -> void:
 	if _active_satellites.has(spec_id):
 		var satellite_data: Dictionary = _active_satellites[spec_id]
 		panel = satellite_data.panel
-		panel.z_index = 150  # Below main tooltip (z_index 200)
+		panel.z_index = UiTokensScript.Z_SATELLITE  # Below main tooltip
 	else:
 		# Get or create panel
 		panel = _get_or_create_panel(spec)
@@ -162,7 +163,7 @@ func _get_or_create_panel(spec: SatelliteSpec) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "Satellite_%s" % spec_id
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.z_index = 150  # Below main tooltip (z_index 200)
+	panel.z_index = UiTokensScript.Z_SATELLITE  # Below main tooltip
 	_ui_parent.add_child(panel)
 	
 	# Add to pool

@@ -18,18 +18,18 @@ signal closed
 @export var _progress_bar_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/ProgressBar")
 @export var _status_label_path: NodePath = NodePath("ScrollContainer/VBoxContainer/MarginContainer/PanelContainer/VBoxContainer/StatusLabel")
 
-var _native_required_notice: Label
-var _modes_row: HFlowContainer
-var _sample_edit: LineEdit
-var _worker_edit: LineEdit
-var _output_dir_edit: LineEdit
-var _eval_predictions_check: CheckBox
-var _prediction_dir_edit: LineEdit
-var _generate_button: Button
-var _progress_bar: ProgressBar
-var _status_label: Label
+@onready var _native_required_notice: Label = get_node_or_null(_native_required_notice_path)
+@onready var _modes_row: HFlowContainer = get_node_or_null(_modes_row_path)
+@onready var _sample_edit: LineEdit = get_node_or_null(_sample_edit_path)
+@onready var _worker_edit: LineEdit = get_node_or_null(_worker_edit_path)
+@onready var _output_dir_edit: LineEdit = get_node_or_null(_output_dir_edit_path)
+@onready var _eval_predictions_check: CheckBox = get_node_or_null(_eval_predictions_check_path)
+@onready var _prediction_dir_edit: LineEdit = get_node_or_null(_prediction_dir_edit_path)
+@onready var _generate_button: Button = get_node_or_null(_generate_button_path)
+@onready var _progress_bar: ProgressBar = get_node_or_null(_progress_bar_path)
+@onready var _status_label: Label = get_node_or_null(_status_label_path)
 
-var _regen_checks: Dictionary = {}
+var _regen_checks: Dictionary[int, CheckBox] = {}
 
 var regen_checks: Dictionary:
 	get:
@@ -73,30 +73,12 @@ func _ready() -> void:
 	unresizable = false
 	close_requested.connect(_on_close_requested)
 	
-	# Initialize node references
-	if has_node(_native_required_notice_path):
-		_native_required_notice = get_node(_native_required_notice_path)
-	if has_node(_modes_row_path):
-		_modes_row = get_node(_modes_row_path)
-	if has_node(_sample_edit_path):
-		_sample_edit = get_node(_sample_edit_path)
-	if has_node(_worker_edit_path):
-		_worker_edit = get_node(_worker_edit_path)
-	if has_node(_output_dir_edit_path):
-		_output_dir_edit = get_node(_output_dir_edit_path)
+	if _output_dir_edit != null:
 		_output_dir_edit.text = "res://stats_output"
-	if has_node(_eval_predictions_check_path):
-		_eval_predictions_check = get_node(_eval_predictions_check_path)
+	if _eval_predictions_check != null:
 		_clear_checkbox_border(_eval_predictions_check)
-	if has_node(_prediction_dir_edit_path):
-		_prediction_dir_edit = get_node(_prediction_dir_edit_path)
+	if _prediction_dir_edit != null:
 		_prediction_dir_edit.text = "res://stats_output_baseline"
-	if has_node(_generate_button_path):
-		_generate_button = get_node(_generate_button_path)
-	if has_node(_progress_bar_path):
-		_progress_bar = get_node(_progress_bar_path)
-	if has_node(_status_label_path):
-		_status_label = get_node(_status_label_path)
 	
 	# Build mode checkboxes
 	if _modes_row != null:

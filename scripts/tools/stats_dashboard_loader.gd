@@ -266,7 +266,7 @@ static func get_count(u_data: Dictionary) -> int:
 
 
 static func get_display_val(u_data: Dictionary, metric_key: StringName) -> float:
-	if metric_key == &"winRate" or metric_key == &"synergy":
+	if metric_key == &"winRate" or metric_key == &"role_composition":
 		return float(u_data.get("winRate", 0.0))
 	if metric_key == &"kda":
 		return float(u_data.get("kda", 0.0))

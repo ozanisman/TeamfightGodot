@@ -71,7 +71,7 @@ const METRICS: Array[Dictionary] = [
 	{"label": "Shielding Done", "key": &"shielding_done"},
 	{"label": "KDA Ratio", "key": &"kda"},
 	{"label": "CC (Stuns)", "key": &"stuns"},
-	{"label": "Synergies", "key": &"synergy"},
+	{"label": "Role Composition", "key": &"role_composition"},
 ]
 
 const SORT_MODES: Array[Dictionary] = [
@@ -96,7 +96,7 @@ const VIEW_MODES: Array[Dictionary] = [
 @export var chart_scroll_min_bar_region: int = 136
 @export var chart_scroll_width_slack: int = 48
 @export var chart_label_w: int = 152
-@export var chart_label_w_synergy: int = 600
+@export var chart_label_w_role_composition: int = 600
 @export var chart_games_col_w: int = 72
 @export var chart_kda_col_w: int = 185
 @export var chart_val_col_w: int = 96
@@ -668,8 +668,8 @@ func _chart_row_tt_motion(event: InputEvent) -> void:
 		_chart_tooltip.update_position()
 
 
-func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
-	if is_synergy:
+func _tooltip_border_for_row(key_s: String, is_role_composition: bool) -> Color:
+	if is_role_composition:
 		return UiTokensScript.COLOR_SUBTLE
 	if _view_mode == &"champions":
 		var rk: String = str(_unit_roles.get(key_s, ""))
@@ -679,7 +679,7 @@ func _tooltip_border_for_row(key_s: String, is_synergy: bool) -> Color:
 	return UiTokensScript.COLOR_SUBTLE
 
 
-func _sync_chart_table_headers(label_width: float, is_synergy: bool) -> void:
+func _sync_chart_table_headers(label_width: float, is_role_composition: bool) -> void:
 	if _chart_hdr_row == null:
 		return
 	_chart_hdr_row.visible = true
@@ -688,12 +688,12 @@ func _sync_chart_table_headers(label_width: float, is_synergy: bool) -> void:
 	_hdr_games_stack.custom_minimum_size.x = chart_games_col_w
 	_hdr_kda_stack.custom_minimum_size.x = chart_kda_col_w
 	var entity_pri := "Champion"
-	if is_synergy:
+	if is_role_composition:
 		entity_pri = "Composition"
 	elif _view_mode == &"roles":
 		entity_pri = "Role"
 	_hdr_name_pri.text = entity_pri
-	var show_pct_axis: bool = _current_metric == &"winRate" or is_synergy
+	var show_pct_axis: bool = _current_metric == &"winRate" or is_role_composition
 	_hdr_bar_titles_vb.visible = not show_pct_axis
 	_hdr_bar_pct_axis.visible = show_pct_axis
 	if not show_pct_axis:
@@ -1117,8 +1117,8 @@ func _current_metric_label_string() -> String:
 	return String(_current_metric)
 
 
-func _display_name(key: String, synergy: bool) -> String:
-	if synergy:
+func _display_name(key: String, role_composition: bool) -> String:
+	if role_composition:
 		var parts: PackedStringArray = key.split(" + ")
 		var s := ""
 		for i in parts.size():
@@ -1151,15 +1151,15 @@ func _refresh_chart() -> void:
 	for c in _chart_vbox.get_children():
 		c.queue_free()
 
-	var is_synergy: bool = _current_metric == &"synergy"
+	var is_role_composition: bool = _current_metric == &"role_composition"
 	var use_ci: bool = _ci_mode_active()
 	_chart_uses_ci = use_ci
-	var label_width: float = float(chart_label_w_synergy) if is_synergy else float(chart_label_w)
+	var label_width: float = float(chart_label_w_role_composition) if is_role_composition else float(chart_label_w)
 
-	if is_synergy and _current_size == 1:
+	if is_role_composition and _current_size == 1:
 		_hide_chart_chrome()
 		var lb := Label.new()
-		lb.text = "Synergies N/A for 1v1"
+		lb.text = "Role Composition N/A for 1v1"
 		_chart_vbox.add_child(lb)
 		_title_label.text = ""
 		return
@@ -1167,7 +1167,7 @@ func _refresh_chart() -> void:
 	var data_context: Dictionary = {}
 	if use_ci:
 		data_context = _loader.ci_stats.get(_current_size, {})
-	elif is_synergy:
+	elif is_role_composition:
 		data_context = _loader.all_stats.get(_current_size, {}).get("combinations", {})
 	elif _view_mode == &"roles":
 		data_context = _loader.all_stats.get(_current_size, {}).get("roles", {})
@@ -1190,7 +1190,7 @@ func _refresh_chart() -> void:
 	var display_data: Dictionary = data_context.duplicate(true)
 	
 	# Filter combinations with less than 5 games
-	if is_synergy:
+	if is_role_composition:
 		var filtered: Dictionary = {}
 		for k in display_data.keys():
 			var count: int = StatsDashboardLoaderScript.get_count(display_data[k])
@@ -1227,7 +1227,7 @@ func _refresh_chart() -> void:
 		var q: String = _search_text.to_lower()
 		var filtered: Dictionary = {}
 		for k in display_data.keys():
-			if is_synergy:
+			if is_role_composition:
 				var parts: PackedStringArray = str(k).split("\u001e")
 				var match_any := false
 				for p in parts:
@@ -1241,7 +1241,7 @@ func _refresh_chart() -> void:
 					filtered[k] = display_data[k]
 		display_data = filtered
 
-	if not _active_role_filters.is_empty() and not is_synergy and _view_mode == &"champions":
+	if not _active_role_filters.is_empty() and not is_role_composition and _view_mode == &"champions":
 		var filtered2: Dictionary = {}
 		for champion in display_data.keys():
 			var role: String = str(_unit_roles.get(String(champion), ""))
@@ -1263,8 +1263,8 @@ func _refresh_chart() -> void:
 		return
 
 	_show_chart_chrome()
-	_sync_chart_table_headers(label_width, is_synergy)
-	var show_pct_axis: bool = _current_metric == &"winRate" or is_synergy
+	_sync_chart_table_headers(label_width, is_role_composition)
+	var show_pct_axis: bool = _current_metric == &"winRate" or is_role_composition
 	if _axis_guides != null:
 		_axis_guides.set_layout(
 			label_width,
@@ -1279,7 +1279,7 @@ func _refresh_chart() -> void:
 		_axis_guides.queue_redraw()
 
 	keys.sort_custom(
-		func(a, b): return _sort_less(String(a), String(b), display_data, is_synergy, use_ci)
+		func(a, b): return _sort_less(String(a), String(b), display_data, is_role_composition, use_ci)
 	)
 
 	var vals: Array[float] = []
@@ -1299,7 +1299,7 @@ func _refresh_chart() -> void:
 		min_val = minf(min_val, v)
 	if max_val == 0.0:
 		max_val = 1.0
-	var bar_scale_max: float = 1.0 if (_current_metric == &"winRate" or is_synergy) else max_val
+	var bar_scale_max: float = 1.0 if (_current_metric == &"winRate" or is_role_composition) else max_val
 	var val_range: float = max_val - min_val
 
 	var metric_label: String = ""
@@ -1339,7 +1339,7 @@ func _refresh_chart() -> void:
 
 		var name_w := Control.new()
 		name_w.custom_minimum_size.x = label_width
-		if is_synergy:
+		if is_role_composition:
 			var parts: PackedStringArray = key_s.split(" + ")
 			var name_h := HBoxContainer.new()
 			name_h.add_theme_constant_override("separation", 4)
@@ -1358,7 +1358,7 @@ func _refresh_chart() -> void:
 			name_w.add_child(name_h)
 		else:
 			var name_lb := Label.new()
-			name_lb.text = _display_name(key_s, is_synergy)
+			name_lb.text = _display_name(key_s, is_role_composition)
 			name_lb.autowrap_mode = TextServer.AUTOWRAP_OFF
 			if _view_mode == &"champions":
 				var role: String = str(_unit_roles.get(key_s, ""))
@@ -1392,12 +1392,12 @@ func _refresh_chart() -> void:
 		bar_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bar_holder.custom_minimum_size = Vector2(chart_bar_holder_min_w, chart_row_bar_h)
 		var fill_ratio: float = clampf(val / bar_scale_max, 0.0, 1.0)
-		if (_current_metric == &"winRate" or is_synergy) and not use_ci:
+		if (_current_metric == &"winRate" or is_role_composition) and not use_ci:
 			var tg: int = StatsDashboardLoaderScript.get_count(u_data)
 			if tg > 0:
 				fill_ratio = clampf(float(u_data.get("wins", 0)) / float(tg), 0.0, 1.0)
 		var ratio_color: float
-		if _absolute_colors and (_current_metric == &"winRate" or is_synergy):
+		if _absolute_colors and (_current_metric == &"winRate" or is_role_composition):
 			ratio_color = val
 		else:
 			ratio_color = (val - min_val) / val_range if val_range > 0.0 else (0.5 if _absolute_colors else 0.0)
@@ -1423,7 +1423,7 @@ func _refresh_chart() -> void:
 		var val_lb := Label.new()
 		val_lb.custom_minimum_size.x = chart_val_col_w
 		val_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		if _current_metric == &"winRate" or is_synergy:
+		if _current_metric == &"winRate" or is_role_composition:
 			val_lb.text = "%.2f%%" % (val * 100.0)
 		elif _current_metric == &"kda":
 			val_lb.text = "%.2f" % val
@@ -1445,9 +1445,9 @@ func _refresh_chart() -> void:
 		kda_lb.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
 		hb.add_child(kda_lb)
 
-		var tt: String = _build_tooltip(key_s, u_data, use_ci, is_synergy)
+		var tt: String = _build_tooltip(key_s, u_data, use_ci, is_role_composition)
 		row.set_meta(&"tt", tt)
-		row.set_meta(&"tt_border", _tooltip_border_for_row(key_s, is_synergy))
+		row.set_meta(&"tt_border", _tooltip_border_for_row(key_s, is_role_composition))
 		row.mouse_entered.connect(_chart_row_tt_enter.bind(row))
 		row.mouse_exited.connect(_chart_row_tt_exit)
 		row.gui_input.connect(_chart_row_tt_motion)
@@ -1479,18 +1479,18 @@ func _sort_less(
 	a: String,
 	b: String,
 	display_data: Dictionary,
-	is_synergy: bool,
+	is_role_composition: bool,
 	use_ci: bool
 ) -> bool:
 	var rev: bool = _current_sort != &"name"
 	if _current_sort == &"name":
-		var na: String = _display_name(a, is_synergy).to_lower()
-		var nb: String = _display_name(b, is_synergy).to_lower()
+		var na: String = _display_name(a, is_role_composition).to_lower()
+		var nb: String = _display_name(b, is_role_composition).to_lower()
 		return na < nb
 	if _current_sort == &"role":
-		if is_synergy:
-			var sa: String = _display_name(a, is_synergy).to_lower()
-			var sb: String = _display_name(b, is_synergy).to_lower()
+		if is_role_composition:
+			var sa: String = _display_name(a, is_role_composition).to_lower()
+			var sb: String = _display_name(b, is_role_composition).to_lower()
 			return sa > sb if rev else sa < sb
 		if _view_mode == &"roles":
 			var oa: int = int(ROLE_SORT_ORDER.get(a, 99))
@@ -1560,9 +1560,9 @@ func _escape_bbcode_plain(s: String) -> String:
 	return str(s).replace("[", "[lb]").replace("]", "[rb]")
 
 
-func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: bool) -> String:
+func _tooltip_entity_line_bbcode(key: String, display_name: String, is_role_composition: bool) -> String:
 	var safe_name: String = _escape_bbcode_plain(display_name)
-	if is_synergy:
+	if is_role_composition:
 		return "%s" % [safe_name]
 	var c: Color = UiTokensScript.COLOR_TEXT
 	if _view_mode == &"champions":
@@ -1573,12 +1573,12 @@ func _tooltip_entity_line_bbcode(key: String, display_name: String, is_synergy: 
 	return "[color=%s]%s[/color]" % [c.to_html(false), safe_name]
 
 
-func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: bool) -> String:
-	var display_name: String = _display_name(key, is_synergy)
+func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_role_composition: bool) -> String:
+	var display_name: String = _display_name(key, is_role_composition)
 	var count: int = maxi(1, int(u_data.get("samples", 0))) if use_ci else StatsDashboardLoaderScript.get_count(u_data)
 	var lines: PackedStringArray = PackedStringArray()
 	var entity_caps := "CHAMPION"
-	if is_synergy:
+	if is_role_composition:
 		entity_caps = "COMPOSITION"
 	elif _view_mode == &"roles":
 		entity_caps = "ROLE"
@@ -1589,7 +1589,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 		var dr: Array = ci.get("damage_received", [u_data.get("damage_received", 0.0), u_data.get("damage_received", 0.0)])
 		var dm: Array = ci.get("damage_mitigated", [u_data.get("damage_mitigated", 0.0), u_data.get("damage_mitigated", 0.0)])
 		var hd: Array = ci.get("healing_done", [u_data.get("healing_done", 0.0), u_data.get("healing_done", 0.0)])
-		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
+		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_role_composition))
 		lines.append("")
 		lines.append("Samples: %d" % int(count))
 		lines.append("Win Rate: %.2f%% [%.2f%%, %.2f%%]" % [
@@ -1621,7 +1621,7 @@ func _build_tooltip(key: String, u_data: Dictionary, use_ci: bool, is_synergy: b
 			float(hd[1]),
 		])
 	else:
-		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_synergy))
+		lines.append(_tooltip_entity_line_bbcode(key, display_name, is_role_composition))
 		lines.append("")
 		lines.append("Games Played: %d" % int(count))
 		lines.append(
@@ -2169,7 +2169,7 @@ func _show_vs_matchups(parent: Control, matchups: Dictionary) -> void:
 func _show_with_matchups(parent: Control, matchups: Dictionary) -> void:
 	var with_data = matchups.get("with", {})
 	if with_data.is_empty():
-		_show_no_data(parent, "No synergy matchup data available")
+		_show_no_data(parent, "No role composition matchup data available")
 		return
 	
 	# Create VBoxContainer to match both view mode spacing
@@ -2180,7 +2180,7 @@ func _show_with_matchups(parent: Control, matchups: Dictionary) -> void:
 	parent.add_child(content_vb)
 	
 	# Summary section
-	var summary_card := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
+	var summary_card := _create_summary_card("ROLE COMPOSITION ANALYSIS", _current_champion, "with")
 	content_vb.add_child(summary_card)
 	
 	# Matchup table
@@ -2212,7 +2212,7 @@ func _show_both_matchups(parent: Control, matchups: Dictionary) -> void:
 		with_vb.add_theme_constant_override("separation", 12)
 		both_hb.add_child(with_vb)
 		
-		var with_summary := _create_summary_card("SYNERGY ANALYSIS", _current_champion, "with")
+		var with_summary := _create_summary_card("ROLE COMPOSITION ANALYSIS", _current_champion, "with")
 		with_vb.add_child(with_summary)
 		var with_table := _create_matchup_table(with_data, "with")
 		with_vb.add_child(with_table)

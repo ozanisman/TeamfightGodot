@@ -2022,7 +2022,7 @@ func _try_enemy_draft_ai() -> void:
 		print("===========================================\n")
 	
 	_ai_draft_processing = true
-	var delay: float = randf_range(1.0, 2.0)
+	var delay: float = randf_range(1.5, 3.0)
 	if _debug_mode:
 		print("AI thinking... (delay: %.2fs)" % delay)
 	await get_tree().create_timer(delay).timeout

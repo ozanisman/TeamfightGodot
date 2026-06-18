@@ -31,13 +31,32 @@ static func apply_turn_layout(label: Label) -> void:
 	label.offset_bottom = Tokens.DRAFT_TOP_MARGIN_PX + 58.0
 
 
+static func apply_top_bar_layout(bar: HBoxContainer, button: Button) -> void:
+	var bar_height: float = button.get_combined_minimum_size().y
+	bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bar.offset_left = 0.0
+	bar.offset_top = 0.0
+	bar.offset_right = 0.0
+	bar.offset_bottom = bar_height
+	bar.alignment = BoxContainer.ALIGNMENT_END
+
+
 static func apply_back_button_layout(button: Button) -> void:
-	button.custom_minimum_size = Vector2(120, 40)
-	button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	button.offset_left = -150.0
-	button.offset_top = Tokens.DRAFT_TOP_MARGIN_PX
-	button.offset_right = -Tokens.DRAFT_EDGE_MARGIN_PX
-	button.offset_bottom = Tokens.DRAFT_TOP_MARGIN_PX + 40.0
+	button.custom_minimum_size = Vector2(150, 28)
+
+
+static func apply_bottom_bar_layout(bar: HBoxContainer, toggle: CheckBox) -> void:
+	var bar_height: float = toggle.get_combined_minimum_size().y
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_left = 0.0
+	bar.offset_top = -bar_height
+	bar.offset_right = 0.0
+	bar.offset_bottom = 0.0
+	bar.alignment = BoxContainer.ALIGNMENT_END
+
+
+static func apply_disable_ai_delay_layout(toggle: CheckBox) -> void:
+	toggle.custom_minimum_size = Vector2(150, 28)
 
 
 static func apply_debug_label_layout(label: Label) -> void:

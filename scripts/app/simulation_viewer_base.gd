@@ -2025,7 +2025,8 @@ func _try_enemy_draft_ai() -> void:
 	var delay: float = randf_range(1.5, 3.0)
 	if _debug_mode:
 		print("AI thinking... (delay: %.2fs)" % delay)
-	await get_tree().create_timer(delay).timeout
+	if not _draft_shell.is_ai_delay_disabled():
+		await get_tree().create_timer(delay).timeout
 	_ai_draft_processing = false
 	
 	_perform_draft_action(selected_champion)

@@ -11,7 +11,8 @@ const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
 @onready var draft_panel: Panel = $DraftPanel
-@onready var back_button: Button = $DraftPanel/BackButton
+@onready var top_bar: HBoxContainer = $DraftPanel/TopBar
+@onready var back_button: Button = $DraftPanel/TopBar/BackButton
 @onready var title_label: Label = $DraftPanel/TitleLabel
 @onready var turn_label: Label = $DraftPanel/TurnLabel
 @onready var debug_label: Label = $DraftPanel/DebugLabel
@@ -40,6 +41,8 @@ const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 @onready var native_ai_strategy_label: Label = $RecommendationPanel/NativeAIStrategyLabel
 @onready var native_ai_strategy_selector: OptionButton = $RecommendationPanel/NativeAIStrategySelector
 @onready var compare_baseline_toggle: CheckBox = $RecommendationPanel/CompareBaselineToggle
+@onready var bottom_bar: HBoxContainer = $DraftPanel/BottomBar
+@onready var disable_ai_delay_toggle: CheckBox = $DraftPanel/BottomBar/DisableAIDelayToggle
 
 
 func _ready() -> void:
@@ -52,13 +55,14 @@ func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) 
 	DraftLayoutScript.apply_full_rect(self)
 	DraftLayoutScript.apply_full_rect(draft_panel)
 	DraftLayoutScript.apply_back_button_layout(back_button)
+	DraftLayoutScript.apply_top_bar_layout(top_bar, back_button)
 	DraftLayoutScript.apply_title_layout(title_label)
 	DraftLayoutScript.apply_turn_layout(turn_label)
 	DraftLayoutScript.apply_debug_label_layout(debug_label)
 	DraftLayoutScript.apply_section_panel_layout(player_team_panel, &"left", 0)
 	DraftLayoutScript.apply_section_panel_layout(player_bans_panel, &"left", 1)
-	DraftLayoutScript.apply_section_panel_layout(enemy_team_panel, &"right", 0)
-	DraftLayoutScript.apply_section_panel_layout(enemy_bans_panel, &"right", 1)
+	DraftLayoutScript.apply_section_panel_layout(enemy_bans_panel, &"right", 0)
+	DraftLayoutScript.apply_section_panel_layout(enemy_team_panel, &"right", 1)
 	for label in [player_team_label, player_bans_label, enemy_team_label, enemy_bans_label]:
 		DraftLayoutScript.apply_section_header_layout(label as Label)
 	for list in [player_team_list, player_bans_list, enemy_team_list, enemy_bans_list]:
@@ -69,6 +73,8 @@ func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) 
 	if has_recommendation_panel:
 		DraftLayoutScript.apply_recommendation_panel_layout(recommendation_panel, screen_size)
 	champion_grid.columns = DraftLayoutScript.calculate_grid_columns(screen_size.x, UiTokensScript.DRAFT_CHAMPION_TILE_PX)
+	DraftLayoutScript.apply_disable_ai_delay_layout(disable_ai_delay_toggle)
+	DraftLayoutScript.apply_bottom_bar_layout(bottom_bar, disable_ai_delay_toggle)
 
 
 func set_draft_visible(is_visible: bool) -> void:
@@ -127,38 +133,14 @@ func _apply_static_styles() -> void:
 	recommendation_title.add_theme_font_size_override("font_size", 24)
 	recommendation_list.add_theme_constant_override("separation", 8)
 
-	# Strip all formatting from native AI toggle
-	if native_ai_toggle != null:
-		native_ai_toggle.theme = null  # Disable theme inheritance
-		native_ai_toggle.remove_theme_color_override("font_color")
-		native_ai_toggle.remove_theme_color_override("font_pressed_color")
-		native_ai_toggle.remove_theme_color_override("font_hover_color")
-		native_ai_toggle.remove_theme_color_override("font_disabled_color")
-		native_ai_toggle.remove_theme_color_override("font_focus_color")
-		native_ai_toggle.remove_theme_stylebox_override("normal")
-		native_ai_toggle.remove_theme_stylebox_override("pressed")
-		native_ai_toggle.remove_theme_stylebox_override("hover")
-		native_ai_toggle.remove_theme_stylebox_override("disabled")
-		native_ai_toggle.remove_theme_stylebox_override("focus")
-		native_ai_toggle.remove_theme_stylebox_override("hover_pressed")
-		native_ai_toggle.remove_theme_constant_override("h_separation")
-		native_ai_toggle.remove_theme_constant_override("v_separation")
-		native_ai_toggle.remove_theme_icon_override("checked")
-		native_ai_toggle.remove_theme_icon_override("unchecked")
-		native_ai_toggle.remove_theme_icon_override("checked_disabled")
-		native_ai_toggle.remove_theme_icon_override("unchecked_disabled")
-		native_ai_toggle.remove_theme_icon_override("hover_checked")
-		native_ai_toggle.remove_theme_icon_override("hover_unchecked")
-		native_ai_toggle.remove_theme_icon_override("hover_pressed_checked")
-		native_ai_toggle.remove_theme_icon_override("hover_pressed_unchecked")
-		native_ai_toggle.remove_theme_font_size_override("font_size")
-		native_ai_toggle.remove_theme_font_override("font")
 	if native_ai_strategy_label != null:
 		native_ai_strategy_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
 	if native_ai_strategy_selector != null:
 		native_ai_strategy_selector.custom_minimum_size = Vector2(212, 28)
 	if compare_baseline_toggle != null:
 		compare_baseline_toggle.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
+	
+
 
 
 func _on_back_pressed() -> void:
@@ -171,3 +153,7 @@ func _on_auto_fill_pressed() -> void:
 
 func _on_start_battle_pressed() -> void:
 	start_battle_pressed.emit()
+
+
+func is_ai_delay_disabled() -> bool:
+	return disable_ai_delay_toggle.button_pressed

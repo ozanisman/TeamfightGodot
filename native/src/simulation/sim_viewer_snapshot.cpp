@@ -22,11 +22,17 @@ String viewer_state_string(const UnitState &unit, const UnitStateCold &cold) {
 	if (unit.silence_remaining > 0.0 && (unit.silence_blocks_abilities || unit.silence_blocks_ultimates)) {
 		return String("SILENCED");
 	}
+	if (unit.taunt_remaining > 0.0) {
+		return String("TAUNTED");
+	}
 	if (!cold.reflect_buffs.empty()) {
 		return String("REFLECTING");
 	}
 	if (unit.disarm_remaining > 0.0) {
 		return String("DISARMED");
+	}
+	if (unit.stealth_remaining > 0.0) {
+		return String("STEALTHED");
 	}
 	if (!cold.slow_buffs.empty()) {
 		return String("SLOWED");

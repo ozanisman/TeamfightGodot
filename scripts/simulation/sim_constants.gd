@@ -97,14 +97,16 @@ const VIEWER_WORLD_GRID_DIVISIONS: int = 10
 # ========================================
 # The 'state' field is a computed priority-based summary from native code.
 # It represents the primary unit condition, prioritizing most restrictive effects.
-# Priority order: DEAD > STUNNED > ROOTED > SILENCED > REFLECTING > DISARMED > SLOWED > CHANNELING > CASTING > KITING > ALIVE
+# Priority order: DEAD > STUNNED > ROOTED > SILENCED > TAUNTED > REFLECTING > DISARMED > STEALTHED > SLOWED > CHANNELING > CASTING > KITING > ALIVE
 const UNIT_STATE_STUNNED: String = "STUNNED"
 const UNIT_STATE_DEAD: String = "DEAD"
 const UNIT_STATE_KITING: String = "KITING"
 const UNIT_STATE_ROOTED: String = "ROOTED"
 const UNIT_STATE_SILENCED: String = "SILENCED"
+const UNIT_STATE_TAUNTED: String = "TAUNTED"
 const UNIT_STATE_REFLECTING: String = "REFLECTING"
 const UNIT_STATE_DISARMED: String = "DISARMED"
+const UNIT_STATE_STEALTHED: String = "STEALTHED"
 const UNIT_STATE_SLOWED: String = "SLOWED"
 const UNIT_STATE_CHANNELING: String = "CHANNELING"
 const UNIT_STATE_CASTING: String = "CASTING"

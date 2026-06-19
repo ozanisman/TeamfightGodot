@@ -84,13 +84,14 @@ bool combat_actions(
 		const bool needs_distance = can_cast_ultimate || can_cast_ability || in_contact;
 		const double distance = needs_distance ? Math::sqrt(dist_sq) : 0.0;
 
-		if (can_cast_ultimate) {
+		const bool taunted = unit.taunt_remaining > 0.0;
+		if (!taunted && can_cast_ultimate) {
 			SimProfileAccScope _uc_ab(profile_sim, profile.uc_ability);
 			if (combat::try_cast_ultimate(world, host, combat_hooks, unit, target, distance)) {
 				return true;
 			}
 		}
-		if (can_cast_ability) {
+		if (!taunted && can_cast_ability) {
 			SimProfileAccScope _uc_ab2(profile_sim, profile.uc_ability);
 			if (combat::try_cast_ability(world, host, combat_hooks, unit, target, distance)) {
 				return true;

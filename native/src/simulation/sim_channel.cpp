@@ -92,6 +92,9 @@ bool should_interrupt_channel(SimWorld &world, UnitState &unit, const UnitStateC
 	if (cold.channel_action_kind == sn_ultimate() && unit.silence_blocks_ultimates) {
 		return true;
 	}
+	if (unit.taunt_remaining > 0.0) {
+		return true;
+	}
 	if (!cold.channel_allow_movement && unit.root_remaining <= 0.0) {
 		static const StringName player_team("player");
 		static const StringName enemy_team("enemy");

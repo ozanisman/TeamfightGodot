@@ -63,7 +63,7 @@ const EFFECT_METADATA: Dictionary = {
 	"stun": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move, attack, or cast abilities or ultimates."},
 	"silence": {"color": "#ce88ee", "category": "CC", "description": "The target cannot cast abilities or ultimates. Affects both unless specified."},
 	"root": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move."},
-	"taunt": {"color": "#ce88ee", "category": "CC", "description": "The target is forced to attack the taunter and cannot kite."},
+	"taunt": {"color": "#ce88ee", "category": "CC", "description": "The target is forced to auto-attack the taunter and cannot cast abilities, ultimates, or kite."},
 	"disarm": {"color": "#ce88ee", "category": "CC", "description": "The target cannot auto-attack."},
 	"slow": {"color": "#ce88ee", "category": "CC", "description": "The target's movement speed is reduced by a percentage. Only the slow with the highest value is applied."},
 	"knockback": {"color": "#ce88ee", "category": "CC", "description": "The target is pushed away from the source."},

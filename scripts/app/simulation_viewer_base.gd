@@ -63,6 +63,7 @@ var _player_picks: Array[StringName] = []
 var _enemy_picks: Array[StringName] = []
 var _draft_step_index: int = 0
 var _ai_draft_processing: bool = false
+var _random_draft_mode: bool = false
 
 # Unit visualization
 var _unit_nodes: Dictionary = {}  # instance_id -> Node2D
@@ -1899,7 +1900,7 @@ func _turn_belongs_to_player(current_turn: String) -> bool:
 	return current_turn.begins_with("R_")
 
 
-func _try_enemy_draft_ai() -> void:
+func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 	if _draft_step_index >= SimConstantsScript.DRAFT_SEQUENCE.size():
 		return
 	if _ai_draft_processing:
@@ -1987,7 +1988,7 @@ func _try_enemy_draft_ai() -> void:
 	var delay: float = randf_range(1.5, 3.0)
 	if _debug_mode:
 		print("AI thinking... (delay: %.2fs)" % delay)
-	if not _draft_shell.is_ai_delay_disabled():
+	if not skip_delay and not _draft_shell.is_ai_delay_disabled():
 		await get_tree().create_timer(delay).timeout
 	_ai_draft_processing = false
 	
@@ -2050,13 +2051,14 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 
 
 func _on_random_draft_clicked() -> void:
+	_random_draft_mode = true
 	while _draft_step_index < SimConstantsScript.DRAFT_SEQUENCE.size():
 		var current_turn: String = SimConstantsScript.DRAFT_SEQUENCE[_draft_step_index]
 		
 		if not _turn_belongs_to_player(current_turn):
 			# AI turn: trigger if not already running, then yield frame to let it progress
 			if not _ai_draft_processing:
-				_try_enemy_draft_ai()
+				_try_enemy_draft_ai(true)
 			await get_tree().process_frame
 			continue
 		
@@ -2072,6 +2074,8 @@ func _on_random_draft_clicked() -> void:
 
 		var random_champion: StringName = available[randi() % available.size()]
 		_on_champion_clicked(random_champion)
+	
+	_random_draft_mode = false
 
 
 func _on_start_match_clicked() -> void:
@@ -2196,7 +2200,7 @@ func _perform_draft_action(champion_id: StringName) -> void:
 		_update_team_rosters()
 		_update_champion_button_style(champion_id)
 		_update_start_match_enabled()
-		_try_enemy_draft_ai()
+		_try_enemy_draft_ai(_random_draft_mode)
 	# Handle pick phases
 	elif current_turn.ends_with("_PICK"):
 		if is_player_turn:
@@ -2211,7 +2215,7 @@ func _perform_draft_action(champion_id: StringName) -> void:
 		_update_team_rosters()
 		_update_champion_button_style(champion_id)
 		_update_start_match_enabled()
-		_try_enemy_draft_ai()
+		_try_enemy_draft_ai(_random_draft_mode)
 
 
 func _on_champion_clicked(champion_id: StringName) -> void:

@@ -83,6 +83,8 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["pos_y"] = u.pos_y;
 		d["team"] = String(u.team);
 		d["unit_id"] = String(uc.unit_id);
+		Dictionary stats_dict = uc.stats;
+		d["name"] = String(stats_dict.get("name", uc.unit_id));
 		d["hp"] = u.hp;
 		d["max_hp"] = u.stats_dirty ? get_effective_max_hp(u) : u.cached_max_hp;
 		d["shield"] = u.shield;

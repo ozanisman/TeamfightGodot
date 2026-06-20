@@ -4,9 +4,9 @@ extends Node2D
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
-const UNIT_RADIUS: float = 9.0
+const UNIT_RADIUS: float = 6.0
 const HP_W: float = 30.0
-const HP_H: float = 5.0
+const HP_H: float = 3.0
 const LUNGE_SCREEN_PX: float = 8.0
 const VIEWER_BASE_MIN_AXIS: float = 720.0
 
@@ -149,7 +149,7 @@ func _draw() -> void:
 	var max_hp: float = maxf(1.0, float(_u.get("max_hp", 1.0)))
 	var shield: float = float(_u.get("shield", 0.0))
 	var hp_x: float = -hp_w * 0.5
-	var hp_y: float = -24.0 * sc
+	var hp_y: float = -14.0 * sc
 	draw_rect(Rect2(o + Vector2(hp_x, hp_y), Vector2(hp_w, hp_h)), UiTokensScript.COLOR_HP_BAR_BG)
 	
 	# Calculate HP and shield ratios for display
@@ -185,34 +185,9 @@ func _draw() -> void:
 			Rect2(o + Vector2(hp_x, hp_y + hp_h + 1.0 * sc), Vector2(hp_w * m_ratio, 3.0 * sc)),
 			UiTokensScript.COLOR_MANA_BAR_FILL
 		)
-	var label: String = str(_u.get("unit_id", &""))
+	var label: String = str(_u.get("name", _u.get("unit_id", &"")))
 	if label.is_empty():
 		label = "?"
-	if String(_u.get("state", "")) == SimConstants.UNIT_STATE_DEAD:
-		label += " [%s]" % SimConstants.UNIT_STATE_DEAD
-	elif String(_u.get("state", "")) == SimConstants.UNIT_STATE_STUNNED:
-		label += " [%s]" % SimConstants.UNIT_STATE_STUNNED
-	elif float(_u.get("taunt_remaining", 0.0)) > 0.0:
-		label += " [TAUNTED]"
-	elif String(_u.get("state", "")) == SimConstants.UNIT_STATE_KITING:
-		label += " [%s]" % SimConstants.UNIT_STATE_KITING
-	elif float(_u.get("casting_remaining", 0.0)) > 0.0:
-		var ckind: String = str(_u.get("casting_kind", ""))
-		if ckind.to_lower().contains("ult"):
-			label += " [ULTIMATE]"
-		else:
-			label += " [ABILITY]"
-	elif bool(_u.get("is_channeling", false)):
-		var ckind: String = str(_u.get("channel_action_kind", ""))
-		if ckind.to_lower().contains("ult"):
-			label += " [CHANNELING ULT]"
-		else:
-			label += " [CHANNELING]"
-	elif int(_u.get("target_id", 0)) > 0 and bool(_u.get("in_range", false)):
-		label += " [ATTACKING]"
-	elif int(_u.get("target_id", 0)) > 0:
-		label += " [MOVING]"
-	else:
-		label += " [WAITING]"
 	var font: Font = ThemeDB.fallback_font
-	draw_string(font, o + Vector2(-20 * sc, -34 * sc), label, HORIZONTAL_ALIGNMENT_LEFT, 200 * sc, int(11 * sc), UiTokensScript.COLOR_UNIT_LABEL)
+	var text_size: Vector2 = font.get_string_size(label, int(8 * sc))
+	draw_string(font, o + Vector2(-text_size.x * 0.5, -20 * sc), label, HORIZONTAL_ALIGNMENT_LEFT, -1, int(8 * sc), UiTokensScript.COLOR_UNIT_LABEL)

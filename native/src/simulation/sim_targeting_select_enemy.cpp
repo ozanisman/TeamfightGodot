@@ -25,6 +25,11 @@ struct ClearRetargetPriorityAfterScan {
 	ClearRetargetPriorityAfterScan &operator=(const ClearRetargetPriorityAfterScan &) = delete;
 };
 
+double compute_stickiness_margin(double current_score) {
+	const double scaled = STICKINESS_RATIO * Math::abs(current_score);
+	return Math::clamp(scaled, STICKINESS_FLOOR, STICKINESS_CEILING);
+}
+
 UnitState *try_keep_current_enemy_target_early(
 		SimWorld &world,
 		UnitState &unit,
@@ -335,7 +340,9 @@ UnitState *select_enemy_target(
 		}
 	}
 
-	if (!unit.retarget_priority_eval && current_target_live != nullptr && current_score <= best_raw + TARGET_STICKINESS_THRESHOLD) {
+	const double stickiness_improvement = current_score - best_raw;
+	if (!unit.retarget_priority_eval && current_target_live != nullptr &&
+			stickiness_improvement <= compute_stickiness_margin(current_score)) {
 		unit.retarget_timer = RETARGET_INTERVAL + STICKINESS_RETARGET_BONUS;
 		unit.current_target_score = current_score;
 		set_current_target(world, unit, *current_target_live, host);

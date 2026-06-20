@@ -12,9 +12,9 @@ Role-specific strategies use different weightings defined in UnitStrategy: tanks
 
 Ally targeting (for support abilities) scores on: distance, HP (lower HP prioritized), threat (under pressure), and role priority (supports prioritize other supports/carries).
 
-Target switching uses a margin threshold to prevent thrashing. Target stickiness bonus reduces switching frequency.
+Target switching uses `switch_margin` in `should_switch` to prevent thrashing. Routine stickiness keeps the current target when the best alternative is not sufficiently better: `improvement = current_score - best_raw` must exceed `clamp(STICKINESS_RATIO * |current_score|, STICKINESS_FLOOR, STICKINESS_CEILING)` (lower score = better). A stickiness keep also extends the retarget interval by `STICKINESS_RETARGET_BONUS`.
 
-**Reactive retarget** (`sim_targeting_reactive.cpp`): full enemy rescoring normally runs at most every `RETARGET_INTERVAL` (0.5s). Events set `retarget_timer = 0` on affected units so the next targeting pass rescans without waiting. Priority events also set `retarget_priority_eval` to bypass `TARGET_STICKINESS_THRESHOLD` once and clear `target_switch_lock_timer`.
+**Reactive retarget** (`sim_targeting_reactive.cpp`): full enemy rescoring normally runs at most every `RETARGET_INTERVAL` (0.5s). Events set `retarget_timer = 0` on affected units so the next targeting pass rescans without waiting. Priority events also set `retarget_priority_eval` to bypass stickiness once and clear `target_switch_lock_timer`.
 
 | Trigger | Affected units | Stickiness bypass |
 |---------|----------------|-------------------|

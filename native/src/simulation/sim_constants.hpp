@@ -17,7 +17,9 @@ static constexpr double OVERTIME_DAMAGE_BASE_RATE = 0.0001;
 // Increase rate currently unused.
 static constexpr double OVERTIME_DAMAGE_INCREASE_RATE = 0.0001;
 static constexpr double TARGET_SWITCH_LOCK_DURATION = 0.3;
-static constexpr double TARGET_STICKINESS_THRESHOLD = 5.0;
+static constexpr double STICKINESS_RATIO = 0.15;
+static constexpr double STICKINESS_FLOOR = 1.5;
+static constexpr double STICKINESS_CEILING = 7.0;
 static constexpr double STICKINESS_RETARGET_BONUS = 0.5;
 static constexpr double REGEN_TICK_INTERVAL = 1.0;
 static constexpr double CASTING_WINDUP = 0.5;

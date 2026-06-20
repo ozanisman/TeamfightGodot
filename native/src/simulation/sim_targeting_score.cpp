@@ -73,6 +73,8 @@ double score_enemy_target(
 		score += distance_score;
 		double in_range_bonus = in_range ? strategy.in_range_bonus : 0.0;
 		score -= in_range_bonus;
+		double hp_weighted = hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
+		score += hp_weighted;
 		double execute_bonus = 0.0;
 		if (strategy.execute_bonus_weight > 0.0 && in_range) {
 			if (attacker.is_assassin_role) {
@@ -110,6 +112,11 @@ double score_enemy_target(
 			threat_response = strategy.threat_response_weight * falloff;
 			score -= threat_response;
 		}
+		double perceived_threat_weighted = 0.0;
+		if (strategy.enemy_threat_weight > 0.0 && enemy.perceived_threat > 0.0) {
+			perceived_threat_weighted = enemy.perceived_threat * strategy.enemy_threat_weight * SCORE_THREAT_WEIGHT_SCALE * PREY_PERCEIVED_THREAT_SCALE;
+			score -= perceived_threat_weighted;
+		}
 		double support_peel = 0.0;
 		if (attacker.is_support_role) {
 			int64_t ally_target_id = attacker.current_ally_target_id;
@@ -127,10 +134,11 @@ double score_enemy_target(
 			breakdown->distance = dist;
 			breakdown->distance_weighted = distance_score;
 			breakdown->hp_ratio = hp_ratio;
-			breakdown->hp_weighted = hp_ratio * strategy.hp_weight * SCORE_HP_WEIGHT_SCALE;
+			breakdown->hp_weighted = hp_weighted;
 			breakdown->role_priority = role_prio;
 			breakdown->threat = enemy.perceived_threat;
-			breakdown->threat_weighted = threat_response;
+			breakdown->threat_response_weighted = threat_response;
+			breakdown->perceived_threat_weighted = perceived_threat_weighted;
 			breakdown->in_range_bonus = in_range_bonus;
 			breakdown->execute_bonus = execute_bonus;
 			breakdown->support_peel = support_peel;
@@ -139,6 +147,8 @@ double score_enemy_target(
 
 	{
 		ProfileAccScope _se_base2(profile_score, se_base_accum);
+		// TODO: spacing penalizes crowded targets (spread fire). Disabled via spacing_weight=0;
+		// reconsider invert (focus-fire bonus) or role-specific tuning.
 		double spacing_weight = strategy.spacing_weight;
 		double spacing_score = 0.0;
 		if (spacing_weight > 0.0) {
@@ -146,20 +156,8 @@ double score_enemy_target(
 			score += spacing_score;
 		}
 
-		double kiting_tempo_score = 0.0;
-		if (strategy.prefers_kiting && score_ctx.has_kite_bounds) {
-			double min_w = score_ctx.kite_min_w;
-			double max_w = score_ctx.kite_max_w;
-			if (dist >= min_w && dist <= max_w && max_w > min_w) {
-				double kite_ratio = (dist - min_w) / (max_w - min_w);
-				kiting_tempo_score = kite_ratio * SCORE_KITING_WEIGHT_SCALE;
-				score -= kiting_tempo_score;
-			}
-		}
-
 		if (breakdown) {
 			breakdown->spacing = spacing_score;
-			breakdown->kiting_tempo = kiting_tempo_score;
 		}
 	}
 

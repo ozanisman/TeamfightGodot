@@ -26,7 +26,7 @@ void TeamfightSimulationCore::_print_score_breakdown(const sim::ScoreBreakdown &
 	UtilityFunctions::print("  Distance: " + String::num_real(breakdown.distance) + " (weighted: " + String::num_real(breakdown.distance_weighted) + ")");
 	UtilityFunctions::print("  HP Ratio: " + String::num_real(breakdown.hp_ratio) + " (weighted: " + String::num_real(breakdown.hp_weighted) + ")");
 	UtilityFunctions::print("  Role Priority: " + String::num_real(breakdown.role_priority));
-	UtilityFunctions::print("  Threat: " + String::num_real(breakdown.threat) + " (weighted: " + String::num_real(breakdown.threat_weighted) + ")");
+	UtilityFunctions::print("  Threat: " + String::num_real(breakdown.threat) + " (response: " + String::num_real(breakdown.threat_response_weighted) + ", focus: " + String::num_real(breakdown.perceived_threat_weighted) + ")");
 	UtilityFunctions::print("  In-Range Bonus: " + String::num_real(breakdown.in_range_bonus));
 	UtilityFunctions::print("  Execute Bonus: " + String::num_real(breakdown.execute_bonus));
 	UtilityFunctions::print("  Support Peel: " + String::num_real(breakdown.support_peel));

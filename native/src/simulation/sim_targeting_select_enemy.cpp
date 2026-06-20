@@ -358,13 +358,6 @@ UnitState *select_enemy_target_coordinator(
 	TargetScoreContext score_ctx;
 	score_ctx.attack_range = attack_range(unit);
 	score_ctx.effective_range = effective_attack_range(unit);
-	if (strategy.prefers_kiting) {
-		score_ctx.has_kite_bounds = true;
-		score_ctx.kite_min_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MIN_FACTOR;
-		score_ctx.kite_max_w = score_ctx.effective_range * KITE_TARGET_WINDOW_MAX_FACTOR;
-	} else {
-		score_ctx.has_kite_bounds = false;
-	}
 
 	TargetingProfileCounters profile;
 	profile.active = state.profile_targeting_active;

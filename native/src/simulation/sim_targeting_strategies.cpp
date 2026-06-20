@@ -95,6 +95,7 @@ StrategyConfig get_tank_config() {
 	c.ally_threat_weight = 25.0;
 	c.in_range_bonus = 1.0;
 	c.threat_response_weight = 2.0;
+	c.enemy_threat_weight = 2.5;
 	c.execute_bonus_weight = 0.0;
 	c.spacing_weight = 0.0;
 	c.threat_decay_rate = 4.0;
@@ -116,6 +117,7 @@ StrategyConfig get_assassin_config() {
 	c.ally_threat_weight = 0.0;
 	c.in_range_bonus = 0.6;
 	c.threat_response_weight = 0.8;
+	c.enemy_threat_weight = 0.5;
 	c.execute_bonus_weight = 10.0;
 	c.spacing_weight = 0.0;
 	c.threat_decay_rate = 1.0;
@@ -137,6 +139,7 @@ StrategyConfig get_fighter_config() {
 	c.ally_threat_weight = 0.0;
 	c.in_range_bonus = 0.9;
 	c.threat_response_weight = 1.8;
+	c.enemy_threat_weight = 2.0;
 	c.execute_bonus_weight = 20.0;
 	c.spacing_weight = 0.0;
 	c.threat_decay_rate = 4.5;
@@ -158,8 +161,9 @@ StrategyConfig get_marksman_config() {
 	c.ally_threat_weight = 0.0;
 	c.in_range_bonus = 0.35;
 	c.threat_response_weight = 61.0;
+	c.enemy_threat_weight = 1.0;
 	c.execute_bonus_weight = 20.0;
-	c.spacing_weight = 2.5;
+	c.spacing_weight = 0.0; // TODO: revisit focus-fire vs spread (was 2.5)
 	c.threat_decay_rate = 1.0;
 	c.switch_margin = 2.0;
 	c.prefers_kiting = true;
@@ -179,8 +183,9 @@ StrategyConfig get_mage_config() {
 	c.ally_threat_weight = 0.0;
 	c.in_range_bonus = 0.45;
 	c.threat_response_weight = 61.1;
+	c.enemy_threat_weight = 1.5;
 	c.execute_bonus_weight = 20.0;
-	c.spacing_weight = 1.5;
+	c.spacing_weight = 0.0; // TODO: revisit focus-fire vs spread (was 1.5)
 	c.threat_decay_rate = 1.0;
 	c.switch_margin = 2.0;
 	c.prefers_kiting = true;
@@ -200,8 +205,9 @@ StrategyConfig get_support_config() {
 	c.ally_threat_weight = 25.0;
 	c.in_range_bonus = 0.4;
 	c.threat_response_weight = 1.7;
+	c.enemy_threat_weight = 0.25;
 	c.execute_bonus_weight = 0.0;
-	c.spacing_weight = 1.0;
+	c.spacing_weight = 0.0; // TODO: revisit focus-fire vs spread (was 1.0)
 	c.threat_decay_rate = 1.0;
 	c.switch_margin = 2.0;
 	c.prefers_kiting = true;
@@ -241,6 +247,7 @@ void apply_strategy_config(UnitStrategy &s, const StrategyConfig &config) {
 	s.ally_threat_weight = config.ally_threat_weight;
 	s.in_range_bonus = config.in_range_bonus;
 	s.threat_response_weight = config.threat_response_weight;
+	s.enemy_threat_weight = config.enemy_threat_weight;
 	s.execute_bonus_weight = config.execute_bonus_weight;
 	s.spacing_weight = config.spacing_weight;
 	s.threat_decay_rate = config.threat_decay_rate;
@@ -324,6 +331,7 @@ void build_role_strategy_cache(std::array<UnitStrategy, ROLE_SLOT_COUNT> &cache_
 	default_strategy.ally_threat_weight = 0.0;
 	default_strategy.in_range_bonus = 0.6;
 	default_strategy.threat_response_weight = 0.0;
+	default_strategy.enemy_threat_weight = 1.0;
 	default_strategy.execute_bonus_weight = 0.0;
 	default_strategy.threat_decay_rate = 2.0;
 	default_strategy.switch_margin = 0.75;

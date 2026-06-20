@@ -489,12 +489,12 @@ struct ScoreBreakdown {
 	double hp_weighted = 0.0;
 	double role_priority = 0.0;
 	double threat = 0.0;
-	double threat_weighted = 0.0;
+	double threat_response_weighted = 0.0;
+	double perceived_threat_weighted = 0.0;
 	double in_range_bonus = 0.0;
 	double execute_bonus = 0.0;
 	double support_peel = 0.0;
 	double spacing = 0.0;
-	double kiting_tempo = 0.0;
 	double total = 0.0;
 };
 
@@ -510,6 +510,7 @@ struct UnitStrategy {
 	double switch_margin = 2.0;
 	double in_range_bonus = 0.6;
 	double threat_response_weight = 0.0;
+	double enemy_threat_weight = 0.0;
 	double execute_bonus_weight = 0.0;
 	double spacing_weight = 0.0;
 	double threat_decay_rate = 2.0;
@@ -533,6 +534,7 @@ struct StrategyConfig {
 	// Behavior modifiers
 	double in_range_bonus;
 	double threat_response_weight;
+	double enemy_threat_weight;
 	double execute_bonus_weight;
 
 	// Positioning weights
@@ -592,9 +594,6 @@ struct TargetingFrameEntry {
 struct TargetScoreContext {
 	double attack_range = 0.0;
 	double effective_range = 0.0;
-	bool has_kite_bounds = false;
-	double kite_min_w = 0.0;
-	double kite_max_w = 0.0;
 };
 
 struct TraceEvent {

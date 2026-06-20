@@ -4,6 +4,7 @@
 #include "sim_constants.hpp"
 #include "sim_spatial.hpp"
 #include "sim_stats.hpp"
+#include "sim_targeting.hpp"
 
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -61,6 +62,7 @@ double apply_damage(
 		return 0.0;
 	}
 
+	const double hp_before = target.hp;
 	const double shield_before = target.shield;
 	const double absorbed = Math::min(shield_before, final_damage);
 	target.shield = Math::max(0.0, shield_before - absorbed);
@@ -71,8 +73,18 @@ double apply_damage(
 	target.hp = Math::max(0.0, target.hp - hp_loss);
 	
 	const double max_hp = target.stats_dirty ? get_effective_max_hp(target) : target.cached_max_hp;
-	if (max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD) {
+	const double hp_ratio_before = max_hp > 0.0 ? hp_before / max_hp : 0.0;
+	const double hp_ratio_after = max_hp > 0.0 ? target.hp / max_hp : 0.0;
+	const bool threat_burst = max_hp > 0.0 && hp_loss > max_hp * THREAT_BURST_THRESHOLD;
+	if (threat_burst) {
 		target.perceived_threat += (hp_loss / max_hp) * THREAT_BURST_MULTIPLIER;
+	}
+	if (source.instance_id != target.instance_id && target.alive) {
+		if (hp_ratio_before > TARGET_EXECUTE_HP_RATIO && hp_ratio_after <= TARGET_EXECUTE_HP_RATIO) {
+			targeting::request_retarget_eval_for_opposing_team(world, target, true);
+		} else if (threat_burst) {
+			targeting::request_retarget_eval_for_opposing_team(world, target, false);
+		}
 	}
 	if (host.sync_targeting_frame_unit != nullptr) {
 		host.sync_targeting_frame_unit(host.user_data, target);

@@ -412,6 +412,7 @@ struct UnitState {
 	int64_t target_index = -1;
 	int64_t current_ally_target_id = 0;
 	double retarget_timer = 0.0;
+	bool retarget_priority_eval = false;
 	double target_switch_lock_timer = 0.0;
 	double last_kite_timer = 0.0;
 	double current_target_score = 0.0;

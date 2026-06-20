@@ -86,6 +86,10 @@ bool should_switch(
 void adjust_target_pressure(SimWorld &world, int64_t old_target_id, int64_t new_target_id, const SimHostCallbacks *host = nullptr);
 void set_current_target(SimWorld &world, UnitState &unit, const UnitState &target, const SimHostCallbacks *host);
 
+void request_immediate_retarget_eval(UnitState &unit, bool bypass_stickiness = false);
+void request_retarget_eval_for_targeters(SimWorld &world, int64_t victim_id, bool bypass_stickiness = false, const SimHostCallbacks *host = nullptr);
+void request_retarget_eval_for_opposing_team(SimWorld &world, const UnitState &victim, bool bypass_stickiness = false);
+
 UnitState *select_enemy_target(
 		SimWorld &world,
 		UnitState &unit,

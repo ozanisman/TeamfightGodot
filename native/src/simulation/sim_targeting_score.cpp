@@ -233,6 +233,12 @@ void set_current_target(SimWorld &world, UnitState &unit, const UnitState &targe
 	unit.target_id = new_target_id;
 	unit.target_index = unit_index_by_id(world, new_target_id);
 	sync_frame_unit(world, unit, host);
+	if (target.team != unit.team) {
+		UnitState *acquired_target = unit_by_id(world, new_target_id);
+		if (acquired_target != nullptr) {
+			request_immediate_retarget_eval(*acquired_target, true);
+		}
+	}
 }
 
 } // namespace targeting

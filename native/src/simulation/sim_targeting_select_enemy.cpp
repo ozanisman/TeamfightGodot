@@ -15,6 +15,16 @@ using namespace internal;
 
 namespace {
 
+struct ClearRetargetPriorityAfterScan {
+	UnitState &unit;
+	explicit ClearRetargetPriorityAfterScan(UnitState &u) : unit(u) {}
+	~ClearRetargetPriorityAfterScan() {
+		unit.retarget_priority_eval = false;
+	}
+	ClearRetargetPriorityAfterScan(const ClearRetargetPriorityAfterScan &) = delete;
+	ClearRetargetPriorityAfterScan &operator=(const ClearRetargetPriorityAfterScan &) = delete;
+};
+
 UnitState *try_keep_current_enemy_target_early(
 		SimWorld &world,
 		UnitState &unit,
@@ -81,6 +91,7 @@ UnitState *select_enemy_target(
 		const ScoreEnemyProfileCounters *score_profile,
 		const TargetingDebugHooks *debug) {
 	const bool profile_active = profile != nullptr && profile->active;
+	const ClearRetargetPriorityAfterScan _clear_retarget_priority(unit);
 
 	int64_t forced_target_id = unit.forced_target_id;
 	if (forced_target_id != 0 && unit.forced_target_remaining > 0.0) {
@@ -324,7 +335,7 @@ UnitState *select_enemy_target(
 		}
 	}
 
-	if (current_target_live != nullptr && current_score <= best_raw + TARGET_STICKINESS_THRESHOLD) {
+	if (!unit.retarget_priority_eval && current_target_live != nullptr && current_score <= best_raw + TARGET_STICKINESS_THRESHOLD) {
 		unit.retarget_timer = RETARGET_INTERVAL + STICKINESS_RETARGET_BONUS;
 		unit.current_target_score = current_score;
 		set_current_target(world, unit, *current_target_live, host);

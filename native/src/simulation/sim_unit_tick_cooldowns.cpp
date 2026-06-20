@@ -3,6 +3,7 @@
 
 #include "sim_constants.hpp"
 #include "sim_stats_modifiers.hpp"
+#include "sim_targeting.hpp"
 
 #include "../stat_definitions.hpp"
 
@@ -141,6 +142,7 @@ void cooldowns_and_cc(
 		if (unit.taunt_remaining <= 0.0) {
 			unit.taunt_remaining = 0.0;
 			unit.taunt_target_id = 0;
+			targeting::request_immediate_retarget_eval(unit, true);
 		}
 	}
 	if (unit.forced_target_remaining > 0.0) {

@@ -311,6 +311,7 @@ BuiltUnit build_unit(
 	unit.target_index = -1;
 	unit.current_ally_target_id = 0;
 	unit.retarget_timer = 0.0;
+	unit.retarget_priority_eval = false;
 	unit.target_switch_lock_timer = 0.0;
 	unit.last_kite_timer = 0.0;
 	unit.current_target_score = 0.0;

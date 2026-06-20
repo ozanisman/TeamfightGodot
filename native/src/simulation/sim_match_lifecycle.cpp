@@ -168,6 +168,8 @@ void handle_death(
 	ur(world, target).deaths += 1;
 	sync_targeting_frame_index(host, target_index, target);
 
+	targeting::request_retarget_eval_for_targeters(world, target_id, true, &host);
+
 	periodic::clear_periodic_effects(world, target);
 
 	const std::unordered_map<int64_t, UnitStateRare::DamageSourceEntry> &damage_sources = ur(world, target).damage_sources;
@@ -323,6 +325,7 @@ void respawn_unit(
 	unit.forced_target_remaining = 0.0;
 	unit.last_kite_timer = 0.0;
 	unit.target_switch_lock_timer = 0.0;
+	unit.retarget_priority_eval = false;
 	unit.respawn_timer = 0.0;
 
 	stats_modifiers::clear_all_stat_modifiers(unit);

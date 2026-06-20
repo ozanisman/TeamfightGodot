@@ -13,3 +13,13 @@ Role-specific strategies use different weightings defined in UnitStrategy: tanks
 Ally targeting (for support abilities) scores on: distance, HP (lower HP prioritized), threat (under pressure), and role priority (supports prioritize other supports/carries).
 
 Target switching uses a margin threshold to prevent thrashing. Target stickiness bonus reduces switching frequency.
+
+**Reactive retarget** (`sim_targeting_reactive.cpp`): full enemy rescoring normally runs at most every `RETARGET_INTERVAL` (0.5s). Events set `retarget_timer = 0` on affected units so the next targeting pass rescans without waiting. Priority events also set `retarget_priority_eval` to bypass `TARGET_STICKINESS_THRESHOLD` once and clear `target_switch_lock_timer`.
+
+| Trigger | Affected units | Stickiness bypass |
+|---------|----------------|-------------------|
+| Current target dies | Units with `target_id` = victim (cleared) | yes |
+| Taunt expires | Taunted unit | yes |
+| Victim crosses into execute HP (≤ `TARGET_EXECUTE_HP_RATIO`) | Opposing team alive | yes |
+| Threat burst on victim (`THREAT_BURST_THRESHOLD`) | Opposing team alive | no |
+| Enemy acquires you as target (`set_current_target`) | Acquired unit | yes |

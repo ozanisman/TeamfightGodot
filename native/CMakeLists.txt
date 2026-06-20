@@ -65,6 +65,7 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_targeting.cpp
     src/simulation/sim_targeting_internal.cpp
     src/simulation/sim_targeting_score.cpp
+    src/simulation/sim_targeting_reactive.cpp
     src/simulation/sim_targeting_select_enemy.cpp
     src/simulation/sim_targeting_select_ally.cpp
     src/simulation/sim_targeting_select_effect.cpp

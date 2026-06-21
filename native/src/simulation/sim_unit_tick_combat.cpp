@@ -105,7 +105,7 @@ bool combat_actions(
 		if (in_contact_enemy) {
 			if (unit.attack_cooldown <= 0.0) {
 				if (!uc(world, unit).is_channeling) {
-					if (unit.combat.attack_speed > 0.0 && !internal::support_outside_ally_standoff(world, unit)) {
+					if (unit.combat.attack_speed > 0.0 && (taunted || !internal::support_outside_ally_standoff(world, unit))) {
 						SimProfileAccScope _uc_aa(profile_sim, profile.uc_auto_attack);
 						combat::perform_auto_attack(world, host, combat_hooks, unit, target, distance, projectiles);
 						return true;

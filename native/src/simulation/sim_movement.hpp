@@ -29,6 +29,13 @@ Vector2 find_valid_dash_position(
 
 void move_toward_target(SimWorld &world, UnitState &unit, const UnitState &target);
 void move_toward_target_with_range(SimWorld &world, UnitState &unit, const UnitState &target, double target_range);
+void move_toward_target_with_ally_leash(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitState &enemy,
+		double enemy_stop_range,
+		const UnitState &ally,
+		double max_ally_dist);
 bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit, const KiteProfileCounters *profile = nullptr);
 
 } // namespace movement

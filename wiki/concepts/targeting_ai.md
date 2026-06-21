@@ -12,7 +12,7 @@ Role-specific strategies use different weightings defined in UnitStrategy: tanks
 
 Ally targeting (for support abilities) scores on: distance, HP (lower HP prioritized), threat (under pressure), and role priority (supports prioritize carries). `select_ally_target` sets `current_ally_target_id` each tick.
 
-**Support positioning:** supports still select an enemy target for autos and peel scoring. Movement uses three modes (`sim_unit_tick.cpp`): (1) outside `attack_range * SUPPORT_ALLY_STANDOFF_RATIO` from the role-prioritized ally anchor → close toward ally; (2) inside that band but the current enemy is still out of attack range → advance toward the enemy like the rest of the team (round-start travel); (3) otherwise hold in the standoff band. Outside ally standoff, supports skip auto-attacks and defer kiting until repositioned.
+**Support positioning:** supports still select an enemy target for autos and peel scoring. Movement uses three modes (`sim_unit_tick.cpp`, `resolve_support_move_intent`): (1) outside `attack_range * SUPPORT_ALLY_STANDOFF_RATIO` from the role-prioritized ally anchor → close toward ally; (2) inside that band but the current enemy is still out of attack range → **ally-leashed advance** toward the enemy (`move_toward_target_with_ally_leash` caps each step so distance to anchor never exceeds the standoff); (3) otherwise hold in the standoff band. Outside ally standoff, supports skip auto-attacks and defer kiting while repositioning (catch-up or leashed advance).
 
 **Cast range (`EffectCastRangeSpec`):** compiled at unit build from ability/ultimate effect trees (`compile_cast_range_spec` in `sim_combat_internal.cpp`). Stored on `UnitState` as `ability_cast_range_spec` / `ultimate_cast_range_spec`. `is_in_cast_range` gates casts in `sim_unit_tick_combat.cpp`; `snapshot_ally_cast_target_id` sets `casting_ally_target_id` at cast start (`sim_combat_actions.cpp`).
 
@@ -33,5 +33,5 @@ Target switching uses `switch_margin` in `should_switch` to prevent thrashing. R
 | Current target dies | Units with `target_id` = victim (cleared) | yes |
 | Taunt expires | Taunted unit | yes |
 | Victim crosses into execute HP (≤ `TARGET_EXECUTE_HP_RATIO`) | Opposing team alive | yes |
-| Threat burst on victim (`THREAT_BURST_THRESHOLD`) | Opposing team alive | no |
+| Threat burst on victim (`THREAT_BURST_THRESHOLD`) | Opposing team alive | yes |
 | Enemy acquires you as target (`set_current_target`) | Acquired unit | yes |

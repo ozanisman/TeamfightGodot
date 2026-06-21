@@ -110,7 +110,7 @@ StrategyConfig get_assassin_config() {
 	StrategyConfig c;
 	c.display_name = "Diver";
 	c.role_name = "assassin";
-	c.distance_weight = 0.01;
+	c.distance_weight = 1.0;
 	c.hp_weight = 2.0;
 	c.ally_distance_weight = 1.0;
 	c.ally_hp_weight = 0.0;

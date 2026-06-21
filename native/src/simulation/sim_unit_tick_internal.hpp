@@ -30,7 +30,25 @@ const StringName &sn_passive();
 void sync_targeting_frame_unit(SimHostCallbacks &host, const UnitState &unit);
 void execute_effect(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context);
 bool support_outside_ally_standoff(const SimWorld &world, const UnitState &unit);
-bool support_should_advance_on_enemy(const UnitState &unit, const UnitState &enemy);
+
+enum class SupportMoveKind {
+	TowardAlly,
+	LeashedAdvance,
+	Hold,
+};
+
+struct SupportMoveIntent {
+	SupportMoveKind kind = SupportMoveKind::Hold;
+	const UnitState *ally = nullptr;
+	const UnitState *enemy = nullptr;
+	double standoff_range = -1.0;
+	bool repositioning = false;
+};
+
+SupportMoveIntent resolve_support_move_intent(
+		const UnitState &unit,
+		const UnitState &ally,
+		const UnitState &enemy);
 
 } // namespace internal
 } // namespace unit_tick

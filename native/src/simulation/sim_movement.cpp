@@ -150,6 +150,63 @@ void move_toward_target_with_range(SimWorld &world, UnitState &unit, const UnitS
 		on_unit_position_changed(world, unit);
 }
 
+void move_toward_target_with_ally_leash(
+		SimWorld &world,
+		UnitState &unit,
+		const UnitState &enemy,
+		double enemy_stop_range,
+		const UnitState &ally,
+		double max_ally_dist) {
+	double speed = (unit.stats_dirty ? get_effective_move_speed(unit) : unit.cached_move_speed) * movement_speed_multiplier(world, unit) * world.tick_rate;
+	if (unit.last_kite_timer > 0.0) {
+		speed *= KITE_SPEED_MODIFIER;
+	}
+	if (speed <= 0.0) {
+		return;
+	}
+	const double dx = enemy.pos_x - unit.pos_x;
+	const double dy = enemy.pos_y - unit.pos_y;
+	const double distance = distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
+	if (distance <= EPSILON) {
+		return;
+	}
+	const double desired_step = Math::max(0.0, distance - enemy_stop_range);
+	const double max_step = Math::min(speed, desired_step);
+	if (max_step <= 0.0) {
+		return;
+	}
+	const double nx = dx / distance;
+	const double ny = dy / distance;
+	const double ally_x = ally.pos_x;
+	const double ally_y = ally.pos_y;
+	const double leash_limit = max_ally_dist;
+	auto ally_dist_after_step = [&](double step) {
+		const double cx = unit.pos_x + nx * step;
+		const double cy = unit.pos_y + ny * step;
+		return distance_between_coords(cx, cy, ally_x, ally_y);
+	};
+	double step = max_step;
+	if (ally_dist_after_step(step) > leash_limit) {
+		double lo = 0.0;
+		double hi = max_step;
+		while (hi - lo > EPSILON) {
+			const double mid = (lo + hi) * 0.5;
+			if (ally_dist_after_step(mid) <= leash_limit) {
+				lo = mid;
+			} else {
+				hi = mid;
+			}
+		}
+		step = lo;
+	}
+	if (step <= EPSILON) {
+		return;
+	}
+	unit.pos_x = Math::clamp(unit.pos_x + nx * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	unit.pos_y = Math::clamp(unit.pos_y + ny * step, WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX);
+	on_unit_position_changed(world, unit);
+}
+
 bool kite_from_enemies(SimWorld &world, SimHostCallbacks &host, UnitState &unit, const KiteProfileCounters *profile) {
 	const StringName &enemy_team = unit.team == sn_player() ? sn_enemy() : sn_player();
 	const std::vector<int64_t> &enemy_indices = alive_indices_for_team(world, enemy_team);

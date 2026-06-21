@@ -85,7 +85,8 @@ bool movement(
 		const UnitStrategy &strategy,
 		SimHostCallbacks &host,
 		UnitTickProfileCounters &profile,
-		double standoff_range) {
+		double standoff_range,
+		const internal::SupportMoveIntent *support_intent) {
 	const bool profile_sim = profile.profile_sim;
 
 	bool should_return = false;
@@ -95,13 +96,8 @@ bool movement(
 	} else {
 		if (!should_return) {
 			SimProfileAccScope _um_tow(profile_sim, profile.um_toward);
-			const double distance = distance_between(unit, target);
-			const double toward_range = standoff_range >= 0.0
-					? standoff_range
-					: targeting::attack_range(unit);
-
-			const bool closing_to_ally = standoff_range >= 0.0 && distance > toward_range;
-			if (strategy.prefers_kiting && !closing_to_ally && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
+			const bool support_repositioning = support_intent != nullptr && support_intent->repositioning;
+			if (strategy.prefers_kiting && !support_repositioning && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
 				SimProfileAccScope _um_kit(profile_sim, profile.um_kiting);
 				movement::KiteProfileCounters kite_profile{};
 				if (profile_sim) {
@@ -113,8 +109,45 @@ bool movement(
 					should_return = true;
 				}
 			}
-			if (!should_return && distance > toward_range) {
-				movement::move_toward_target_with_range(world, unit, target, toward_range);
+			if (!should_return && support_intent != nullptr && unit.taunt_remaining <= 0.0) {
+				switch (support_intent->kind) {
+					case internal::SupportMoveKind::TowardAlly: {
+						if (support_intent->ally == nullptr) {
+							break;
+						}
+						const double distance = distance_between(unit, *support_intent->ally);
+						const double toward_range = support_intent->standoff_range;
+						if (distance > toward_range) {
+							movement::move_toward_target_with_range(world, unit, *support_intent->ally, toward_range);
+						}
+						break;
+					}
+					case internal::SupportMoveKind::LeashedAdvance: {
+						if (support_intent->ally == nullptr || support_intent->enemy == nullptr) {
+							break;
+						}
+						const double attack_range = targeting::attack_range(unit);
+						const double max_ally_dist = attack_range * SUPPORT_ALLY_STANDOFF_RATIO;
+						movement::move_toward_target_with_ally_leash(
+								world,
+								unit,
+								*support_intent->enemy,
+								support_intent->standoff_range,
+								*support_intent->ally,
+								max_ally_dist);
+						break;
+					}
+					case internal::SupportMoveKind::Hold:
+						break;
+				}
+			} else if (!should_return) {
+				const double distance = distance_between(unit, target);
+				const double toward_range = standoff_range >= 0.0
+						? standoff_range
+						: targeting::attack_range(unit);
+				if (distance > toward_range) {
+					movement::move_toward_target_with_range(world, unit, target, toward_range);
+				}
 			}
 		}
 	}

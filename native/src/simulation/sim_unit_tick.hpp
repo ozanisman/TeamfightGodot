@@ -11,6 +11,10 @@
 namespace sim {
 namespace unit_tick {
 
+namespace internal {
+struct SupportMoveIntent;
+}
+
 struct UnitTickProfileCounters {
 	bool profile_sim = false;
 
@@ -134,7 +138,8 @@ bool movement(
 		const UnitStrategy &strategy,
 		SimHostCallbacks &host,
 		UnitTickProfileCounters &profile,
-		double standoff_range = -1.0);
+		double standoff_range = -1.0,
+		const internal::SupportMoveIntent *support_intent = nullptr);
 
 void update_unit(
 		SimWorld &world,

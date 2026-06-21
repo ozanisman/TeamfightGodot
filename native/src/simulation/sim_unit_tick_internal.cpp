@@ -72,11 +72,31 @@ bool support_outside_ally_standoff(const SimWorld &world, const UnitState &unit)
 	return distance_between(unit, *ally) > standoff;
 }
 
-bool support_should_advance_on_enemy(const UnitState &unit, const UnitState &enemy) {
-	if (!unit.is_support_role) {
-		return false;
+SupportMoveIntent resolve_support_move_intent(
+		const UnitState &unit,
+		const UnitState &ally,
+		const UnitState &enemy) {
+	SupportMoveIntent intent;
+	intent.ally = &ally;
+	intent.enemy = &enemy;
+	const double attack_range = targeting::attack_range(unit);
+	const double ally_standoff = attack_range * SUPPORT_ALLY_STANDOFF_RATIO;
+	if (distance_between(unit, ally) > ally_standoff) {
+		intent.kind = SupportMoveKind::TowardAlly;
+		intent.standoff_range = ally_standoff;
+		intent.repositioning = true;
+		return intent;
 	}
-	return distance_between(unit, enemy) > targeting::attack_range(unit);
+	if (distance_between(unit, enemy) > attack_range) {
+		intent.kind = SupportMoveKind::LeashedAdvance;
+		intent.standoff_range = attack_range;
+		intent.repositioning = true;
+		return intent;
+	}
+	intent.kind = SupportMoveKind::Hold;
+	intent.standoff_range = ally_standoff;
+	intent.repositioning = false;
+	return intent;
 }
 
 } // namespace internal

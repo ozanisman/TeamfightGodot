@@ -32,7 +32,7 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_TAUNT: {
 			Dictionary taunt_result;
 			taunt_result["success"] = true;
-			sim::periodic::apply_aoe_taunt_shape(world, source, target, effect, effect.scalar1);
+			sim::periodic::apply_aoe_taunt_shape(world, source, target, effect, effect.scalar1, &host);
 			taunt_result["taunt_applied"] = true;
 			taunt_result["radius"] = effect.scalar0;
 			taunt_result["duration"] = effect.scalar1;
@@ -110,25 +110,25 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_SLOW: {
 			Dictionary aoe_slow_result;
 			aoe_slow_result["success"] = true;
-			sim::status::apply_aoe_slow_shape(world, source, target, effect, effect.scalar1, effect.scalar2);
+			sim::status::apply_aoe_slow_shape(world, source, target, effect, effect.scalar1, effect.scalar2, &host);
 			return aoe_slow_result;
 		}
 		case EFFECT_OPCODE_AOE_ROOT: {
 			Dictionary aoe_root_result;
 			aoe_root_result["success"] = true;
-			sim::status::apply_aoe_root_shape(world, source, target, effect, effect.scalar1);
+			sim::status::apply_aoe_root_shape(world, source, target, effect, effect.scalar1, &host);
 			return aoe_root_result;
 		}
 		case EFFECT_OPCODE_AOE_SILENCE: {
 			Dictionary aoe_silence_result;
 			aoe_silence_result["success"] = true;
-			sim::status::apply_aoe_silence_shape(world, source, target, effect, effect.scalar1, effect.int0 != 0, effect.int1 != 0);
+			sim::status::apply_aoe_silence_shape(world, source, target, effect, effect.scalar1, effect.int0 != 0, effect.int1 != 0, &host);
 			return aoe_silence_result;
 		}
 		case EFFECT_OPCODE_AOE_DISARM: {
 			Dictionary aoe_disarm_result;
 			aoe_disarm_result["success"] = true;
-			sim::status::apply_aoe_disarm_shape(world, source, target, effect, effect.scalar1);
+			sim::status::apply_aoe_disarm_shape(world, source, target, effect, effect.scalar1, &host);
 			return aoe_disarm_result;
 		}
 		case EFFECT_OPCODE_AOE_KNOCKBACK: {
@@ -146,7 +146,7 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_STUN: {
 			Dictionary aoe_stun_result;
 			aoe_stun_result["success"] = true;
-			sim::status::apply_aoe_stun_shape(world, source, target, effect, effect.scalar1);
+			sim::status::apply_aoe_stun_shape(world, source, target, effect, effect.scalar1, &host);
 			return aoe_stun_result;
 		}
 	}

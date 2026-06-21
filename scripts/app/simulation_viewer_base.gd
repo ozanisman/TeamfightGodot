@@ -1985,7 +1985,7 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 		print("===========================================\n")
 	
 	_ai_draft_processing = true
-	var delay: float = randf_range(1.5, 3.0)
+	var delay: float = randf_range(1.5, 2.5)
 	if _debug_mode:
 		print("AI thinking... (delay: %.2fs)" % delay)
 	if not skip_delay and not _draft_shell.is_ai_delay_disabled():

@@ -1,5 +1,9 @@
 #include "sim_unit_tick_internal.hpp"
 
+#include "sim_constants.hpp"
+#include "sim_stats.hpp"
+#include "sim_targeting.hpp"
+
 #include <chrono>
 
 namespace sim {
@@ -54,6 +58,25 @@ void execute_effect(SimHostCallbacks &host, const EffectRecord &effect, EffectCo
 	if (host.execute_effect != nullptr) {
 		host.execute_effect(host, effect, context);
 	}
+}
+
+bool support_outside_ally_standoff(const SimWorld &world, const UnitState &unit) {
+	if (!unit.is_support_role || unit.current_ally_target_id == 0) {
+		return false;
+	}
+	const UnitState *ally = targeting::unit_by_id(world, unit.current_ally_target_id);
+	if (ally == nullptr || !ally->alive) {
+		return false;
+	}
+	const double standoff = targeting::attack_range(unit) * SUPPORT_ALLY_STANDOFF_RATIO;
+	return distance_between(unit, *ally) > standoff;
+}
+
+bool support_should_advance_on_enemy(const UnitState &unit, const UnitState &enemy) {
+	if (!unit.is_support_role) {
+		return false;
+	}
+	return distance_between(unit, enemy) > targeting::attack_range(unit);
 }
 
 } // namespace internal

@@ -35,6 +35,9 @@ UnitState *select_ally_target(SimWorld &world, UnitState &unit, const UnitStrate
 	std::vector<int64_t> critical_allies;
 	for (int64_t ally_index : ally_indices) {
 		const TargetingFrameEntry &candidate = world.targeting_frame[static_cast<size_t>(ally_index)];
+		if (candidate.instance_id == unit.instance_id) {
+			continue;
+		}
 		double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);
 		if (hp_ratio <= ALLY_CRITICAL_HP_RATIO) {
 			critical_allies.push_back(ally_index);
@@ -47,6 +50,9 @@ UnitState *select_ally_target(SimWorld &world, UnitState &unit, const UnitStrate
 	double best_hp_ratio = std::numeric_limits<double>::infinity();
 	for (int64_t ally_index : pool) {
 		const TargetingFrameEntry &candidate = world.targeting_frame[static_cast<size_t>(ally_index)];
+		if (candidate.instance_id == unit.instance_id) {
+			continue;
+		}
 		double dist = distance_between_coords(unit.pos_x, unit.pos_y, candidate.pos_x, candidate.pos_y);
 		double score = score_ally_target(unit, candidate, strategy, dist);
 		double hp_ratio = candidate.hp / Math::max(0.0001, candidate.max_hp);

@@ -104,6 +104,37 @@ struct EffectRecord {
 	std::vector<EffectRecord> sub_effects; // Sub-effects to apply to each target
 };
 
+struct EffectCastRangeSpec {
+	bool needs_enemy = false;
+	bool needs_single_ally = false;
+	bool skips_proximity = false;
+	/// For enemy-gated effects that use a different distance than the normal ability range.
+	/// AOE self/point anchors store the shape radius here so the enemy must be within that radius.
+	/// Negative means "use normal ability range".
+	double enemy_range = -1.0;
+
+	void merge(const EffectCastRangeSpec &other) {
+		needs_enemy |= other.needs_enemy;
+		needs_single_ally |= other.needs_single_ally;
+		// skips_proximity only applies when the merged effect has no target gate.
+		// If any component requires an enemy or ally, the combined effect must
+		// respect that gate, so the skip flag is cleared.
+		if (needs_enemy || needs_single_ally) {
+			skips_proximity = false;
+		} else {
+			skips_proximity |= other.skips_proximity;
+		}
+		// enemy_range is the maximum distance an enemy can be for all enemy-gated
+		// components to reach it. Use the minimum of the specific ranges; a negative
+		// value means "use the normal ability range".
+		if (enemy_range < 0.0) {
+			enemy_range = other.enemy_range;
+		} else if (other.enemy_range >= 0.0) {
+			enemy_range = Math::min(enemy_range, other.enemy_range);
+		}
+	}
+};
+
 struct EffectContext {
 	UnitState *source = nullptr;
 	UnitState *target = nullptr;
@@ -395,6 +426,8 @@ struct UnitState {
 	bool has_ultimate_effect = false;
 	bool ability_requires_target_in_range = true;
 	bool ultimate_requires_target_in_range = true;
+	EffectCastRangeSpec ability_cast_range_spec;
+	EffectCastRangeSpec ultimate_cast_range_spec;
 	double pos_x = 0.0;
 	double pos_y = 0.0;
 	double hp = 0.0;

@@ -21,6 +21,7 @@
 | Types / opcodes | `native/src/simulation/simulation_types.hpp` |
 | Stat getters (X-macro) | `native/src/simulation/sim_stats.inl.hpp` (include via `sim_stats.hpp`) |
 | Effect kind strings | `native/src/simulation/sim_effect_kinds.inl.hpp` |
+| Draft AI (off hot path) | `sim_draft_ai_*` (pick/ban), `sim_draft_recommender.*` (winner prediction); see [native_draft_ai.md](native_draft_ai.md) |
 | Build list | `native/CMakeLists.txt` → `TEAMFIGHT_SIMULATION_SOURCES` |
 
 ## Task → where to edit
@@ -42,6 +43,8 @@
 | CC / heal / shield status | `sim_status_*.cpp` |
 | Godot bindings / class API | `teamfight_simulation_core.cpp` |
 | Batch benchmark | `sim_match_benchmark*.cpp`, `sim_match_benchmark_host.hpp` |
+| Draft pick/ban recommend | `sim_draft_ai_{recommender,evaluator,stats_database}.cpp`, `sim_draft_ai_types.hpp` |
+| Draft winner prediction / analysis | `sim_draft_recommender.cpp` |
 | `sim_host_*` trampoline | `sim_coordinator_host.cpp` |
 
 ## Invariants (do not break)

@@ -55,6 +55,23 @@ Coordinator `.cpp` files include `teamfight_simulation_core.hpp` directly (no em
 | `sim_profile` / `sim_profile_counters.hpp` | `TEAMFIGHT_SIM_PROFILE`, `unit_tick_profile()` |
 | `sim_match_benchmark` (+ `_stats`, `_stats_internal`, `_host`) | Batch sim-only, stats partial, `GeneratedMatchHost` |
 
+## Draft AI (native)
+
+Two cooperating namespaces under `native/src/simulation/` provide draft pick/ban recommendation and winner prediction. **Off the match hot path.** Deep design + phase history: [native_draft_ai.md](native_draft_ai.md).
+
+| Module | Namespace | Responsibility |
+|--------|-----------|----------------|
+| `sim_draft_ai_types.hpp` | `sim::draft_ai` | `DraftStrategy` enum, `DraftStatValue`, pick/ban score-breakdown structs |
+| `sim_draft_ai_stats_database` | `sim::draft_ai` | Loads CSV stats (base/synergy/counter winrates, role combinations) from a stats dir; Bayesian smoothing |
+| `sim_draft_ai_evaluator` | `sim::draft_ai` | Per-candidate pick/ban scoring (weighted signals) |
+| `sim_draft_ai_recommender` | `sim::draft_ai` | **Production** pick/ban recommender (`recommend_picks` / `recommend_bans`); strategy dispatch + lookahead diagnostic |
+| `sim_draft_recommender` | `sim::draft` | Winner prediction + analysis tools (stress test, signal influence); **not** used for pick/ban routing |
+
+- **Strategies** (`DraftStrategy`, `sim_draft_ai_types.hpp:12-17`): `NATIVE_FULL` (default/production); `NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN` (quarantined experimental, side-bias - see note).
+- **Scoring modes** (`sim::draft::ScoringMode`, `sim_draft_recommender.hpp:17-23`): `CERTIFIED_PAIRWISE_PROBABILITY`, `DRAFT_AWARE_PAIRWISE_PROBABILITY`. Legacy additive/multiplicative modes are removed; `score_from_signals` is dead for production (`sim_draft_recommender.cpp:200-238`).
+- **Bound API** (`teamfight_simulation_core.cpp`): pick/ban routing -> `get_draft_ai_pick_recommendations`, `get_draft_ai_ban_recommendations` (`sim::draft_ai`). Winner prediction / analysis -> `predict_draft_winner`, `get_draft_recommendation*`, `analyze_draft_signal_influence`, `run_controlled_draft_evaluation`, `run_stress_test*`, `debug_*draft*` (`sim::draft`).
+- **Stats input:** CSV dir, default `res://model_stats/stats_output_100k/` (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`, `role_combinations.csv`).
+
 ## Removed / non-build artifacts (do not reintroduce)
 
 - Stub TUs: `sim_damage.cpp`, `sim_status.cpp`, `sim_viewer.cpp` (logic lives in split modules above).

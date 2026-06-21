@@ -297,7 +297,7 @@
 				"flat_amount": 20.0,
 				"reason": "Holy Mending"
 			},
-			"requires_target_in_range": false
+			"requires_target_in_range": true
 		},
 		"ability_desc": "Heals an ally for 20 HP.",
 		"ability_name": "Heal",
@@ -349,7 +349,7 @@
 				"target_count": -1,
 				"team_filter": "ally"
 			},
-			"requires_target_in_range": true
+			"requires_target_in_range": false
 		},
 		"ultimate_desc": "Heals all allies for 25% missing HP.",
 		"ultimate_name": "Mass Restoration",

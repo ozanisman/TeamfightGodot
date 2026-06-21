@@ -8,4 +8,6 @@ Separation: units push away from nearby allies to prevent clustering. Kiting: ra
 
 Movement modes: chase (move toward target), kite (retreat from danger), separation (avoid allies). Root prevents all movement. Dash effects instant-reposition units to target location with collision validation.
 
+**Support ally anchor:** supports chase `current_ally_target_id` (not their enemy target) up to a standoff of `attack_range * SUPPORT_ALLY_STANDOFF_RATIO` (0.85). Other roles chase enemy targets to attack range as before. Kiting runs before chase for any unit with `prefers_kiting`.
+
 World boundaries clamp positions to [WORLD_BOUNDARY_MIN, WORLD_BOUNDARY_MAX] with recovery velocity for out-of-bounds units.

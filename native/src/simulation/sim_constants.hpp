@@ -47,6 +47,7 @@ static constexpr double SLOW_MOVEMENT_MULTIPLIER_MIN = 0.05;
 static constexpr double DRAFT_X_BASE = 0.9;
 // Positions are stored as IEEE 754 double for deterministic arithmetic.
 static constexpr double ALLY_CRITICAL_HP_RATIO = 0.35;
+static constexpr double SUPPORT_ALLY_STANDOFF_RATIO = 0.85;
 static constexpr double REACTIVE_PEEL_BONUS = 25.0;
 static constexpr double ROLE_PRIORITY_GLOBAL_SCALE = 1.0;
 static constexpr double SCORE_HP_WEIGHT_SCALE = 10.0;

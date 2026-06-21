@@ -2,6 +2,7 @@
 #include "sim_unit_tick_internal.hpp"
 
 #include "sim_combat.hpp"
+#include "sim_combat_internal.hpp"
 #include "sim_targeting.hpp"
 
 #include <godot_cpp/core/math.hpp>
@@ -77,11 +78,15 @@ bool combat_actions(
 		const double dy = target.pos_y - unit.pos_y;
 		const double dist_sq = dx * dx + dy * dy;
 		const double range_sq = effective_range * effective_range;
-		const bool in_contact = (dist_sq <= range_sq);
+		const bool in_contact_enemy = (dist_sq <= range_sq);
 
-		const bool can_cast_ultimate = in_contact || !unit.ultimate_requires_target_in_range;
-		const bool can_cast_ability = in_contact || !unit.ability_requires_target_in_range;
-		const bool needs_distance = can_cast_ultimate || can_cast_ability || in_contact;
+		const bool can_cast_ultimate = !unit.ultimate_requires_target_in_range
+				|| combat::internal::is_in_cast_range(
+						world, unit, unit.ultimate_cast_range_spec, &target, unit.current_ally_target_id, effective_range);
+		const bool can_cast_ability = !unit.ability_requires_target_in_range
+				|| combat::internal::is_in_cast_range(
+						world, unit, unit.ability_cast_range_spec, &target, unit.current_ally_target_id, effective_range);
+		const bool needs_distance = can_cast_ultimate || can_cast_ability || in_contact_enemy;
 		const double distance = needs_distance ? Math::sqrt(dist_sq) : 0.0;
 
 		const bool taunted = unit.taunt_remaining > 0.0;
@@ -97,10 +102,10 @@ bool combat_actions(
 				return true;
 			}
 		}
-		if (in_contact) {
+		if (in_contact_enemy) {
 			if (unit.attack_cooldown <= 0.0) {
 				if (!uc(world, unit).is_channeling) {
-					if (unit.combat.attack_speed > 0.0) {
+					if (unit.combat.attack_speed > 0.0 && !internal::support_outside_ally_standoff(world, unit)) {
 						SimProfileAccScope _uc_aa(profile_sim, profile.uc_auto_attack);
 						combat::perform_auto_attack(world, host, combat_hooks, unit, target, distance, projectiles);
 						return true;

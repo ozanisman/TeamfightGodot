@@ -1,6 +1,9 @@
 #include "sim_unit_tick.hpp"
 #include "sim_unit_tick_internal.hpp"
 
+#include "sim_constants.hpp"
+#include "sim_targeting.hpp"
+
 #include <godot_cpp/core/math.hpp>
 
 namespace sim {
@@ -56,10 +59,25 @@ void update_unit(
 	if (targets.stop || targets.target == nullptr) {
 		return;
 	}
+	UnitState *move_target = targets.target;
+	double standoff = -1.0;
+	if (unit.is_support_role && targets.target_ally != nullptr) {
+		const double attack_range = targeting::attack_range(unit);
+		if (internal::support_outside_ally_standoff(world, unit)) {
+			move_target = targets.target_ally;
+			standoff = attack_range * SUPPORT_ALLY_STANDOFF_RATIO;
+		} else if (internal::support_should_advance_on_enemy(unit, *targets.target)) {
+			move_target = targets.target;
+			standoff = attack_range;
+		} else {
+			move_target = targets.target_ally;
+			standoff = attack_range * SUPPORT_ALLY_STANDOFF_RATIO;
+		}
+	}
 	if (combat_actions(world, unit, *targets.target, host, combat_hooks, projectiles, profile)) {
 		return;
 	}
-	if (movement(world, unit, *targets.target, strategy, host, profile)) {
+	if (movement(world, unit, *move_target, strategy, host, profile, standoff)) {
 		return;
 	}
 }

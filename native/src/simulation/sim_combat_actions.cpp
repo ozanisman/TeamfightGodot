@@ -86,10 +86,6 @@ bool start_cast(
 	if (!has_effect) {
 		return false;
 	}
-	UnitState *target_ally = nullptr;
-	if (hooks.select_ally_target != nullptr) {
-		target_ally = hooks.select_ally_target(hooks.user_data, unit);
-	}
 	if (action_kind == sn_ability()) {
 		ur(world, unit).abilities += 1;
 	} else {
@@ -105,7 +101,8 @@ bool start_cast(
 	unit.casting_remaining = windup;
 	unit.has_casting_effect = true;
 	unit.casting_target_id = unit.target_id != 0 ? unit.target_id : target.instance_id;
-	unit.casting_ally_target_id = unit.current_ally_target_id != 0 ? unit.current_ally_target_id : (target_ally == nullptr ? 0 : target_ally->instance_id);
+	const EffectCastRangeSpec &cast_range_spec = action_kind == sn_ability() ? unit.ability_cast_range_spec : unit.ultimate_cast_range_spec;
+	unit.casting_ally_target_id = snapshot_ally_cast_target_id(unit.current_ally_target_id, cast_range_spec);
 	emit_trace(host, sn_cast_start(), unit.instance_id, target.instance_id, action_kind == sn_ultimate() ? 1.0 : 0.0);
 	return true;
 }

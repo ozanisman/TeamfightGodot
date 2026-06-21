@@ -1,5 +1,6 @@
 #include "sim_unit_builder.hpp"
 
+#include "sim_combat_internal.hpp"
 #include "sim_constants.hpp"
 #include "sim_stats.hpp"
 #include "sim_targeting.hpp"
@@ -285,9 +286,15 @@ BuiltUnit build_unit(
 	unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
 	if (unit.has_ability_effect) {
 		cold.ability_effect = compile_effect(host, Dictionary(ability_effect));
+		unit.ability_cast_range_spec = combat::internal::compile_cast_range_spec(cold.ability_effect);
+	} else {
+		unit.ability_cast_range_spec = EffectCastRangeSpec{};
 	}
 	if (unit.has_ultimate_effect) {
 		cold.ultimate_effect = compile_effect(host, Dictionary(ultimate_effect));
+		unit.ultimate_cast_range_spec = combat::internal::compile_cast_range_spec(cold.ultimate_effect);
+	} else {
+		unit.ultimate_cast_range_spec = EffectCastRangeSpec{};
 	}
 
 	cold.spawn_pos_x = x;

@@ -84,7 +84,8 @@ bool movement(
 		UnitState &target,
 		const UnitStrategy &strategy,
 		SimHostCallbacks &host,
-		UnitTickProfileCounters &profile) {
+		UnitTickProfileCounters &profile,
+		double standoff_range) {
 	const bool profile_sim = profile.profile_sim;
 
 	bool should_return = false;
@@ -92,25 +93,28 @@ bool movement(
 	if (unit.root_remaining > 0.0) {
 		should_return = true;
 	} else {
-		if (strategy.prefers_kiting && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
-			SimProfileAccScope _um_kit(profile_sim, profile.um_kiting);
-			movement::KiteProfileCounters kite_profile{};
-			if (profile_sim) {
-				kite_profile.active = true;
-				kite_profile.kiting_spatial = profile.um_kiting_spatial;
-				kite_profile.kiting_brute = profile.um_kiting_brute;
-			}
-			if (movement::kite_from_enemies(world, host, unit, kite_profile.active ? &kite_profile : nullptr)) {
-				should_return = true;
-			}
-		}
 		if (!should_return) {
 			SimProfileAccScope _um_tow(profile_sim, profile.um_toward);
 			const double distance = distance_between(unit, target);
-			const double actual_attack_range = targeting::attack_range(unit);
+			const double toward_range = standoff_range >= 0.0
+					? standoff_range
+					: targeting::attack_range(unit);
 
-			if (distance > actual_attack_range) {
-				movement::move_toward_target_with_range(world, unit, target, actual_attack_range);
+			const bool closing_to_ally = standoff_range >= 0.0 && distance > toward_range;
+			if (strategy.prefers_kiting && !closing_to_ally && (unit.attack_cooldown > 0.0 || unit.combat.attack_speed == 0.0) && unit.taunt_remaining <= 0.0) {
+				SimProfileAccScope _um_kit(profile_sim, profile.um_kiting);
+				movement::KiteProfileCounters kite_profile{};
+				if (profile_sim) {
+					kite_profile.active = true;
+					kite_profile.kiting_spatial = profile.um_kiting_spatial;
+					kite_profile.kiting_brute = profile.um_kiting_brute;
+				}
+				if (movement::kite_from_enemies(world, host, unit, kite_profile.active ? &kite_profile : nullptr)) {
+					should_return = true;
+				}
+			}
+			if (!should_return && distance > toward_range) {
+				movement::move_toward_target_with_range(world, unit, target, toward_range);
 			}
 		}
 	}

@@ -1,145 +1,83 @@
 # Algorithmic Optimization Analysis
 
-> **Note:** Baseline numbers here (106.68 m/s) differ from [performance_optimization_status.md](performance_optimization_status.md) (142.4 m/s) because they were measured under different conditions (different build states, host load, and worker counts). See the anomaly warning in the perf status doc before comparing numbers across dates.
+> **Status (reset):** The previous version of this note referenced line numbers and
+> symbols (`_collect_effects`, a global distance cache, "obscurance aux grid",
+> "bodyguard scoring", `carry_indices`) from a pre-refactor **monolithic** source file.
+> None of those map to the current modular `native/src/simulation/` layout, so the
+> concrete line/symbol references were removed. The two failed-experiment lessons below
+> are preserved because they remain valid. **All ideas here are unverified against the
+> current code and require fresh profiling before implementation.**
 
-## Current Performance
-- Baseline: 106.68 matches/sec (41.4% improvement from micro-optimizations)
-- Goal: 226 matches/sec (3x from original baseline)
-- Remaining Gap: ~112% improvement needed
+## Performance numbers — single source of truth
 
-## Attempted Optimizations
+This note no longer duplicates benchmark figures (the duplication was the original drift
+source). Canonical numbers live in:
+- [performance_optimization_status.md](performance_optimization_status.md) — dated benchmark + validation gate
+- [`scripts/tools/perf_gate_baseline.json`](../../scripts/tools/perf_gate_baseline.json) — regression baseline (median m/s by worker count)
 
-### 1. Spatial Grid Caching (FAILED - Parity Issue)
-**Current Behavior:**
-- Spatial grid is rebuilt 3-5 times per tick for different operations:
-  - Obscurance aux grid (line 6871, 6880)
-  - Density computation (line 4062)
-  - Separation (line 8121)
-  - Kiting (line 8528)
-- Each rebuild: O(n) where n is alive units
-- Grid rebuild involves clearing buckets and re-inserting all units
+## Profiling entry points (current)
 
-**Attempted Optimization:**
-- Build spatial grid once per tick per team
-- Cache and reuse across all operations
+Run with env-gated counters to locate hot spots before optimizing:
+- `--check-benchmark ... --sim-profile --targeting-profile` (emits `sim::profile::Counters` JSON to stderr)
+- Counter definitions: [`sim_profile_counters.hpp`](../../native/src/simulation/sim_profile_counters.hpp)
 
-**Result:**
-- **FAILED** - Broke parity (effect_control_wall fixture)
-- Issue: Different operations require different unit sets (frontline, specific teams, etc.)
-- The grid is operation-specific, not just team-specific
-- Pre-building a single grid doesn't work because each operation needs filtered subsets
+Latest profiling (see perf status doc) indicates `ns_update_units` dominates; within the
+per-unit tick the largest buckets are `uu_targeting`, `uu_cooldowns_cc`, and `uu_separation`.
 
-### 2. Skip Targeting for CC'd Units (FAILED - Parity Issue)
-**Current Behavior:**
-- All units evaluate targeting every tick
-- Stunned/rooted units can't act but still run targeting logic
+## Current spatial caching state
 
-**Attempted Optimization:**
-- Skip targeting evaluation for stunned/rooted units
-- They can't switch targets or attack anyway
+Contrary to the old "spatial grid caching FAILED" framing, a **per-tick spatial fill cache
+now exists**:
+- `fill_buckets_for_indices_cached()` and `invalidate_spatial_bucket_fill()` in
+  [`sim_spatial.cpp`](../../native/src/simulation/sim_spatial.cpp)
+- Invalidated once per tick in [`sim_match_loop.cpp`](../../native/src/simulation/sim_match_loop.cpp)
+  (`step_tick`), and on significant unit movement via `on_unit_position_changed()`
+- Used by movement/kite/separation ([`sim_movement.cpp`](../../native/src/simulation/sim_movement.cpp),
+  [`sim_unit_tick_movement.cpp`](../../native/src/simulation/sim_unit_tick_movement.cpp)) and AoE
+  ([`sim_aoe.hpp`](../../native/src/simulation/sim_aoe.hpp))
+- Membership uses stamp generations (`stamp_circle` etc.) rather than per-operation rebuilds
 
-**Result:**
-- **FAILED** - Broke parity (effect_control_wall fixture, winner changed)
-- Issue: Targeting state is needed even for CC'd units
-- Used for assist tracking, threat calculations, and other gameplay systems
-- Skipping targeting breaks these systems
+So a future spatial-caching effort should extend/measure the **existing** cache, not assume
+grids are rebuilt from scratch 3-5 times per tick.
 
-## High-Impact Opportunities Remaining
+## Failed experiments (preserved lessons)
 
-### 1. Targeting Score Precomputation (High Impact, Medium Risk)
-**Current Behavior:**
-- Each attacker scores all enemies independently (O(n*m))
-- Bodyguard scoring loops through carry indices for every candidate (line 3519-3535)
-- Distance calculations repeated across attackers
+### 1. Single shared spatial grid per tick — FAILED (parity)
+- Idea: build one grid per team per tick, reuse for every spatial operation.
+- Result: broke parity on the `effect_control_wall` fixture.
+- Lesson: operations need **different filtered unit subsets** (specific teams/frontline), not a
+  single shared grid. The current `fill_buckets_for_indices_cached` keys on the index set for
+  this reason.
 
-**Optimization:**
-- Precompute enemy scores once per tick per team
-- Cache base scores (distance, HP ratio, role bonuses)
-- Each attacker only computes attacker-specific modifiers
+### 2. Skip targeting for CC'd (stunned/rooted) units — FAILED (parity)
+- Idea: stunned/rooted units cannot act, so skip their targeting evaluation.
+- Result: broke parity (`effect_control_wall`; winner changed).
+- Lesson: targeting state still feeds **assist tracking, threat, and retarget pressure** even
+  when a unit cannot act. Do not gate targeting on actionability.
 
-**Expected Impact:**
-- Changes O(n*m) to O(n) + O(m) where n=attackers, m=enemies
-- Eliminates redundant distance and HP calculations
-- Estimated: 20-30% improvement
+## Candidate ideas remaining (UNVERIFIED — re-profile first)
 
-**Risk:**
-- Medium - scores depend on attacker strategy
-- Functional impact: May change targeting behavior if not carefully implemented
-- Requires strategy-specific modifiers to be applied correctly
+Restated generically against current modules. Each needs fresh profiling to confirm the bottleneck
+and a parity check before/after.
 
-### 3. Distance Cache Incremental Updates (Medium Impact, Medium Risk)
-**Current Behavior:**
-- Full O(n²) rebuild every tick (line 2820-2853)
-- Already optimized to only compute for alive units
+### A. Targeting score reuse across attackers
+- Location: [`sim_targeting_score.cpp`](../../native/src/simulation/sim_targeting_score.cpp),
+  [`sim_targeting_select_enemy.cpp`](../../native/src/simulation/sim_targeting_select_enemy.cpp)
+- Observation: enemy scoring currently has per-attacker components (distance, threat response,
+  role priority, peel). Some terms are attacker-independent (target HP ratio, target perceived
+  threat) and could be computed once per tick per team.
+- Risk: scoring is tightly coupled to per-attacker strategy weights; naive caching changes target
+  selection and breaks parity. Treat any behavior change as a deliberate, fixture-updating change.
 
-**Optimization:**
-- Track which units moved during tick
-- Only update distances for moved units
-- Use dirty flag per unit
+### B. Effect dispatch
+- Location: `exec_route_for_opcode()` in
+  [`sim_effects_exec.cpp`](../../native/src/simulation/sim_effects_exec.cpp)
+- Note: dispatch is already a `switch` over opcode (not an if-else string chain as the old note
+  claimed). Likely low ROI; verify with profiling before touching.
 
-**Expected Impact:**
-- Reduces from O(n²) to O(m*d) where m=moved units, d=total units
-- Most units don't move significantly each tick
-- Estimated: 10-15% improvement
+## Key insight
 
-**Risk:**
-- Medium - parity concerns with stale distances
-- Functional impact: Minimal if movement tracking is accurate
-
-### 4. Effect System Indexing (Low Impact, Low Risk)
-**Current Behavior:**
-- `_collect_effects` uses if-else chain (line 4160-4190)
-- 9 effect kinds, linear lookup
-
-**Optimization:**
-- Use array indexing instead of if-else chain
-- Map effect kind to array index
-
-**Expected Impact:**
-- Eliminates branch mispredictions
-- Estimated: 2-3% improvement
-
-**Risk:**
-- Low - purely implementation change
-- Functional impact: None
-
-## Recommended Approach
-
-**Phase 1: Targeting Score Precomputation (Highest ROI, Medium Risk)**
-- Precompute enemy base scores per team
-- Cache distance, HP ratio, role bonuses
-- Apply attacker-specific modifiers
-- Expected: 20-30% improvement
-- Note: May require fixture updates if gameplay changes are acceptable
-
-**Phase 2: Distance Cache Incremental Updates**
-- If Phase 1 insufficient, implement movement tracking
-- Only update distances for moved units
-- Expected: Additional 10-15% improvement
-
-## Implementation Priority
-1. **Targeting Score Precomputation** - Start here (highest impact)
-2. **Distance Cache Incremental Updates** - If more improvement needed
-3. **Effect System Indexing** - Low priority, minimal impact
-
-## Current Status Summary
-
-**Performance:**
-- Current: 106.68 matches/sec (41.4% improvement from micro-optimizations)
-- Goal: 226 matches/sec (3x from original baseline)
-- Remaining Gap: ~112% improvement needed
-
-**Failed Algorithmic Optimizations:**
-1. Spatial Grid Caching - Parity issue (operation-specific unit sets)
-2. Skip Targeting for CC'd Units - Parity issue (targeting state needed for assists/threat)
-
-**Key Insight:**
-The codebase is already highly optimized. The remaining optimizations that could achieve 2x+ improvement require accepting gameplay behavior changes. The targeting system is tightly coupled to gameplay mechanics (assists, threat, bodyguard, cluster scoring), and optimizing it significantly would change unit behavior.
-
-**Options for User:**
-1. **Accept Gameplay Changes**: Implement targeting score precomputation with simplified scoring, accepting that targeting behavior will change. Update fixtures to match new behavior.
-2. **Lower Performance Goal**: Accept that 3x may not be achievable without gameplay changes. Current 41.4% improvement is significant.
-3. **Continue Micro-Optimizations**: Look for additional 1-5% optimizations (e.g., effect system indexing, branch prediction improvements) to chip away at the gap.
-
-**Recommendation:**
-Given that the user stated "some impact on functionality is acceptable if the performance gains are significant", the best path forward is to implement targeting score precomputation with simplified scoring, accepting the gameplay changes and updating fixtures accordingly. This is the only optimization likely to achieve the remaining 112% improvement needed.
+The hot path is already heavily optimized (hot/cold/rare split, reference-aggregate loop state,
+stat caching, spatial fill cache, opcode-compiled effects). Remaining large wins probably require
+either (a) accepted gameplay/parity changes with fixture regeneration, or (b) data-layout work in
+the per-unit tick. Re-profile against the current modular code before committing to any item above.

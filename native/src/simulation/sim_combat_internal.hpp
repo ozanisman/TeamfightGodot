@@ -53,6 +53,15 @@ void heal_with_hooks(
 		bool allow_overheal);
 void emit_trace(SimHostCallbacks &host, const StringName &kind, int64_t src_id, int64_t tgt_id, double val);
 bool effect_uses_projectile(const EffectRecord &e);
+EffectCastRangeSpec compile_cast_range_spec(const EffectRecord &e);
+bool is_in_cast_range(
+		SimWorld &world,
+		const UnitState &caster,
+		const EffectCastRangeSpec &spec,
+		const UnitState *enemy_target,
+		int64_t current_ally_target_id,
+		double range);
+int64_t snapshot_ally_cast_target_id(int64_t current_ally_target_id, const EffectCastRangeSpec &spec);
 
 } // namespace internal
 } // namespace combat

@@ -133,7 +133,8 @@ bool movement(
 		UnitState &target,
 		const UnitStrategy &strategy,
 		SimHostCallbacks &host,
-		UnitTickProfileCounters &profile);
+		UnitTickProfileCounters &profile,
+		double standoff_range = -1.0);
 
 void update_unit(
 		SimWorld &world,

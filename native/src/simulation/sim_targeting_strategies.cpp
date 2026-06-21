@@ -200,7 +200,7 @@ StrategyConfig get_support_config() {
 	c.role_name = "support";
 	c.distance_weight = 1.5;
 	c.hp_weight = 0.0;
-	c.ally_distance_weight = 1.0;
+	c.ally_distance_weight = 0.0;
 	c.ally_hp_weight = 10.0;
 	c.ally_threat_weight = 25.0;
 	c.in_range_bonus = 0.4;

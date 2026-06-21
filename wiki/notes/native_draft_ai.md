@@ -9,13 +9,13 @@ The native draft AI provides C++-based pick and ban recommendations for the Team
 ### Production Recommender (Current Default)
 - `native/src/simulation/sim_draft_ai_recommender.hpp/cpp` (namespace `sim::draft_ai`) — Current production recommender for pick/ban recommendations
   - Routes through `get_draft_ai_pick_recommendations()` and `get_draft_ai_ban_recommendations()`
-  - Multiple strategies: NATIVE, GREEDY_BASE_POWER, GREEDY_SYNERGY, GREEDY_COUNTER, etc.
+  - Strategies (`DraftStrategy`): `NATIVE_FULL` (default); `NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN` (quarantined experimental)
 - `native/src/simulation/sim_draft_recommender.hpp/cpp` (namespace `sim::draft`) — Winner prediction and analysis tools (kept for analysis, not pick/ban routing)
   - `ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY` — complete-draft winner prediction
   - `ScoringMode::DRAFT_AWARE_PAIRWISE_PROBABILITY` — draft-aware pick/ban ranking
 - `native/src/teamfight_simulation_core.cpp` — Godot binding for draft recommendations
 
-### Legacy / Analysis-Only
+### Production Data/Scoring Layer (sim::draft_ai)
 - `native/src/simulation/sim_draft_ai_stats_database.hpp/cpp` — Stats database for champion win rates
 - `native/src/simulation/sim_draft_ai_evaluator.hpp/cpp` — Draft evaluation logic
 - `native/src/simulation/sim_draft_ai_types.hpp` — Type definitions

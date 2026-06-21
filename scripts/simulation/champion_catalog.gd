@@ -1459,7 +1459,6 @@ const CHAMPION_DATA := {
 				"flat_amount": 20.0,
 				"reason": "Holy Mending"
 			},
-			"requires_target_in_range": false
 		},
 		"ultimate": {
 			"kind": &"multi_target",
@@ -1474,7 +1473,8 @@ const CHAMPION_DATA := {
 						"reason": "Mass Restoration"
 					}
 				},
-			}
+			},
+			"requires_target_in_range": false
 		},
 		"passive_ids": [&"devotion"],
 	},

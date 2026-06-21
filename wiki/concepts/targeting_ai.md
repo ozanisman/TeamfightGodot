@@ -10,7 +10,19 @@ Perceived threat is accumulated on burst damage (`THREAT_BURST_*` in `sim_consta
 
 Role-specific strategies use different weightings defined in UnitStrategy: tanks (distance_weight=1.5, threat_response=2.0), assassins (distance_weight=1.0, hp_weight=2.0, threat_response=0.8), fighters (distance_weight=3.0 when close, threat_response=1.8), marksmen (distance_weight=1.0, threat_response=1.0), mages (distance_weight=1.2, hp_weight=2.5, threat_response=1.1), supports (distance_weight=1.5, ally_hp_weight=5.0, threat_response=1.7).
 
-Ally targeting (for support abilities) scores on: distance, HP (lower HP prioritized), threat (under pressure), and role priority (supports prioritize other supports/carries).
+Ally targeting (for support abilities) scores on: distance, HP (lower HP prioritized), threat (under pressure), and role priority (supports prioritize carries). `select_ally_target` sets `current_ally_target_id` each tick.
+
+**Support positioning:** supports still select an enemy target for autos and peel scoring. Movement uses three modes (`sim_unit_tick.cpp`): (1) outside `attack_range * SUPPORT_ALLY_STANDOFF_RATIO` from the role-prioritized ally anchor → close toward ally; (2) inside that band but the current enemy is still out of attack range → advance toward the enemy like the rest of the team (round-start travel); (3) otherwise hold in the standoff band. Outside ally standoff, supports skip auto-attacks and defer kiting until repositioned.
+
+**Cast range (`EffectCastRangeSpec`):** compiled at unit build from ability/ultimate effect trees (`compile_cast_range_spec` in `sim_combat_internal.cpp`). Stored on `UnitState` as `ability_cast_range_spec` / `ultimate_cast_range_spec`. `is_in_cast_range` gates casts in `sim_unit_tick_combat.cpp`; `snapshot_ally_cast_target_id` sets `casting_ally_target_id` at cast start (`sim_combat_actions.cpp`).
+
+| Spec flag | Meaning |
+|-----------|---------|
+| `needs_enemy` | Enemy must be within range (stun, damage, enemy AOE, etc.) |
+| `needs_single_ally` | Point ally heal/shield/HoT; cast blocked if no ally selected or selected ally out of range |
+| `skips_proximity` | No single-target proximity gate (self-AOE, summon, ally `multi_target`, etc.) |
+
+When `requires_target_in_range` is false on the action (e.g. Cleric Heal), proximity is not checked. Otherwise: ally `multi_target` skips single-ally proximity; single-ally effects require a selected ally (`current_ally_target_id != 0`) and **block** when no ally is selected or the selected ally is out of range (unit moves closer). Self-cast variants must set `target_self=true` to bypass the ally requirement. Mixed `multi_effect` kits require each set component (enemy AND single-ally when both flags are set).
 
 Target switching uses `switch_margin` in `should_switch` to prevent thrashing. Routine stickiness keeps the current target when the best alternative is not sufficiently better: `improvement = current_score - best_raw` must exceed `clamp(STICKINESS_RATIO * |current_score|, STICKINESS_FLOOR, STICKINESS_CEILING)` (lower score = better). A stickiness keep also extends the retarget interval by `STICKINESS_RETARGET_BONUS`.
 

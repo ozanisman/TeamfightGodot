@@ -29,6 +29,8 @@ const StringName &sn_passive();
 
 void sync_targeting_frame_unit(SimHostCallbacks &host, const UnitState &unit);
 void execute_effect(SimHostCallbacks &host, const EffectRecord &effect, EffectContext &context);
+bool support_outside_ally_standoff(const SimWorld &world, const UnitState &unit);
+bool support_should_advance_on_enemy(const UnitState &unit, const UnitState &enemy);
 
 } // namespace internal
 } // namespace unit_tick

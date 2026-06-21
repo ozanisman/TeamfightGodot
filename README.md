@@ -94,7 +94,7 @@ Ensure no Godot processes remain when finished. Benchmark expectations and lates
 | `.\run_godot.ps1 -- --check-only` | GDScript preload / compile check |
 | `.\run_godot.ps1 -- --check-native-load` | Extension load smoke |
 | `.\run_godot.ps1 -- --check-determinism` | Determinism regression |
-| `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Golden parity (7 fixtures) |
+| `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Golden parity (9 fixtures) |
 | `.\run_godot.ps1 --simulation-viewer` | Interactive match viewer |
 | `.\run_godot.ps1 --simulation-viewer --stats-dashboard` | Stats dashboard |
 | `.\run_godot.ps1 -- --check-benchmark ...` | Throughput benchmark (see flags below) |

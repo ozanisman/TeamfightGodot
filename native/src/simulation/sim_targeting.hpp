@@ -152,7 +152,8 @@ std::vector<UnitState *> select_targets(
 		TargetSelectionStrategy strategy,
 		bool include_source,
 		ExcessTargetHandling excess_handling,
-		const StringName &team_filter);
+		const StringName &team_filter,
+		double radius = 0.0);
 
 } // namespace targeting
 } // namespace sim

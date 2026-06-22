@@ -68,3 +68,20 @@ AOE variants: AOE_SLOW, AOE_ROOT, AOE_SILENCE, AOE_DISARM, AOE_KNOCKBACK, AOE_RE
 Effects can nest recursively via `effects` arrays and `splash` dicts. Execution passes an `EffectContext` with source/target/distance/action_kind. Results are accumulated in a per-opcode slot store for conditional chaining via `requires_result_from`, `requires_field`, `requires_value`.
 
 Passive effects trigger on hooks: on_tick, on_take_damage, on_deal_damage, on_heal, on_takedown, on_ally_defense.
+
+## MULTI_TARGET parameters
+
+`MULTI_TARGET` selects N units from a team and applies `sub_effects` to each.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `target_count` | int | 1 | Number of targets to select. `-1` = all matching candidates. |
+| `selection_strategy` | string | `"closest"` | One of: `closest`, `random`, `lowest_hp`, `highest_hp`, `closest_to_target`, `lowest_percent_hp`, `highest_percent_hp`. |
+| `team_filter` | string | (required) | `"ally"` or `"enemy"`. Selects which team pool to draw from. |
+| `include_self` | bool | false | If true, the source unit is a valid candidate. |
+| `excess_handling` | string | `"drop"` | `"drop"` clamps selection to available candidates; `"stack"` cycles candidates to fill `target_count` (can select the same unit multiple times). |
+| `repeat_count` | int | 1 | How many times to apply `sub_effects` to each selected target. |
+| `radius` | float | 0.0 | Euclidean distance limit from source. `0.0` = no limit (select from anywhere on the map). `>0.0` = drop candidates farther than `radius` tiles before selection. |
+| `sub_effects` | dict or array | (required) | One or more effects to apply to each selected target. |
+
+`radius` is independent of the ability's `cast_range` gate. `cast_range` controls whether the ability can fire at all; `radius` controls which candidates are eligible once it fires. For ally-targeted `multi_target`, `compile_cast_range_spec` sets `skips_proximity = true`, so `cast_range` is ignored — use `radius` to restrict ally selection by distance.

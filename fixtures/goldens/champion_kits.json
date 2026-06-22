@@ -2,6 +2,7 @@
 	"kits": {
 		"test_ability": {
 			"ability": {
+				"cast_range": -1.0,
 				"kind": "projectile",
 				"params": {
 					"on_hit": {
@@ -14,8 +15,7 @@
 						}
 					},
 					"reason": "Test"
-				},
-				"requires_target_in_range": true
+				}
 			}
 		},
 		"test_passive": {
@@ -26,6 +26,7 @@
 		},
 		"test_ultimate": {
 			"ultimate": {
+				"cast_range": -1.0,
 				"kind": "multi_effect",
 				"params": {
 					"effects": [
@@ -34,13 +35,11 @@
 							"params": {
 								"damage_ratio": 2.0,
 								"reason": "Test Ultimate"
-							},
-							"requires_target_in_range": true
+							}
 						}
 					],
 					"reason": "Test Ultimate"
-				},
-				"requires_target_in_range": false
+				}
 			}
 		}
 	}

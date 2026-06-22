@@ -43,7 +43,7 @@ const KIT_DATA := {
 					}
 				}
 			},
-			"requires_target_in_range": true
+			"cast_range": -1.0
 		}
 	},
 	
@@ -80,7 +80,7 @@ const KIT_DATA := {
 					}
 				}
 			},
-			"requires_target_in_range": true
+			"cast_range": -1.0
 		}
 	},
 	
@@ -97,21 +97,19 @@ const KIT_DATA := {
 							"flat_amount": 200.0,
 							"radius": 3.0,
 							"reason": "Tank AOE Ultimate"
-						},
-						"requires_target_in_range": false
+						}
 					},
 					{
 						"kind": "stun",
 						"params": {
 							"duration": 2.0,
 							"reason": "Tank AOE Ultimate"
-						},
-						"requires_target_in_range": false
+						}
 					}
 				],
 				"reason": "Tank AOE Ultimate"
 			},
-			"requires_target_in_range": false
+			"cast_range": 0.0
 		}
 	},
 	
@@ -132,21 +130,19 @@ const KIT_DATA := {
 							"damage_ratio": 0.3,
 							"radius": 2.5,
 							"reason": "Support Heal Ultimate"
-						},
-						"requires_target_in_range": false
+						}
 					},
 					{
 						"kind": "mana_restore",
 						"params": {
 							"flat_amount": 50.0,
 							"reason": "Support Heal Ultimate"
-						},
-						"requires_target_in_range": false
+						}
 					}
 				],
 				"reason": "Support Heal Ultimate"
 			},
-			"requires_target_in_range": false
+			"cast_range": 0.0
 		},
 		"passive_ids": ["rejuvenation"]
 	}
@@ -154,7 +150,7 @@ const KIT_DATA := {
 
 static func _build_effect(data: Dictionary) -> EffectSpecScript:
 	var params: Dictionary = data["params"].duplicate()
-	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
+	var cast_range: float = float(data.get("cast_range", -1.0))
 	
 	# Handle nested effects
 	for key in params:
@@ -167,7 +163,7 @@ static func _build_effect(data: Dictionary) -> EffectSpecScript:
 		elif key == "splash" and value is Dictionary:
 			params[key] = _build_effect(value)
 	
-	return EffectSpecScript.new(data["kind"], params, requires_target_in_range)
+	return EffectSpecScript.new(data["kind"], params, cast_range)
 
 static func build_kit_catalog() -> Dictionary:
 	if not _kit_cache.is_empty():

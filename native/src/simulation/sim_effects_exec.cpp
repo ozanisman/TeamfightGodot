@@ -198,6 +198,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			bool include_self = effect.int2 != 0;
 			ExcessTargetHandling excess_handling = static_cast<ExcessTargetHandling>(effect.int3);
 			int64_t repeat_count = effect.int4;
+			double radius = effect.scalar0;
 			
 			// Validate target_count (must be >= 1, where -1 means "all")
 			if (target_count != -1 && target_count < 1) {
@@ -248,7 +249,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			
 			// Select targets
 			std::vector<UnitState *> targets = sim::targeting::select_targets(
-					world, host, source, target, target_count, strategy, include_self, excess_handling, effect.team_filter);
+					world, host, source, target, target_count, strategy, include_self, excess_handling, effect.team_filter, radius);
 			
 			if (targets.empty()) {
 				multi_result["success"] = false;

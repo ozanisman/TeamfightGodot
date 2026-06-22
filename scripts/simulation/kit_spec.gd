@@ -28,7 +28,7 @@ func _effect_to_dict(effect: EffectSpecScript) -> Dictionary:
 	var effect_dict: Dictionary = {
 		"kind": effect.kind,
 		"params": effect.params.duplicate(true),
-		"requires_target_in_range": effect.requires_target_in_range
+		"cast_range": effect.cast_range
 	}
 	
 	# Handle nested effects

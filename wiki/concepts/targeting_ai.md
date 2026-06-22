@@ -14,15 +14,24 @@ Ally targeting (for support abilities) scores on: distance, HP (lower HP priorit
 
 **Support positioning:** supports still select an enemy target for autos and peel scoring. Movement uses three modes (`sim_unit_tick.cpp`, `resolve_support_move_intent`): (1) outside `attack_range * SUPPORT_ALLY_STANDOFF_RATIO` from the role-prioritized ally anchor → close toward ally; (2) inside that band but the current enemy is still out of attack range → **ally-leashed advance** toward the enemy (`move_toward_target_with_ally_leash` caps each step so distance to anchor never exceeds the standoff); (3) otherwise hold in the standoff band. Outside ally standoff, supports skip auto-attacks and defer kiting while repositioning (catch-up or leashed advance).
 
-**Cast range (`EffectCastRangeSpec`):** compiled at unit build from ability/ultimate effect trees (`compile_cast_range_spec` in `sim_combat_internal.cpp`). Stored on `UnitState` as `ability_cast_range_spec` / `ultimate_cast_range_spec`. `is_in_cast_range` gates casts in `sim_unit_tick_combat.cpp`; `snapshot_ally_cast_target_id` sets `casting_ally_target_id` at cast start (`sim_combat_actions.cpp`).
+**Cast range (`EffectCastRangeSpec` + `cast_range`):** compiled at unit build from ability/ultimate effect trees (`compile_cast_range_spec` in `sim_combat_internal.cpp`). The spec is stored on `UnitState` as `ability_cast_range_spec` / `ultimate_cast_range_spec` and encodes *whether* a target is required. The *distance* gate comes from the per-action `cast_range` field on the ability/ultimate dict, stored on `UnitState` as `ability_cast_range` / `ultimate_cast_range`. `is_in_cast_range` gates casts in `sim_unit_tick_combat.cpp`; `snapshot_ally_cast_target_id` sets `casting_ally_target_id` at cast start (`sim_combat_actions.cpp`).
 
 | Spec flag | Meaning |
 |-----------|---------|
-| `needs_enemy` | Enemy must be within range (stun, damage, enemy AOE, etc.) |
-| `needs_single_ally` | Point ally heal/shield/HoT; cast blocked if no ally selected or selected ally out of range |
+| `needs_enemy` | Enemy must exist and be within `cast_range` (stun, damage, enemy AOE, etc.) |
+| `needs_single_ally` | Point ally heal/shield/HoT; cast blocked if no ally selected or selected ally out of `cast_range` |
 | `skips_proximity` | No single-target proximity gate (self-AOE, summon, ally `multi_target`, etc.) |
 
-When `requires_target_in_range` is false on the action (e.g. Cleric Heal), proximity is not checked. Otherwise: ally `multi_target` skips single-ally proximity; single-ally effects require a selected ally (`current_ally_target_id != 0`) and **block** when no ally is selected or the selected ally is out of range (unit moves closer). Self-cast variants must set `target_self=true` to bypass the ally requirement. Mixed `multi_effect` kits require each set component (enemy AND single-ally when both flags are set).
+`cast_range` values (double, on the ability/ultimate dict):
+
+| Value | Behavior |
+|-------|----------|
+| missing | `push_error` at unit build; defaults to `-1` |
+| `-1` | use the caster's effective attack range |
+| `0` | no range gate (target existence still required if spec flag set) |
+| `> 0` | gate at that distance (in world tiles) |
+
+When `cast_range` is `0` on the action, proximity is not checked. Otherwise: ally `multi_target` skips single-ally proximity; single-ally effects require a selected ally (`current_ally_target_id != 0`) and **block** when no ally is selected or the selected ally is out of range (unit moves closer). Self-cast variants must set `target_self=true` to bypass the ally requirement. Mixed `multi_effect` kits require each set component (enemy AND single-ally when both flags are set). Channel range-interrupt checks (`sim_channel.cpp`) use the same `cast_range` semantics.
 
 Target switching uses `switch_margin` in `should_switch` to prevent thrashing. Routine stickiness keeps the current target when the best alternative is not sufficiently better: `improvement = current_score - best_raw` must exceed `clamp(STICKINESS_RATIO * |current_score|, STICKINESS_FLOOR, STICKINESS_CEILING)` (lower score = better). A stickiness keep also extends the retarget interval by `STICKINESS_RETARGET_BONUS`.
 

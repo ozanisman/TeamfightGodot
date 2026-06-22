@@ -282,16 +282,36 @@ BuiltUnit build_unit(
 	Variant ultimate_effect = champion.get("ultimate", Variant());
 	unit.has_ability_effect = ability_effect.get_type() == Variant::DICTIONARY;
 	unit.has_ultimate_effect = ultimate_effect.get_type() == Variant::DICTIONARY;
-	unit.ability_requires_target_in_range = bool(Dictionary(ability_effect).get("requires_target_in_range", true));
-	unit.ultimate_requires_target_in_range = bool(Dictionary(ultimate_effect).get("requires_target_in_range", true));
+	Dictionary ability_dict = Dictionary(ability_effect);
+	Dictionary ultimate_dict = Dictionary(ultimate_effect);
 	if (unit.has_ability_effect) {
-		cold.ability_effect = compile_effect(host, Dictionary(ability_effect));
+		if (!ability_dict.has("cast_range")) {
+			UtilityFunctions::push_error(vformat("Champion %s ability missing cast_range; defaulting to -1 (use attack range)", String(unit_id)));
+			unit.ability_cast_range = -1.0;
+		} else {
+			unit.ability_cast_range = double(ability_dict["cast_range"]);
+		}
+		if (unit.ability_cast_range < -1.0 || unit.ability_cast_range > 100.0) {
+			UtilityFunctions::push_error(vformat("Champion %s ability has invalid cast_range %f; expected -1.0, 0.0, or positive; defaulting to -1", String(unit_id), unit.ability_cast_range));
+			unit.ability_cast_range = -1.0;
+		}
+		cold.ability_effect = compile_effect(host, ability_dict);
 		unit.ability_cast_range_spec = combat::internal::compile_cast_range_spec(cold.ability_effect);
 	} else {
 		unit.ability_cast_range_spec = EffectCastRangeSpec{};
 	}
 	if (unit.has_ultimate_effect) {
-		cold.ultimate_effect = compile_effect(host, Dictionary(ultimate_effect));
+		if (!ultimate_dict.has("cast_range")) {
+			UtilityFunctions::push_error(vformat("Champion %s ultimate missing cast_range; defaulting to -1 (use attack range)", String(unit_id)));
+			unit.ultimate_cast_range = -1.0;
+		} else {
+			unit.ultimate_cast_range = double(ultimate_dict["cast_range"]);
+		}
+		if (unit.ultimate_cast_range < -1.0 || unit.ultimate_cast_range > 100.0) {
+			UtilityFunctions::push_error(vformat("Champion %s ultimate has invalid cast_range %f; expected -1.0, 0.0, or positive; defaulting to -1", String(unit_id), unit.ultimate_cast_range));
+			unit.ultimate_cast_range = -1.0;
+		}
+		cold.ultimate_effect = compile_effect(host, ultimate_dict);
 		unit.ultimate_cast_range_spec = combat::internal::compile_cast_range_spec(cold.ultimate_effect);
 	} else {
 		unit.ultimate_cast_range_spec = EffectCastRangeSpec{};

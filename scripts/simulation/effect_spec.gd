@@ -3,12 +3,13 @@ extends RefCounted
 
 var kind: StringName = &""
 var params: Dictionary = {}
-var requires_target_in_range: bool = true
+## Cast range gate: -1 = use attack range, 0 = no gate, >0 = max distance.
+var cast_range: float = -1.0
 
-func _init(_kind: StringName = &"", _params: Dictionary = {}, _requires_target_in_range: bool = true) -> void:
+func _init(_kind: StringName = &"", _params: Dictionary = {}, _cast_range: float = -1.0) -> void:
 	kind = _kind
 	params = _params.duplicate(true)
-	requires_target_in_range = _requires_target_in_range
+	cast_range = _cast_range
 
 func to_dict() -> Dictionary:
 	var normalized_params: Dictionary = {}
@@ -46,12 +47,12 @@ func to_dict() -> Dictionary:
 	return {
 		"kind": String(kind),
 		"params": normalized_params,
-		"requires_target_in_range": requires_target_in_range,
+		"cast_range": cast_range,
 	}
 
 static func from_dict(data: Dictionary):
 	var effect := new()
 	effect.kind = StringName(String(data.get("kind", "")))
 	effect.params = Dictionary(data.get("params", {}))
-	effect.requires_target_in_range = bool(data.get("requires_target_in_range", true))
+	effect.cast_range = float(data.get("cast_range", -1.0))
 	return effect

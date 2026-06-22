@@ -161,24 +161,6 @@ bool effect_target_self(const EffectRecord &e) {
 	}
 }
 
-bool aoe_anchor_uses_enemy_range(const EffectRecord &e) {
-	const AoAnchorKind anchor = e.aoe_shape_params.anchor;
-	return anchor == AoAnchorKind::Target || anchor == AoAnchorKind::Forward;
-}
-
-double aoe_enemy_gate_distance(const EffectRecord &e) {
-	if (aoe_anchor_uses_enemy_range(e)) {
-		return -1.0; // Normal ability range applies.
-	}
-	// Self/point anchored enemy AOEs must have an enemy inside the shape radius.
-	// A zero/degenerate radius falls back to the normal ability range so the ability
-	// is not permanently uncastable.
-	if (e.aoe_shape_params.radius <= 0.0) {
-		return -1.0;
-	}
-	return e.aoe_shape_params.radius;
-}
-
 void apply_leaf_cast_range_spec(const EffectRecord &e, EffectCastRangeSpec &spec) {
 	switch (e.opcode) {
 		// Single-target ally effects: need a deliverable ally unless self-cast.
@@ -251,8 +233,8 @@ void apply_leaf_cast_range_spec(const EffectRecord &e, EffectCastRangeSpec &spec
 			spec.skips_proximity = true;
 			break;
 
-		// Enemy AOE effects: require an enemy in range.
-		// Self/point anchors gate on the shape radius; target/forward anchors use normal range.
+		// Enemy AOE effects: require an enemy in range. Cast range is gated by
+		// the ability's explicit cast_range field, not the shape radius.
 		case EFFECT_OPCODE_AOE_TAUNT:
 		case EFFECT_OPCODE_AOE_DAMAGE:
 		case EFFECT_OPCODE_AOE_SLOW:
@@ -263,7 +245,6 @@ void apply_leaf_cast_range_spec(const EffectRecord &e, EffectCastRangeSpec &spec
 		case EFFECT_OPCODE_AOE_STUN:
 		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME:
 			spec.needs_enemy = true;
-			spec.enemy_range = aoe_enemy_gate_distance(e);
 			break;
 
 		// Ally AOE effects: no enemy proximity requirement.
@@ -324,21 +305,29 @@ bool is_in_cast_range(
 		const EffectCastRangeSpec &spec,
 		const UnitState *enemy_target,
 		int64_t current_ally_target_id,
-		double range) {
+		double cast_range) {
 	// A pure skip-proximity effect (summon, self-AOE, ally multi_target) may ignore range.
 	// If any actual target gate is required, that gate takes precedence over any skip flag.
 	const bool has_target_gate = spec.needs_enemy || spec.needs_single_ally;
 	if (!has_target_gate && spec.skips_proximity) {
 		return true;
 	}
+	// cast_range < 0.0: use the caster's effective attack range.
+	// cast_range == 0.0: no range gate (target existence still required).
+	// cast_range > 0.0: gate at that distance.
+	double effective_cast_range;
+	if (cast_range < 0.0) {
+		effective_cast_range = targeting::effective_attack_range(caster);
+	} else if (cast_range == 0.0) {
+		effective_cast_range = -1.0; // sentinel: skip distance check
+	} else {
+		effective_cast_range = cast_range;
+	}
 	if (spec.needs_enemy) {
 		if (enemy_target == nullptr || !enemy_target->alive) {
 			return false;
 		}
-		const double effective_range = spec.enemy_range >= 0.0
-				? Math::min(spec.enemy_range, range)
-				: range;
-		if (distance_between(caster, *enemy_target) > effective_range) {
+		if (effective_cast_range >= 0.0 && distance_between(caster, *enemy_target) > effective_cast_range) {
 			return false;
 		}
 	}
@@ -350,7 +339,7 @@ bool is_in_cast_range(
 		if (ally == nullptr || !ally->alive) {
 			return false;
 		}
-		if (distance_between(caster, *ally) > range) {
+		if (effective_cast_range >= 0.0 && distance_between(caster, *ally) > effective_cast_range) {
 			return false;
 		}
 	}

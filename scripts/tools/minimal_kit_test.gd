@@ -18,7 +18,7 @@ static func generate_minimal_kit_json() -> Dictionary:
 						}
 					}
 				},
-				"requires_target_in_range": true
+				"cast_range": -1.0
 			}
 		},
 		"test_ultimate": {
@@ -31,13 +31,12 @@ static func generate_minimal_kit_json() -> Dictionary:
 							"params": {
 								"damage_ratio": 2.0,
 								"reason": "Test Ultimate"
-							},
-							"requires_target_in_range": true
+							}
 						}
 					],
 					"reason": "Test Ultimate"
 				},
-				"requires_target_in_range": false
+				"cast_range": -1.0
 			}
 		},
 		"test_passive": {

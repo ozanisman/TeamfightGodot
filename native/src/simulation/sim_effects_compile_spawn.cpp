@@ -65,6 +65,7 @@ bool try_fill_spawn(EffectRecord &compiled, const StringName &kind, ParamTracker
 			compiled.int3 = -1;
 		}
 		compiled.int4 = int64_t(tracker.get("repeat_count", 1));
+		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		String team_filter_str = String(tracker.get("team_filter", ""));
 		if (team_filter_str == "ally") {
 			compiled.team_filter = sn_ally();

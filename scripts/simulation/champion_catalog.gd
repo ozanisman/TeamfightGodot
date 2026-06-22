@@ -140,7 +140,7 @@ static func _build_effect(data: Dictionary) -> EffectSpecScript:
 		return null
 	
 	var params: Dictionary = data.get("params", {}).duplicate() if data.has("params") else {}
-	var requires_target_in_range: bool = bool(data.get("requires_target_in_range", true))
+	var cast_range: float = float(data.get("cast_range", -1.0))
 	var pooled_arrays: Array[Array] = []
 	
 	for key in params:
@@ -154,7 +154,7 @@ static func _build_effect(data: Dictionary) -> EffectSpecScript:
 		elif key == "splash" and value is Dictionary:
 			params[key] = _build_effect(value)
 	
-	var result = EffectSpecScript.new(data["kind"], params, requires_target_in_range)
+	var result = EffectSpecScript.new(data["kind"], params, cast_range)
 	
 	# Return arrays to pool after effect is created
 	for pooled_array in pooled_arrays:
@@ -216,12 +216,12 @@ static func _build_champion(data: Dictionary) -> ChampionSpecScript:
 		stats,
 		tags,
 		data["description"],
-		data["ability_desc"],
-		data["ultimate_desc"],
-		data["passive_desc"],
 		data.get("passive_name", ""),
+		data["passive_desc"],
 		data.get("ability_name", ""),
+		data["ability_desc"],
 		data.get("ultimate_name", ""),
+		data["ultimate_desc"],
 		ability,
 		ultimate,
 		passive_ids
@@ -267,12 +267,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"burst", &"single_target"],
 		"description": "A skilled duelist who grows more dangerous as he fights, excelling in prolonged combats.",
-		"ability_desc": "Deals 120% physical damage and applies a bleed that deals 250% physical damage as a bleed over 3s.",
-		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase the damage by 50% per stack. If it kills the target, gain full passive stacks.",
-		"passive_desc": "Gains 2 attack damage for 3s after each auto-attack. (Max 7 stacks)",
 		"passive_name": "Duelist",
+		"passive_desc": "Gains 2 attack damage for 3s after each auto-attack. (Max 7 stacks)",
 		"ability_name": "Bleeding Cut",
+		"ability_desc": "Deals 120% physical damage and applies a bleed that deals 250% physical damage as a bleed over 3s.",
 		"ultimate_name": "Execution",
+		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase the damage by 50% per stack. If it kills the target, gain full passive stacks.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -297,6 +297,7 @@ const CHAMPION_DATA := {
 						}
 					}
 				],
+				"cast_range": -1,
 				"reason": "Bleeding Cut"
 			}
 		},
@@ -331,6 +332,7 @@ const CHAMPION_DATA := {
 						}
 					}
 				],
+				"cast_range": -1,
 				"reason": "Execution"
 			}
 		},
@@ -360,12 +362,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"poke", &"aoe"],
 		"description": "A swift ranged attacker who fires volleys of arrows that reduce enemy armor.",
-		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
-		"ultimate_desc": "Channels for 1.5 seconds, shooting 5 arrows every 0.5s at the closest enemy dealing 40% physical damage each.",
-		"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
 		"passive_name": "Eagle Eye",
+		"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
 		"ability_name": "Volley",
+		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
 		"ultimate_name": "Rain of Arrows",
+		"ultimate_desc": "Channels for 1.5 seconds, shooting 5 arrows every 0.5s at the closest enemy dealing 40% physical damage each.",
 		"ability": {
 			"kind": &"multi_target",
 			"params": {
@@ -388,7 +390,9 @@ const CHAMPION_DATA := {
 						"reason": "Volley",
 					}
 				}
-			}
+			},
+			"cast_range": -1,
+			"reason": "Volley",
 		},
 		"ultimate": {
 			"kind": &"channel",
@@ -423,7 +427,9 @@ const CHAMPION_DATA := {
 						}
 					}
 				}
-			}
+			},
+			"cast_range": -1,
+			"reason": "Rain of Arrows",
 		},
 		"passive_ids": [&"eagle_eye"],
 	},
@@ -451,52 +457,82 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"protect", &"cc"],
 		"description": "A hulking protector who uses heavy shields to shield his allies.",
-		"ability_desc": "Grants a 20% max HP shield to himself AND tand he closest ally. If alone, he gains a 40% max HP shield instead.",
-		"ultimate_desc": "Slams the ground for 300% physical damage and a 3.5s stun.",
-		"passive_desc": "Redirects 20% of damage taken by allies in a 2.0 tile radius.",
 		"passive_name": "Bastion",
+		"passive_desc": "Redirects 20% of damage taken by allies in a 2.0 tile radius.",
 		"ability_name": "Protection",
-		"ultimate_name": "Ground Slam",
+		"ability_desc": "Grants a 20% max HP shield to himself and the closest ally in 2.0 tiles. If alone, he gains a 40% max HP shield instead.",
+		"ultimate_name": "Aegis Crash",
+		"ultimate_desc": "Slams the ground for 300% physical damage and a 3.5s stun.",
 		"ability": {
-			"kind": &"multi_target",
+			"kind": &"multi_effect",
 			"params": {
-				"target_count": 2,
-				"selection_strategy": "closest",
-				"team_filter": "ally",
-				"include_self": true,
-				"excess_handling": "stack",
-				"repeat_count": 1,
-				"sub_effects": {
-					"kind": &"shield",
-					"params": {
-						"max_hp_ratio": 0.20,
+				"effects": [
+					{
+						"kind": &"multi_target",
+						"params": {
+							"target_count": 2,
+							"selection_strategy": "closest",
+							"team_filter": "ally",
+							"include_self": true,
+							"excess_handling": "drop",
+							"repeat_count": 1,
+							"radius": 2.0,
+							"sub_effects": {
+								"kind": &"shield",
+								"params": {
+									"max_hp_ratio": 0.20,
+									"reason": "Protection"
+								}
+							}
+						},
 						"reason": "Protection"
+					},
+					{
+						"kind": &"shield",
+						"params": {
+							"max_hp_ratio": 0.20,
+							"target_self": true,
+							"requires_result_from": "multi_target",
+							"requires_field": "targets_affected",
+							"requires_value": 1,
+							"reason": "Protection"
+						}
 					}
-				}
-			}
+				],
+				"reason": "Protection"
+			},
+			"cast_range": 0,
+			"reason": "Protection"
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
 			"params": {
 				"effects": [
 					{
-						"kind": &"damage",
+						"kind": &"aoe_damage",
 						"params": {
+							"shape": "circle",
+							"anchor": "self",
+							"radius": 1.5,
 							"damage_ratio": 3.0,
-							"trigger_on_hit": false,
+							"damage_type": "physical",
 							"reason": "Aegis Crash"
 						}
 					},
 					{
-						"kind": &"stun",
+						"kind": &"aoe_stun",
 						"params": {
+							"shape": "circle",
+							"anchor": "self",
+							"radius": 1.5,
 							"duration": 3.5,
 							"reason": "Aegis Crash"
 						}
 					}
 				],
 				"reason": "Aegis Crash"
-			}
+			},
+			"cast_range": 0.0,
 		},
 		"passive_ids": [&"bastion"],
 	},
@@ -524,12 +560,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"dive", &"burst", &"single_target", &"mobility"],
 		"description": "A high-mobility predator designed to dive the backline and execute wounded targets with lethal precision.",
-		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% physical damage and stun for 0.5s.",
-		"ultimate_desc": "Executes a target with 900% physical damage.",
-		"passive_desc": "Deals double damage to targets below 30% HP.",
 		"passive_name": "Executioner",
+		"passive_desc": "Deals double damage to targets below 30% HP.",
 		"ability_name": "Shadow Dash",
+		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% physical damage and stun for 0.5s.",
 		"ultimate_name": "Execute",
+		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -563,11 +599,12 @@ const CHAMPION_DATA := {
 				],
 				"reason": "Shadow Strike"
 			},
-			"requires_target_in_range": false
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
+				"speed_override": 8.0,
 				"reason": "Assassinate",
 				"on_hit": {
 					"kind": &"damage",
@@ -578,7 +615,8 @@ const CHAMPION_DATA := {
 						"reason": "Assassinate"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"executioner"],
 	},
@@ -606,12 +644,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"poke", &"single_target"],
 		"description": "An elite marksman specializing in devastating single-target shots.",
-		"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
-		"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
-		"passive_desc": "Deals 30% bonus damage to targets at least 2.0 tiles away.",
 		"passive_name": "Deadeye",
+		"passive_desc": "Deals 30% bonus damage to targets at least 2.0 tiles away.",
 		"ability_name": "Headshot",
+		"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Snipe",
+		"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -625,7 +663,8 @@ const CHAMPION_DATA := {
 						"reason": "Headshot"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"projectile",
@@ -641,7 +680,8 @@ const CHAMPION_DATA := {
 						"reason": "Snipe"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"deadeye"],
 	},
@@ -669,12 +709,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"burst", &"sustain"],
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
-		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 20% attack speed for 2.5s.",
-		"ultimate_desc": "Unleashes a devastating strike for 400% true damage that applies lifesteal.",
-		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
 		"passive_name": "Bloodlust",
+		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
 		"ability_name": "Blood Sacrifice",
+		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 20% attack speed for 2.5s.",
 		"ultimate_name": "Ravage",
+		"ultimate_desc": "Unleashes a devastating strike for 400% true damage that applies lifesteal.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -710,7 +750,7 @@ const CHAMPION_DATA := {
 				],
 				"reason": "Blood Price"
 			},
-			"requires_target_in_range": false
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			"kind": &"damage",
@@ -719,7 +759,8 @@ const CHAMPION_DATA := {
 				"damage_type": "true",
 				"trigger_on_hit": true,
 				"reason": "Berserker Rage"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"bloodlust"],
 	},
@@ -747,18 +788,20 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"protect", &"sustain"],
 		"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
-		"ability_desc": "Heals self for 20% max HP. [MAKE MORE INTERESTING]",
-		"ultimate_desc": "Heals self for 40% max HP and deals 200% true damage. [MAKE MORE INTERESTING]",
-		"passive_desc": "Regenerates 2% max HP every second.",
 		"passive_name": "Rejuvenation",
+		"passive_desc": "Regenerates 2% max HP every second.",
 		"ability_name": "Lay on Hands",
+		"ability_desc": "Heals self for 20% max HP. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Divine Judgment",
+		"ultimate_desc": "Heals self for 40% max HP and deals 200% true damage. [MAKE MORE INTERESTING]",
 		"ability": {
 			"kind": &"heal",
 			"params": {
 				"max_hp_ratio": 0.20,
+				"target_self": true,
 				"reason": "Lay on Hands"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -768,6 +811,7 @@ const CHAMPION_DATA := {
 						"kind": &"heal",
 						"params": {
 							"max_hp_ratio": 0.40,
+							"target_self": true,
 							"reason": "Divine Judgment"
 						}
 					},
@@ -782,7 +826,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Divine Judgment"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"rejuvenation"],
 	},
@@ -810,12 +855,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"burst", &"single_target"],
 		"description": "A nimble backline specialist who strikes with precision and vanishes before being targeted.",
-		"ability_desc": "Deals 200% physical damage. [MAKE MORE INTERESTING]",
-		"ultimate_desc": "Lethal execution dealing 600% physical damage. [MAKE MORE INTERESTING]",
-		"passive_desc": "25% chance to dodge incoming auto attacks.",
 		"passive_name": "Agility",
+		"passive_desc": "25% chance to dodge incoming auto attacks.",
 		"ability_name": "Backstab",
+		"ability_desc": "Deals 200% physical damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Execute",
+		"ultimate_desc": "Lethal execution dealing 600% physical damage. [MAKE MORE INTERESTING]",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -830,14 +875,16 @@ const CHAMPION_DATA := {
 					},
 				],
 				"reason": "Backstab"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"damage",
 			"params": {
 				"damage_ratio": 6.0,
 				"reason": "Eviscerate"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"agility"],
 	},
@@ -865,18 +912,19 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"protect", &"cc"],
 		"description": "A divine seer who manipulates fate through shields and mana restoration.",
-		"ability_desc": "Grants a shield worth 15% max HP to self or an ally.",
-		"ultimate_desc": "Restores 35% max HP and grants a shield worth 35% max HP.",
-		"passive_desc": "Gains an additional 5 mana after each auto-attack.",
 		"passive_name": "Enlightenment",
+		"passive_desc": "Gains an additional 5 mana after each auto-attack.",
 		"ability_name": "Purify",
+		"ability_desc": "Grants a shield worth 15% max HP to self or an ally.",
 		"ultimate_name": "Divine Intervention",
+		"ultimate_desc": "Restores 35% max HP and grants a shield worth 35% max HP.",
 		"ability": {
 			"kind": &"shield",
 			"params": {
 				"max_hp_ratio": 0.15,
 				"reason": "Purify"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -898,7 +946,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Divine Shield"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"enlightenment"],
 	},
@@ -926,12 +975,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"cc", &"aoe"],
 		"description": "A mountain of a tank with unmatched physical resistance and the ability to stun the entire battlefield.",
-		"ability_desc": "Taunts all targets in a 2.5 tile radius for 2.5s and deals 130% physical damage in a 1.0 tile radius.",
-		"ultimate_desc": "Colossal impact in a 2.5 tile radius for 250% physical damage and a 2.0s stun.",
-		"passive_desc": "Reduces incoming damage by 10%. (Doesn't affect true damage)",
 		"passive_name": "Durability",
+		"passive_desc": "Reduces incoming damage by 10%. (Doesn't affect true damage)",
 		"ability_name": "Taunt",
+		"ability_desc": "Taunts all targets in a 2.5 tile radius for 2.5s and deals 130% physical damage in a 1.0 tile radius.",
 		"ultimate_name": "Colossal Impact",
+		"ultimate_desc": "Colossal impact in a 2.5 tile radius for 250% physical damage and a 2.0s stun.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -959,7 +1008,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Seismic Slam"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -988,7 +1038,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Earthshaker"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"durability"],
 	},
@@ -1016,12 +1067,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"dive", &"sustain", &"single_target", &"mobility"],
 		"description": "A terrifying spectral assassin that stuns its prey and moves faster than the eye can see.",
-		"ability_desc": "Deals 150% magic damage and a 1.0s disarm.",
-		"ultimate_desc": "Deals 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
-		"passive_desc": "Every 1.5s, enters stealth for 0.5s.",
 		"passive_name": "Shadow Steps",
+		"passive_desc": "Every 1.5s, enters stealth for 0.5s.",
 		"ability_name": "Spectral Strike",
+		"ability_desc": "Deals 150% magic damage and a 1.0s disarm.",
 		"ultimate_name": "Haunt",
+		"ultimate_desc": "Deals 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1044,7 +1095,8 @@ const CHAMPION_DATA := {
 					},
 				],
 				"reason": "Spectral Touch"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1068,7 +1120,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Phantom Strike"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"shadow_steps"],
 	},
@@ -1096,12 +1149,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"sustain", &"aoe"],
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
-		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
-		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
-		"passive_desc": "Gains permanent max HP equal to 50% of self healing.",
 		"passive_name": "Soul Feast",
+		"passive_desc": "Gains permanent max HP equal to 50% of self healing.",
 		"ability_name": "Chaos Rift",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
 		"ultimate_name": "",
+		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
 		"ability": {
 			"kind": &"channel",
 			"params": {
@@ -1187,7 +1240,8 @@ const CHAMPION_DATA := {
 						"reason": "Chaos Rift"
 					}
 				}
-			}
+			},
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			
@@ -1218,12 +1272,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"burst", &"aoe"],
 		"description": "A powerful spellcaster with a deep mana pool, capable of unleashing frequent bursts of magic damage.",
-		"ability_desc": "Fires a magical projectile dealing 150% magic damage.",
-		"ultimate_desc": "Calls down a meteor for 500% magic damage.",
-		"passive_desc": "Gains 5 mana every second.",
 		"passive_name": "Mana Font",
+		"passive_desc": "Gains 5 mana every second.",
 		"ability_name": "Arcane Bolt",
+		"ability_desc": "Fires a magical projectile dealing 150% magic damage.",
 		"ultimate_name": "Meteor Bombardment",
+		"ultimate_desc": "Calls down a meteor for 500% magic damage.",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -1238,7 +1292,8 @@ const CHAMPION_DATA := {
 						"reason": "Arcane Bolt"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"projectile",
@@ -1254,7 +1309,8 @@ const CHAMPION_DATA := {
 						"reason": "Meteor Bombardment"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"mana_font"],
 	},
@@ -1282,12 +1338,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"cc", &"single_target"],
 		"description": "A martial arts master who uses a flurry of strikes to incapacitate foes through precise pressure points.",
-		"ability_desc": "Precise strike for 160% physical damage that silences the target for 1.5s.",
-		"ultimate_desc": "Gains 25% max HP shield and reflects 75% of incoming damage for 5s.",
-		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
 		"passive_name": "Stunning Strikes",
+		"passive_desc": "Every 3rd attack stuns the target for 0.5s.",
 		"ability_name": "Pressure Point",
+		"ability_desc": "Precise strike for 160% physical damage that silences the target for 1.5s.",
 		"ultimate_name": "Drunken Stance",
+		"ultimate_desc": "Gains 25% max HP shield and reflects 60% of incoming damage for 5s.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1309,7 +1365,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Pressure Point"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1319,13 +1376,14 @@ const CHAMPION_DATA := {
 						"kind": &"shield",
 						"params": {
 							"max_hp_ratio": 0.25,
+							"target_self": true,
 							"reason": "Drunken Stance"
 						}
 					},
 					{
 						"kind": &"reflect",
 						"params": {
-							"reflect_percentage": 0.50,
+							"reflect_percentage": 0.60,
 							"duration": 5.0,
 							"reflect_type": "all",
 							"reason": "Drunken Stance"
@@ -1333,7 +1391,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Drunken Stance"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"stunning_strikes"],
 	},
@@ -1361,12 +1420,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"poke", &"burst", &"aoe"],
 		"description": "A fragile slow backline siege unit that deals explosive damage to anything in its sights.",
-		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
-		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
-		"passive_desc": "Attacks and abilities deal additional 30% physical damage as splash in a 0.5 tile radius.",
 		"passive_name": "Demolition",
+		"passive_desc": "Attacks and abilities deal additional 30% physical damage as splash in a 0.5 tile radius.",
 		"ability_name": "Explosive Shell",
+		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ultimate_name": "Barrage",
+		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -1403,12 +1462,13 @@ const CHAMPION_DATA := {
 						"reason": "Shell Shock"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"projectile",
 			"params": {
-				"radius_override": 0.1,
+				"radius_override": 2.0,
 				"reason": "Big Bertha",
 				"on_hit": {
 					"kind": &"damage",
@@ -1419,7 +1479,8 @@ const CHAMPION_DATA := {
 						"reason": "Big Bertha"
 					}
 				}
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"demolition"],
 	},
@@ -1447,18 +1508,19 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"protect", &"sustain"],
 		"description": "A dedicated holy healer who constantly heals her allies instead of attacking enemies.",
-		"ability_desc": "Heals an ally for 20 HP.",
-		"ultimate_desc": "Heals all allies for 25% missing HP.",
-		"passive_desc": "Can't attack, but gains 10 mana per second.",
 		"passive_name": "Devotion",
+		"passive_desc": "Can't attack, but gains 10 mana per second.",
 		"ability_name": "Heal",
+		"ability_desc": "Heals an ally for 20 HP.",
 		"ultimate_name": "Mass Restoration",
+		"ultimate_desc": "Heals all allies for 25% missing HP.",
 		"ability": {
 			"kind": &"heal",
 			"params": {
 				"flat_amount": 20.0,
 				"reason": "Holy Mending"
 			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_target",
@@ -1474,7 +1536,7 @@ const CHAMPION_DATA := {
 					}
 				},
 			},
-			"requires_target_in_range": false
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"devotion"],
 	},
@@ -1502,18 +1564,19 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"control", &"aoe"],
 		"description": "A captivating support who lures enemies into stuns and drains their mana with every haunting song.",
-		"ability_desc": "Binds target stunning for 0.5s stun.",
-		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
-		"passive_desc": "Auto-attacks drain 5 mana from the target.",
 		"passive_name": "Siphon",
+		"passive_desc": "Auto-attacks drain 5 mana from the target.",
 		"ability_name": "Enthralling Song",
+		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"ultimate_name": "Siren's Shriek",
+		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
 		"ability": {
 			"kind": &"stun",
 			"params": {
 				"duration": 0.5,
 				"reason": "Enthralling Song"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1537,7 +1600,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Banshee Wail"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"siphon"],
 	},
@@ -1565,12 +1629,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"protect", &"mobility"],
 		"description": "A formidable bruiser who wildly slashes through foes with her massive axe.",
-		"ability_desc": "Cleaves enemies in a 150 degree cone within 0.75 tiles for 150% physical damage and a 0.5s stun.",
-		"ultimate_desc": "Hits enemies in a 2.0 tile radius for 15% max HP physical damage and shields for 200% of the damage dealt.",
-		"passive_desc": "Auto attacks deal an additional 7 physical damage in a 0.75 tile radius and heal for 100% of the damage dealt.",
 		"passive_name": "Sweeping Strikes",
+		"passive_desc": "Auto attacks deal an additional 7 physical damage in a 0.75 tile radius and heal for 100% of the damage dealt.",
 		"ability_name": "Cleave",
+		"ability_desc": "Cleaves enemies in a 150 degree cone within 0.75 tiles for 150% physical damage and a 0.5s stun.",
 		"ultimate_name": "Whirlwind",
+		"ultimate_desc": "Hits enemies in a 2.0 tile radius for 15% max HP physical damage and shields for 200% of the damage dealt.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1599,7 +1663,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Cleave"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1624,7 +1689,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Whirlwind"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"sweeping_strikes"],
 	},
@@ -1652,12 +1718,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"control", &"aoe"],
 		"description": "A cryomancer who controls ice and frost, slowing enemies with every attack and freezing them with powerful spells.",
-		"ability_desc": "Fires an ice bolt for 150% magic damage and slows target by 30% for 2.5s.",
-		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 tile radius by 50% for 4.0s.",
-		"passive_desc": "Auto-attacks slow the target by 10% for 1.5s.",
 		"passive_name": "Bitter Chill",
+		"passive_desc": "Auto-attacks slow the target by 10% for 1.5s.",
 		"ability_name": "Ice Bolt",
+		"ability_desc": "Fires an ice bolt for 150% magic damage and slows target by 30% for 2.5s.",
 		"ultimate_name": "Blizzard",
+		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 tile radius by 50% for 4.0s.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1681,7 +1747,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Ice Bolt"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1711,7 +1778,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Blizzard"
-			}
+			},
+			"cast_range": -1
 		},
 		"passive_ids": [&"bitter_chill"],
 	},
@@ -1739,12 +1807,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"cc", &"control", &"aoe"],
 		"description": "A master of earth manipulation who builds up his durability during combat and roots enemies in place to control the battlefield.",
-		"ability_desc": "Creates a tree tendril that roots the target for 2.0s and deals 130% magic damage.",
-		"ultimate_desc": "Causes an earthquake in 3.0 tile radius that roots enemies for 3.5s and deals 200% magic damage.",
-		"passive_desc": "When taking damage, gain a stack of 5% armor and magic resist for 5.0s. (Max 12 stacks)",
 		"passive_name": "Earthen Protection",
+		"passive_desc": "When taking damage, gain a stack of 5% armor and magic resist for 5.0s. (Max 12 stacks)",
 		"ability_name": "Tendril Grasp",
+		"ability_desc": "Creates a tree tendril that roots the target for 2.0s and deals 130% magic damage.",
 		"ultimate_name": "Earthquake",
+		"ultimate_desc": "Causes an earthquake in 3.0 tile radius that roots enemies for 3.5s and deals 200% magic damage.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1767,7 +1835,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Tendril Grasp"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1796,7 +1865,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Earthquake"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"earthen_protection"],
 	},
@@ -1824,12 +1894,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"cc", &"control"],
 		"description": "A magical assassin who specializes in silencing mages and disrupting spellcasters.",
-		"ability_desc": "Strikes target for 130% physical damage and silences for 3.5s.",
-		"ultimate_desc": "Creates a silence zone for 340% physical damage, silencing all enemies in 3.5 tile radius for 6.0s.",
-		"passive_desc": "Deals 25% bonus damage to silenced targets.",
 		"passive_name": "Arcane Focus",
+		"passive_desc": "Deals 25% bonus damage to silenced targets.",
 		"ability_name": "Arcane Strike",
+		"ability_desc": "Strikes target for 130% physical damage and silences for 3.5s.",
 		"ultimate_name": "Silence Zone",
+		"ultimate_desc": "Creates a silence zone for 340% physical damage, silencing all enemies in 3.5 tile radius for 6.0s.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1853,7 +1923,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Arcane Strike"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1864,7 +1935,7 @@ const CHAMPION_DATA := {
 						"params": {
 							"shape": "circle",
 							"anchor": "self",
-							"radius": 3.0,
+							"radius": 3.5,
 							"damage_ratio": 3.4,
 							"reason": "Silence Zone"
 						}
@@ -1883,7 +1954,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Silence Zone"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"arcane_focus"],
 	},
@@ -1911,12 +1983,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"cc", &"single_target"],
 		"description": "A weapon specialist who can disarm enemies and prevent them from attacking.",
-		"ability_desc": "Disarms target for 1.5s and deals 150% physical damage.",
-		"ultimate_desc": "Creates a weapon suppression field that disarms all enemies in 3.0 tile radius for 3.0s.",
-		"passive_desc": "Attacking a disarmed target grants 25% increased attack speed for 3 seconds.",
 		"passive_name": "Weapon Breaker",
+		"passive_desc": "Attacking a disarmed target grants 25% increased attack speed for 3 seconds.",
 		"ability_name": "Disarm",
+		"ability_desc": "Disarms target for 1.5s and deals 150% physical damage.",
 		"ultimate_name": "Weapon Suppression",
+		"ultimate_desc": "Creates a weapon suppression field that disarms all enemies in 3.0 tile radius for 3.0s.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -1938,7 +2010,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Weapon Break"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -1956,7 +2029,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Suppression Field"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"weapon_breaker"],
 	},
@@ -1984,12 +2058,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"control", &"aoe"],
 		"description": "An air elemental who controls winds to push enemies away and control battlefield positioning.",
-		"ability_desc": "Blasts a target with wind for 120% magic damage, knocking them back 1.0 tiles and slowing them by 20% for 1.5s.",
-		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 3.5 tile radius by 2.5 tiles.",
-		"passive_desc": "Gaisn a 10% max hp shield after knocking back enemies.",
 		"passive_name": "Gust Protection",
+		"passive_desc": "Gaisn a 10% max hp shield after knocking back enemies.",
 		"ability_name": "Wind Blast",
+		"ability_desc": "Blasts a target with wind for 120% magic damage, knocking them back 1.0 tiles and slowing them by 20% for 1.5s.",
 		"ultimate_name": "Tornado",
+		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 3.5 tile radius by 2.5 tiles.",
 		"passive_ids": [&"gust_protection"],
 		"ability": {
 			"kind": &"multi_effect",
@@ -2032,7 +2106,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Wind Blast"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
@@ -2072,7 +2147,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Tornado"
-			}
+			},
+			"cast_range": 0.0
 		},
 	},
 	&"mirror_knight": {
@@ -2099,12 +2175,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"frontline", &"protect", &"aoe"],
 		"description": "A defensive warrior who reflects incoming damage back at attackers.",
-		"ability_desc": "Gains a 10% max HP shield and 25% reflect for 2.5s.",
-		"ultimate_desc": "Grants 50% reflect to all allies in 4.0 tile radius for 5.0s.",
-		"passive_desc": "Reflects 10% of all damage taken back to attackers.",
 		"passive_name": "Reflective Armor",
+		"passive_desc": "Reflects 30% of all damage taken back to attackers.",
 		"ability_name": "Mirror Shield",
+		"ability_desc": "Gains a 10% max HP shield and 25% reflect for 2.5s.",
 		"ultimate_name": "Mirrored Dimension",
+		"ultimate_desc": "Grants 50% reflect to all allies in 4.0 tile radius for 5.0s.",
 		"ability": {
 			"kind": &"multi_effect",
 			"params": {
@@ -2128,7 +2204,8 @@ const CHAMPION_DATA := {
 					}
 				],
 				"reason": "Mirror Shield"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"ultimate": {
 			"kind": &"aoe_reflect",
@@ -2140,7 +2217,8 @@ const CHAMPION_DATA := {
 				"duration": 5.0,
 				"reflect_type": "all",
 				"reason": "Mirror Dimension"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"reflective_armor"],
 	},
@@ -2168,12 +2246,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"protect", &"sustain", &"aoe"],
 		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
-		"ability_desc": "Heals a target for 15% of their maximum HP over 3s.",
-		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum HP over 3s. Excess healing is converted into temporary maximum HP.",
-		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum HP. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing HP over 3s.",
 		"passive_name": "Restorative Mist",
+		"passive_desc": "All of Mistcaller's excess healing is converted to temporary maximum HP. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing HP over 3s.",
 		"ability_name": "Healing Bloom",
+		"ability_desc": "Heals a target for 15% of their maximum HP over 3s.",
 		"ultimate_name": "Enveloping Mist",
+		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum HP over 3s. Excess healing is converted into temporary maximum HP.",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
@@ -2184,7 +2262,8 @@ const CHAMPION_DATA := {
 				"stacking_mode": "separate",
 				"max_stacks": 0,
 				"reason": "Healing Bloom"
-			}
+			},
+			"cast_range": -1
 		},
 		"ultimate": {
 			"kind": &"aoe_heal_over_time",
@@ -2200,7 +2279,8 @@ const CHAMPION_DATA := {
 				"stacking_mode": "separate",
 				"max_stacks": 0,
 				"reason": "Celestial Rain"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"restorative_mist"],
 	},
@@ -2228,12 +2308,12 @@ const CHAMPION_DATA := {
 		},
 		"tags": [&"backline", &"summon", &"aoe"],
 		"description": "A dark sorcerer who commands the undead, summoning allies to fight for him.",
-		"ability_desc": "Summons 2 Skeleton minions.",
-		"ultimate_desc": "Summons 3 Ghoul minions.",
-		"passive_desc": "",
 		"passive_name": "",
+		"passive_desc": "",
 		"ability_name": "Raise Dead",
+		"ability_desc": "Summons 2 Skeleton minions.",
 		"ultimate_name": "Army of Darkness",
+		"ultimate_desc": "Summons 3 Ghoul minions.",
 		"ability": {
 			"kind": &"summon_ally",
 			"params": {
@@ -2243,7 +2323,7 @@ const CHAMPION_DATA := {
 				],
 				"reason": "Raise Dead"
 			},
-			"requires_target_in_range": false,
+			"cast_range": 0.0,
 		},
 		"ultimate": {
 			"kind": &"summon_ally",
@@ -2253,7 +2333,8 @@ const CHAMPION_DATA := {
 					{"minion_id": "ghoul", "count": 3}
 				],
 				"reason": "Army of Darkness"
-			}
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [],
 	},
@@ -2679,12 +2760,12 @@ const MINION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A fragile undead warrior that fights with basic attacks.",
-		"ability_desc": "",
-		"ultimate_desc": "",
-		"passive_desc": "Takes 5 true damage every second.",
 		"passive_name": "Unstable Creation",
+		"passive_desc": "Takes 5 true damage every second.",
 		"ability_name": "",
+		"ability_desc": "",
 		"ultimate_name": "",
+		"ultimate_desc": "",
 		"ability": {},
 		"ultimate": {},
 		"passive_ids": [&"unstable_creation"],
@@ -2712,12 +2793,12 @@ const MINION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A swift beast companion that harasses enemies.",
-		"ability_desc": "",
-		"ultimate_desc": "",
-		"passive_desc": "",
 		"passive_name": "",
+		"passive_desc": "",
 		"ability_name": "",
+		"ability_desc": "",
 		"ultimate_name": "",
+		"ultimate_desc": "",
 		"ability": {},
 		"ultimate": {},
 		"passive_ids": [],
@@ -2745,12 +2826,12 @@ const MINION_DATA := {
 			"respawn_time": 0.0,
 		},
 		"description": "A rotting undead creature that sustains itself through combat.",
-		"ability_desc": "",
-		"ultimate_desc": "",
-		"passive_desc": "Has innate 15% lifesteal",
 		"passive_name": "Bloody Claws",
+		"passive_desc": "Has innate 15% lifesteal",
 		"ability_name": "",
+		"ability_desc": "",
 		"ultimate_name": "",
+		"ultimate_desc": "",
 		"ability": {},
 		"ultimate": {},
 		"passive_ids": [],

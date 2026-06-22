@@ -80,12 +80,10 @@ bool combat_actions(
 		const double range_sq = effective_range * effective_range;
 		const bool in_contact_enemy = (dist_sq <= range_sq);
 
-		const bool can_cast_ultimate = !unit.ultimate_requires_target_in_range
-				|| combat::internal::is_in_cast_range(
-						world, unit, unit.ultimate_cast_range_spec, &target, unit.current_ally_target_id, effective_range);
-		const bool can_cast_ability = !unit.ability_requires_target_in_range
-				|| combat::internal::is_in_cast_range(
-						world, unit, unit.ability_cast_range_spec, &target, unit.current_ally_target_id, effective_range);
+		const bool can_cast_ultimate = combat::internal::is_in_cast_range(
+				world, unit, unit.ultimate_cast_range_spec, &target, unit.current_ally_target_id, unit.ultimate_cast_range);
+		const bool can_cast_ability = combat::internal::is_in_cast_range(
+				world, unit, unit.ability_cast_range_spec, &target, unit.current_ally_target_id, unit.ability_cast_range);
 		const bool needs_distance = can_cast_ultimate || can_cast_ability || in_contact_enemy;
 		const double distance = needs_distance ? Math::sqrt(dist_sq) : 0.0;
 

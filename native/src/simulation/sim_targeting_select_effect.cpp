@@ -23,7 +23,8 @@ std::vector<UnitState *> select_targets(
 		TargetSelectionStrategy strategy,
 		bool include_source,
 		ExcessTargetHandling excess_handling,
-		const StringName &team_filter) {
+		const StringName &team_filter,
+		double radius) {
 	std::vector<UnitState *> selected;
 
 	StringName target_team = team_filter;
@@ -59,6 +60,13 @@ std::vector<UnitState *> select_targets(
 			continue;
 		}
 		candidates.push_back(unit);
+	}
+
+	if (radius > 0.0) {
+		auto new_end = std::remove_if(candidates.begin(), candidates.end(), [&](UnitState *unit) {
+			return distance_between(source, *unit) > radius;
+		});
+		candidates.erase(new_end, candidates.end());
 	}
 
 	if (candidates.empty()) {

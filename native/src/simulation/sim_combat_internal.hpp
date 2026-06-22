@@ -60,7 +60,7 @@ bool is_in_cast_range(
 		const EffectCastRangeSpec &spec,
 		const UnitState *enemy_target,
 		int64_t current_ally_target_id,
-		double range);
+		double cast_range);
 int64_t snapshot_ally_cast_target_id(int64_t current_ally_target_id, const EffectCastRangeSpec &spec);
 
 } // namespace internal

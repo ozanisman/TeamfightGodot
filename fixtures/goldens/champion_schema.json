@@ -1,9 +1,10 @@
 {
 	"archer": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_target",
 			"params": {
-				"repeat_count": 3,
+				"repeat_count": 3.0,
 				"selection_strategy": "closest",
 				"sub_effects": {
 					"kind": "projectile",
@@ -20,10 +21,9 @@
 						"reason": "Volley"
 					}
 				},
-				"target_count": 1,
+				"target_count": 1.0,
 				"team_filter": "enemy"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
 		"ability_name": "Volley",
@@ -62,6 +62,7 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "channel",
 			"params": {
 				"allow_movement": true,
@@ -71,7 +72,7 @@
 					"kind": "multi_target",
 					"params": {
 						"excess_handling": "stack",
-						"repeat_count": 5,
+						"repeat_count": 5.0,
 						"selection_strategy": "closest",
 						"sub_effects": {
 							"kind": "projectile",
@@ -88,14 +89,13 @@
 								"reason": "Rain of Arrows"
 							}
 						},
-						"target_count": 1,
+						"target_count": 1.0,
 						"team_filter": "enemy"
 					}
 				},
 				"target_mode": "fixed",
 				"tick_interval": 0.5
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Channels for 1.5 seconds, shooting 5 arrows every 0.5s at the closest enemy dealing 40% physical damage each.",
 		"ultimate_name": "Rain of Arrows",
@@ -103,6 +103,7 @@
 	},
 	"artillery": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -138,8 +139,7 @@
 					}
 				},
 				"reason": "Shell Shock"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ability_name": "Explosive Shell",
@@ -179,6 +179,7 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -192,8 +193,7 @@
 				},
 				"radius_override": 0.1,
 				"reason": "Big Bertha"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Fires a massive artillery shell for 330% with double splash radius.",
 		"ultimate_name": "Barrage",
@@ -201,29 +201,31 @@
 	},
 	"berserker": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"current_hp_ratio": 0.2,
 							"damage_type": "true",
 							"reason": "Blood Price",
 							"target_self": true
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.4,
 							"reason": "Blood Price",
 							"target_self": true
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "stat_modifier",
 						"params": {
 							"duration": 2.5,
@@ -232,13 +234,11 @@
 							"reason": "Blood Price",
 							"stat_name": "attack_speed",
 							"target_self": true
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Blood Price"
-			},
-			"requires_target_in_range": false
+			}
 		},
 		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 20% attack speed for 2.5s.",
 		"ability_name": "Blood Sacrifice",
@@ -277,14 +277,14 @@
 			"sustain"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "damage",
 			"params": {
 				"damage_ratio": 4.0,
 				"damage_type": "true",
 				"reason": "Berserker Rage",
 				"trigger_on_hit": true
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Unleashes a devastating strike for 400% true damage that applies lifesteal.",
 		"ultimate_name": "Ravage",
@@ -292,12 +292,12 @@
 	},
 	"cleric": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "heal",
 			"params": {
 				"flat_amount": 20.0,
 				"reason": "Holy Mending"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Heals an ally for 20 HP.",
 		"ability_name": "Heal",
@@ -336,6 +336,7 @@
 			"sustain"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_target",
 			"params": {
 				"include_self": true,
@@ -346,10 +347,9 @@
 						"reason": "Mass Restoration"
 					}
 				},
-				"target_count": -1,
+				"target_count": -1.0,
 				"team_filter": "ally"
-			},
-			"requires_target_in_range": false
+			}
 		},
 		"ultimate_desc": "Heals all allies for 25% missing HP.",
 		"ultimate_name": "Mass Restoration",
@@ -357,10 +357,12 @@
 	},
 	"colossus": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_taunt",
 						"params": {
 							"anchor": "self",
@@ -368,10 +370,10 @@
 							"radius": 2.5,
 							"reason": "Seismic Slam",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -380,13 +382,11 @@
 							"radius": 1.0,
 							"reason": "Seismic Slam",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Seismic Slam"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Taunts all targets in a 2.5 tile radius for 2.5s and deals 130% physical damage in a 1.0 tile radius.",
 		"ability_name": "Taunt",
@@ -425,10 +425,12 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -437,10 +439,10 @@
 							"radius": 2.5,
 							"reason": "Earthshaker",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_stun",
 						"params": {
 							"anchor": "self",
@@ -448,13 +450,11 @@
 							"radius": 2.5,
 							"reason": "Earthshaker",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Earthshaker"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Colossal impact in a 2.5 tile radius for 250% physical damage and a 2.0s stun.",
 		"ultimate_name": "Colossal Impact",
@@ -462,30 +462,30 @@
 	},
 	"disarmer": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.5,
 							"reason": "Weapon Break",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "disarm",
 						"params": {
 							"duration": 1.5,
 							"reason": "Weapon Break"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Weapon Break"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Disarms target for 1.5s and deals 150% physical damage.",
 		"ability_name": "Disarm",
@@ -524,10 +524,12 @@
 			"single_target"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_disarm",
 						"params": {
 							"anchor": "self",
@@ -535,13 +537,11 @@
 							"radius": 3.0,
 							"reason": "Suppression Field",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Suppression Field"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Creates a weapon suppression field that disarms all enemies in 3.0 tile radius for 3.0s.",
 		"ultimate_name": "Weapon Suppression",
@@ -549,31 +549,31 @@
 	},
 	"earthbender": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.3,
 							"damage_type": "magic",
 							"reason": "Tendril Grasp",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "root",
 						"params": {
 							"duration": 2.0,
 							"reason": "Tendril Grasp"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Tendril Grasp"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Creates a tree tendril that roots the target for 2.0s and deals 130% magic damage.",
 		"ability_name": "Tendril Grasp",
@@ -613,10 +613,12 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -625,10 +627,10 @@
 							"radius": 3.0,
 							"reason": "Earthquake",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_root",
 						"params": {
 							"anchor": "self",
@@ -636,13 +638,11 @@
 							"radius": 3.0,
 							"reason": "Earthquake",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Earthquake"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Causes an earthquake in 3.0 tile radius that roots enemies for 3.5s and deals 200% magic damage.",
 		"ultimate_name": "Earthquake",
@@ -650,32 +650,32 @@
 	},
 	"frost_mage": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.5,
 							"damage_type": "magic",
 							"reason": "Ice Bolt",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "slow",
 						"params": {
 							"duration": 2.5,
 							"reason": "Ice Bolt",
 							"slow_percentage": 0.3
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Ice Bolt"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Fires an ice bolt for 150% magic damage and slows target by 30% for 2.5s.",
 		"ability_name": "Ice Bolt",
@@ -714,10 +714,12 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "target",
@@ -726,10 +728,10 @@
 							"radius": 2.5,
 							"reason": "Blizzard",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_slow",
 						"params": {
 							"anchor": "target",
@@ -738,13 +740,11 @@
 							"reason": "Blizzard",
 							"shape": "circle",
 							"slow_percentage": 0.5
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Blizzard"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Creates a blizzard for 320% magic damage and slows all enemies in 2.5 tile radius by 50% for 4.0s.",
 		"ultimate_name": "Blizzard",
@@ -752,25 +752,47 @@
 	},
 	"guardian": {
 		"ability": {
-			"kind": "multi_target",
+			"cast_range": 0.0,
+			"kind": "multi_effect",
 			"params": {
-				"excess_handling": "stack",
-				"include_self": true,
-				"repeat_count": 1,
-				"selection_strategy": "closest",
-				"sub_effects": {
-					"kind": "shield",
-					"params": {
-						"max_hp_ratio": 0.2,
-						"reason": "Protection"
+				"effects": [
+					{
+						"cast_range": -1.0,
+						"kind": "multi_target",
+						"params": {
+							"excess_handling": "drop",
+							"include_self": true,
+							"radius": 2.0,
+							"repeat_count": 1.0,
+							"selection_strategy": "closest",
+							"sub_effects": {
+								"kind": "shield",
+								"params": {
+									"max_hp_ratio": 0.2,
+									"reason": "Protection"
+								}
+							},
+							"target_count": 2.0,
+							"team_filter": "ally"
+						}
+					},
+					{
+						"cast_range": -1.0,
+						"kind": "shield",
+						"params": {
+							"max_hp_ratio": 0.2,
+							"reason": "Protection",
+							"requires_field": "targets_affected",
+							"requires_result_from": "multi_target",
+							"requires_value": 1.0,
+							"target_self": true
+						}
 					}
-				},
-				"target_count": 2,
-				"team_filter": "ally"
-			},
-			"requires_target_in_range": true
+				],
+				"reason": "Protection"
+			}
 		},
-		"ability_desc": "Grants a 20% max HP shield to himself AND tand he closest ally. If alone, he gains a 40% max HP shield instead.",
+		"ability_desc": "Grants a 20% max HP shield to himself and the closest ally in 2.0 tiles. If alone, he gains a 40% max HP shield instead.",
 		"ability_name": "Protection",
 		"description": "A hulking protector who uses heavy shields to shield his allies.",
 		"name": "Guardian",
@@ -807,63 +829,63 @@
 			"cc"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 3.0,
 							"reason": "Aegis Crash",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "stun",
 						"params": {
 							"duration": 3.5,
 							"reason": "Aegis Crash"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Aegis Crash"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Slams the ground for 300% physical damage and a 3.5s stun.",
-		"ultimate_name": "Ground Slam",
+		"ultimate_name": "Aegis Crash",
 		"unit_id": "guardian"
 	},
 	"mirror_knight": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.3,
 							"reason": "Mirror Shield",
 							"target_self": true
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "reflect",
 						"params": {
 							"duration": 2.5,
 							"reason": "Mirror Shield",
 							"reflect_percentage": 0.25,
 							"reflect_type": "all"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Mirror Shield"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Gains a 10% max HP shield and 25% reflect for 2.5s.",
 		"ability_name": "Mirror Shield",
@@ -902,6 +924,7 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "aoe_reflect",
 			"params": {
 				"anchor": "self",
@@ -911,8 +934,7 @@
 				"reflect_percentage": 0.5,
 				"reflect_type": "all",
 				"shape": "circle"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Grants 50% reflect to all allies in 4.0 tile radius for 5.0s.",
 		"ultimate_name": "Mirrored Dimension",
@@ -920,17 +942,17 @@
 	},
 	"mistcaller": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "heal_over_time",
 			"params": {
 				"allow_overheal": true,
 				"duration": 3.0,
 				"max_hp_ratio": 0.15,
-				"max_stacks": 0,
+				"max_stacks": 0.0,
 				"reason": "Healing Bloom",
 				"stacking_mode": "separate",
 				"tick_interval": 0.2
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Heals a target for 15% of their maximum HP over 3s.",
 		"ability_name": "Healing Bloom",
@@ -946,7 +968,7 @@
 			"ability_cd": 8.0,
 			"armor": 0.06,
 			"attack_damage": 13.0,
-			"attack_range": 3.0,
+			"attack_range": 3,
 			"attack_speed": 0.8,
 			"life_steal": 0.0,
 			"magic_resist": 0.06,
@@ -970,21 +992,21 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "aoe_heal_over_time",
 			"params": {
 				"allow_overheal": true,
 				"anchor": "self",
 				"duration": 3.0,
 				"max_hp_ratio": 0.25,
-				"max_stacks": 0,
+				"max_stacks": 0.0,
 				"radius": 3.5,
 				"reason": "Celestial Rain",
 				"shape": "circle",
 				"stacking_mode": "separate",
 				"target_self": true,
 				"tick_interval": 0.2
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum HP over 3s. Excess healing is converted into temporary maximum HP.",
 		"ultimate_name": "Enveloping Mist",
@@ -992,30 +1014,30 @@
 	},
 	"monk": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.6,
 							"reason": "Pressure Point",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "silence",
 						"params": {
 							"duration": 1.5,
 							"reason": "Pressure Point"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Pressure Point"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Precise strike for 160% physical damage that silences the target for 1.5s.",
 		"ability_name": "Pressure Point",
@@ -1054,31 +1076,32 @@
 			"single_target"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.25,
-							"reason": "Drunken Stance"
-						},
-						"requires_target_in_range": true
+							"reason": "Drunken Stance",
+							"target_self": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "reflect",
 						"params": {
 							"duration": 5.0,
 							"reason": "Drunken Stance",
 							"reflect_percentage": 0.5,
 							"reflect_type": "all"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Drunken Stance"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Gains 25% max HP shield and reflects 75% of incoming damage for 5s.",
 		"ultimate_name": "Drunken Stance",
@@ -1086,18 +1109,18 @@
 	},
 	"necromancer": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "summon_ally",
 			"params": {
 				"minions": [
 					{
-						"count": 2,
+						"count": 2.0,
 						"minion_id": "skeleton"
 					}
 				],
 				"reason": "Raise Dead",
 				"spawn_radius": 2.0
-			},
-			"requires_target_in_range": false
+			}
 		},
 		"ability_desc": "Summons 2 Skeleton minions.",
 		"ability_name": "Raise Dead",
@@ -1134,18 +1157,18 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "summon_ally",
 			"params": {
 				"minions": [
 					{
-						"count": 3,
+						"count": 3.0,
 						"minion_id": "ghoul"
 					}
 				],
 				"reason": "Army of Darkness",
 				"spawn_radius": 2.0
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Summons 3 Ghoul minions.",
 		"ultimate_name": "Army of Darkness",
@@ -1153,17 +1176,19 @@
 	},
 	"ninja": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "self_dash",
 						"params": {
 							"distance": 2.0
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.5,
@@ -1171,10 +1196,10 @@
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
 							"requires_value": true
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "stun",
 						"params": {
 							"duration": 0.5,
@@ -1182,13 +1207,11 @@
 							"requires_field": "reached_target",
 							"requires_result_from": "self_dash",
 							"requires_value": true
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Shadow Strike"
-			},
-			"requires_target_in_range": false
+			}
 		},
 		"ability_desc": "Dashes toward the target enemy. If reached, deal 150% physical damage and stun for 0.5s.",
 		"ability_name": "Shadow Dash",
@@ -1228,6 +1251,7 @@
 			"mobility"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -1240,8 +1264,7 @@
 					}
 				},
 				"reason": "Assassinate"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Executes a target with 900% physical damage.",
 		"ultimate_name": "Execute",
@@ -1249,12 +1272,12 @@
 	},
 	"oracle": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "shield",
 			"params": {
 				"max_hp_ratio": 0.15,
 				"reason": "Purify"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Grants a shield worth 15% max HP to self or an ally.",
 		"ability_name": "Purify",
@@ -1293,29 +1316,29 @@
 			"cc"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.35,
 							"reason": "Divine Shield"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "heal",
 						"params": {
 							"max_hp_ratio": 0.35,
 							"reason": "Divine Shield"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Divine Shield"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Restores 35% max HP and grants a shield worth 35% max HP.",
 		"ultimate_name": "Divine Intervention",
@@ -1323,12 +1346,13 @@
 	},
 	"paladin": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "heal",
 			"params": {
 				"max_hp_ratio": 0.2,
-				"reason": "Lay on Hands"
-			},
-			"requires_target_in_range": true
+				"reason": "Lay on Hands",
+				"target_self": true
+			}
 		},
 		"ability_desc": "Heals self for 20% max HP. [MAKE MORE INTERESTING]",
 		"ability_name": "Lay on Hands",
@@ -1367,31 +1391,32 @@
 			"sustain"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "heal",
 						"params": {
 							"max_hp_ratio": 0.4,
-							"reason": "Divine Judgment"
-						},
-						"requires_target_in_range": true
+							"reason": "Divine Judgment",
+							"target_self": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 2.0,
 							"damage_type": "true",
 							"reason": "Divine Judgment",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Divine Judgment"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Heals self for 40% max HP and deals 200% true damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Divine Judgment",
@@ -1401,39 +1426,39 @@
 		"agility": {
 			"on_defense": [
 				{
+					"cast_range": -1.0,
 					"kind": "auto_dodge",
 					"params": {
 						"dodge_chance": 0.25,
 						"on_dodge_multiplier": 0.0,
 						"on_hit_multiplier": 1.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"arcane_focus": {
 			"on_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "target_status_multiplier",
 					"params": {
 						"multiplier": 1.25,
 						"status_kind": "silence"
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"bastion": {
 			"on_ally_defense": [
 				{
+					"cast_range": -1.0,
 					"kind": "redirect_damage",
 					"params": {
 						"reason": "Bastion",
 						"redirect_cap": 0.0,
 						"redirect_ratio": 0.2,
 						"reduction_ratio": 0.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			],
 			"radius": 2.0,
@@ -1442,19 +1467,20 @@
 		"bitter_chill": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "slow",
 					"params": {
 						"duration": 1.5,
 						"reason": "Bitter Chill",
 						"slow_percentage": 0.1
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"bloodlust": {
 			"on_takedown": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"additive": 0.05,
@@ -1462,38 +1488,38 @@
 						"reason": "Bloodlust",
 						"stat_name": "life_steal",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"bravery": {
 			"on_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "hp_threshold_damage_multiplier",
 					"params": {
 						"above_hp_ratio": 0.8,
 						"multiplier": 1.2
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"deadeye": {
 			"on_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "distance_threshold_multiplier",
 					"params": {
 						"min_distance": 2.0,
 						"multiplier": 1.3
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"demolition": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "aoe_damage",
 					"params": {
 						"anchor": "target",
@@ -1502,140 +1528,139 @@
 						"radius": 0.5,
 						"reason": "Explosion",
 						"shape": "circle"
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"devotion": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "mana_regen",
 					"params": {
 						"flat_amount": 10.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"duelist": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"additive": 2.0,
 						"duration": 3.0,
 						"duration_type": "respawn",
-						"max_stacks": 7,
+						"max_stacks": 7.0,
 						"reason": "Duelist",
 						"stack_behavior": "refresh",
 						"stat_name": "attack_damage",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"durability": {
 			"on_defense": [
 				{
+					"cast_range": -1.0,
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 0.9
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"eagle_eye": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"additive": -0.02,
 						"duration": 3.0,
 						"duration_type": "respawn",
-						"max_stacks": 7,
+						"max_stacks": 7.0,
 						"reason": "Eagle Eye",
 						"stack_behavior": "refresh",
 						"stat_name": "armor"
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"earthen_protection": {
 			"on_defense": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"additive": 0.05,
 						"duration": 5.0,
 						"duration_type": "respawn",
-						"max_stacks": 12,
+						"max_stacks": 12.0,
 						"reason": "Earthen Protection",
 						"stack_behavior": "refresh",
 						"stat_name": "armor",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				},
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"additive": 0.05,
 						"duration": 5.0,
 						"duration_type": "respawn",
-						"max_stacks": 10,
+						"max_stacks": 10.0,
 						"reason": "Earthen Protection",
 						"stack_behavior": "refresh",
 						"stat_name": "magic_resist",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"enlightenment": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "mana_restore_on_hit",
 					"params": {
 						"flat_amount": 5.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"executioner": {
 			"on_ability": [
 				{
+					"cast_range": -1.0,
 					"kind": "hp_threshold_damage_multiplier",
 					"params": {
 						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			],
 			"on_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "hp_threshold_damage_multiplier",
 					"params": {
 						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			],
 			"on_ultimate": [
 				{
+					"cast_range": -1.0,
 					"kind": "hp_threshold_damage_multiplier",
 					"params": {
 						"below_hp_ratio": 0.3,
 						"multiplier": 2.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
@@ -1645,49 +1670,50 @@
 		"mana_font": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "mana_regen",
 					"params": {
 						"flat_amount": 5.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"reflective_armor": {
 			"on_defense": [
 				{
+					"cast_range": -1.0,
 					"kind": "reflect_damage",
 					"params": {
 						"reflect_percentage": 0.1,
 						"reflect_type": "all"
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"rejuvenation": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "heal",
 					"params": {
 						"max_hp_ratio": 0.02,
 						"on_tick_interval": 1.0,
 						"reason": "Rejuvenation"
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"restorative_mist": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "aoe_heal_over_time",
 					"params": {
 						"allow_overheal": true,
 						"anchor": "self",
 						"duration": 3.0,
-						"flat_amount": 5,
-						"max_stacks": 0,
+						"flat_amount": 5.0,
+						"max_stacks": 0.0,
 						"missing_hp_ratio": 0.05,
 						"on_tick_interval": 5.0,
 						"radius": 3.0,
@@ -1696,14 +1722,14 @@
 						"stacking_mode": "separate",
 						"target_self": true,
 						"tick_interval": 0.2
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"shadow_steps": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "stealth",
 					"params": {
 						"break_conditions": {
@@ -1715,25 +1741,25 @@
 						"on_tick_interval": 1.5,
 						"reason": "Shadow Steps",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"siphon": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "drain_target_mana_on_hit",
 					"params": {
 						"flat_amount": 5.0
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"soul_feast": {
 			"post_heal": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"duration_type": "match",
@@ -1741,30 +1767,31 @@
 						"reason": "Soul Feast",
 						"stat_name": "max_hp",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"stunning_strikes": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "every_n_attacks_stun",
 					"params": {
-						"every_n": 3,
+						"every_n": 3.0,
 						"stun_duration": 0.5
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"sweeping_strikes": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "multi_effect",
 					"params": {
 						"effects": [
 							{
+								"cast_range": -1.0,
 								"kind": "aoe_damage",
 								"params": {
 									"anchor": "self",
@@ -1773,37 +1800,36 @@
 									"radius": 0.75,
 									"reason": "Sweeping Strikes",
 									"shape": "circle"
-								},
-								"requires_target_in_range": true
+								}
 							},
 							{
+								"cast_range": -1.0,
 								"kind": "damage_based_heal",
 								"params": {
 									"damage_ratio": 1.0,
 									"reason": "Sweeping Strikes"
-								},
-								"requires_target_in_range": true
+								}
 							}
 						]
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"swiftness": {
 			"on_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "constant_multiplier",
 					"params": {
 						"multiplier": 1.15
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"unstable_creation": {
 			"on_tick": [
 				{
+					"cast_range": -1.0,
 					"kind": "damage",
 					"params": {
 						"damage_type": "true",
@@ -1811,18 +1837,18 @@
 						"on_tick_interval": 1.0,
 						"reason": "Unstable Creation",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		},
 		"weapon_breaker": {
 			"post_attack": [
 				{
+					"cast_range": -1.0,
 					"kind": "stat_modifier",
 					"params": {
 						"duration": 3.0,
-						"max_stacks": 1,
+						"max_stacks": 1.0,
 						"multiplicative": 1.25,
 						"reason": "Weapon Breaker",
 						"requires_target_status": "disarm",
@@ -1830,30 +1856,29 @@
 						"stat_name": "attack_speed",
 						"status_target": "target",
 						"target_self": true
-					},
-					"requires_target_in_range": true
+					}
 				}
 			]
 		}
 	},
 	"rogue": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 2.0,
 							"reason": "Backstab",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Backstab"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Deals 200% physical damage. [MAKE MORE INTERESTING]",
 		"ability_name": "Backstab",
@@ -1891,12 +1916,12 @@
 			"single_target"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "damage",
 			"params": {
 				"damage_ratio": 6.0,
 				"reason": "Eviscerate"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Lethal execution dealing 600% physical damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Execute",
@@ -1955,32 +1980,32 @@
 	},
 	"silencer": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.3,
 							"reason": "Arcane Strike",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "silence",
 						"params": {
 							"block_abilities": true,
 							"block_ultimate": true,
 							"duration": 3.5,
 							"reason": "Arcane Strike"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Arcane Strike"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Strikes target for 130% physical damage and silences for 3.5s.",
 		"ability_name": "Arcane Strike",
@@ -2019,10 +2044,12 @@
 			"control"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -2030,10 +2057,10 @@
 							"radius": 3.0,
 							"reason": "Silence Zone",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_silence",
 						"params": {
 							"anchor": "self",
@@ -2043,13 +2070,11 @@
 							"radius": 3.5,
 							"reason": "Silence Zone",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Silence Zone"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Creates a silence zone for 340% physical damage, silencing all enemies in 3.5 tile radius for 6.0s.",
 		"ultimate_name": "Silence Zone",
@@ -2057,12 +2082,12 @@
 	},
 	"siren": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "stun",
 			"params": {
 				"duration": 0.5,
 				"reason": "Enthralling Song"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Binds target stunning for 0.5s stun.",
 		"ability_name": "Enthralling Song",
@@ -2101,31 +2126,31 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 2.8,
 							"damage_type": "magic",
 							"reason": "Banshee Wail",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "stun",
 						"params": {
 							"duration": 1.0,
 							"reason": "Banshee Wail"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Banshee Wail"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Shrieks for 280% magic damage and stunning for 1.0s.",
 		"ultimate_name": "Siren's Shriek",
@@ -2133,6 +2158,7 @@
 	},
 	"sniper": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -2145,8 +2171,7 @@
 					}
 				},
 				"reason": "Headshot"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
 		"ability_name": "Headshot",
@@ -2185,6 +2210,7 @@
 			"single_target"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -2198,8 +2224,7 @@
 				},
 				"reason": "Snipe",
 				"speed_override": 15.0
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Snipe",
@@ -2207,34 +2232,35 @@
 	},
 	"swordsman": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
+				"cast_range": -1.0,
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.2,
 							"reason": "Bleeding Cut"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "damage_over_time",
 						"params": {
 							"damage_ratio": 2.5,
 							"duration": 3.0,
 							"effect_type": "generic",
-							"max_stacks": 0,
+							"max_stacks": 0.0,
 							"reason": "Bleeding Cut",
 							"stacking_mode": "separate",
 							"tick_interval": 0.5
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Bleeding Cut"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Deals 120% physical damage and applies a bleed that deals 250% physical damage as a bleed over 3s.",
 		"ability_name": "Bleeding Cut",
@@ -2273,10 +2299,13 @@
 			"single_target"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
+				"cast_range": -1.0,
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "consume_stacks_damage",
 						"params": {
 							"base_damage_ratio": 2.5,
@@ -2286,28 +2315,26 @@
 							"stack_reason": "Duelist",
 							"stacking_mode": "additive",
 							"stat_name": "attack_damage"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "set_stacks",
 						"params": {
 							"additive_per_stack": 2.0,
 							"duration": 3.0,
-							"max_stacks": 7,
+							"max_stacks": 7.0,
 							"reason": "Duelist",
 							"requires_field": "target_killed",
 							"requires_result_from": "consume_stacks_damage",
 							"requires_value": true,
 							"stat_name": "attack_damage",
 							"to_max": true
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Execution"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase the damage by 50% per stack. If it kills the target, gain full passive stacks.",
 		"ultimate_name": "Execution",
@@ -2315,10 +2342,12 @@
 	},
 	"valkyrie": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "forward",
@@ -2327,10 +2356,10 @@
 							"reason": "Cleave",
 							"shape": "cone",
 							"width": 150.0
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_stun",
 						"params": {
 							"anchor": "forward",
@@ -2339,13 +2368,11 @@
 							"reason": "Cleave",
 							"shape": "cone",
 							"width": 150.0
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Cleave"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Cleaves enemies in a 150 degree cone within 0.75 tiles for 150% physical damage and a 0.5s stun.",
 		"ability_name": "Cleave",
@@ -2384,10 +2411,12 @@
 			"mobility"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -2395,21 +2424,19 @@
 							"radius": 2.0,
 							"reason": "Whirlwind",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "damage_based_shield",
 						"params": {
 							"damage_ratio": 2.0,
 							"reason": "Whirlwind"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Whirlwind"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Hits enemies in a 2.0 tile radius for 15% max HP physical damage and shields for 200% of the damage dealt.",
 		"ultimate_name": "Whirlwind",
@@ -2417,6 +2444,7 @@
 	},
 	"warlock": {
 		"ability": {
+			"cast_range": 0.0,
 			"kind": "channel",
 			"params": {
 				"allow_movement": false,
@@ -2501,8 +2529,7 @@
 				},
 				"target_mode": "fixed",
 				"tick_interval": 0.5
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount.",
 		"ability_name": "Chaos Rift",
@@ -2546,38 +2573,40 @@
 	},
 	"windcaller": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.2,
 							"damage_type": "magic",
 							"reason": "Wind Blast",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "knockback",
 						"params": {
 							"direction": "away_from_source",
 							"distance": 1.0,
 							"reason": "Wind Blast"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "slow",
 						"params": {
 							"duration": 1.5,
 							"reason": "Wind Blast",
 							"slow_percentage": 0.2
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.1,
@@ -2585,13 +2614,11 @@
 							"requires_field": "knockback_applied",
 							"requires_result_from": "knockback",
 							"requires_value": true
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Wind Blast"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Blasts a target with wind for 120% magic damage, knocking them back 1.0 tiles and slowing them by 20% for 1.5s.",
 		"ability_name": "Wind Blast",
@@ -2630,10 +2657,12 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_damage",
 						"params": {
 							"anchor": "self",
@@ -2642,10 +2671,10 @@
 							"radius": 3.5,
 							"reason": "Tornado",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "aoe_knockback",
 						"params": {
 							"anchor": "self",
@@ -2654,10 +2683,10 @@
 							"radius": 3.5,
 							"reason": "Tornado",
 							"shape": "circle"
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "shield",
 						"params": {
 							"max_hp_ratio": 0.1,
@@ -2665,13 +2694,11 @@
 							"requires_field": "knockback_applied",
 							"requires_result_from": "aoe_knockback",
 							"requires_value": true
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Tornado"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Creates a tornado for 250% magic damage, knocking back all enemies in a 3.5 tile radius by 2.5 tiles.",
 		"ultimate_name": "Tornado",
@@ -2679,6 +2706,7 @@
 	},
 	"wizard": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -2692,8 +2720,7 @@
 				},
 				"reason": "Arcane Bolt",
 				"speed_override": 7.0
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Fires a magical projectile dealing 150% magic damage.",
 		"ability_name": "Arcane Bolt",
@@ -2732,6 +2759,7 @@
 			"aoe"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "projectile",
 			"params": {
 				"on_hit": {
@@ -2745,8 +2773,7 @@
 				},
 				"reason": "Meteor Bombardment",
 				"speed_override": 4.0
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Calls down a meteor for 500% magic damage.",
 		"ultimate_name": "Meteor Bombardment",
@@ -2754,31 +2781,31 @@
 	},
 	"wraith": {
 		"ability": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 1.5,
 							"damage_type": "magic",
 							"reason": "Spectral Touch",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "disarm",
 						"params": {
 							"duration": 1.0,
 							"reason": "Spectral Touch"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Spectral Touch"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ability_desc": "Deals 150% magic damage and a 1.0s disarm.",
 		"ability_name": "Spectral Strike",
@@ -2818,31 +2845,31 @@
 			"mobility"
 		],
 		"ultimate": {
+			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
+						"cast_range": -1.0,
 						"kind": "damage",
 						"params": {
 							"damage_ratio": 2.5,
 							"damage_type": "magic",
 							"reason": "Phantom Strike",
 							"trigger_on_hit": false
-						},
-						"requires_target_in_range": true
+						}
 					},
 					{
+						"cast_range": -1.0,
 						"kind": "stun",
 						"params": {
 							"duration": 1.5,
 							"reason": "Phantom Strike"
-						},
-						"requires_target_in_range": true
+						}
 					}
 				],
 				"reason": "Phantom Strike"
-			},
-			"requires_target_in_range": true
+			}
 		},
 		"ultimate_desc": "Deals 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
 		"ultimate_name": "Haunt",

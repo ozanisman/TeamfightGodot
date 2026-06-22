@@ -31,29 +31,6 @@ Dictionary execute_effect(SimHostCallbacks &host, const EffectRecord &effect, Ef
 	return host.execute_effect(host, effect, context);
 }
 
-double get_max_radius_from_effect(const EffectRecord &effect) {
-	double max_radius = 0.0;
-	if (effect.aoe_shape_params.radius > max_radius) {
-		max_radius = effect.aoe_shape_params.radius;
-	}
-	if (effect.scalar0 > max_radius) {
-		max_radius = effect.scalar0;
-	}
-	for (const EffectRecord &child : effect.children) {
-		const double child_radius = get_max_radius_from_effect(child);
-		if (child_radius > max_radius) {
-			max_radius = child_radius;
-		}
-	}
-	for (const EffectRecord &sub_effect : effect.sub_effects) {
-		const double sub_radius = get_max_radius_from_effect(sub_effect);
-		if (sub_radius > max_radius) {
-			max_radius = sub_radius;
-		}
-	}
-	return max_radius;
-}
-
 int64_t get_channel_tick_count(const UnitStateCold &cold) {
 	if (cold.channel_tick_interval <= 0.0) {
 		return 0;
@@ -96,25 +73,43 @@ bool should_interrupt_channel(SimWorld &world, UnitState &unit, const UnitStateC
 		return true;
 	}
 	if (!cold.channel_allow_movement && unit.root_remaining <= 0.0) {
-		static const StringName player_team("player");
-		static const StringName enemy_team("enemy");
-		const StringName &enemy_team_name = unit.team == player_team ? enemy_team : player_team;
-		const std::vector<int64_t> &enemy_indices = alive_indices_for_team(world, enemy_team_name);
-		double ability_radius = get_max_radius_from_effect(cold.channel_sub_effect);
-		if (ability_radius <= 0.0) {
-			ability_radius = get_effective_attack_range(unit);
+		const double raw_cast_range = cold.channel_action_kind == sn_ultimate()
+				? unit.ultimate_cast_range
+				: unit.ability_cast_range;
+		// cast_range < 0: use attack range. == 0: no gate.
+		double effective_cast_range;
+		if (raw_cast_range < 0.0) {
+			effective_cast_range = get_effective_attack_range(unit);
+		} else if (raw_cast_range == 0.0) {
+			effective_cast_range = -1.0;
+		} else {
+			effective_cast_range = raw_cast_range;
 		}
-		bool has_target_in_range = false;
-		for (int64_t index : enemy_indices) {
-			const UnitState &enemy = world.units[static_cast<size_t>(index)];
-			const double dist = distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
-			if (dist <= ability_radius) {
-				has_target_in_range = true;
-				break;
+		if (effective_cast_range >= 0.0) {
+			// TODO: This range-interrupt check only scans for enemies. For
+			// ally-targeted non-movement channels (e.g. a channel heal on a
+			// fixed ally), this would incorrectly interrupt when enemies walk
+			// away even if the ally is still in range. No current champion has
+			// such a channel, so this is not yet a bug. If an ally-targeted
+			// non-movement channel is added, store the EffectCastRangeSpec on
+			// UnitStateCold at channel start and branch here on
+			// needs_single_ally (scan allies) vs needs_enemy (scan enemies).
+			static const StringName player_team("player");
+			static const StringName enemy_team("enemy");
+			const StringName &enemy_team_name = unit.team == player_team ? enemy_team : player_team;
+			const std::vector<int64_t> &enemy_indices = alive_indices_for_team(world, enemy_team_name);
+			bool has_target_in_range = false;
+			for (int64_t index : enemy_indices) {
+				const UnitState &enemy = world.units[static_cast<size_t>(index)];
+				const double dist = distance_between_coords(unit.pos_x, unit.pos_y, enemy.pos_x, enemy.pos_y);
+				if (dist <= effective_cast_range) {
+					has_target_in_range = true;
+					break;
+				}
 			}
-		}
-		if (!has_target_in_range) {
-			return true;
+			if (!has_target_in_range) {
+				return true;
+			}
 		}
 	}
 	return false;

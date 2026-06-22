@@ -4,7 +4,7 @@
 			"cast_range": -1.0,
 			"kind": "multi_target",
 			"params": {
-				"repeat_count": 3.0,
+				"repeat_count": 3,
 				"selection_strategy": "closest",
 				"sub_effects": {
 					"kind": "projectile",
@@ -21,7 +21,7 @@
 						"reason": "Volley"
 					}
 				},
-				"target_count": 1.0,
+				"target_count": 1,
 				"team_filter": "enemy"
 			}
 		},
@@ -72,7 +72,7 @@
 					"kind": "multi_target",
 					"params": {
 						"excess_handling": "stack",
-						"repeat_count": 5.0,
+						"repeat_count": 5,
 						"selection_strategy": "closest",
 						"sub_effects": {
 							"kind": "projectile",
@@ -89,7 +89,7 @@
 								"reason": "Rain of Arrows"
 							}
 						},
-						"target_count": 1.0,
+						"target_count": 1,
 						"team_filter": "enemy"
 					}
 				},
@@ -191,7 +191,7 @@
 						"trigger_on_hit": true
 					}
 				},
-				"radius_override": 0.1,
+				"radius_override": 2.0,
 				"reason": "Big Bertha"
 			}
 		},
@@ -347,7 +347,7 @@
 						"reason": "Mass Restoration"
 					}
 				},
-				"target_count": -1.0,
+				"target_count": -1,
 				"team_filter": "ally"
 			}
 		},
@@ -763,7 +763,7 @@
 							"excess_handling": "drop",
 							"include_self": true,
 							"radius": 2.0,
-							"repeat_count": 1.0,
+							"repeat_count": 1,
 							"selection_strategy": "closest",
 							"sub_effects": {
 								"kind": "shield",
@@ -772,7 +772,7 @@
 									"reason": "Protection"
 								}
 							},
-							"target_count": 2.0,
+							"target_count": 2,
 							"team_filter": "ally"
 						}
 					},
@@ -784,7 +784,7 @@
 							"reason": "Protection",
 							"requires_field": "targets_affected",
 							"requires_result_from": "multi_target",
-							"requires_value": 1.0,
+							"requires_value": 1,
 							"target_self": true
 						}
 					}
@@ -829,25 +829,31 @@
 			"cc"
 		],
 		"ultimate": {
-			"cast_range": -1.0,
+			"cast_range": 0.0,
 			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
 						"cast_range": -1.0,
-						"kind": "damage",
+						"kind": "aoe_damage",
 						"params": {
+							"anchor": "self",
 							"damage_ratio": 3.0,
+							"damage_type": "physical",
+							"radius": 1.5,
 							"reason": "Aegis Crash",
-							"trigger_on_hit": false
+							"shape": "circle"
 						}
 					},
 					{
 						"cast_range": -1.0,
-						"kind": "stun",
+						"kind": "aoe_stun",
 						"params": {
+							"anchor": "self",
 							"duration": 3.5,
-							"reason": "Aegis Crash"
+							"radius": 1.5,
+							"reason": "Aegis Crash",
+							"shape": "circle"
 						}
 					}
 				],
@@ -891,7 +897,7 @@
 		"ability_name": "Mirror Shield",
 		"description": "A defensive warrior who reflects incoming damage back at attackers.",
 		"name": "Mirror Knight",
-		"passive_desc": "Reflects 10% of all damage taken back to attackers.",
+		"passive_desc": "Reflects 30% of all damage taken back to attackers.",
 		"passive_ids": [
 			"reflective_armor"
 		],
@@ -948,7 +954,7 @@
 				"allow_overheal": true,
 				"duration": 3.0,
 				"max_hp_ratio": 0.15,
-				"max_stacks": 0.0,
+				"max_stacks": 0,
 				"reason": "Healing Bloom",
 				"stacking_mode": "separate",
 				"tick_interval": 0.2
@@ -968,7 +974,7 @@
 			"ability_cd": 8.0,
 			"armor": 0.06,
 			"attack_damage": 13.0,
-			"attack_range": 3,
+			"attack_range": 3.0,
 			"attack_speed": 0.8,
 			"life_steal": 0.0,
 			"magic_resist": 0.06,
@@ -999,7 +1005,7 @@
 				"anchor": "self",
 				"duration": 3.0,
 				"max_hp_ratio": 0.25,
-				"max_stacks": 0.0,
+				"max_stacks": 0,
 				"radius": 3.5,
 				"reason": "Celestial Rain",
 				"shape": "circle",
@@ -1095,7 +1101,7 @@
 						"params": {
 							"duration": 5.0,
 							"reason": "Drunken Stance",
-							"reflect_percentage": 0.5,
+							"reflect_percentage": 0.6,
 							"reflect_type": "all"
 						}
 					}
@@ -1103,7 +1109,7 @@
 				"reason": "Drunken Stance"
 			}
 		},
-		"ultimate_desc": "Gains 25% max HP shield and reflects 75% of incoming damage for 5s.",
+		"ultimate_desc": "Gains 25% max HP shield and reflects 60% of incoming damage for 5s.",
 		"ultimate_name": "Drunken Stance",
 		"unit_id": "monk"
 	},
@@ -1114,7 +1120,7 @@
 			"params": {
 				"minions": [
 					{
-						"count": 2.0,
+						"count": 2,
 						"minion_id": "skeleton"
 					}
 				],
@@ -1162,7 +1168,7 @@
 			"params": {
 				"minions": [
 					{
-						"count": 3.0,
+						"count": 3,
 						"minion_id": "ghoul"
 					}
 				],
@@ -1263,7 +1269,8 @@
 						"trigger_on_hit": true
 					}
 				},
-				"reason": "Assassinate"
+				"reason": "Assassinate",
+				"speed_override": 8.0
 			}
 		},
 		"ultimate_desc": "Executes a target with 900% physical damage.",
@@ -1552,7 +1559,7 @@
 						"additive": 2.0,
 						"duration": 3.0,
 						"duration_type": "respawn",
-						"max_stacks": 7.0,
+						"max_stacks": 7,
 						"reason": "Duelist",
 						"stack_behavior": "refresh",
 						"stat_name": "attack_damage",
@@ -1581,7 +1588,7 @@
 						"additive": -0.02,
 						"duration": 3.0,
 						"duration_type": "respawn",
-						"max_stacks": 7.0,
+						"max_stacks": 7,
 						"reason": "Eagle Eye",
 						"stack_behavior": "refresh",
 						"stat_name": "armor"
@@ -1598,7 +1605,7 @@
 						"additive": 0.05,
 						"duration": 5.0,
 						"duration_type": "respawn",
-						"max_stacks": 12.0,
+						"max_stacks": 12,
 						"reason": "Earthen Protection",
 						"stack_behavior": "refresh",
 						"stat_name": "armor",
@@ -1612,7 +1619,7 @@
 						"additive": 0.05,
 						"duration": 5.0,
 						"duration_type": "respawn",
-						"max_stacks": 10.0,
+						"max_stacks": 10,
 						"reason": "Earthen Protection",
 						"stack_behavior": "refresh",
 						"stat_name": "magic_resist",
@@ -1712,8 +1719,8 @@
 						"allow_overheal": true,
 						"anchor": "self",
 						"duration": 3.0,
-						"flat_amount": 5.0,
-						"max_stacks": 0.0,
+						"flat_amount": 5,
+						"max_stacks": 0,
 						"missing_hp_ratio": 0.05,
 						"on_tick_interval": 5.0,
 						"radius": 3.0,
@@ -1777,7 +1784,7 @@
 					"cast_range": -1.0,
 					"kind": "every_n_attacks_stun",
 					"params": {
-						"every_n": 3.0,
+						"every_n": 3,
 						"stun_duration": 0.5
 					}
 				}
@@ -1848,7 +1855,7 @@
 					"kind": "stat_modifier",
 					"params": {
 						"duration": 3.0,
-						"max_stacks": 1.0,
+						"max_stacks": 1,
 						"multiplicative": 1.25,
 						"reason": "Weapon Breaker",
 						"requires_target_status": "disarm",
@@ -2054,7 +2061,7 @@
 						"params": {
 							"anchor": "self",
 							"damage_ratio": 3.4,
-							"radius": 3.0,
+							"radius": 3.5,
 							"reason": "Silence Zone",
 							"shape": "circle"
 						}
@@ -2235,7 +2242,7 @@
 			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
-				"cast_range": -1.0,
+				"cast_range": -1,
 				"effects": [
 					{
 						"cast_range": -1.0,
@@ -2252,7 +2259,7 @@
 							"damage_ratio": 2.5,
 							"duration": 3.0,
 							"effect_type": "generic",
-							"max_stacks": 0.0,
+							"max_stacks": 0,
 							"reason": "Bleeding Cut",
 							"stacking_mode": "separate",
 							"tick_interval": 0.5
@@ -2302,7 +2309,7 @@
 			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
-				"cast_range": -1.0,
+				"cast_range": -1,
 				"effects": [
 					{
 						"cast_range": -1.0,
@@ -2323,7 +2330,7 @@
 						"params": {
 							"additive_per_stack": 2.0,
 							"duration": 3.0,
-							"max_stacks": 7.0,
+							"max_stacks": 7,
 							"reason": "Duelist",
 							"requires_field": "target_killed",
 							"requires_result_from": "consume_stacks_damage",

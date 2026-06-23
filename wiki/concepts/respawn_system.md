@@ -1,5 +1,7 @@
 # Respawn System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_match_lifecycle`, `sim_match_spawn`
+
 Units return to battlefield after death with timer-based revival.
 
 On death: unit sets alive=false, records death time, increments death counter. Respawn timer counts down from respawn_time (default 10s RESPAWN_TIME, champion-specific). When timer expires, unit respawns at random Y position within [RESPAWN_Y_MIN, RESPAWN_Y_MAX] (3.0 to 7.0).

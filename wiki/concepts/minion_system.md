@@ -1,5 +1,7 @@
 # Minion System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_catalog`, `sim_unit_builder`, `sim_match_spawn`
+
 Minions are summonable units that fight alongside champions. They are defined in MINION_DATA (parallel to CHAMPION_DATA) and use the role="minion" to distinguish them from champions.
 
 ## Minion Definition

@@ -1,5 +1,7 @@
 # Assist System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_match_lifecycle`, `sim_damage_apply`
+
 Credit for kills based on damage contribution within time window.
 
 Assist window: 5 seconds (ASSIST_WINDOW). Damage sources tracked per unit with timestamp and amount. Recent benefactors tracked for assist credit.

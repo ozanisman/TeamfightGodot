@@ -282,7 +282,7 @@ godot --headless --path . --script res://scripts/tools/full_draft_ab_test.gd -- 
 
 ## Current A/B Baseline (Phase 65)
 
-- **Report path:** `draft_ai_current_ab_baseline_report.md`
+- **Report path:** `res://logs/full_draft_ab_test_report.txt` (generated on run, not committed)
 - **Date:** 2026-06-15
 - **Strategy matchups tested:** native vs random, random vs native, native vs native
 - **Native self-play bias:** 59.8% Blue / 40.2% Red (~19.6 pp)
@@ -316,114 +316,13 @@ strategy.set_weight_overrides({
 5. **Synergy depth** - Current synergy model is pairwise (no higher-order synergies)
 6. **Side asymmetry in secondary matchup** - native_full vs native_picks_random_bans shows 55.4% vs 71.7% asymmetry (may be draft-order advantage)
 
-## Experimental Lookahead Findings
+## Lookahead experiments (historical)
 
-### Overview
-1-ply lookahead was implemented as an experimental feature to improve draft quality by simulating enemy responses. However, all lookahead variants introduced unacceptable side bias and were not promoted to default.
+Quarantined strategies; did not improve bias. Signal ceiling and failed feature gates: [draft_prediction_context.md](draft_prediction_context.md).
 
-### Variants Tested
+## Draft order bias (Phase 38)
 
-**native_lookahead:** Full lookahead on both picks and bans
-- Applied enemy-response penalty when next pick is enemy
-- Side bias: Up to 42.0% (severe)
-- Status: Not promoted
-
-**native_lookahead_pick_only:** Lookahead only for picks
-- Same logic as full lookahead but bans use baseline
-- Side bias: Similar to full lookahead
-- Status: Not promoted
-
-**native_lookahead_ban_only:** Lookahead only for bans
-- Ban lookahead with baseline picks
-- Side bias: 21-25% (moderate but still exceeds threshold)
-- Status: Kept as experimental for future research
-
-**native_lookahead_continuation:** Continuation-aware pick lookahead
-- Applied enemy-response penalty when next pick is enemy
-- Applied follow-up bonus when next pick is same side
-- Equalized lookahead opportunities (5 vs 3)
-- Side bias: 42.0% (worse than original)
-- Status: Removed - made bias significantly worse
-
-### Key Findings
-
-1. **Pick lookahead is the primary bias source**
-   - Ban-only lookahead has moderate bias (21-25%)
-   - Full lookahead has severe bias (up to 42%)
-   - The opportunity imbalance (Blue gets 3 lookahead picks, Red gets 2) amplifies draft-order advantage
-
-2. **Equalizing opportunities didn't help**
-   - Continuation variant gave both sides 5 lookahead adjustments
-   - The adjustment logic itself is asymmetric
-   - Follow-up bonus on same-side picks amplifies draft-order advantage
-
-3. **Baseline has inherent draft-order bias**
-   - native baseline self-play: ~18.4% Blue-side bias
-   - This is the structural advantage from snake draft order
-   - Cannot be eliminated without changing draft order
-
-4. **All lookahead variants failed acceptance criteria**
-   - No variant has side bias < 20%
-   - Continuation variant made the problem worse
-   - Ban-only is best but still not good enough
-
-### Current Status
-
-**Default strategy:** native (baseline with 18.4% draft-order bias)
-
-**Experimental strategies (kept for research):**
-- native_lookahead - Severe bias, kept for reference
-- native_lookahead_pick_only - Severe bias, kept for reference
-- native_lookahead_ban_only - Moderate bias, may be useful for future tuning
-
-**Removed strategies:**
-- native_lookahead_continuation - Made bias worse, removed
-- native_baseline - Duplicate of native, removed
-- native_baseline_ban_lookahead - Same as ban-only, removed
-
-### Future Options
-
-1. **Draft order redesign** - Symmetric draft order to eliminate structural bias
-2. **Side-compensated scoring** - Give Red stronger lookahead adjustments
-3. **Deeper but symmetric search** - Minimax with equal depth for both sides
-4. **Remove lookahead** - If not useful for production
-
-### References
-
-- **Lookahead experiment reports:**
-  - `phase34_lookahead_bias_isolation_report.md` - Bias isolation analysis
-  - `phase35_lookahead_trace_report.md` - Turn diagnostic and opportunity analysis
-  - `phase36_lookahead_variants_report.md` - Safer variants test results
-
-## Draft Order Decision (Phase 38)
-
-### Current Draft Order
-The current snake draft order is retained as the production/default order. All tested alternate draft orders have worse bias.
-
-### Known Structural Advantage
-Baseline native self-play has a known ~18-20% Blue-side structural advantage due to the snake draft order:
-- Current order native self-play: 59.8% Blue / 40.2% Red (19.6% bias)
-- Current order random self-play: 48.7% Blue / 51.3% Red (2.6% bias)
-
-This is:
-- Not a bug in the scoring logic
-- Structural to the snake draft order
-- Expected for this type of draft format
-- Manageable and well-understood
-
-### Evaluation Guidelines
-When evaluating future strategy changes:
-1. Compare against the current 19.6% native self-play bias
-2. Do not interpret changes as absolute fairness
-3. Consider the structural advantage as a constant
-4. Focus on relative improvements, not absolute fairness
-5. The goal is to minimize bias, not eliminate it entirely
-
-### References
-- `phase38_draft_order_bias_audit_report.md` - Full audit results and analysis
-- `wiki/notes/draft_order_bias_audit.md` - Comprehensive audit documentation
-
-
+Production retains snake order (~19.6% Blue advantage in native self-play). Full audit: [draft_order_bias_audit.md](draft_order_bias_audit.md). Phase 29 baseline metrics: [native_draft_ai_baseline.md](native_draft_ai_baseline.md).
 
 ## Validation Suite
 
@@ -435,7 +334,7 @@ The standardized validation suite is `scripts/tools/run_draft_ai_validation_suit
 
 The validation suite is file-based and does not depend on stdout parsing. Each validation script writes a report file with a `STATUS: PASS` or `STATUS: FAIL` line. The suite reads these files to determine check results.
 
-**Headless Execution Caveat:** When running Godot headless scripts, use direct Godot executable invocation with `--headless --path . --script`. The PowerShell wrapper (`run_godot.ps1`) runs the main scene instead of the specified script when `run/main_scene` is set in `project.godot`.
+**Headless execution:** Use [`run_godot.ps1`](../../run_godot.ps1) for wired draft flags (logging to `logs/godot.log`, timeouts). Example: `.\run_godot.ps1 -- --validate-full-draft`. For scripts not wired in the launcher (e.g. `run_draft_ai_validation_suite.gd`), invoke Godot directly with `--headless --path . --script`.
 
 ### Running the Suite
 
@@ -448,26 +347,26 @@ godot --headless --script res://scripts/tools/run_draft_ai_validation_suite.gd
 The suite runs the following required checks:
 
 1. **Full Draft Validation (native)** (`full_draft_validation.gd --strategy=native`)
-   - Report: `full_draft_validation_report_native.txt`
+   - Report: `res://logs/full_draft_validation_report_native.txt` (generated on run, not committed)
    - Simulates complete snake draft with native baseline strategy
    - Checks for duplicate picks, duplicate bans, pick/ban overlap
    - Validates all selections are from available pool
 
 2. **Native Recommendation Explanations Audit** (`audit_native_recommendation_explanations.gd`)
-   - Report: `native_recommendation_explanations_audit_report.md`
+   - Report: `res://logs/native_recommendation_explanations_audit_report.md` (generated on run, not committed)
    - Audits native recommendation debug output for completeness and validity
    - Checks for missing required debug fields, suspicious zero fields, invalid values
    - Covers representative draft states (empty draft, early bans, first picks, mid draft, phase-2 bans, late picks, near-complete draft)
 
 3. **Native Ban Quality Audit** (`audit_native_ban_quality.gd`)
-   - Report: `native_ban_quality_audit_report.md`
+   - Report: `res://logs/native_ban_quality_audit_report.md` (generated on run, not committed)
    - Audits native ban recommendations for quality and suspicious patterns
    - Checks for self-denial risk, denial ratio, suspicious value patterns
    - Covers representative ban states (empty draft, early bans, phase 1/2 bans, enemy team shells, ally vulnerability)
 
 ### Report Output
 
-The suite generates `draft_ai_validation_suite_report.md` with:
+The suite generates `res://logs/draft_ai_validation_suite_report.md` (generated on run, not committed) with:
 
 - Backend availability status
 - Individual check results (PASS/FAIL/SKIPPED) with report file paths
@@ -485,7 +384,7 @@ The suite generates `draft_ai_validation_suite_report.md` with:
 - ~~Partial comp scoring (2-4 unit combinations)~~ — **COMPLETED in Phase 29**
 
 ### Quarantined (not promoted to default)
-- ~~Lookahead/Minimax~~ — Implemented in Phases 34–37; all variants introduced unacceptable side bias (>20%). See [native_draft_ai_lookahead_experiment.md](native_draft_ai_lookahead_experiment.md).
+- ~~Lookahead/Minimax~~ — Implemented in Phases 34–37 (`NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN`); all variants introduced unacceptable side bias (>20%, up to 42% for full lookahead). Kept as experimental strategies only.
 - ~~Ban Lookahead~~ — Same quarantine as above.
 
 ### Open
@@ -495,15 +394,13 @@ The suite generates `draft_ai_validation_suite_report.md` with:
 
 ## References
 
-- **Validation reports:**
-  - `ban_weight_calibration_report.md` - Initial calibration (25x25)
-  - `enemy_specific_heavier_validation_report.md` - Validation (50x25)
-  - `ban_weight_cleanup_report.md` - Cleanup status
+- **Validation reports** (ad-hoc; generated on run, not committed):
+  - `user://ban_weight_calibration_report.txt` — from `ban_weight_calibration.gd`
+  - `res://logs/full_draft_ablation_report.txt` — from `full_draft_ablation_test.gd`
 
 - **Test runners:**
   - `scripts/tools/full_draft_ablation_test.gd` - A/B testing
   - `scripts/tools/ban_weight_calibration.gd` - Weight calibration
 
 - **Related wiki:**
-  - `wiki/notes/draft_recommender_initial.md` - Initial design notes
-  - `wiki/notes/draft_prediction_context.md` - Prediction context
+  - [draft_prediction_context.md](draft_prediction_context.md) — Prediction signal and limitations

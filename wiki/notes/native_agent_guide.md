@@ -65,16 +65,19 @@
 
 ## Validation (after native edits)
 
-```text
-cmake --build native/build --config Release
-.\run_godot.ps1 -- --check-only
-.\run_godot.ps1 -- --check-native-load
-.\run_godot.ps1 -- --check-match-telemetry
-.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
-.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
-```
+Run the canonical gate in [README.md#validation-gate](../../README.md#validation-gate). Confirm no lingering Godot processes when finished.
 
-Confirm no lingering Godot processes when finished.
+## Extended commands
+
+Full flag list (core gate, UI smoke, simulation checks, draft research, perf helpers): [command_reference.md](command_reference.md).
+
+## Interactive UI
+
+| Command | Purpose |
+|---------|---------|
+| `.\run_godot.ps1 --main-menu` | Main menu hub (viewer / stats / draft) |
+| `.\run_godot.ps1 --simulation-viewer` | Simulation viewer directly |
+| `.\run_godot.ps1 --simulation-viewer --stats-dashboard` | Stats dashboard directly |
 
 ## Concept → implementation index
 
@@ -87,3 +90,23 @@ Confirm no lingering Godot processes when finished.
 | [periodic_effects.md](../concepts/periodic_effects.md) | `sim_periodic*` |
 | [status_effects.md](../concepts/status_effects.md) | `sim_status*`, `sim_effects_exec_status*` |
 | [spatial_grid.md](../concepts/spatial_grid.md) | `sim_spatial`, `sim_aoe.hpp`, `SpatialBucketFillCache` in `sim_world.hpp` |
+| [projectile_system.md](../concepts/projectile_system.md) | `sim_combat_projectile`, `sim_combat_actions` |
+| [shield_system.md](../concepts/shield_system.md) | `sim_status_heal`, `sim_effects_exec_heal` |
+| [mana_system.md](../concepts/mana_system.md) | `sim_status_heal`, `sim_unit_tick_regen`, `sim_effects_exec_mana` |
+| [channel_system.md](../concepts/channel_system.md) | `sim_channel`, `sim_effects_exec_channel` |
+| [spawn_system.md](../concepts/spawn_system.md) | `sim_match_spawn`, `sim_match_roster`, `sim_unit_builder` |
+| [respawn_system.md](../concepts/respawn_system.md) | `sim_match_lifecycle`, `sim_match_spawn` |
+| [movement_system.md](../concepts/movement_system.md) | `sim_movement`, `sim_unit_tick_movement` |
+| [minion_system.md](../concepts/minion_system.md) | `sim_catalog`, `sim_unit_builder`, `sim_match_spawn` |
+| [assist_system.md](../concepts/assist_system.md) | `sim_match_lifecycle`, `sim_damage_apply` |
+| [balance_patches.md](../concepts/balance_patches.md) | `sim_catalog` |
+| [kit_system.md](../concepts/kit_system.md) | `sim_catalog`, `kit_catalog.gd` |
+| [champion_system.md](../concepts/champion_system.md) | `sim_catalog`, `champion_catalog.gd` |
+| [matchup_tracking.md](../concepts/matchup_tracking.md) | `matchup_tracker.gd` (GDScript tooling) |
+| [schema_contract.md](../concepts/schema_contract.md) | `parity_tools.gd`, `simulation_schema.gd`, golden fixtures |
+| [rng_streams.md](../concepts/rng_streams.md) | `python_random.hpp`, `sim_match_loop` |
+| [stat_modifiers.md](../concepts/stat_modifiers.md) | `sim_stats_modifiers`, `sim_effects_exec` |
+| [aoe_shapes.md](../concepts/aoe_shapes.md) | `sim_aoe.hpp`, `sim_effects_exec_aoe` |
+| [role_configs.md](../concepts/role_configs.md) | `sim_catalog`, `champion_catalog.gd` role configs |
+| [determinism.md](../concepts/determinism.md) | `sim_match_loop`, golden fixtures via `headless_runner.gd` |
+| [native_gdscript_duality.md](../concepts/native_gdscript_duality.md) | `teamfight_simulation_core`, `native_simulation_backend.gd` |

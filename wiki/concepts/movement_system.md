@@ -1,5 +1,7 @@
 # Movement System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_movement`, `sim_unit_tick_movement`
+
 Unit positioning with collision avoidance and kiting behavior.
 
 Units move toward current target at move_speed (affected by slow modifier). Movement speed multiplier clamped to minimum 0.05 to prevent math instability. Collision detection prevents units from overlapping (UNIT_COLLISION_RADIUS = 0.15).

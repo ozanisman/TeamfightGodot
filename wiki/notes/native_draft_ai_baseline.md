@@ -1,5 +1,7 @@
 # Native Draft AI Baseline
 
+> **Historical snapshot — Phase 29 (June 2026).** Not updated for later phases. Current state: [native_draft_ai.md](native_draft_ai.md).
+
 ## Date/Phase
 Phase 29: Partial Role Composition Scoring Baseline
 Date: June 14, 2026
@@ -24,7 +26,7 @@ Date: June 14, 2026
 - `matchup_with.csv`: Ally synergy (champion A with champion B)
 - `matchup_vs.csv`: Enemy counter value (champion A vs champion B)
 - `role_combinations.csv`: Role composition fingerprints (full 5-role comps)
-- `champion_kit.csv`: Champion role assignments
+- Champion roles: from `champion_catalog.gd` / `combat_stats.csv` (no separate `champion_kit.csv`)
 
 ## Full Draft Validation Result
 
@@ -184,8 +186,7 @@ Full comp 3: tank + tank + marksman + mage + support → YES (2+ tanks)
 
 ## Experimental Lookahead Status
 
-See [native_draft_ai_lookahead_experiment.md](native_draft_ai_lookahead_experiment.md) for full details.
-Summary: lookahead variants (Phases 34–37) were quarantined due to unacceptable side bias (>20%).
+Lookahead variants (Phases 34–37: `NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN`) were quarantined due to unacceptable side bias (>20%, up to 42% for full lookahead). Kept as experimental strategies only.
 
 ## Draft Order Bias Baseline
 

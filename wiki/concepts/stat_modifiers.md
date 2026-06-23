@@ -1,5 +1,7 @@
 # Stat Modifiers
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_stats_modifiers`, `sim_effects_exec`
+
 Temporary and permanent stat changes with stacking infrastructure.
 
 Stats support additive and multiplicative modifiers: effective = (base + additive) * multiplicative. Verified in get_effective_* functions. Duration types: temp (expires), perm (lasts until death), match_duration (lasts entire match).

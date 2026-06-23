@@ -1,5 +1,7 @@
 # Draft Prediction Context - Agent Briefing
 
+> **Stats directories:** Production draft AI uses `res://model_stats/stats_output_100k/` (see [native_draft_ai.md](native_draft_ai.md)). Research and ceiling tooling below uses `res://stats_output/` (gitignored ad-hoc CSVs).
+
 ## Core Problem
 
 The draft recommender's older batch metric plateaued near 63.5% accuracy, but the Bayes-optimal ceiling is 75.4% (measured via `measure_draft_ceiling.gd`). The corrected verifier shows pairwise features contain more signal than the old 37.5% logistic result suggested.
@@ -45,7 +47,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - `scripts/tools/ab_test_draft_strategies.gd` - A/B testing framework for comparing draft strategies using combat simulations
 - `scripts/tools/analyze_validation_patterns.gd` - Analyzes validation patterns to identify when validation is reliable
 
-**Data sources:**
+**Data sources (research / ceiling tooling under `res://stats_output/`):**
 - `scripts/simulation/champion_catalog.gd` - Champion definitions with effect trees and stats
 - `scripts/simulation/champion_stats.gd` - Champion stat definitions
 - `scripts/simulation/effect_spec.gd` - Effect kind definitions
@@ -59,7 +61,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 - `native/src/simulation/sim_draft_recommender.hpp` - Draft recommender interface
 
 **Documentation:**
-- `wiki/notes/signal_variance_analysis.md` - Full investigation history and results
+- [draft_prediction_context.md](draft_prediction_context.md) — Agent briefing on draft prediction signal and limitations
 
 ## Revised Next Steps (Priority Order)
 
@@ -171,15 +173,16 @@ These paths are intentionally recorded but not active defaults:
 - Older batch baseline: 63.5% accuracy
 - Current pairwise heuristic on `draft_ceiling.csv`: 69.0% all / 67.5% shuffled test
 - Pairwise logistic after verifier fix: 77.5% all / 80.0% shuffled test
-- Expanded mechanical gate: failed; combined label test delta vs pairwise label = -12.5 pp
-- Archetype gate: failed; pairwise+archetype label test delta vs pairwise label = -5.0 pp
-- Simulation probe gate: failed; pairwise+probe label test delta vs pairwise label = -20.0 pp
+- Expanded mechanical gate: **closed experiment** — failed; do not re-pursue without new data. Combined label test delta vs pairwise label = -12.5 pp
+- Archetype gate: **closed experiment** — failed; do not re-pursue without new data. pairwise+archetype label test delta vs pairwise label = -5.0 pp
+- Simulation probe gate: **closed experiment** — failed; do not re-pursue without new data. pairwise+probe label test delta vs pairwise label = -20.0 pp
 - Bayes ceiling: 75.4% accuracy (mirror mode, 200 comps x 100 seeds)
 - Larger ceiling: 75.8% accuracy (mirror mode, 300 comps x 100 seeds, 60k decisive matches)
 - Large verifier: pairwise label 76.7% test; pairwise+archetype label 76.7%; pairwise+probe label 65.0%; combined_all label 70.0%
 - 5000-comp non-mirror holdout: pairwise label 75.4% test; pairwise probability 76.1% test / MSE 0.0484; pairwise+probe label 76.8% test; pairwise+probe probability 76.6% test / MSE 0.0479
 - Native certified default: pairwise probability logistic (`ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY`)
-- Required runtime stats: fresh, sufficiently large `res://stats_output` with `combat_stats.csv`, `matchup_with.csv`, and `matchup_vs.csv`
+- Production runtime stats: `res://model_stats/stats_output_100k/` (`combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`, `role_combinations.csv`)
+- Research verifier stats: fresh `res://stats_output/` with `combat_stats.csv`, `matchup_with.csv`, and `matchup_vs.csv`
 - Rollout pick validation: depth 4 +2.07 pp expected win; depth 3 +1.30 pp expected win vs current recommender top-1
 - Correlation (current vs true p after latest stats regen): 0.5578
 
@@ -196,11 +199,3 @@ These paths are intentionally recorded but not active defaults:
 - Run rollout pick validation: `.\run_godot.ps1 --validate-pick-recommendations -- --states=500 --rollouts-per-candidate=100 --draft-depth=4 --base-seed=70000 --stats-dir=res://stats_output --output=res://stats_output/pick_recommendation_validation_depth4.csv`
 - Mechanical signals are extracted in `analyze_signal_variance.gd` via `_load_mechanical_signals()` and written to `mechanical_signals.csv` for C++ loading
 - C++ recommender loads mechanical signals via `_load_mechanical_signals()` in `sim_draft_recommender.cpp`
-
-## AGENTS.md Guidelines
-
-- Read `wiki/README.md` and `wiki/notes/native_agent_guide.md` before native C++ work
-- Use wiki before modifying code
-- Make smallest complete change that resolves request
-- Do not modify unrelated code
-- No speculative changes

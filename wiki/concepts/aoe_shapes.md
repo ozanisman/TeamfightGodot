@@ -1,5 +1,7 @@
 # AOE Shapes
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_aoe.hpp`, `sim_effects_exec_aoe`
+
 Area-of-effect targeting with expandable shape system.
 
 Shapes: circle (radius), cone (radius, width, rotation), rectangle (width, height, rotation), line (width). Anchors: self (caster position), target (target position), point (custom coordinates), forward (caster facing direction).

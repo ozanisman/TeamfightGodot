@@ -7,17 +7,35 @@
 ![Deterministic](https://img.shields.io/badge/simulation-deterministic-2ea043)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)
 
-Deterministic autobattler simulation platform built on Godot 4, with a native C++ match engine for production workloads.
+Deterministic autobattler simulation platform on Godot 4 with a native C++ match engine, interactive inspection tools, and a native draft AI for pick/ban recommendations.
 
-The native GDExtension core runs combat, targeting, and batch matches at high throughput. GDScript owns validation, golden fixtures, and developer tooling. Godot scenes provide interactive inspection (viewer, stats dashboard) without coupling UI to the hot simulation path.
+The GDExtension core runs combat, targeting, and batch matches at high throughput. GDScript owns validation, golden fixtures, and developer tooling. Godot scenes provide a main menu, simulation viewer, stats dashboard, and draft testing UI without coupling UI to the hot simulation path.
 
 ## Highlights
 
 - **Deterministic by design** — seeded match loops, reproducible batch runs, and regression checks (`--check-determinism`, fixture parity).
 - **Native performance** — C++17 simulation in `native/`; modular coordinator and effect pipeline tuned for large-scale batch execution (multi-thousand matches per gate).
-- **Clear layering** — runtime (`TeamfightSimulationCore`), validation layer (fixtures, telemetry, compile checks), and tooling (benchmarks, stats, viewer) stay separated.
-- **Regression safety** — golden fixtures under `fixtures/goldens/` lock behavior across native and catalog changes.
+- **Native draft AI** — C++ pick/ban recommender (`sim::draft_ai`) off the match hot path; interactive draft testing UI and headless validation gates.
 - **Agent-oriented docs** — [`wiki/`](wiki/) captures module maps, invariants, and validation gates for ongoing work.
+
+## Quick start
+
+```powershell
+git submodule update --init --recursive
+
+cmake -B native/build -S native
+cmake --build native/build --config Release
+
+.\run_godot.ps1 -- --check-only
+.\run_godot.ps1 -- --check-native-load
+
+# Interactive hub (main menu → viewer / stats / draft testing)
+.\run_godot.ps1 --main-menu
+```
+
+After native or simulation changes, run the full [validation gate](#validation-gate) below.
+
+Native build output lands in `native/bin/` and is loaded via [`teamfight_simulation_core.gdextension`](teamfight_simulation_core.gdextension). Edit champion data in [`scripts/simulation/champion_catalog.gd`](scripts/simulation/champion_catalog.gd) only; `champion_schema.json` regenerates on native build (see [`fixtures/goldens/DATA_SOURCE.md`](fixtures/goldens/DATA_SOURCE.md)).
 
 ## Architecture
 
@@ -26,51 +44,57 @@ The native GDExtension core runs combat, targeting, and batch matches at high th
 | Runtime | Match loop, units, effects, damage, targeting | `native/src/` (`teamfight_simulation_core.*`, `simulation/`) |
 | Bindings | Godot API, batch hosts, benchmarks | `native/src/`, `scripts/simulation/` |
 | Validation | Fixture parity, determinism, telemetry | `fixtures/goldens/`, headless flags via `run_godot.ps1` |
-| Tooling & UI | Viewer, stats, catalog authoring | `scripts/`, `scenes/` |
+| Draft AI | Pick/ban recommendations (off match hot path) | `native/src/simulation/sim_draft_ai_*`, `sim_draft_recommender.*`, `scripts/tools/draft_strategy_*.gd` |
+| Tooling & UI | Viewer, stats, catalog authoring, draft testing | `scripts/`, `scenes/` |
 
 ```
-  champion_catalog.gd ──► JSON schemas ──► native loader
-                                                │
-                                         TeamfightSimulationCore
-                                          (match loop · combat)
-                                                │
-              ┌─────────────────────────────────┼─────────────────────────────────┐
-              ▼                                 ▼                                 ▼
-     fixtures/goldens/                  run_godot.ps1                      scenes/ · viewer
-     parity · determinism               benchmarks · checks                stats dashboard
+  champion_catalog.gd ──► champion_schema.json ──► native loader
+                                                          │
+                                                   TeamfightSimulationCore
+                                                    (match loop · combat)
+                                                          │
+              ┌───────────────────────────────────────────┼───────────────────────────┐
+              ▼                                           ▼                           ▼
+     fixtures/goldens/                            sim_draft_ai (pick/ban)      scenes/ · main menu
+     parity · determinism                         off hot path                 viewer · stats · draft
+              │                                           │
+              └──────────────── run_godot.ps1 ──────────────┘
+                        benchmarks · checks · validation
 ```
-
-Champion and balance data flow from GDScript catalog definitions into JSON consumed by the native loader; edit `scripts/simulation/champion_catalog.gd` (schemas regenerate on build).
 
 ## Repository layout
 
 | Path | Purpose |
 |------|---------|
-| `native/` | C++ GDExtension (CMake) |
-| `scripts/` | GDScript simulation helpers, tools, app entry |
-| `scenes/` | Viewer and game scenes |
-| `fixtures/goldens/` | Parity fixtures and champion/minion schemas |
-| `wiki/` | Concepts, module maps, performance status |
-| `examples/` | Sample balance/kit scripts |
+| `native/` | C++ GDExtension; build tree `native/build/`, artifact `native/bin/` |
+| `third_party/godot-cpp/` | GDExtension bindings submodule |
+| `scripts/simulation/` | Catalog, schema export, headless runner, batch workers |
+| `scripts/app/` | Main menu, game root, stats dashboard app logic |
+| `scripts/ui/` | Reusable UI components (`scripts/ui/components/`) |
+| `scripts/tools/` | Headless checks, benchmarks, draft validation tools |
+| `scenes/` | `game_root` (entry), `main_menu`, `simulation_viewer`, `stats_dashboard`, `draft_testing` |
+| `scenes/components/` | Reusable scene components (`draft_champion_tile`, `draft_screen_shell`, etc.) |
+| `assets/` | Shared UI theme |
+| `fixtures/goldens/` | `match_fixtures.json`, `champion_schema.json`, `contract_schema.json`, `balance_patches.json`, `champion_kits.json`, `minion_schema.json` |
+| `fixtures/stats_dashboard/` | Sample CSVs for `--check-stats-dashboard` smoke |
+| `examples/` | Reference-only balance/kit example ([`balance_and_kit_example.gd`](examples/balance_and_kit_example.gd)) |
+| `model_stats/` | Local/generated draft model CSVs (gitignored; produce via `--generate-stats` or draft tooling) |
+| `stats_output/` | Local/generated stats CSV output (gitignored) |
+| `logs/` | Runtime log from `run_godot.ps1` (`godot.log`; gitignored) |
+| `wiki/` | Concepts, module maps, performance status, draft AI docs |
+| `teamfight_simulation_core.gdextension` | Extension manifest (loads `native/bin/*.dll`) |
 
 ## Requirements
 
-- Godot **4.6** (project targets GL Compatibility)
+- Godot **4.6** (project targets GL Compatibility); required at **cmake configure** and runtime
 - CMake **3.24+**, C++17 toolchain
-- PowerShell (Windows; `run_godot.ps1` is the supported launcher)
+- **git submodule** — `third_party/godot-cpp` must be initialized
+- **Python 3** — `--check-only` runs `check_sim_effects_compile_structure.py` and `check_gdscript_preload.gd`
+- PowerShell on **Windows** (`run_godot.ps1` is the supported launcher; other platforms are untested)
 
-Set the Godot executable in `run_godot.ps1` if it is not at `C:\Godot\godot.exe`.
+Set the Godot executable in `run_godot.ps1` (and `GODOT_EXE` / `GODOT` for cmake) if it is not at `C:\Godot\godot.exe`.
 
-## Quick start
-
-```powershell
-cmake -B native/build -S native
-cmake --build native/build --config Release
-
-.\run_godot.ps1 -- --check-only
-.\run_godot.ps1 -- --check-native-load
-.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
-```
+There is **no repo-root CI** and **no unit-test suite** — correctness is enforced by local headless gates and golden fixtures.
 
 ## Validation gate
 
@@ -89,29 +113,54 @@ Ensure no Godot processes remain when finished. Benchmark expectations and lates
 
 ## Common commands
 
+All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeouts). After GDScript edits, run `--check-only` before long smoke or benchmark scenes. Full flag list: [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md).
+
+### Interactive UI
+
+`--main-menu` and `--simulation-viewer` disable headless mode in `run_godot.ps1`.
+
 | Command | Purpose |
 |---------|---------|
-| `.\run_godot.ps1 -- --check-only` | GDScript preload / compile check |
-| `.\run_godot.ps1 -- --check-native-load` | Extension load smoke |
-| `.\run_godot.ps1 -- --check-determinism` | Determinism regression |
+| `.\run_godot.ps1 --main-menu` | Main menu hub (viewer / stats / draft via in-app buttons) |
+| `.\run_godot.ps1 --simulation-viewer` | Simulation viewer directly |
+| `.\run_godot.ps1 --simulation-viewer --stats-dashboard` | Stats dashboard directly |
+
+### Headless checks
+
+| Command | Purpose |
+|---------|---------|
+| `.\run_godot.ps1 -- --check-main-menu` | Main menu scene load smoke |
+| `.\run_godot.ps1 -- --check-stats-dashboard` | Stats dashboard loader smoke |
+| `.\run_godot.ps1 -- --check-draft-ui` | Draft testing UI load smoke |
+| `.\run_godot.ps1 -- --check-determinism` | Replay determinism probe |
+| `.\run_godot.ps1 -- --check-balance-patches` | Balance patch and kit resolution |
+| `.\run_godot.ps1 -- --check-stats-aggregator` | Stats CSV aggregator roundtrip |
+| `.\run_godot.ps1 -- --check-projectile-payloads` | Projectile payload regression |
 | `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Golden parity (9 fixtures) |
-| `.\run_godot.ps1 --simulation-viewer` | Interactive match viewer |
-| `.\run_godot.ps1 --simulation-viewer --stats-dashboard` | Stats dashboard |
-| `.\run_godot.ps1 -- --check-benchmark ...` | Throughput benchmark (see flags below) |
+| `.\run_godot.ps1 -- --check-benchmark ...` | Throughput benchmark |
 
-**Benchmark flags:** `--batch-count`, `--team-size`, `--workers`, `--bench-skip-summaries`, `--base-seed`, `--sim-profile`
+## Draft AI
 
-**Sharded benchmark (multi-process):**
+Native C++ pick/ban recommender (`sim::draft_ai`) runs off the match tick hot path. `sim_draft_recommender.*` handles winner prediction and analysis. GDScript wrappers live in `scripts/tools/draft_strategy_*.gd`.
 
-```powershell
-.\run_godot.ps1 -- --check-benchmark-sharded --batch-count=2000 --team-size=5 --bench-skip-summaries --shards=8 --workers-per-shard=1
-```
+Default stats directory: `res://model_stats/stats_output_100k/` (requires `combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`). Produce CSVs via `--generate-stats`. Headless validation: `--check-draft-ui`, `--validate-native-strategy`, `--validate-full-draft` (see [command reference](wiki/notes/command_reference.md)). Interactive testing: `.\run_godot.ps1 --main-menu` → Draft Testing.
 
-All headless runs should go through `run_godot.ps1` (logging, timeouts). After GDScript edits, run `--check-only` before long smoke or benchmark scenes.
+Deep dive: [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md)
+
+## Troubleshooting
+
+Headless or check failures: inspect `logs/godot.log` (created by `run_godot.ps1`).
+
+- GDExtension load error 1114: [`wiki/notes/gdextension_error_1114_thread_local.md`](wiki/notes/gdextension_error_1114_thread_local.md)
+- Headless file I/O on Windows: [`wiki/notes/godot_windows_headless_file_issue.md`](wiki/notes/godot_windows_headless_file_issue.md)
 
 ## Documentation
 
 - [`wiki/README.md`](wiki/README.md) — knowledge base index
-- [`wiki/notes/native_agent_guide.md`](wiki/notes/native_agent_guide.md) — native edit routing, invariants, validation
+- [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md) — headless flags and launcher routing
+- [`wiki/notes/native_agent_guide.md`](wiki/notes/native_agent_guide.md) — native edit routing, invariants
 - [`wiki/notes/simulation_module_map.md`](wiki/notes/simulation_module_map.md) — module ownership
-- [`AGENTS.md`](AGENTS.md) — wiki usage for contributors and agents
+- [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md) — draft subsystem
+- [`fixtures/goldens/DATA_SOURCE.md`](fixtures/goldens/DATA_SOURCE.md) — champion data workflow
+- [`examples/balance_and_kit_example.gd`](examples/balance_and_kit_example.gd) — balance patches reference
+- [`AGENTS.md`](AGENTS.md) — contributor and agent rules

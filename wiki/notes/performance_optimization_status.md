@@ -2,7 +2,7 @@
 
 > **Agents:** validation commands and benchmark numbers only. Code layout → [native_agent_guide.md](native_agent_guide.md).
 
-**Last updated:** 2026-05-29
+**Last updated:** 2026-06-22
 
 ## Allocation tracking infrastructure (Slice 1 - 2026-05-29)
 
@@ -41,7 +41,7 @@ Release build, **2000 matches**, **5v5**, **`--bench-skip-summaries`**, **worker
 |--------|-------|
 | Matches/sec | **~103–110** |
 | `duration_sec` | ~18–19 |
-| Fixtures | **7/7** |
+| Fixtures | **9/9** (unchanged gate) |
 
 Recorded after native refactor + hygiene pass. Re-run the gate before merge or when claiming a perf change; numbers vary with background load.
 
@@ -57,13 +57,4 @@ Further ideas (not scheduled): [algorithmic_optimization_analysis.md](algorithmi
 
 ## Validation gate
 
-```text
-cmake --build native/build --config Release
-.\run_godot.ps1 -- --check-only
-.\run_godot.ps1 -- --check-native-load
-.\run_godot.ps1 -- --check-match-telemetry
-.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
-.\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
-```
-
-Confirm no lingering Godot processes after runs.
+Run the canonical gate in [README.md#validation-gate](../../README.md#validation-gate). Confirm no lingering Godot processes after runs.

@@ -1,5 +1,7 @@
 # Schema Contract
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `parity_tools.gd`, golden fixtures
+
 Parity testing framework with signed fixtures.
 
 SimulationSchema exports champion schema, role configs, and match input/summary contracts. Schema signature hashes the contract definition. Fixture signature hashes per-match summary payload.

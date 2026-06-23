@@ -11,7 +11,6 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 
 - **notes** — atomic observations, module maps, perf status
 - **concepts** — stable definitions of systems
-- **projects** — system-level groupings and iteration exit snapshots
 
 ## Native simulation (current)
 
@@ -26,7 +25,31 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 | [algorithmic_optimization_analysis.md](notes/algorithmic_optimization_analysis.md) | Deferred perf ideas (profiling backlog) |
 | [ui_architecture_roadmap.md](notes/ui_architecture_roadmap.md) | UI theme/component direction, deferred ideas, and current avoid-list |
 
-**Coordinator:** [`native/src/teamfight_simulation_core.{hpp,cpp}`](../native/src/teamfight_simulation_core.hpp) (~270 / ~293 lines) plus `sim_coordinator_{match,state,catalog,targeting,viewer,tick,bindings,host}.cpp`. Shared host API: [`sim_coordinator_host.hpp`](../native/src/simulation/sim_coordinator_host.hpp) only (no per-TU empty coordinator headers).
+**Coordinator:** [`native/src/teamfight_simulation_core.{hpp,cpp}`](../native/src/teamfight_simulation_core.hpp) plus `sim_coordinator_{match,state,catalog,targeting,viewer,tick,bindings,host}.cpp`. Shared host API: [`sim_coordinator_host.hpp`](../native/src/simulation/sim_coordinator_host.hpp) only (no per-TU empty coordinator headers).
+
+## Reference
+
+| Doc | Purpose |
+|-----|---------|
+| [command_reference.md](notes/command_reference.md) | Headless flags and `run_godot.ps1` routing |
+| [glossary.md](notes/glossary.md) | Term definitions (opcode, fixture, parity, etc.) |
+| [DATA_SOURCE.md](../fixtures/goldens/DATA_SOURCE.md) | Champion/kit JSON source of truth and regeneration |
+
+**Stats directories:** Production draft AI CSVs live under `res://model_stats/stats_output_100k/` (produce via `--generate-stats`). Research and ceiling tooling uses `res://stats_output/` (gitignored ad-hoc outputs). See [native_draft_ai.md](notes/native_draft_ai.md) and [draft_prediction_context.md](notes/draft_prediction_context.md).
+
+## Troubleshooting
+
+| Doc | Purpose |
+|-----|---------|
+| [gdextension_error_1114_thread_local.md](notes/gdextension_error_1114_thread_local.md) | GDExtension load error 1114 — **active invariant** (resolved incident, rule still applies) |
+| [godot_windows_headless_file_issue.md](notes/godot_windows_headless_file_issue.md) | Headless file I/O on Windows — **historical, resolved** |
+| [gdscript_preload_circular_dependency.md](notes/gdscript_preload_circular_dependency.md) | GDScript preload circular dependency |
+
+## Draft AI (extended)
+
+| Doc | Purpose |
+|-----|---------|
+| [draft_prediction_context.md](notes/draft_prediction_context.md) | Agent briefing on draft prediction signal and limitations |
 
 ## Concepts
 

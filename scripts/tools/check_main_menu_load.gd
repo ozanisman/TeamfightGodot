@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Focused gate: main menu scene loads and exposes the expected route buttons.
-## Run: .\run_godot.ps1 --check-main-menu
+## Run: .\run_godot.ps1 -- --check-main-menu
 
 func _init() -> void:
 	call_deferred("_run")

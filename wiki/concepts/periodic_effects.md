@@ -1,5 +1,7 @@
 # Periodic Effects
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_periodic*`
+
 Damage over time and heal over time with configurable stacking.
 
 DoT/HoT effects tick at intervals (default 1.0s tick_interval) for duration. **Important**: Input parameters (attack_damage_ratio, max_hp_ratio, current_hp_ratio, missing_hp_ratio, flat_amount) now represent TOTAL amounts over the full duration, not per-tick amounts. Per-tick values are calculated as `total_amount / (duration / tick_interval + 1)` to account for the instant tick applied on effect application.

@@ -1,5 +1,7 @@
 # Balance Patches
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_catalog`
+
 Versioned overrides for champion stats and abilities.
 
 Balance patches defined in balance_patches.json with: targets (archetype list, empty = all), roles (role list, empty = all), stat_multipliers (stat → multiplier), stat_additions (stat → addition), kit_id (swap ability/ultimate/passives), ability_override, ultimate_override, passive_ids_override.

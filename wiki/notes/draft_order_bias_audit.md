@@ -1,5 +1,7 @@
 # Draft Order Bias Audit
 
+> **Historical snapshot — Phase 38 (June 2026).** Production decision and current metrics: [native_draft_ai.md](native_draft_ai.md).
+
 ## Date/Phase
 Phase 38: Draft Order Bias Audit
 Date: June 14, 2026
@@ -180,5 +182,5 @@ When evaluating future strategy changes:
 
 ## References
 
-- **Phase 38 report:** `phase38_draft_order_bias_audit_report.md` - Full audit results and analysis
+- **Phase 38 report:** `res://logs/full_draft_ablation_report.txt` from `full_draft_ablation_test.gd` (generated on run, not committed)
 - **Test infrastructure:** `scripts/tools/full_draft_ablation_test.gd` - Draft order testing framework

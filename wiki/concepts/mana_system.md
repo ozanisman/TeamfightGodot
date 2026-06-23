@@ -1,5 +1,7 @@
 # Mana System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_status_heal`, `sim_unit_tick_regen`, `sim_effects_exec_mana`
+
 Resource for ability casting with generation and consumption.
 
 Mana stats: mana_cost (default 50), mana_per_attack (default 10). Mana gained on auto-attack: `unit.mana = min(mana_cost, unit.mana + mana_per_attack)`.

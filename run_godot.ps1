@@ -175,6 +175,18 @@ elseif ($validateNativeStrategy) {
 elseif ($validateFullDraft) {
 	$timeoutSeconds = 60
 }
+elseif ($fullDraftABTest) {
+	$timeoutSeconds = 600
+}
+elseif ($fullDraftAblationTest) {
+	$timeoutSeconds = 600
+}
+elseif ($fullDraftBanDiagnostic) {
+	$timeoutSeconds = 300
+}
+elseif ($testPartialCompScoring) {
+	$timeoutSeconds = 60
+}
 if ($env:RUN_GODOT_CHECK_TIMEOUT_SECONDS -and $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_CHECK_TIMEOUT_SECONDS
 }
@@ -220,6 +232,18 @@ elseif ($env:RUN_GODOT_GENERATE_STATS_TIMEOUT_SECONDS -and $generateStats) {
 elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and -not $checkOnly) {
 	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
 }
+elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and $fullDraftABTest) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and $fullDraftAblationTest) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and $fullDraftBanDiagnostic) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
+}
+elseif ($env:RUN_GODOT_TIMEOUT_SECONDS -and $testPartialCompScoring) {
+	[int]$timeoutSeconds = $env:RUN_GODOT_TIMEOUT_SECONDS
+}
 
 # Ensure global class cache exists so headless script compilation can resolve class_name types.
 $godotCacheFile = Join-Path $projectRoot ".godot\global_script_class_cache.cfg"
@@ -233,11 +257,13 @@ if (-not (Test-Path $godotCacheFile)) {
 }
 
 $godotArgs = @("--path", $projectRoot, "--log-file", $logFile)
+$isMainMenu = $Arguments -contains "--main-menu"
 $isSimulationViewer = $Arguments -contains "--simulation-viewer"
-if (-not $isSimulationViewer) {
+$isInteractiveGui = $isMainMenu -or $isSimulationViewer
+if (-not $isInteractiveGui) {
 	$godotArgs += @("--headless")
 }
-if ($isSimulationViewer) {
+if ($isInteractiveGui) {
 	$godotArgs += @("--maximized")
 }
 if ($checkOnly) {
@@ -353,10 +379,22 @@ elseif ($validateNativeStrategy) {
 elseif ($validateFullDraft) {
 	$godotArgs += @("--script", "res://scripts/tools/full_draft_validation.gd")
 }
+elseif ($fullDraftABTest) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ab_test.gd")
+}
+elseif ($fullDraftAblationTest) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ablation_test.gd")
+}
+elseif ($fullDraftBanDiagnostic) {
+	$godotArgs += @("--script", "res://scripts/tools/full_draft_ban_diagnostic.gd")
+}
+elseif ($testPartialCompScoring) {
+	$godotArgs += @("--script", "res://scripts/tools/test_partial_comp_scoring.gd")
+}
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
-elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isSimulationViewer) {
+elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isInteractiveGui) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {

@@ -23,7 +23,7 @@ const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 
-## 63.5% baseline accuracy the recommender is stuck at (see wiki/notes/signal_variance_analysis.md).
+## 63.5% baseline accuracy the recommender plateaued at (see wiki/notes/draft_prediction_context.md).
 const ACCURACY_BASELINE: float = 0.635
 
 

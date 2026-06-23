@@ -20,7 +20,7 @@ Write-Host "=== check-only ==="
 & (Join-Path $projectRoot "run_godot.ps1") -- --check-only
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "=== fixtures 7/7 ==="
+Write-Host "=== fixtures 9/9 ==="
 & (Join-Path $projectRoot "run_godot.ps1") -- --fixture-file=res://fixtures/goldens/match_fixtures.json
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

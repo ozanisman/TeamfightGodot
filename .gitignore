@@ -10,6 +10,7 @@ export_credentials.cfg
 # Imported translations (automatically generated from CSV files)
 *.translation
 stats_output/
+model_stats/
 *.csv.import
 
 # Mono-specific ignores

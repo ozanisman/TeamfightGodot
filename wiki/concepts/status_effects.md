@@ -1,5 +1,7 @@
 # Status Effects
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_status*`, `sim_effects_exec_status*`
+
 Crowd control and state modifiers applied via effects.
 
 Status effects: stun (cannot act), slow (reduced move speed), root (cannot move), silence (cannot cast abilities), disarm (cannot auto-attack), stealth (cannot be targeted by enemies), knockback (position displacement), taunt (forced target).

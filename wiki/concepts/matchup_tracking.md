@@ -1,5 +1,7 @@
 # Matchup Tracking
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `matchup_tracker.gd` (GDScript tooling)
+
 Winrate analysis for champion vs champion and champion with champion relationships.
 
 MatchupTracker records: vs_opponent (wins, losses, winrate), with_ally (wins, losses, winrate). Data structure: champion_id → {vs_other_id, with_other_id}. Initialized for all champion pairs from ChampionCatalog.

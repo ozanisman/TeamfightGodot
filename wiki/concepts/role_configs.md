@@ -1,5 +1,7 @@
 # Role Configs
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_catalog`, `champion_catalog.gd`
+
 Role-specific stat modifiers and passive hooks loaded from `champion_schema.json` at catalog build time.
 
 The native catalog loader (`sim_catalog.cpp`) reads the `role_configs` dictionary from the schema. For each champion, it looks up the role config matching the champion's `role` and applies:

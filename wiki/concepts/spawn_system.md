@@ -1,5 +1,7 @@
 # Spawn System
 
+> **Native implementation:** [native_agent_guide.md](../notes/native_agent_guide.md) → `sim_match_spawn`, `sim_match_roster`
+
 Initial team composition and positioning at match start.
 
 SpawnSpec defines: unit_id, team, x, y position. MatchReplayInput contains player_units and enemy_units arrays of SpawnSpec. Default positioning via SimConstantsScript.spawn_position(index, team) using grid layout (4 columns, row-based).

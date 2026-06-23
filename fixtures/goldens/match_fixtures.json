@@ -826,7 +826,7 @@
 						"assists": 10.0,
 						"auto_attacks": 42.0,
 						"damage_dealt": 977.2199999999996,
-						"damage_dealt_ability": 301.64399999999995,
+						"damage_dealt_ability": 301.644,
 						"damage_dealt_auto": 459.1200000000001,
 						"damage_dealt_passive": 0.0,
 						"damage_dealt_ultimate": 216.45600000000005,
@@ -1163,7 +1163,7 @@
 						"damage_dealt_auto": 189.12,
 						"damage_dealt_passive": 0.0,
 						"damage_dealt_ultimate": 210.384,
-						"damage_mitigated": 320.57500000000005,
+						"damage_mitigated": 320.57499999999993,
 						"damage_received": 296.92500000000007,
 						"deaths": 0.0,
 						"healing_done": 0.0,
@@ -1328,9 +1328,9 @@
 						"archetype": "windcaller",
 						"assists": 5.0,
 						"auto_attacks": 44.0,
-						"damage_dealt": 413.94999999999993,
+						"damage_dealt": 413.95,
 						"damage_dealt_ability": 0.0,
-						"damage_dealt_auto": 413.94999999999993,
+						"damage_dealt_auto": 413.95,
 						"damage_dealt_passive": 0.0,
 						"damage_dealt_ultimate": 0.0,
 						"damage_mitigated": 14.320499999999992,
@@ -1362,7 +1362,7 @@
 						"archetype": "guardian",
 						"assists": 7.0,
 						"auto_attacks": 35.0,
-						"damage_dealt": 486.36000000000007,
+						"damage_dealt": 486.3600000000001,
 						"damage_dealt_ability": 0.0,
 						"damage_dealt_auto": 257.7599999999999,
 						"damage_dealt_passive": 0.0,
@@ -2196,5 +2196,5 @@
 		}
 	],
 	"rules_version": 1,
-	"schema_signature": "926463916fbbd38bbc52bb6479e1a9526d804bd42e5ebc6932a3f659d929b7aa"
+	"schema_signature": "34a3f207b436ddb35e2c913ae0b082887de9231d809958c66ce7b99fae90efe9"
 }

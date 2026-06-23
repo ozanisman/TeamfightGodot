@@ -5,6 +5,7 @@
 #include "sim_spatial.hpp"
 #include "sim_stats.hpp"
 #include "sim_targeting.hpp"
+#include "stat_definitions.hpp"
 
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -52,10 +53,10 @@ double apply_damage(
 	double final_damage = pre_res;
 	if (damage_is_physical) {
 		const double armor = target.stats_dirty ? get_effective_armor(target) : target.cached_armor;
-		final_damage *= (1.0 - armor);
+		final_damage *= (1.0 - armor / DEFENSE_PERCENT_SCALE);
 	} else if (damage_is_magic) {
 		const double mr = target.stats_dirty ? get_effective_magic_resist(target) : target.cached_magic_resist;
-		final_damage *= (1.0 - mr);
+		final_damage *= (1.0 - mr / DEFENSE_PERCENT_SCALE);
 	}
 
 	if (final_damage <= 0.0) {

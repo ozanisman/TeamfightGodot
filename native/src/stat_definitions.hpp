@@ -6,14 +6,17 @@
 // Sentinel value for unbounded stats (no min/max clamping)
 #define NO_BOUND -1e308
 
+// Armor and magic resist are stored as integer points (22 = 22% reduction).
+static constexpr double DEFENSE_PERCENT_SCALE = 100.0;
+
 // Format: X(stat_name, default_value, min_value, max_value)
 #define STAT_LIST \
     X(max_hp, 0.0, 1.0, NO_BOUND) \
     X(attack_damage, 0.0, 0.0, NO_BOUND) \
     X(attack_speed, 1.0, 0.0, NO_BOUND) \
     X(move_speed, 0.0, 0.0, NO_BOUND) \
-    X(armor, 0.0, NO_BOUND, 1.0) \
-    X(magic_resist, 0.0, NO_BOUND, 1.0) \
+    X(armor, 0.0, NO_BOUND, DEFENSE_PERCENT_SCALE) \
+    X(magic_resist, 0.0, NO_BOUND, DEFENSE_PERCENT_SCALE) \
     X(tenacity, 0.0, NO_BOUND, 1.0) \
     X(life_steal, 0.0, 0.0, 10.0) \
     X(mana_cost, 50.0, 10.0, NO_BOUND) \

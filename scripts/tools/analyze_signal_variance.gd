@@ -12,6 +12,7 @@ extends RefCounted
 ##   analyzer.analyze("res://stats_output", [5], 20)
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
 
 ## Bayesian smoothing parameters (same as draft recommender)
 const SMOOTHING_K: float = 10.0
@@ -402,7 +403,7 @@ func _load_mechanical_signals() -> Dictionary:
 		var ability_dps: float = (damage_ratio_sum * stats.attack_damage) / maxf(ability_cycle, 0.001)
 		var estimated_dps: float = attack_dps + ability_dps
 		var avg_resist: float = (stats.armor + stats.magic_resist) * 0.5
-		var effective_hp: float = stats.max_hp * (1.0 + maxf(avg_resist, 0.0) / 100.0)
+		var effective_hp: float = stats.max_hp * (1.0 + maxf(avg_resist, 0.0) / SimConstantsScript.DEFENSE_PERCENT_SCALE)
 		var burst_estimate: float = stats.attack_damage * (1.0 + damage_ratio_sum)
 		var sustain_per_sec: float = (attack_dps * stats.life_steal) + ((sustain_ratio_sum * stats.max_hp) / maxf(ability_cycle, 0.001))
 		var cc_per_sec: float = cc_duration_sum / maxf(ability_cycle, 0.001)

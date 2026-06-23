@@ -32,6 +32,9 @@ const STAT_MOD_TYPES: Dictionary = {
 	&"move_speed": "multiply",
 }
 
+# Armor and magic resist are stored as integer points (22 = 22% reduction).
+const DEFENSE_PERCENT_SCALE: float = 100.0
+
 # ========================================
 # ROLE COLORS
 # ========================================

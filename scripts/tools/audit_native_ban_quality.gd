@@ -36,7 +36,7 @@ func _run() -> void:
 	var lines: Array[String] = []
 	lines.append("# Native Ban Quality Audit")
 	lines.append("")
-	lines.append("Audits native ban recommendations for quality and suspicious patterns. This report is diagnostic only; no scoring, weights, draft order, champion tags, UI behavior, or stats files were changed.")
+	lines.append("Audits native ban recommendations for quality and suspicious patterns. This report is diagnostic only; no scoring, weights, draft order, UI behavior, or stats files were changed.")
 	lines.append("")
 	lines.append("## Summary")
 	lines.append("")
@@ -80,8 +80,8 @@ func _run() -> void:
 
 		lines.append("### State: %s" % String(state["name"]))
 		lines.append("")
-		lines.append("| Rank | Candidate | Total Score | Enemy Pick | Own Pick | Denial | Enemy Synergy | Counters Us | Fills Enemy Role | Enemy Comp Fit | Early Fallback | Tags |")
-		lines.append("|------|-----------|-------------|------------|---------|--------|---------------|-------------|------------------|----------------|---------------|------|")
+		lines.append("| Rank | Candidate | Total Score | Enemy Pick | Own Pick | Denial | Enemy Synergy | Counters Us | Fills Enemy Role | Enemy Comp Fit | Early Fallback |")
+		lines.append("|------|-----------|-------------|------------|---------|--------|---------------|-------------|------------------|----------------|---------------|")
 
 		for i in range(min(5, recommendations.size())):
 			var rec = recommendations[i] as Dictionary
@@ -95,14 +95,13 @@ func _run() -> void:
 			var fills_enemy_role_need := float(rec.get("fills_enemy_role_need", 0.0))
 			var enemy_comp_fit := float(rec.get("enemy_comp_fit", 0.0))
 			var early_ban_fallback := float(rec.get("early_ban_fallback_component", 0.0))
-			var tags: Array = rec.get("candidate_tags", [])
 
 			# Calculate report-only diagnostics
 			var self_denial_risk := maxf(0.0, own_pick_value)
 			var enemy_value := maxf(0.0, enemy_pick_value)
 			var denial_ratio := denial_value / maxf(absf(total_score), 0.0001)
 
-			lines.append("| %d | %s | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %s |" % [
+			lines.append("| %d | %s | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f |" % [
 				i + 1,
 				candidate,
 				total_score,
@@ -114,7 +113,6 @@ func _run() -> void:
 				fills_enemy_role_need,
 				enemy_comp_fit,
 				early_ban_fallback,
-				str(tags)
 			])
 
 			# Check for suspicious patterns

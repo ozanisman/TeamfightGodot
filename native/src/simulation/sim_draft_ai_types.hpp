@@ -83,9 +83,6 @@ struct DraftPickScoreBreakdown {
 	int next_pick_step = -1;
 	String next_pick_side;
 	bool next_pick_is_enemy = false;
-
-	// Candidate tags (general debug metadata)
-	std::vector<StringName> candidate_tags;
 };
 
 struct DraftBanScoreBreakdown {
@@ -133,9 +130,6 @@ struct DraftBanScoreBreakdown {
 	double denied_enemy_pick_value = 0.0;
 	String current_side;
 	int enemy_next_pick_step = -1;
-
-	// Candidate tags (general debug metadata)
-	std::vector<StringName> candidate_tags;
 };
 
 } // namespace draft_ai

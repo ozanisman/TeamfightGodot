@@ -249,7 +249,7 @@ Tested multiple weight profiles to optimize ban scoring:
 
 ## Archetype Scoring (Removed)
 
-The archetype tag scoring experiment (phases 45-51) has been removed. Champion tags remain in the schema as inactive metadata, but the native draft AI no longer applies archetype scoring to picks or bans. The previous profiles (`archetype_full`, `archetype_light`, `archetype_pick_light`, `archetype_ban_light`) are no longer available.
+The archetype tag scoring experiment (phases 45-51) has been removed. The native draft AI no longer applies archetype scoring to picks or bans. The previous profiles (`archetype_full`, `archetype_light`, `archetype_pick_light`, `archetype_ban_light`) are no longer available.
 
 Current strategy status:
 
@@ -311,11 +311,10 @@ strategy.set_weight_overrides({
 
 1. **No lookahead/minimax** - Current scoring does not simulate future enemy responses
 2. **Ban lookahead** - Bans do not explicitly consider how enemy will respond
-3. **Archetypes** - Champion tags remain as inactive metadata; archetype-based scoring has been removed
-4. **Backward compatibility** - Old GDScript prototype still exists for comparison
-5. **Opt-in strategy** - Native strategy is opt-in in tools/test runner (not default in production)
-6. **Synergy depth** - Current synergy model is pairwise (no higher-order synergies)
-7. **Side asymmetry in secondary matchup** - native_full vs native_picks_random_bans shows 55.4% vs 71.7% asymmetry (may be draft-order advantage)
+3. **Backward compatibility** - Old GDScript prototype still exists for comparison
+4. **Opt-in strategy** - Native strategy is opt-in in tools/test runner (not default in production)
+5. **Synergy depth** - Current synergy model is pairwise (no higher-order synergies)
+6. **Side asymmetry in secondary matchup** - native_full vs native_picks_random_bans shows 55.4% vs 71.7% asymmetry (may be draft-order advantage)
 
 ## Experimental Lookahead Findings
 
@@ -448,24 +447,19 @@ godot --headless --script res://scripts/tools/run_draft_ai_validation_suite.gd
 
 The suite runs the following required checks:
 
-1. **Native Draft AI Tag Validation** (`validate_native_draft_ai_tags.gd`)
-   - Report: `native_draft_ai_tag_path_report.md`
-   - Validates native draft AI tag output
-   - Compares candidate tags to schema
-
-2. **Full Draft Validation (native)** (`full_draft_validation.gd --strategy=native`)
+1. **Full Draft Validation (native)** (`full_draft_validation.gd --strategy=native`)
    - Report: `full_draft_validation_report_native.txt`
    - Simulates complete snake draft with native baseline strategy
    - Checks for duplicate picks, duplicate bans, pick/ban overlap
    - Validates all selections are from available pool
 
-3. **Native Recommendation Explanations Audit** (`audit_native_recommendation_explanations.gd`)
+2. **Native Recommendation Explanations Audit** (`audit_native_recommendation_explanations.gd`)
    - Report: `native_recommendation_explanations_audit_report.md`
    - Audits native recommendation debug output for completeness and validity
    - Checks for missing required debug fields, suspicious zero fields, invalid values
    - Covers representative draft states (empty draft, early bans, first picks, mid draft, phase-2 bans, late picks, near-complete draft)
 
-4. **Native Ban Quality Audit** (`audit_native_ban_quality.gd`)
+3. **Native Ban Quality Audit** (`audit_native_ban_quality.gd`)
    - Report: `native_ban_quality_audit_report.md`
    - Audits native ban recommendations for quality and suspicious patterns
    - Checks for self-denial risk, denial ratio, suspicious value patterns

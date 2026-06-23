@@ -370,7 +370,6 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		breakdown["counter"] = rec["enemy_counter_value"];
 		breakdown["counter_variance"] = 0.0;
 		breakdown["final"] = rec["total_score"];
-		breakdown["candidate_tags"] = rec["candidate_tags"];
 		
 		result.push_back(breakdown);
 	}
@@ -1258,13 +1257,6 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["next_pick_side"] = String(rec.next_pick_side);
 		dict["next_pick_is_enemy"] = rec.next_pick_is_enemy;
 
-		// Add candidate tags (general debug metadata)
-		Array tags_array;
-		for (const StringName &tag : rec.candidate_tags) {
-			tags_array.append(String(tag));
-		}
-		dict["candidate_tags"] = tags_array;
-
 		result.append(dict);
 	}
 
@@ -1372,13 +1364,6 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["denied_enemy_pick_value"] = rec.denied_enemy_pick_value;
 		dict["current_side"] = String(rec.current_side);
 		dict["enemy_next_pick_step"] = rec.enemy_next_pick_step;
-
-		// Add candidate tags (general debug metadata)
-		Array tags_array;
-		for (const StringName &tag : rec.candidate_tags) {
-			tags_array.append(String(tag));
-		}
-		dict["candidate_tags"] = tags_array;
 
 		result.append(dict);
 	}

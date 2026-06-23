@@ -2,7 +2,6 @@ class_name ChampionSpec
 extends RefCounted
 
 var stats
-var tags: Array[StringName] = []
 var description: String = ""
 var passive_name: String = ""
 var passive_desc: String = ""
@@ -16,7 +15,6 @@ var passive_ids: Array[StringName] = []
 
 func _init(
 	_stats,
-	_tags: Array[StringName] = [],
 	_description: String = "",
 	_passive_name: String = "",
 	_passive_desc: String = "",
@@ -29,7 +27,6 @@ func _init(
 	_passive_ids: Array[StringName] = []
 ):
 	stats = _stats
-	tags = _tags.duplicate()
 	description = _description
 	passive_name = _passive_name
 	passive_desc = _passive_desc
@@ -46,7 +43,6 @@ func to_dict() -> Dictionary:
 		"unit_id": String(stats.unit_id),
 		"name": String(stats.name),
 		"role": String(stats.role),
-		"tags": tags.map(func(value): return String(value)),
 		"stats": stats.to_dict(),
 		"description": description,
 		"passive_name": passive_name,

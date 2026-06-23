@@ -30,7 +30,6 @@
 			"tenacity": 0.0,
 			"unit_id": "ghoul"
 		},
-		"tags": [],
 		"ultimate": null,
 		"ultimate_desc": "",
 		"ultimate_name": "",
@@ -69,7 +68,6 @@
 			"tenacity": 0.0,
 			"unit_id": "skeleton"
 		},
-		"tags": [],
 		"ultimate": null,
 		"ultimate_desc": "",
 		"ultimate_name": "",
@@ -106,7 +104,6 @@
 			"tenacity": 0.0,
 			"unit_id": "wolf"
 		},
-		"tags": [],
 		"ultimate": null,
 		"ultimate_desc": "",
 		"ultimate_name": "",

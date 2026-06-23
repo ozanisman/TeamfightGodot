@@ -57,11 +57,6 @@
 				"tenacity": 0.0,
 				"unit_id": "archer"
 			},
-			"tags": [
-				"backline",
-				"poke",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "channel",
@@ -173,12 +168,6 @@
 				"tenacity": 0.0,
 				"unit_id": "artillery"
 			},
-			"tags": [
-				"backline",
-				"poke",
-				"burst",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "projectile",
@@ -192,7 +181,7 @@
 							"trigger_on_hit": true
 						}
 					},
-					"radius_override": 0.1,
+					"radius_override": 2.0,
 					"reason": "Big Bertha"
 				}
 			},
@@ -272,11 +261,6 @@
 				"tenacity": 0.0,
 				"unit_id": "berserker"
 			},
-			"tags": [
-				"frontline",
-				"burst",
-				"sustain"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "damage",
@@ -331,11 +315,6 @@
 				"tenacity": 0.0,
 				"unit_id": "cleric"
 			},
-			"tags": [
-				"backline",
-				"protect",
-				"sustain"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_target",
@@ -420,11 +399,6 @@
 				"tenacity": 0.0,
 				"unit_id": "colossus"
 			},
-			"tags": [
-				"frontline",
-				"cc",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -519,11 +493,6 @@
 				"tenacity": 0.0,
 				"unit_id": "disarmer"
 			},
-			"tags": [
-				"frontline",
-				"cc",
-				"single_target"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -607,12 +576,6 @@
 				"tenacity": 0.0,
 				"unit_id": "earthbender"
 			},
-			"tags": [
-				"frontline",
-				"cc",
-				"control",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -709,11 +672,6 @@
 				"tenacity": 0.0,
 				"unit_id": "frost_mage"
 			},
-			"tags": [
-				"backline",
-				"control",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",
@@ -824,31 +782,32 @@
 				"tenacity": 0.0,
 				"unit_id": "guardian"
 			},
-			"tags": [
-				"frontline",
-				"protect",
-				"cc"
-			],
 			"ultimate": {
-				"cast_range": -1.0,
+				"cast_range": 0.0,
 				"kind": "multi_effect",
 				"params": {
 					"effects": [
 						{
 							"cast_range": -1.0,
-							"kind": "damage",
+							"kind": "aoe_damage",
 							"params": {
+								"anchor": "self",
 								"damage_ratio": 3.0,
+								"damage_type": "physical",
+								"radius": 1.5,
 								"reason": "Aegis Crash",
-								"trigger_on_hit": false
+								"shape": "circle"
 							}
 						},
 						{
 							"cast_range": -1.0,
-							"kind": "stun",
+							"kind": "aoe_stun",
 							"params": {
+								"anchor": "self",
 								"duration": 3.5,
-								"reason": "Aegis Crash"
+								"radius": 1.5,
+								"reason": "Aegis Crash",
+								"shape": "circle"
 							}
 						}
 					],
@@ -892,7 +851,7 @@
 			"ability_name": "Mirror Shield",
 			"description": "A defensive warrior who reflects incoming damage back at attackers.",
 			"name": "Mirror Knight",
-			"passive_desc": "Reflects 10% of all damage taken back to attackers.",
+			"passive_desc": "Reflects 30% of all damage taken back to attackers.",
 			"passive_ids": [
 				"reflective_armor"
 			],
@@ -919,11 +878,6 @@
 				"tenacity": 0.0,
 				"unit_id": "mirror_knight"
 			},
-			"tags": [
-				"frontline",
-				"protect",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "aoe_reflect",
@@ -986,12 +940,6 @@
 				"tenacity": 0.0,
 				"unit_id": "mistcaller"
 			},
-			"tags": [
-				"backline",
-				"protect",
-				"sustain",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "aoe_heal_over_time",
@@ -1071,11 +1019,6 @@
 				"tenacity": 0.0,
 				"unit_id": "monk"
 			},
-			"tags": [
-				"frontline",
-				"cc",
-				"single_target"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -1096,7 +1039,7 @@
 							"params": {
 								"duration": 5.0,
 								"reason": "Drunken Stance",
-								"reflect_percentage": 0.5,
+								"reflect_percentage": 0.6,
 								"reflect_type": "all"
 							}
 						}
@@ -1104,7 +1047,7 @@
 					"reason": "Drunken Stance"
 				}
 			},
-			"ultimate_desc": "Gains 25% max HP shield and reflects 75% of incoming damage for 5s.",
+			"ultimate_desc": "Gains 25% max HP shield and reflects 60% of incoming damage for 5s.",
 			"ultimate_name": "Drunken Stance",
 			"unit_id": "monk"
 		},
@@ -1152,11 +1095,6 @@
 				"tenacity": 0.0,
 				"unit_id": "necromancer"
 			},
-			"tags": [
-				"backline",
-				"summon",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "summon_ally",
@@ -1245,12 +1183,6 @@
 				"tenacity": 0.0,
 				"unit_id": "ninja"
 			},
-			"tags": [
-				"dive",
-				"burst",
-				"single_target",
-				"mobility"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "projectile",
@@ -1264,7 +1196,8 @@
 							"trigger_on_hit": true
 						}
 					},
-					"reason": "Assassinate"
+					"reason": "Assassinate",
+					"speed_override": 8.0
 				}
 			},
 			"ultimate_desc": "Executes a target with 900% physical damage.",
@@ -1311,11 +1244,6 @@
 				"tenacity": 0.0,
 				"unit_id": "oracle"
 			},
-			"tags": [
-				"backline",
-				"protect",
-				"cc"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",
@@ -1386,11 +1314,6 @@
 				"tenacity": 0.0,
 				"unit_id": "paladin"
 			},
-			"tags": [
-				"frontline",
-				"protect",
-				"sustain"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",
@@ -1912,10 +1835,6 @@
 				"tenacity": 0.0,
 				"unit_id": "rogue"
 			},
-			"tags": [
-				"burst",
-				"single_target"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "damage",
@@ -2039,11 +1958,6 @@
 				"tenacity": 0.0,
 				"unit_id": "silencer"
 			},
-			"tags": [
-				"backline",
-				"cc",
-				"control"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -2055,7 +1969,7 @@
 							"params": {
 								"anchor": "self",
 								"damage_ratio": 3.4,
-								"radius": 3.0,
+								"radius": 3.5,
 								"reason": "Silence Zone",
 								"shape": "circle"
 							}
@@ -2121,11 +2035,6 @@
 				"tenacity": 0.0,
 				"unit_id": "siren"
 			},
-			"tags": [
-				"backline",
-				"control",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",
@@ -2205,11 +2114,6 @@
 				"tenacity": 0.0,
 				"unit_id": "sniper"
 			},
-			"tags": [
-				"backline",
-				"poke",
-				"single_target"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "projectile",
@@ -2294,11 +2198,6 @@
 				"tenacity": 0.0,
 				"unit_id": "swordsman"
 			},
-			"tags": [
-				"frontline",
-				"burst",
-				"single_target"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",
@@ -2406,11 +2305,6 @@
 				"tenacity": 0.0,
 				"unit_id": "valkyrie"
 			},
-			"tags": [
-				"frontline",
-				"protect",
-				"mobility"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -2563,10 +2457,6 @@
 				"tenacity": 0.0,
 				"unit_id": "warlock"
 			},
-			"tags": [
-				"sustain",
-				"aoe"
-			],
 			"ultimate": null,
 			"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
 			"ultimate_name": "",
@@ -2652,11 +2542,6 @@
 				"tenacity": 0.0,
 				"unit_id": "windcaller"
 			},
-			"tags": [
-				"backline",
-				"control",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": 0.0,
 				"kind": "multi_effect",
@@ -2754,11 +2639,6 @@
 				"tenacity": 0.0,
 				"unit_id": "wizard"
 			},
-			"tags": [
-				"backline",
-				"burst",
-				"aoe"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "projectile",
@@ -2839,12 +2719,6 @@
 				"tenacity": 0.0,
 				"unit_id": "wraith"
 			},
-			"tags": [
-				"dive",
-				"sustain",
-				"single_target",
-				"mobility"
-			],
 			"ultimate": {
 				"cast_range": -1.0,
 				"kind": "multi_effect",

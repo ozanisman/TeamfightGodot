@@ -56,11 +56,6 @@
 			"tenacity": 0.0,
 			"unit_id": "archer"
 		},
-		"tags": [
-			"backline",
-			"poke",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "channel",
@@ -172,12 +167,6 @@
 			"tenacity": 0.0,
 			"unit_id": "artillery"
 		},
-		"tags": [
-			"backline",
-			"poke",
-			"burst",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "projectile",
@@ -271,11 +260,6 @@
 			"tenacity": 0.0,
 			"unit_id": "berserker"
 		},
-		"tags": [
-			"frontline",
-			"burst",
-			"sustain"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "damage",
@@ -330,11 +314,6 @@
 			"tenacity": 0.0,
 			"unit_id": "cleric"
 		},
-		"tags": [
-			"backline",
-			"protect",
-			"sustain"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_target",
@@ -419,11 +398,6 @@
 			"tenacity": 0.0,
 			"unit_id": "colossus"
 		},
-		"tags": [
-			"frontline",
-			"cc",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -518,11 +492,6 @@
 			"tenacity": 0.0,
 			"unit_id": "disarmer"
 		},
-		"tags": [
-			"frontline",
-			"cc",
-			"single_target"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -606,12 +575,6 @@
 			"tenacity": 0.0,
 			"unit_id": "earthbender"
 		},
-		"tags": [
-			"frontline",
-			"cc",
-			"control",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -708,11 +671,6 @@
 			"tenacity": 0.0,
 			"unit_id": "frost_mage"
 		},
-		"tags": [
-			"backline",
-			"control",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",
@@ -823,11 +781,6 @@
 			"tenacity": 0.0,
 			"unit_id": "guardian"
 		},
-		"tags": [
-			"frontline",
-			"protect",
-			"cc"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -924,11 +877,6 @@
 			"tenacity": 0.0,
 			"unit_id": "mirror_knight"
 		},
-		"tags": [
-			"frontline",
-			"protect",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "aoe_reflect",
@@ -991,12 +939,6 @@
 			"tenacity": 0.0,
 			"unit_id": "mistcaller"
 		},
-		"tags": [
-			"backline",
-			"protect",
-			"sustain",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "aoe_heal_over_time",
@@ -1076,11 +1018,6 @@
 			"tenacity": 0.0,
 			"unit_id": "monk"
 		},
-		"tags": [
-			"frontline",
-			"cc",
-			"single_target"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -1157,11 +1094,6 @@
 			"tenacity": 0.0,
 			"unit_id": "necromancer"
 		},
-		"tags": [
-			"backline",
-			"summon",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "summon_ally",
@@ -1250,12 +1182,6 @@
 			"tenacity": 0.0,
 			"unit_id": "ninja"
 		},
-		"tags": [
-			"dive",
-			"burst",
-			"single_target",
-			"mobility"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "projectile",
@@ -1317,11 +1243,6 @@
 			"tenacity": 0.0,
 			"unit_id": "oracle"
 		},
-		"tags": [
-			"backline",
-			"protect",
-			"cc"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",
@@ -1392,11 +1313,6 @@
 			"tenacity": 0.0,
 			"unit_id": "paladin"
 		},
-		"tags": [
-			"frontline",
-			"protect",
-			"sustain"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",
@@ -1918,10 +1834,6 @@
 			"tenacity": 0.0,
 			"unit_id": "rogue"
 		},
-		"tags": [
-			"burst",
-			"single_target"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "damage",
@@ -2045,11 +1957,6 @@
 			"tenacity": 0.0,
 			"unit_id": "silencer"
 		},
-		"tags": [
-			"backline",
-			"cc",
-			"control"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -2127,11 +2034,6 @@
 			"tenacity": 0.0,
 			"unit_id": "siren"
 		},
-		"tags": [
-			"backline",
-			"control",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",
@@ -2211,11 +2113,6 @@
 			"tenacity": 0.0,
 			"unit_id": "sniper"
 		},
-		"tags": [
-			"backline",
-			"poke",
-			"single_target"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "projectile",
@@ -2300,11 +2197,6 @@
 			"tenacity": 0.0,
 			"unit_id": "swordsman"
 		},
-		"tags": [
-			"frontline",
-			"burst",
-			"single_target"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",
@@ -2412,11 +2304,6 @@
 			"tenacity": 0.0,
 			"unit_id": "valkyrie"
 		},
-		"tags": [
-			"frontline",
-			"protect",
-			"mobility"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -2569,10 +2456,6 @@
 			"tenacity": 0.0,
 			"unit_id": "warlock"
 		},
-		"tags": [
-			"sustain",
-			"aoe"
-		],
 		"ultimate": null,
 		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
 		"ultimate_name": "",
@@ -2658,11 +2541,6 @@
 			"tenacity": 0.0,
 			"unit_id": "windcaller"
 		},
-		"tags": [
-			"backline",
-			"control",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": 0.0,
 			"kind": "multi_effect",
@@ -2760,11 +2638,6 @@
 			"tenacity": 0.0,
 			"unit_id": "wizard"
 		},
-		"tags": [
-			"backline",
-			"burst",
-			"aoe"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "projectile",
@@ -2845,12 +2718,6 @@
 			"tenacity": 0.0,
 			"unit_id": "wraith"
 		},
-		"tags": [
-			"dive",
-			"sustain",
-			"single_target",
-			"mobility"
-		],
 		"ultimate": {
 			"cast_range": -1.0,
 			"kind": "multi_effect",

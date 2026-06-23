@@ -35,7 +35,6 @@ func _run() -> void:
 	_report_lines.append("")
 
 	# Run required checks (check existing report files)
-	_run_check("Native Draft AI Tag Validation", "validate_native_draft_ai_tags.gd", "native_draft_ai_tag_path_report.md")
 	_run_check("Full Draft Validation (native)", "full_draft_validation.gd", "full_draft_validation_report_native.txt")
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 

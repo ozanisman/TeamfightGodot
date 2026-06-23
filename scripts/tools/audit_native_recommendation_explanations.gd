@@ -17,7 +17,6 @@ var _backend: RefCounted
 var _missing_fields: Array[String] = []
 var _suspicious_zero_fields: Array[String] = []
 var _invalid_values: Array[String] = []
-var _empty_tags: Array[String] = []
 var _missing_explanation_inputs: Array[String] = []
 
 # Required pick debug fields
@@ -32,7 +31,6 @@ const PICK_REQUIRED_FIELDS := [
 	"comp_fit",
 	"candidate_role",
 	"phase_label",
-	"candidate_tags"
 ]
 
 # Required ban debug fields
@@ -48,7 +46,6 @@ const BAN_REQUIRED_FIELDS := [
 	"enemy_comp_fit",
 	"early_ban_fallback_component",
 	"phase_label",
-	"candidate_tags"
 ]
 
 
@@ -67,7 +64,7 @@ func _run() -> void:
 	var lines: Array[String] = []
 	lines.append("# Native Recommendation Explanation Audit")
 	lines.append("")
-	lines.append("Audits native recommendation debug output for completeness and validity. This report is diagnostic only; no scoring, weights, draft order, champion tags, UI behavior, or stats files were changed.")
+	lines.append("Audits native recommendation debug output for completeness and validity. This report is diagnostic only; no scoring, weights, draft order, UI behavior, or stats files were changed.")
 	lines.append("")
 	lines.append("## Summary")
 	lines.append("")
@@ -75,7 +72,6 @@ func _run() -> void:
 	lines.append("- Missing required fields: %d" % _missing_fields.size())
 	lines.append("- Suspicious zero fields: %d" % _suspicious_zero_fields.size())
 	lines.append("- Invalid values: %d" % _invalid_values.size())
-	lines.append("- Empty candidate_tags: %d" % _empty_tags.size())
 	lines.append("- Missing explanation inputs: %d" % _missing_explanation_inputs.size())
 	lines.append("")
 
@@ -97,13 +93,6 @@ func _run() -> void:
 		lines.append("### Invalid Values")
 		lines.append("")
 		for issue in _invalid_values:
-			lines.append("- " + issue)
-		lines.append("")
-
-	if not _empty_tags.is_empty():
-		lines.append("### Empty Candidate Tags")
-		lines.append("")
-		for issue in _empty_tags:
 			lines.append("- " + issue)
 		lines.append("")
 
@@ -247,11 +236,6 @@ func _audit_recommendation_fields(rec: Dictionary, action: String, state_name: S
 			if field == "candidate":
 				if value == null or String(value).is_empty():
 					_invalid_values.append("`%s` (%s): candidate is null or empty" % [state_name, action])
-
-			# Check for empty tags
-			if field == "candidate_tags":
-				if value is Array and value.is_empty():
-					_empty_tags.append("`%s` (%s): candidate_tags is empty" % [state_name, action])
 
 			# Check for missing explanation inputs (all zero values in explanation fields)
 			if action == "PICK" and field in ["ally_synergy", "enemy_counter_value", "counter_risk", "role_fit", "comp_fit"]:

@@ -503,20 +503,6 @@ String DraftStatsDatabase::_cell_or_empty(const std::vector<String> &row, int64_
 	return row[static_cast<size_t>(index)];
 }
 
-std::vector<StringName> DraftStatsDatabase::tags_for(const StringName &champion) const {
-	if (_catalog == nullptr) {
-		return std::vector<StringName>();
-	}
-	return catalog::tags_for(*_catalog, champion);
-}
-
-bool DraftStatsDatabase::champion_has_tag(const StringName &champion, const StringName &tag) const {
-	if (_catalog == nullptr) {
-		return false;
-	}
-	return catalog::champion_has_tag(*_catalog, champion, tag);
-}
-
 void DraftStatsDatabase::set_catalog(const catalog::CatalogState *catalog) {
 	_catalog = catalog;
 }

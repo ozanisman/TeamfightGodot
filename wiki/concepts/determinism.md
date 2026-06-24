@@ -11,7 +11,7 @@ All runtime combat runs through the native backend (`TeamfightSimulationCore` vi
 Golden fixture parity compares native match output against committed expected summaries in `fixtures/goldens/match_fixtures.json`. Fixtures include schema signature (contract hash) and fixture signature (per-match hash). Float tolerance accounts for cross-platform precision limits.
 
 Determinism is validated via:
-- `--fixture-file=res://fixtures/goldens/match_fixtures.json` — golden parity (9 fixtures)
+- `--fixture-file=res://fixtures/goldens/match_fixtures.json` — golden parity (17 fixtures)
 - `--check-determinism` — reruns fixture inputs twice on native and compares summaries
 - `--check-only` — GDScript preload/compile gate only (not a parity test)
 

@@ -611,6 +611,127 @@
 		"ultimate_name": "Earthquake",
 		"unit_id": "earthbender"
 	},
+	"fixture_probe": {
+		"ability": {
+			"cast_range": -1.0,
+			"kind": "multi_target",
+			"params": {
+				"reason": "Defer Heal Volley",
+				"repeat_count": 1,
+				"selection_strategy": "closest",
+				"sub_effects": [
+					{
+						"kind": "projectile",
+						"params": {
+							"on_hit": {
+								"kind": "damage",
+								"params": {
+									"damage_ratio": 0.5,
+									"damage_type": "physical",
+									"reason": "Defer Heal Volley"
+								}
+							},
+							"reason": "Defer Heal Volley"
+						}
+					},
+					{
+						"kind": "damage_based_heal",
+						"params": {
+							"damage_ratio": 0.5,
+							"reason": "Defer Heal Volley"
+						}
+					}
+				],
+				"target_count": 1,
+				"team_filter": "enemy"
+			}
+		},
+		"ability_desc": "Fires a projectile then heals for 50% of damage dealt in the same target pass.",
+		"ability_name": "Defer Heal Volley",
+		"description": "Regression-only champion for golden fixture defer and cumulative-damage paths.",
+		"name": "Fixture Probe",
+		"passive_desc": "",
+		"passive_ids": [],
+		"passive_name": "",
+		"role": "mage",
+		"stats": {
+			"ability_cd": 3.0,
+			"armor": 10.0,
+			"attack_damage": 8.0,
+			"attack_range": 3.5,
+			"attack_speed": 0.5,
+			"life_steal": 0.0,
+			"magic_resist": 10.0,
+			"mana_cost": 20.0,
+			"mana_per_attack": 10.0,
+			"max_hp": 200.0,
+			"move_speed": 0.5,
+			"name": "Fixture Probe",
+			"passive_id": "",
+			"projectile_radius": 0.03,
+			"projectile_speed": 6.0,
+			"respawn_time": 5.0,
+			"role": "mage",
+			"tenacity": 0.0,
+			"unit_id": "fixture_probe"
+		},
+		"ultimate": {
+			"cast_range": -1.0,
+			"kind": "multi_effect",
+			"params": {
+				"effects": [
+					{
+						"cast_range": -1.0,
+						"kind": "multi_target",
+						"params": {
+							"reason": "Defer Multi Effect",
+							"repeat_count": 1,
+							"selection_strategy": "closest",
+							"sub_effects": [
+								{
+									"kind": "projectile",
+									"params": {
+										"on_hit": {
+											"kind": "damage",
+											"params": {
+												"damage_ratio": 0.6,
+												"damage_type": "physical",
+												"reason": "Defer Multi Effect"
+											}
+										},
+										"reason": "Defer Multi Effect"
+									}
+								},
+								{
+									"kind": "damage_based_heal",
+									"params": {
+										"damage_ratio": 0.5,
+										"reason": "Defer Multi Effect"
+									}
+								}
+							],
+							"target_count": 1,
+							"team_filter": "enemy"
+						}
+					},
+					{
+						"cast_range": -1.0,
+						"kind": "damage",
+						"params": {
+							"damage_type": "magic",
+							"flat_amount": 10.0,
+							"reason": "Defer Multi Effect",
+							"target_self": true
+						}
+					}
+				],
+				"reason": "Defer Multi Effect"
+			}
+		},
+		"ultimate_desc": "Defer-heal volley followed by bonus magic damage after the chain completes.",
+		"ultimate_name": "Defer Multi Effect",
+		"unit_id": "fixture_probe"
+	},
 	"frost_mage": {
 		"ability": {
 			"cast_range": -1.0,

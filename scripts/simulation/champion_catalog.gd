@@ -2287,6 +2287,125 @@ const CHAMPION_DATA := {
 		},
 		"passive_ids": [],
 	},
+	&"fixture_probe": {
+		"stats": {
+			"unit_id": &"fixture_probe",
+			"name": &"Fixture Probe",
+			"role": &"mage",
+			"max_hp": 200.0,
+			"attack_damage": 8.0,
+			"attack_range": 3.5,
+			"attack_speed": 0.50,
+			"move_speed": 0.50,
+			"armor": 10,
+			"magic_resist": 10,
+			"tenacity": 0.0,
+			"life_steal": 0.0,
+			"mana_cost": 20.0,
+			"mana_per_attack": 10.0,
+			"ability_cd": 3.0,
+			"projectile_speed": 6.0,
+			"projectile_radius": 0.0,
+			"passive_id": &"",
+			"respawn_time": 0.0,
+		},
+		"description": "Regression-only champion for golden fixture defer and cumulative-damage paths.",
+		"passive_name": "",
+		"passive_desc": "",
+		"ability_name": "Defer Heal Volley",
+		"ability_desc": "Fires a projectile then heals for 50% of damage dealt in the same target pass.",
+		"ultimate_name": "Defer Multi Effect",
+		"ultimate_desc": "Defer-heal volley followed by bonus magic damage after the chain completes.",
+		"ability": {
+			"kind": &"multi_target",
+			"params": {
+				"target_count": 1,
+				"repeat_count": 1,
+				"selection_strategy": "closest",
+				"team_filter": "enemy",
+				"sub_effects": [
+					{
+						"kind": &"projectile",
+						"params": {
+							"on_hit": {
+								"kind": &"damage",
+								"params": {
+									"damage_ratio": 0.5,
+									"damage_type": "physical",
+									"reason": "Defer Heal Volley"
+								}
+							},
+							"reason": "Defer Heal Volley"
+						}
+					},
+					{
+						"kind": &"damage_based_heal",
+						"params": {
+							"damage_ratio": 0.5,
+							"reason": "Defer Heal Volley"
+						}
+					}
+				],
+				"reason": "Defer Heal Volley"
+			},
+			"cast_range": -1,
+			"reason": "Defer Heal Volley",
+		},
+		"ultimate": {
+			"kind": &"multi_effect",
+			"params": {
+				"effects": [
+					{
+						"kind": &"multi_target",
+						"params": {
+							"target_count": 1,
+							"repeat_count": 1,
+							"selection_strategy": "closest",
+							"team_filter": "enemy",
+							"sub_effects": [
+								{
+									"kind": &"projectile",
+									"params": {
+										"on_hit": {
+											"kind": &"damage",
+											"params": {
+												"damage_ratio": 0.6,
+												"damage_type": "physical",
+												"reason": "Defer Multi Effect"
+											}
+										},
+										"reason": "Defer Multi Effect"
+									}
+								},
+								{
+									"kind": &"damage_based_heal",
+									"params": {
+										"damage_ratio": 0.5,
+										"reason": "Defer Multi Effect"
+									}
+								}
+							],
+							"reason": "Defer Multi Effect"
+						},
+						"reason": "Defer Multi Effect"
+					},
+					{
+						"kind": &"damage",
+						"params": {
+							"flat_amount": 10.0,
+							"damage_type": "magic",
+							"target_self": true,
+							"reason": "Defer Multi Effect"
+						}
+					}
+				],
+				"reason": "Defer Multi Effect"
+			},
+			"cast_range": -1,
+			"reason": "Defer Multi Effect",
+		},
+		"passive_ids": [],
+	},
 }
 
 const PASSIVE_DATA := {

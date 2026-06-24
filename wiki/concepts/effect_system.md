@@ -120,6 +120,8 @@ When defer applies:
 
 Channel projectile impacts still credit `channel_accumulated_damage` when the source is channeling.
 
+Golden coverage for defer, channel, and cumulative-damage paths: [`fixtures/goldens/FIXTURE_BEHAVIORS.md`](../../fixtures/goldens/FIXTURE_BEHAVIORS.md).
+
 > **Out of scope for this pass:** Only `damage` is accumulated across effects. `heal_amount`, `heal_gained`, `distance`, and other `EffectContext` fields are not yet accumulated by their respective opcodes.
 
 ## MULTI_TARGET parameters

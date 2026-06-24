@@ -46,6 +46,6 @@ See **Other golden JSON artifacts** below for all tracked JSON files in this dir
 | `minion_schema.json` | `export_champion_schema.gd` / CMake | Generated from `champion_catalog.gd` alongside `champion_schema.json` |
 | `balance_patches.json` | Manually maintained | Author balance patches by hand; validated by `--check-balance-patches` |
 | `champion_kits.json` | `kit_catalog.gd` / `KitCatalog.write_kit_json_to_file()` | Generated from `KIT_DATA` in `kit_catalog.gd` |
-| `match_fixtures.json` | `--rewrite-fixture-summaries=res://fixtures/goldens/match_fixtures.json` | Golden parity fixtures (11 cases); regenerate via `run_godot.ps1` |
+| `match_fixtures.json` | `--rewrite-fixture-summaries=res://fixtures/goldens/match_fixtures.json` | Golden parity fixtures (17 cases); see [FIXTURE_BEHAVIORS.md](FIXTURE_BEHAVIORS.md); regenerate via `run_godot.ps1` |
 | `contract_schema.json` | `--dump-contract-json` | Match input/summary contract; regenerate when schema changes |
 | `champion_kits.example.json` | Reference | Example kit structure only |

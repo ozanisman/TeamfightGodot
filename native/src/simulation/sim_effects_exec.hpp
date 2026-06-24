@@ -18,6 +18,14 @@ Dictionary execute(
 		const SimExecCallbacks &hooks,
 		effects::SimMatchHost match_host);
 
+void resume_deferred_multi_effect(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void resume_deferred_multi_target(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void try_complete_deferred_projectile_chains(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void abandon_deferred_projectile(SimWorld &world, SimHostCallbacks &host, const ProjectileState &projectile);
+
 } // namespace sim::effects::execution
 
 #endif // SIM_EFFECTS_EXEC_HPP

@@ -135,6 +135,13 @@ struct EffectContext {
 	double heal_amount = 0.0;
 	double heal_gained = 0.0;
 	bool use_heal_gained = false;
+	// Set when a knockback occurs anywhere in this effect chain. Preserved through knockback hooks so they can see the context that triggered them.
+	bool knockback_applied = false;
+	// Recursion guard: incremented inside on_knockback / on_knockback_action hooks to prevent infinite chains.
+	int32_t knockback_hook_depth = 0;
+	// When true, projectile spawns from multi_target increment the source's deferred projectile counter.
+	bool multi_effect_has_remaining_siblings = false;
+	bool track_spawned_projectile_for_deferred_chain = false;
 	struct EffectExecResult {
 		bool present = false;
 		bool success_set = false;
@@ -311,12 +318,26 @@ struct UnitStateRare {
 	double minion_damage_mitigated = 0.0;
 };
 
+constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
+constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
+constexpr size_t EFFECT_BUCKET_ON_ALLY_DEFENSE = 2;
+constexpr size_t EFFECT_BUCKET_ON_TICK = 3;
+constexpr size_t EFFECT_BUCKET_POST_ATTACK = 4;
+constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 5;
+constexpr size_t EFFECT_BUCKET_ON_ABILITY = 6;
+constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 7;
+constexpr size_t EFFECT_BUCKET_POST_HEAL = 8;
+constexpr size_t EFFECT_BUCKET_ON_TAKEDOWN = 9;
+constexpr size_t EFFECT_BUCKET_ON_KNOCKBACK = 10;
+constexpr size_t EFFECT_BUCKET_ON_KNOCKBACK_ACTION = 11;
+constexpr size_t EFFECT_BUCKET_COUNT = 12;
+
 /// Loadout, compiled effects, spawn snapshot, casting payload, and combat telemetry (updated on events, not inner targeting loops).
 struct UnitStateCold {
 	StringName unit_id;
 	StringName role_id;
 	Dictionary stats;
-	std::array<std::vector<EffectRecord>, 10> passive_effects;
+	std::array<std::vector<EffectRecord>, EFFECT_BUCKET_COUNT> passive_effects;
 	double on_ally_defense_radius = 0.0; // Radius for on_ally_defense triggers
 	// Passive AOE radius information for visualization
 	struct PassiveAoeInfo {
@@ -398,6 +419,28 @@ struct UnitStateCold {
 	EffectRecord channel_sub_effect;
 	EffectRecord channel_post_complete_effect;
 	EffectRecord channel_post_interrupt_effect;
+
+	// Deferred multi_effect continuation when multi_target spawns in-flight projectiles.
+	int32_t deferred_effect_outstanding_projectiles = 0;
+	double deferred_effect_projectile_dealt_damage = 0.0;
+	bool deferred_multi_effect_active = false;
+	EffectRecord deferred_multi_effect_record;
+	size_t deferred_multi_effect_next_child = 0;
+	EffectContext deferred_multi_effect_context;
+	Dictionary deferred_multi_effect_combined_results;
+
+	// Deferred multi_target continuation when a projectile sub-effect has remaining applications.
+	bool deferred_multi_target_active = false;
+	EffectRecord deferred_multi_target_effect;
+	EffectContext deferred_multi_target_parent_context;
+	EffectContext deferred_multi_target_target_context;
+	Dictionary deferred_multi_target_nested_results;
+	Dictionary deferred_multi_target_summary_applications;
+	std::vector<int64_t> deferred_multi_target_target_ids;
+	size_t deferred_multi_target_target_entry_index = 0;
+	int64_t deferred_multi_target_scratch_target_id = 0;
+	size_t deferred_multi_target_next_sub_effect = 0;
+	int64_t deferred_multi_target_next_repeat = 0;
 };
 
 /// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.
@@ -657,6 +700,9 @@ struct ProjectileState {
 	StringName visual_id;
 	StringName action_kind;
 	String reason;
+	// When set, impact dealt damage is credited to this source (channel ticks or deferred chains).
+	int64_t damage_accumulator_source_id = 0;
+	bool counts_toward_deferred_outstanding = false;
 };
 
 enum TargetSelectionStrategy : int64_t {
@@ -714,8 +760,7 @@ enum EffectOpcode : int64_t {
 	EFFECT_OPCODE_DISARM = 113,
 	EFFECT_OPCODE_KNOCKBACK = 114,
 	EFFECT_OPCODE_REFLECT = 115,
-	EFFECT_OPCODE_KNOCKBACK_SHIELD = 116,
-	EFFECT_OPCODE_STEALTH = 117,
+	EFFECT_OPCODE_STEALTH = 116,
 	EFFECT_OPCODE_HEAL_OVER_TIME = 118,
 	EFFECT_OPCODE_DAMAGE_BASED_SHIELD = 119,
 	EFFECT_OPCODE_CONSUME_STACKS_HEAL = 120,

@@ -1,6 +1,7 @@
 #include "sim_channel.hpp"
 
 #include "sim_combat.hpp"
+#include "sim_effects_exec_internal.hpp"
 #include "sim_spatial.hpp"
 #include "sim_stats.hpp"
 #include "sim_targeting.hpp"
@@ -39,7 +40,7 @@ int64_t get_channel_tick_count(const UnitStateCold &cold) {
 	return static_cast<int64_t>(total_ticked / cold.channel_tick_interval);
 }
 
-void clear_channel_state(UnitStateCold &cold) {
+void clear_channel_fields(UnitStateCold &cold) {
 	cold.is_channeling = false;
 	cold.channel_remaining_duration = 0.0;
 	cold.channel_tick_interval = 0.0;
@@ -54,6 +55,13 @@ void clear_channel_state(UnitStateCold &cold) {
 	cold.channel_sub_effect = EffectRecord();
 	cold.channel_post_complete_effect = EffectRecord();
 	cold.channel_post_interrupt_effect = EffectRecord();
+}
+
+void clear_channel_state(UnitStateCold &cold, bool preserve_deferred_chains = false) {
+	clear_channel_fields(cold);
+	if (!preserve_deferred_chains) {
+		sim::effects::execution::internal::clear_deferred_effect_chain_state(cold);
+	}
 }
 
 bool should_interrupt_channel(SimWorld &world, UnitState &unit, const UnitStateCold &cold) {
@@ -132,7 +140,11 @@ void complete_channel(SimWorld &world, SimHostCallbacks &host, UnitState &unit, 
 	if (cold.channel_action_kind == sn_ability()) {
 		unit.ability_cooldown = get_effective_ability_cd(unit);
 	}
-	clear_channel_state(cold);
+	const bool preserve_defer =
+			cold.deferred_effect_outstanding_projectiles > 0 ||
+			cold.deferred_multi_target_active ||
+			cold.deferred_multi_effect_active;
+	clear_channel_state(cold, preserve_defer);
 }
 
 void interrupt_channel(SimWorld &world, SimHostCallbacks &host, UnitState &unit, UnitStateCold &cold) {
@@ -152,7 +164,11 @@ void interrupt_channel(SimWorld &world, SimHostCallbacks &host, UnitState &unit,
 	if (cold.channel_action_kind == sn_ability()) {
 		unit.ability_cooldown = get_effective_ability_cd(unit);
 	}
-	clear_channel_state(cold);
+	const bool preserve_defer =
+			cold.deferred_effect_outstanding_projectiles > 0 ||
+			cold.deferred_multi_target_active ||
+			cold.deferred_multi_effect_active;
+	clear_channel_state(cold, preserve_defer);
 }
 
 } // namespace
@@ -170,6 +186,9 @@ void process_channel_tick(SimWorld &world, SimHostCallbacks &host, const Channel
 	if (cold.channel_tick_accumulator >= cold.channel_tick_interval) {
 		cold.channel_tick_accumulator -= cold.channel_tick_interval;
 
+		if (cold.deferred_multi_target_active || cold.deferred_effect_outstanding_projectiles > 0) {
+			// Defer in-flight projectile chains must finish before the next channel sub-effect tick.
+		} else {
 		UnitState *target = nullptr;
 		if (cold.channel_target_mode == StringName("self")) {
 			target = &unit;
@@ -201,10 +220,13 @@ void process_channel_tick(SimWorld &world, SimHostCallbacks &host, const Channel
 			context.channel_tick_count = get_channel_tick_count(cold);
 			context.channel_accumulated_damage = cold.channel_accumulated_damage;
 
+			const double damage_before_tick = context.damage;
 			const Dictionary result = execute_effect(host, cold.channel_sub_effect, context);
-			if (result.has("damage")) {
-				cold.channel_accumulated_damage += double(result["damage"]);
+			const double tick_dealt = sim::effects::execution::internal::extract_dealt_damage_delta(damage_before_tick, context, result);
+			if (tick_dealt > 0.0) {
+				cold.channel_accumulated_damage += tick_dealt;
 			}
+		}
 		}
 	}
 

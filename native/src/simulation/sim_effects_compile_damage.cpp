@@ -216,6 +216,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 	}
 	if (kind == sn_damage_based_shield()) {
 		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
+		compiled.int0 = tracker.get("use_accumulated_damage", false) ? 1 : 0;
 		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}

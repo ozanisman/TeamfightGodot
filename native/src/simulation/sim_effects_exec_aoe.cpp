@@ -52,14 +52,14 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 				double total_damage = sim::periodic::apply_aoe_damage_shape(world, host, source, target, effect, aoe_damage, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
 				aoe_damage_result["aoe_damage_applied"] = true;
 				aoe_damage_result["damage"] = total_damage;
-				context.damage = total_damage;
+				context.damage += total_damage;
 				return aoe_damage_result;
 			} else {
 				// Calculate per-target damage using target's max_hp for max_hp_ratio
 				double total_damage = sim::periodic::apply_aoe_damage_shape_per_target(world, host, source, target, effect, effect.scalar1, effect.scalar3, effect.scalar4, effect.scalar2, effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type, context.action_kind);
 				aoe_damage_result["aoe_damage_applied"] = true;
 				aoe_damage_result["damage"] = total_damage;
-				context.damage = total_damage;
+				context.damage += total_damage;
 				return aoe_damage_result;
 			}
 		}
@@ -134,7 +134,16 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_KNOCKBACK: {
 			Dictionary aoe_kb_result;
 			aoe_kb_result["success"] = true;
-			aoe_kb_result["knockback_applied"] = sim::periodic::apply_aoe_knockback_shape(world, host, source, target, effect, effect.scalar1, effect.int0 != 0);
+			std::vector<UnitState *> knocked_back;
+			aoe_kb_result["knockback_applied"] = sim::periodic::apply_aoe_knockback_shape(world, host, source, target, effect, effect.scalar1, effect.int0 != 0, &knocked_back);
+			if (bool(aoe_kb_result["knockback_applied"])) {
+				context.knockback_applied = true;
+				if (context.knockback_hook_depth == 0) {
+					for (UnitState *unit : knocked_back) {
+						sim::combat::run_on_knockback_effects(world, host, source, unit, context);
+					}
+				}
+			}
 			return aoe_kb_result;
 		}
 		case EFFECT_OPCODE_AOE_REFLECT: {

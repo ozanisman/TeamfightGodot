@@ -10,8 +10,7 @@ var champions: Array[String] = []
 var is_loaded: bool = false
 var last_error: String = ""
 
-const VS_FILE_PATH := "res://model_stats/certified_pairwise_testing_250k/matchup_vs.csv"
-const WITH_FILE_PATH := "res://model_stats/certified_pairwise_testing_250k/matchup_with.csv"
+var stats_dir: String = "res://stats_output"
 
 func load_data() -> bool:
 	vs_data.clear()
@@ -21,11 +20,11 @@ func load_data() -> bool:
 	last_error = ""
 
 	# Load vs matchups
-	if not _load_csv_file(VS_FILE_PATH, vs_data, "vs"):
+	if not _load_csv_file(stats_dir.path_join("matchup_vs.csv"), vs_data, "vs"):
 		return false
 
 	# Load with matchups
-	if not _load_csv_file(WITH_FILE_PATH, with_data, "with"):
+	if not _load_csv_file(stats_dir.path_join("matchup_with.csv"), with_data, "with"):
 		return false
 
 	# Extract champion list

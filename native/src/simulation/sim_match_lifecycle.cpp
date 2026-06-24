@@ -2,6 +2,7 @@
 
 #include "sim_combat.hpp"
 #include "sim_constants.hpp"
+#include "sim_effects_exec_internal.hpp"
 #include "sim_periodic.hpp"
 #include "sim_stats.inl.hpp"
 #include "sim_stats_modifiers.hpp"
@@ -116,7 +117,7 @@ int64_t assign_spawn_slot(SpawnSlotState &slots, const StringName &team) {
 	}
 
 	if (available_slots.empty()) {
-		return int64_t(random_uint32(slots) % SPAWN_SLOT_COUNT);
+		return -1;
 	}
 
 	const int64_t random_index = int64_t(random_uint32(slots) % available_slots.size());
@@ -164,6 +165,7 @@ void handle_death(
 	}
 
 	target.alive = false;
+	effects::execution::internal::clear_deferred_effect_chain_state(uc(world, target));
 	target.respawn_timer = target.stats_dirty ? get_effective_respawn_time(target) : target.cached_respawn_time;
 	ur(world, target).deaths += 1;
 	sync_targeting_frame_index(host, target_index, target);
@@ -285,7 +287,12 @@ void handle_death(
 	if (target_cold.respawn_slot_index != -1) {
 		release_spawn_slot(slots, target.team, target_cold.respawn_slot_index);
 	}
-	target_cold.respawn_slot_index = assign_spawn_slot(slots, target.team);
+	static const StringName sn_minion("minion");
+	if (target_cold.role_id != sn_minion) {
+		target_cold.respawn_slot_index = assign_spawn_slot(slots, target.team);
+	} else {
+		target_cold.respawn_slot_index = -1;
+	}
 }
 
 void respawn_unit(

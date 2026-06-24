@@ -166,7 +166,6 @@ double apply_aoe_damage_shape_per_target(
 		const StringName &action_kind);
 
 bool apply_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double distance, bool away_from_source);
-bool apply_aoe_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source, double radius, double distance, bool away_from_source);
 bool apply_aoe_knockback_shape(
 		SimWorld &world,
 		SimHostCallbacks &host,
@@ -174,7 +173,8 @@ bool apply_aoe_knockback_shape(
 		UnitState *target,
 		const EffectRecord &effect,
 		double distance,
-		bool away_from_source);
+		bool away_from_source,
+		std::vector<UnitState *> *knocked_back_units = nullptr);
 
 void apply_reflect_buff(
 		SimWorld &world,

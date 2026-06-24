@@ -85,6 +85,14 @@ const StringName &sn_on_takedown() {
 	static const StringName s("on_takedown");
 	return s;
 }
+const StringName &sn_on_knockback() {
+	static const StringName s("on_knockback");
+	return s;
+}
+const StringName &sn_on_knockback_action() {
+	static const StringName s("on_knockback_action");
+	return s;
+}
 const StringName &sn_homing() {
 	static const StringName s("homing");
 	return s;
@@ -214,7 +222,6 @@ void apply_leaf_cast_range_spec(const EffectRecord &e, EffectCastRangeSpec &spec
 		case EFFECT_OPCODE_MANA_RESTORE_ON_HIT:
 		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
 		case EFFECT_OPCODE_REFLECT:
-		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
 		case EFFECT_OPCODE_STEALTH:
 		case EFFECT_OPCODE_SET_STACKS:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:

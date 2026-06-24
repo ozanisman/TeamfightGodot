@@ -2065,16 +2065,6 @@ const CHAMPION_DATA := {
 							"duration": 1.5,
 							"reason": "Wind Blast"
 						}
-					},
-					{
-						"kind": &"shield",
-						"params": {
-							"max_hp_ratio": 0.10,
-							"requires_result_from": "knockback",
-							"requires_field": "knockback_applied",
-							"requires_value": true,
-							"reason": "Gust Protection"
-						}
 					}
 				],
 				"reason": "Wind Blast"
@@ -2105,16 +2095,6 @@ const CHAMPION_DATA := {
 							"distance": 2.5,
 							"direction": "away_from_source",
 							"reason": "Tornado"
-						}
-					},
-					{
-						"kind": &"shield",
-						"params": {
-							"max_hp_ratio": 0.10,
-							"requires_result_from": "aoe_knockback",
-							"requires_field": "knockback_applied",
-							"requires_value": true,
-							"reason": "Gust Protection"
 						}
 					}
 				],
@@ -2595,8 +2575,15 @@ const PASSIVE_DATA := {
 			}
 		}],
 	},
-	# Gust Protection passive is implemented in the ability effects of Windcaller, so no hooks are needed here
 	&"gust_protection": {
+		&"on_knockback_action": [{
+			"kind": &"shield",
+			"params": {
+				"max_hp_ratio": 0.10,
+				"target_self": true,
+				"reason": "Gust Protection"
+			}
+		}],
 	},
 	&"reflective_armor": {
 		&"on_defense": [{

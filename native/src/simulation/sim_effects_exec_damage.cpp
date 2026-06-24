@@ -52,7 +52,7 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 			}
 			
 			double dealt = sim::damage::apply_damage(world, host, source, *damage_target, damage, effect.damage_type.is_empty() ? sn_physical() : effect.damage_type, context.action_kind, context);
-			context.damage = dealt;
+			context.damage += dealt;
 			
 			// Minimum health check for self-damage
 			if (effect.int0 == 1 && damage_target->alive && damage_target->hp <= 1.0) {
@@ -114,8 +114,9 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 				final_ratio = base_ratio + (double(stacks) * stack_bonus);
 			}
 			double damage = attack_damage * final_ratio;
-			sim::damage::apply_damage(world, host, source, *target, damage, effect.damage_type, context.action_kind, context);
-			result["damage_dealt"] = damage;
+			const double dealt = sim::damage::apply_damage(world, host, source, *target, damage, effect.damage_type, context.action_kind, context);
+			context.damage += dealt;
+			result["damage_dealt"] = dealt;
 			result["stacks_consumed"] = stacks;
 			result["target_killed"] = !target->alive;
 			return result;

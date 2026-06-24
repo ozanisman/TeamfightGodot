@@ -235,10 +235,6 @@ inline const StringName &sn_summon_ally() {
 	static const StringName s("summon_ally");
 	return s;
 }
-inline const StringName &sn_knockback_shield() {
-	static const StringName s("knockback_shield");
-	return s;
-}
 inline const StringName &sn_target_status_multiplier() {
 	static const StringName s("target_status_multiplier");
 	return s;
@@ -415,16 +411,6 @@ inline const StringName &sn_distance_traveled() {
 	static const StringName s("distance_traveled");
 	return s;
 }
-constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
-constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
-constexpr size_t EFFECT_BUCKET_ON_ALLY_DEFENSE = 2;
-constexpr size_t EFFECT_BUCKET_ON_TICK = 3;
-constexpr size_t EFFECT_BUCKET_POST_ATTACK = 4;
-constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 5;
-constexpr size_t EFFECT_BUCKET_ON_ABILITY = 6;
-constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 7;
-constexpr size_t EFFECT_BUCKET_POST_HEAL = 8;
-constexpr size_t EFFECT_BUCKET_ON_TAKEDOWN = 9;
 } // namespace effect_kinds
 } // namespace sim
 

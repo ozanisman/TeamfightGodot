@@ -28,7 +28,7 @@ bool TeamfightSimulationCore::_effect_record_contains_opcode(
 
 void TeamfightSimulationCore::_finalize_reflect_passives(sim::UnitState &unit, sim::UnitStateCold &cold) {
 	cold.passive_reflect_entries.clear();
-	for (const sim::EffectRecord &eff : cold.passive_effects[1]) {
+	for (const sim::EffectRecord &eff : cold.passive_effects[sim::EFFECT_BUCKET_ON_DEFENSE]) {
 		if (eff.opcode == sim::EFFECT_OPCODE_REFLECT_DAMAGE) {
 			sim::PassiveReflectEntry entry;
 			entry.percentage = eff.scalar0;

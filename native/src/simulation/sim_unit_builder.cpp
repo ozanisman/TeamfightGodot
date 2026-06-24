@@ -16,7 +16,10 @@ namespace sim {
 namespace unit_builder {
 namespace {
 
-constexpr size_t EFFECT_BUCKET_ON_TICK = 3;
+using sim::EFFECT_BUCKET_ON_TICK;
+using sim::EFFECT_BUCKET_POST_TAKE_DAMAGE;
+using sim::EFFECT_BUCKET_ON_KNOCKBACK;
+using sim::EFFECT_BUCKET_ON_KNOCKBACK_ACTION;
 
 inline const StringName &sn_player() {
 	static const StringName s("player");
@@ -86,42 +89,53 @@ inline const StringName &sn_on_takedown() {
 	static const StringName s("on_takedown");
 	return s;
 }
+inline const StringName &sn_on_knockback() {
+	static const StringName s("on_knockback");
+	return s;
+}
+inline const StringName &sn_on_knockback_action() {
+	static const StringName s("on_knockback_action");
+	return s;
+}
 
 int passive_bucket_index(const StringName &kind) {
 	if (kind == sn_on_attack()) {
-		return 0;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_ATTACK);
 	}
 	if (kind == sn_on_defense()) {
-		return 1;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_DEFENSE);
 	}
 	if (kind == sn_on_ally_defense()) {
-		return 2;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_ALLY_DEFENSE);
 	}
 	if (kind == sn_on_tick()) {
-		return 3;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_TICK);
 	}
 	if (kind == sn_post_attack()) {
-		return 4;
+		return static_cast<int>(sim::EFFECT_BUCKET_POST_ATTACK);
 	}
 	if (kind == sn_post_take_damage()) {
-		return 5;
+		return static_cast<int>(sim::EFFECT_BUCKET_POST_TAKE_DAMAGE);
 	}
 	if (kind == sn_on_ability()) {
-		return 6;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_ABILITY);
 	}
 	if (kind == sn_on_ultimate()) {
-		return 7;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_ULTIMATE);
 	}
 	if (kind == sn_post_heal()) {
-		return 8;
+		return static_cast<int>(sim::EFFECT_BUCKET_POST_HEAL);
 	}
 	if (kind == sn_on_takedown()) {
-		return 9;
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_TAKEDOWN);
 	}
-	UtilityFunctions::push_error(vformat(
-			"[DEBUG] passive_bucket_index: unrecognized trigger kind '%s', falling through to bucket 5 (post_take_damage)",
-			String(kind)));
-	return 5;
+	if (kind == sn_on_knockback()) {
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_KNOCKBACK);
+	}
+	if (kind == sn_on_knockback_action()) {
+		return static_cast<int>(sim::EFFECT_BUCKET_ON_KNOCKBACK_ACTION);
+	}
+	return -1;
 }
 
 std::vector<EffectRecord> compile_effect_array(const UnitBuilderHost &host, const Array &effects) {
@@ -186,6 +200,8 @@ BuiltUnit build_unit(
 		effect_kinds.append(StringName("on_ultimate"));
 		effect_kinds.append(StringName("post_heal"));
 		effect_kinds.append(StringName("on_takedown"));
+		effect_kinds.append(StringName("on_knockback"));
+		effect_kinds.append(StringName("on_knockback_action"));
 		if (entry.has("on_ally_defense")) {
 			double radius = double(entry.get("radius", 0.0));
 			if (radius > cold.on_ally_defense_radius) {
@@ -203,19 +219,28 @@ BuiltUnit build_unit(
 		}
 		for (int64_t kind_index = 0; kind_index < effect_kinds.size(); ++kind_index) {
 			Variant kind_value = effect_kinds[kind_index];
+			const int bucket_index = passive_bucket_index(StringName(String(kind_value)));
+			if (bucket_index < 0) {
+				UtilityFunctions::push_error(vformat(
+						"Passive '%s' has unrecognized trigger kind '%s'; skipping effects for this kind",
+						String(passive_id),
+						String(kind_value)));
+				continue;
+			}
 			Array effects = Array(entry.get(kind_value, Array()));
 			std::vector<EffectRecord> compiled_effects = compile_effect_array(host, effects);
-			std::vector<EffectRecord> &bucket = cold.passive_effects[passive_bucket_index(StringName(String(kind_value)))];
+			std::vector<EffectRecord> &bucket = cold.passive_effects[bucket_index];
 			bucket.insert(bucket.end(), compiled_effects.begin(), compiled_effects.end());
 		}
+
 	}
 	Variant role_tick = role_config.get("passive_on_tick", Variant());
 	if (role_tick.get_type() != Variant::NIL) {
-		cold.passive_effects[3].push_back(compile_effect(host, Dictionary(role_tick)));
+		cold.passive_effects[EFFECT_BUCKET_ON_TICK].push_back(compile_effect(host, Dictionary(role_tick)));
 	}
 	Variant role_take_damage = role_config.get("passive_post_take_damage", Variant());
 	if (role_take_damage.get_type() != Variant::NIL) {
-		cold.passive_effects[5].push_back(compile_effect(host, Dictionary(role_take_damage)));
+		cold.passive_effects[EFFECT_BUCKET_POST_TAKE_DAMAGE].push_back(compile_effect(host, Dictionary(role_take_damage)));
 	}
 	cold.on_tick_effect_accumulators.resize(cold.passive_effects[EFFECT_BUCKET_ON_TICK].size(), 0.0);
 
@@ -321,7 +346,6 @@ BuiltUnit build_unit(
 	cold.spawn_pos_y = y;
 	unit.pos_x = x;
 	unit.pos_y = y;
-	cold.respawn_slot_index = -1;
 	unit.hp = max_hp;
 	unit.shield = 0.0;
 	unit.mana = 0.0;

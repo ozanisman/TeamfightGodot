@@ -326,10 +326,6 @@ bool apply_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source,
 	return Math::abs(target.pos_x - old_x) > EPSILON || Math::abs(target.pos_y - old_y) > EPSILON;
 }
 
-bool apply_aoe_knockback(SimWorld &world, SimHostCallbacks &host, UnitState &source, double radius, double distance, bool away_from_source) {
-	return apply_aoe_knockback_shape(world, host, source, nullptr, make_circle_self_aoe(radius), distance, away_from_source);
-}
-
 bool apply_aoe_knockback_shape(
 		SimWorld &world,
 		SimHostCallbacks &host,
@@ -337,14 +333,19 @@ bool apply_aoe_knockback_shape(
 		UnitState *target,
 		const EffectRecord &effect,
 		double distance,
-		bool away_from_source) {
+		bool away_from_source,
+		std::vector<UnitState *> *knocked_back_units) {
 	if (effect.aoe_shape_params.radius <= 0.0 || distance <= 0.0) {
 		return false;
 	}
 	record_aoe_shape_fx(host.viewer_hooks, world, source, target, effect, StringName("aoe_knockback"));
 	bool applied = false;
 	for_each_enemy_in_aoe_shape(world, source, target, effect, 0, [&](UnitState &unit) {
-		applied = apply_knockback(world, host, source, unit, distance, away_from_source) || applied;
+		bool unit_applied = apply_knockback(world, host, source, unit, distance, away_from_source);
+		applied = unit_applied || applied;
+		if (unit_applied && knocked_back_units != nullptr) {
+			knocked_back_units->push_back(&unit);
+		}
 	});
 	return applied;
 }

@@ -128,8 +128,6 @@ EffectRecord compile_effect(const Dictionary &effect) {
 		kind = sn_aoe_stun();
 	} else if (kind_str == "reflect_damage") {
 		kind = sn_reflect_damage();
-	} else if (kind_str == "knockback_shield") {
-		kind = sn_knockback_shield();
 	} else if (kind_str == "target_status_multiplier") {
 		kind = sn_target_status_multiplier();
 	} else if (kind_str == "stat_modifier") {

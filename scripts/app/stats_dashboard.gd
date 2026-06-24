@@ -1763,7 +1763,9 @@ func _on_export_popup_closed() -> void:
 
 
 func _build_matchup_ui() -> void:
-	# Load matchup data
+	# Load matchup data from the same snapshot used by the chart
+	if not _stats_path.is_empty():
+		_matchup_loader.stats_dir = _stats_path
 	_matchup_loader.load_data()
 	
 	# Create main layout
@@ -2522,7 +2524,11 @@ func _show_no_data(parent: Control, message: String) -> void:
 func _refresh_matchup_data() -> void:
 	# Save current champion selection before refresh
 	var saved_champion: String = _current_champion
-	
+
+	# Re-sync matchup data source with the chart's current stats directory
+	if not _stats_path.is_empty():
+		_matchup_loader.stats_dir = _stats_path
+
 	var loaded = _matchup_loader.load_data()
 	
 	# Rebuild the matchup UI to update champion dropdown

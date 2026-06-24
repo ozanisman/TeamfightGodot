@@ -61,6 +61,15 @@ Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWor
 			if (host.next_projectile_id != nullptr) {
 				projectile_state.projectile_id = (*host.next_projectile_id)++;
 			}
+			const bool track_for_channel = uc(world, source).is_channeling;
+			const bool track_for_deferred_chain = context.track_spawned_projectile_for_deferred_chain;
+			if (track_for_channel || track_for_deferred_chain) {
+				projectile_state.damage_accumulator_source_id = source.instance_id;
+			}
+			if (track_for_deferred_chain) {
+				projectile_state.counts_toward_deferred_outstanding = true;
+				uc(world, source).deferred_effect_outstanding_projectiles += 1;
+			}
 			if (match_host.projectiles != nullptr) {
 				match_host.projectiles->push_back(projectile_state);
 			}

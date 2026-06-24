@@ -166,11 +166,6 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.reason = String(tracker.get("reason", "Reflect"));
 		return true;
 	}
-	if (kind == sn_knockback_shield()) {
-		compiled.scalar0 = double(tracker.get("shield_ratio", 0.0));
-		compiled.reason = String(tracker.get("reason", "Knockback shield"));
-		return true;
-	}
 	if (kind == sn_target_status_multiplier()) {
 		compiled.scalar0 = double(tracker.get("multiplier", 1.0));
 		String status_kind_str = String(tracker.get("status_kind", ""));

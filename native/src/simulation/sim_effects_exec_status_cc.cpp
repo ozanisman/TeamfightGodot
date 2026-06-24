@@ -1,5 +1,6 @@
 #include "sim_effects_exec_internal.hpp"
 
+#include "sim_combat.hpp"
 #include "sim_periodic.hpp"
 #include "sim_status.hpp"
 
@@ -82,26 +83,19 @@ Dictionary exec_status_cc(
 			}
 			return stealth_result;
 		}
-		case EFFECT_OPCODE_KNOCKBACK_SHIELD: {
-			Dictionary ks_result;
-			ks_result["success"] = false;
-			Dictionary knockback_result = Dictionary(context.accumulated_results.get(StringName("knockback"), Dictionary()));
-			if (bool(knockback_result.get("knockback_applied", false))) {
-				double shield_amt = context.damage * effect.scalar0;
-				sim::status::add_shield(world, source, source, shield_amt, context.action_kind, &host);
-				ks_result["success"] = true;
-				ks_result["shield_applied"] = true;
-				ks_result["amount"] = shield_amt;
-			}
-			return ks_result;
-		}
 		case EFFECT_OPCODE_KNOCKBACK: {
 			Dictionary kb_result;
 			kb_result["success"] = false;
-			if (target != nullptr) {
+			if (target != nullptr && target->alive) {
 				bool knocked_back = sim::periodic::apply_knockback(world, host, source, *target, effect.scalar0, effect.int0 != 0);
 				kb_result["success"] = true;
 				kb_result["knockback_applied"] = knocked_back;
+				if (knocked_back) {
+					context.knockback_applied = true;
+					if (context.knockback_hook_depth == 0) {
+						sim::combat::run_on_knockback_effects(world, host, source, target, context);
+					}
+				}
 			}
 			return kb_result;
 		}

@@ -85,9 +85,13 @@ Dictionary exec_status_heal_shield(
 		case EFFECT_OPCODE_DAMAGE_BASED_SHIELD: {
 			Dictionary shield_result;
 			shield_result["success"] = true;
-			sim::status::add_shield(world, source, source, context.damage * effect.scalar0, context.action_kind, &host);
+			double damage_to_use = context.damage;
+			if (effect.int0 != 0 && context.channel_accumulated_damage > 0.0) {
+				damage_to_use = context.channel_accumulated_damage;
+			}
+			sim::status::add_shield(world, source, source, damage_to_use * effect.scalar0, context.action_kind, &host);
 			shield_result["shield_applied"] = true;
-			shield_result["amount"] = context.damage * effect.scalar0;
+			shield_result["amount"] = damage_to_use * effect.scalar0;
 			return shield_result;
 		}
 		case EFFECT_OPCODE_CONSUME_STACKS_HEAL: {

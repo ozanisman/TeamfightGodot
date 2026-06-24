@@ -1588,7 +1588,17 @@
 			]
 		},
 		"gust_protection": {
-
+			"on_knockback_action": [
+				{
+					"cast_range": -1.0,
+					"kind": "shield",
+					"params": {
+						"max_hp_ratio": 0.1,
+						"reason": "Gust Protection",
+						"target_self": true
+					}
+				}
+			]
 		},
 		"mana_font": {
 			"on_tick": [
@@ -2494,17 +2504,6 @@
 							"reason": "Wind Blast",
 							"slow_percentage": 0.2
 						}
-					},
-					{
-						"cast_range": -1.0,
-						"kind": "shield",
-						"params": {
-							"max_hp_ratio": 0.1,
-							"reason": "Gust Protection",
-							"requires_field": "knockback_applied",
-							"requires_result_from": "knockback",
-							"requires_value": true
-						}
 					}
 				],
 				"reason": "Wind Blast"
@@ -2568,17 +2567,6 @@
 							"radius": 3.5,
 							"reason": "Tornado",
 							"shape": "circle"
-						}
-					},
-					{
-						"cast_range": -1.0,
-						"kind": "shield",
-						"params": {
-							"max_hp_ratio": 0.1,
-							"reason": "Gust Protection",
-							"requires_field": "knockback_applied",
-							"requires_result_from": "aoe_knockback",
-							"requires_value": true
 						}
 					}
 				],

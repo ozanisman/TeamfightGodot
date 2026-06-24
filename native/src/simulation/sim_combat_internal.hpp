@@ -9,16 +9,19 @@ namespace sim {
 namespace combat {
 namespace internal {
 
-constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
-constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
-constexpr size_t EFFECT_BUCKET_ON_ALLY_DEFENSE = 2;
-constexpr size_t EFFECT_BUCKET_ON_TICK = 3;
-constexpr size_t EFFECT_BUCKET_POST_ATTACK = 4;
-constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 5;
-constexpr size_t EFFECT_BUCKET_ON_ABILITY = 6;
-constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 7;
-constexpr size_t EFFECT_BUCKET_POST_HEAL = 8;
-constexpr size_t EFFECT_BUCKET_ON_TAKEDOWN = 9;
+using sim::EFFECT_BUCKET_ON_ATTACK;
+using sim::EFFECT_BUCKET_ON_DEFENSE;
+using sim::EFFECT_BUCKET_ON_ALLY_DEFENSE;
+using sim::EFFECT_BUCKET_ON_TICK;
+using sim::EFFECT_BUCKET_POST_ATTACK;
+using sim::EFFECT_BUCKET_POST_TAKE_DAMAGE;
+using sim::EFFECT_BUCKET_ON_ABILITY;
+using sim::EFFECT_BUCKET_ON_ULTIMATE;
+using sim::EFFECT_BUCKET_POST_HEAL;
+using sim::EFFECT_BUCKET_ON_TAKEDOWN;
+using sim::EFFECT_BUCKET_ON_KNOCKBACK;
+using sim::EFFECT_BUCKET_ON_KNOCKBACK_ACTION;
+using sim::EFFECT_BUCKET_COUNT;
 
 const StringName &sn_player();
 const StringName &sn_enemy();
@@ -38,6 +41,8 @@ const StringName &sn_on_ability();
 const StringName &sn_on_ultimate();
 const StringName &sn_post_heal();
 const StringName &sn_on_takedown();
+const StringName &sn_on_knockback();
+const StringName &sn_on_knockback_action();
 const StringName &sn_homing();
 const StringName &sn_target_only();
 const StringName &sn_drop();

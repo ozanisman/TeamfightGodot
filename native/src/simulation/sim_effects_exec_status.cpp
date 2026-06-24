@@ -23,7 +23,6 @@ Dictionary exec_status(
 		case EFFECT_OPCODE_DISARM:
 		case EFFECT_OPCODE_STEALTH:
 		case EFFECT_OPCODE_EVERY_N_ATTACKS_STUN:
-		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
 		case EFFECT_OPCODE_KNOCKBACK:
 		case EFFECT_OPCODE_REFLECT:
 			return exec_status_cc(effect, context, world, host, source, target);

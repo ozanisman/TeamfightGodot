@@ -6,6 +6,7 @@
 #include "sim_status.hpp"
 #include "sim_world.hpp"
 
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -175,6 +176,56 @@ Dictionary exec_status_cc(const EffectRecord &effect, EffectContext &context, Si
 Dictionary exec_status_channel(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, UnitState &source, UnitState *target);
 Dictionary exec_spawn(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
 Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld &world, SimHostCallbacks &host, const SimExecCallbacks &hooks, const ::sim::effects::SimMatchHost &match_host, UnitState &source, UnitState *target, UnitState *target_ally);
+
+inline void clear_deferred_effect_chain_state(UnitStateCold &cold) {
+	cold.deferred_effect_outstanding_projectiles = 0;
+	cold.deferred_effect_projectile_dealt_damage = 0.0;
+	cold.deferred_multi_effect_active = false;
+	cold.deferred_multi_effect_record = EffectRecord();
+	cold.deferred_multi_effect_next_child = 0;
+	cold.deferred_multi_effect_context = EffectContext();
+	cold.deferred_multi_effect_combined_results = Dictionary();
+	cold.deferred_multi_target_active = false;
+	cold.deferred_multi_target_effect = EffectRecord();
+	cold.deferred_multi_target_parent_context = EffectContext();
+	cold.deferred_multi_target_target_context = EffectContext();
+	cold.deferred_multi_target_nested_results = Dictionary();
+	cold.deferred_multi_target_summary_applications = Dictionary();
+	cold.deferred_multi_target_target_ids.clear();
+	cold.deferred_multi_target_target_entry_index = 0;
+	cold.deferred_multi_target_scratch_target_id = 0;
+	cold.deferred_multi_target_next_sub_effect = 0;
+	cold.deferred_multi_target_next_repeat = 0;
+}
+
+inline double extract_dealt_damage_delta(double damage_before, const EffectContext &context_after, const Dictionary &result) {
+	double dealt = context_after.damage - damage_before;
+	if (dealt <= 0.0 && result.has("damage_dealt")) {
+		dealt = double(result["damage_dealt"]);
+	}
+	if (dealt <= 0.0 && result.has("damage")) {
+		dealt = double(result["damage"]);
+	}
+	return Math::max(0.0, dealt);
+}
+
+Dictionary run_multi_effect_children(
+		const EffectRecord &effect,
+		size_t start_child_index,
+		EffectContext &context,
+		Dictionary combined_results,
+		SimWorld &world,
+		SimHostCallbacks &host,
+		const SimExecCallbacks &hooks,
+		const ::sim::effects::SimMatchHost &match_host);
+
+void resume_deferred_multi_effect(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void resume_deferred_multi_target(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void try_complete_deferred_projectile_chains(SimWorld &world, SimHostCallbacks &host, UnitState &source);
+
+void abandon_deferred_projectile(SimWorld &world, SimHostCallbacks &host, const ProjectileState &projectile);
 
 } // namespace internal
 } // namespace sim::effects::execution

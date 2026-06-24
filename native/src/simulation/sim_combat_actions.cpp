@@ -146,6 +146,10 @@ void resolve_cast(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks
 	if (host.execute_effect != nullptr) {
 		host.execute_effect(host, effect, context);
 	}
+	if (context.knockback_applied && context.knockback_hook_depth == 0) {
+		// Self-centered actions may have no target; fall back to source so the hook has a valid target.
+		run_on_knockback_action_effects(world, host, unit, target != nullptr ? target : &unit, context);
+	}
 }
 
 void perform_auto_attack(
@@ -175,10 +179,14 @@ void perform_auto_attack(
 		projectiles.push_back(projectile);
 		emit_trace(host, StringName("projectile"), unit.instance_id, target.instance_id, damage);
 	} else {
-		EffectContext context = build_context(unit, &target, nullptr, damage, sn_auto());
+		EffectContext context = build_context(unit, &target, nullptr, 0.0, sn_auto());
 		const double dealt = damage::apply_damage(world, host, unit, target, damage, sn_physical(), sn_auto(), context);
+		context.damage = dealt;
 		emit_trace(host, StringName("auto_melee"), unit.instance_id, target.instance_id, dealt);
 		run_post_attack_effects(world, host, unit, target, dealt, context);
+		if (context.knockback_applied && context.knockback_hook_depth == 0) {
+			run_on_knockback_action_effects(world, host, unit, &target, context);
+		}
 		const double life_steal = unit.stats_dirty ? get_effective_life_steal(unit) : unit.cached_life_steal;
 		if (life_steal > 0.0) {
 			const double old_hp = unit.hp;

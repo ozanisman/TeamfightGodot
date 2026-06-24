@@ -55,13 +55,19 @@ int effect_bucket_index(const StringName &kind) {
 	if (kind == sn_on_takedown()) {
 		return static_cast<int>(EFFECT_BUCKET_ON_TAKEDOWN);
 	}
+	if (kind == sn_on_knockback()) {
+		return static_cast<int>(EFFECT_BUCKET_ON_KNOCKBACK);
+	}
+	if (kind == sn_on_knockback_action()) {
+		return static_cast<int>(EFFECT_BUCKET_ON_KNOCKBACK_ACTION);
+	}
 	return -1;
 }
 
 const std::vector<EffectRecord> &collect_effects(const SimWorld &world, const UnitState &unit, const StringName &kind) {
 	static const std::vector<EffectRecord> EMPTY_EFFECTS;
 	const int bucket = effect_bucket_index(kind);
-	if (bucket >= 0 && bucket < 10) {
+	if (bucket >= 0 && bucket < static_cast<int>(EFFECT_BUCKET_COUNT)) {
 		return uc(world, unit).passive_effects[static_cast<size_t>(bucket)];
 	}
 	return EMPTY_EFFECTS;
@@ -80,7 +86,7 @@ bool effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opco
 	return false;
 }
 
-void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double damage, const EffectContext &context) {
+void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double damage, EffectContext &context) {
 	if (source.stealth_remaining > 0.0 && source.stealth_break_on_attack) {
 		source.stealth_remaining = 0.0;
 		source.stealth_break_on_attack = false;
@@ -98,6 +104,10 @@ void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState 
 		if (host.execute_effect != nullptr) {
 			host.execute_effect(host, effect, effect_context);
 		}
+	}
+	context.knockback_applied = context.knockback_applied || effect_context.knockback_applied;
+	if (effect_context.damage > damage) {
+		context.damage += effect_context.damage - damage;
 	}
 }
 
@@ -147,6 +157,78 @@ void run_on_takedown_effects(
 	effect_context.source = &participant;
 	effect_context.target = &victim;
 	for (const EffectRecord &effect : takedown_effects) {
+		if (host.execute_effect != nullptr) {
+			host.execute_effect(host, effect, effect_context);
+		}
+	}
+}
+
+static void sanitize_knockback_effect_context(EffectContext &effect_context) {
+	// Clear action-specific fields (distance, heal, etc.) but keep knockback_applied and damage.
+	// knockback_applied tells hook effects they are running in a knockback context.
+	// damage is preserved so effects can build on the cumulative damage of the triggering action.
+	// knockback_hook_depth is the actual recursion guard.
+	// TODO: Only damage is cumulative across effects. If the design is extended to heal/distance/other
+	// EffectContext fields, update this sanitizer and the relevant opcodes to preserve/accumulate them.
+	effect_context.distance = 0.0;
+	effect_context.target_ally = nullptr;
+	effect_context.heal_amount = 0.0;
+	effect_context.heal_gained = 0.0;
+	effect_context.use_heal_gained = false;
+	effect_context.takedown_target_id = 0;
+	effect_context.takedown_damage_dealt = 0.0;
+	effect_context.is_takedown_kill = false;
+	effect_context.suppress_reflect_chain = false;
+}
+
+void run_on_knockback_effects(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		UnitState &source,
+		UnitState *target,
+		const EffectContext &base_context) {
+	if (!source.alive) {
+		return;
+	}
+	const std::vector<EffectRecord> &knockback_effects = uc(world, source).passive_effects[EFFECT_BUCKET_ON_KNOCKBACK];
+	if (knockback_effects.empty()) {
+		return;
+	}
+	EffectContext effect_context = base_context;
+	effect_context.action_kind = sn_passive();
+	effect_context.source = &source;
+	effect_context.target = target;
+	sanitize_knockback_effect_context(effect_context);
+	// Bump depth so nested knockbacks do not re-enter the same hooks; knockback_applied stays true to preserve context.
+	effect_context.knockback_hook_depth = base_context.knockback_hook_depth + 1;
+	for (const EffectRecord &effect : knockback_effects) {
+		if (host.execute_effect != nullptr) {
+			host.execute_effect(host, effect, effect_context);
+		}
+	}
+}
+
+void run_on_knockback_action_effects(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		UnitState &source,
+		UnitState *target,
+		const EffectContext &base_context) {
+	if (!source.alive) {
+		return;
+	}
+	const std::vector<EffectRecord> &knockback_action_effects = uc(world, source).passive_effects[EFFECT_BUCKET_ON_KNOCKBACK_ACTION];
+	if (knockback_action_effects.empty()) {
+		return;
+	}
+	EffectContext effect_context = base_context;
+	effect_context.action_kind = sn_passive();
+	effect_context.source = &source;
+	effect_context.target = target;
+	sanitize_knockback_effect_context(effect_context);
+	// Bump depth so nested knockbacks do not re-enter the same hooks; knockback_applied stays true to preserve context.
+	effect_context.knockback_hook_depth = base_context.knockback_hook_depth + 1;
+	for (const EffectRecord &effect : knockback_action_effects) {
 		if (host.execute_effect != nullptr) {
 			host.execute_effect(host, effect, effect_context);
 		}

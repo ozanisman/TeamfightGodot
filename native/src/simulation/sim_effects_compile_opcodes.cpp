@@ -105,9 +105,6 @@ int64_t opcode_for_kind(const StringName &kind) {
 	if (kind == sn_reflect()) {
 		return EFFECT_OPCODE_REFLECT;
 	}
-	if (kind == sn_knockback_shield()) {
-		return EFFECT_OPCODE_KNOCKBACK_SHIELD;
-	}
 	if (kind == sn_stealth()) {
 		return EFFECT_OPCODE_STEALTH;
 	}
@@ -233,8 +230,6 @@ const StringName &kind_for_opcode(int64_t opcode) {
 			return sn_knockback();
 		case EFFECT_OPCODE_REFLECT:
 			return sn_reflect();
-		case EFFECT_OPCODE_KNOCKBACK_SHIELD:
-			return sn_knockback_shield();
 		case EFFECT_OPCODE_STEALTH:
 			return sn_stealth();
 		case EFFECT_OPCODE_HEAL_OVER_TIME:

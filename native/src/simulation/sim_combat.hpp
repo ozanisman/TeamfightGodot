@@ -34,7 +34,7 @@ int effect_bucket_index(const StringName &kind);
 const std::vector<EffectRecord> &collect_effects(const SimWorld &world, const UnitState &unit, const StringName &kind);
 bool effect_record_contains_opcode(const EffectRecord &effect, EffectOpcode opcode);
 
-void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double damage, const EffectContext &context);
+void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double damage, EffectContext &context);
 void run_post_heal_effects(SimWorld &world, SimHostCallbacks &host, UnitState &source, UnitState &target, double heal_amount, double heal_gained, const EffectContext &base_context);
 void run_on_takedown_effects(
 		SimWorld &world,
@@ -43,6 +43,19 @@ void run_on_takedown_effects(
 		UnitState &victim,
 		double damage_dealt,
 		bool is_kill,
+		const EffectContext &base_context);
+
+void run_on_knockback_effects(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		UnitState &source,
+		UnitState *target,
+		const EffectContext &base_context);
+void run_on_knockback_action_effects(
+		SimWorld &world,
+		SimHostCallbacks &host,
+		UnitState &source,
+		UnitState *target,
 		const EffectContext &base_context);
 
 bool try_cast_ability(SimWorld &world, SimHostCallbacks &host, const CombatHostHooks &hooks, UnitState &unit, UnitState &target, double distance);

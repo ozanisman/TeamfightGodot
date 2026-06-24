@@ -7,12 +7,13 @@ namespace sim {
 namespace damage {
 namespace internal {
 
-constexpr size_t EFFECT_BUCKET_ON_ATTACK = 0;
-constexpr size_t EFFECT_BUCKET_ON_DEFENSE = 1;
-constexpr size_t EFFECT_BUCKET_ON_ALLY_DEFENSE = 2;
-constexpr size_t EFFECT_BUCKET_ON_ABILITY = 6;
-constexpr size_t EFFECT_BUCKET_ON_ULTIMATE = 7;
-constexpr size_t EFFECT_BUCKET_POST_TAKE_DAMAGE = 5;
+using sim::EFFECT_BUCKET_ON_ATTACK;
+using sim::EFFECT_BUCKET_ON_DEFENSE;
+using sim::EFFECT_BUCKET_ON_ALLY_DEFENSE;
+using sim::EFFECT_BUCKET_ON_ABILITY;
+using sim::EFFECT_BUCKET_ON_ULTIMATE;
+using sim::EFFECT_BUCKET_POST_TAKE_DAMAGE;
+using sim::EFFECT_BUCKET_COUNT;
 
 const StringName &sn_auto();
 const StringName &sn_ability();

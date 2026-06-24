@@ -42,10 +42,10 @@ See **Other golden JSON artifacts** below for all tracked JSON files in this dir
 
 | File | Source | Notes |
 |------|--------|-------|
-| `champion_schema.json` | `export_champion_schema.gd` / CMake | Generated from `champion_catalog.gd`; do not edit |
-| `minion_schema.json` | Manually maintained | Minion definitions; loaded separately from champion schema (see [minion_system.md](../../wiki/concepts/minion_system.md)) |
-| `balance_patches.json` | Manually maintained | Runtime stat/kit overrides; validated by `--check-balance-patches` |
-| `champion_kits.json` | Manually maintained | Named ability/ultimate/passive presets; can be regenerated via `kit_catalog.write_kit_json_to_file()` |
-| `match_fixtures.json` | Manually maintained | Golden parity fixtures (9 cases) |
+| `champion_schema.json` | `export_champion_schema.gd` / CMake | Generated from `champion_catalog.gd` |
+| `minion_schema.json` | `export_champion_schema.gd` / CMake | Generated from `champion_catalog.gd` alongside `champion_schema.json` |
+| `balance_patches.json` | Manually maintained | Author balance patches by hand; validated by `--check-balance-patches` |
+| `champion_kits.json` | `kit_catalog.gd` / `KitCatalog.write_kit_json_to_file()` | Generated from `KIT_DATA` in `kit_catalog.gd` |
+| `match_fixtures.json` | `--rewrite-fixture-summaries=res://fixtures/goldens/match_fixtures.json` | Golden parity fixtures (11 cases); regenerate via `run_godot.ps1` |
 | `contract_schema.json` | `--dump-contract-json` | Match input/summary contract; regenerate when schema changes |
 | `champion_kits.example.json` | Reference | Example kit structure only |

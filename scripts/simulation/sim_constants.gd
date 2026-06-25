@@ -62,26 +62,36 @@ const ROLE_COLORS_OLD: Dictionary = {
 # ========================================
 ## Source of truth for effect metadata (color, category, description, etc.)
 ## Single dictionary for all effect properties for easy expansion
+const EFFECT_COLOR_CC := "#ce88ee"
+const EFFECT_COLOR_DEBUFF := "#ff9933"
+const EFFECT_COLOR_UTILITY := "#66e666"
+const EFFECT_COLOR_PHYSICAL := "#ff5555"
+const EFFECT_COLOR_MAGIC := "#55aaff"
+const EFFECT_COLOR_TRUE := "#eecfa1"
+const EFFECT_COLOR_UNKNOWN := "#ffffff"
+const EFFECT_COLOR_ERROR := "#e66666"
+const MINION_TITLE_COLOR := "#b4b4b4"
+
 const EFFECT_METADATA: Dictionary = {
-	"stun": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move, attack, or cast abilities or ultimates."},
-	"silence": {"color": "#ce88ee", "category": "CC", "description": "The target cannot cast abilities or ultimates. Affects both unless specified."},
-	"root": {"color": "#ce88ee", "category": "CC", "description": "The target cannot move."},
-	"taunt": {"color": "#ce88ee", "category": "CC", "description": "The target is forced to auto-attack the taunter and cannot cast abilities, ultimates, or kite."},
-	"disarm": {"color": "#ce88ee", "category": "CC", "description": "The target cannot auto-attack."},
-	"slow": {"color": "#ce88ee", "category": "CC", "description": "The target's movement speed is reduced by a percentage. Only the slow with the highest value is applied."},
-	"knockback": {"color": "#ce88ee", "category": "CC", "description": "The target is pushed away from the source."},
-	"reflect": {"color": "#ff9933", "category": "DEBUFF", "description": "A percentage of incoming damage is dealt back to the attacker."},
-	"shield": {"color": "#66e666", "category": "UTILITY", "description": "Absorbs incoming damage before HP. Decays 1% of the current value per tick."},
-	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies. Can ends prematurely when attacking or casting unless specified."},
-	"heal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP to the target. Cannot increase a units HP over maximum unless specified."},
-	"lifesteal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP for a percentage of auto-attack damage dealt."},
-	"dodge": {"color": "#66e666", "category": "UTILITY", "description": "Chance to avoid incoming auto attacks, taking no damage."},
-	"mana": {"color": "#66e666", "category": "UTILITY", "description": "Resource used to cast ultimates. By default 10 mana is generated per auto attack."},
-	"dash": {"color": "#66e666", "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
-	"summon": {"color": "#66e666", "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
-	"physical": {"color": "#ff5555", "category": "DAMAGE", "description": "Reduced by the target's armor."},
-	"magic": {"color": "#55aaff", "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
-	"true": {"color": "#eecfa1", "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
+	"stun": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target cannot move, attack, or cast abilities or ultimates."},
+	"silence": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target cannot cast abilities or ultimates. Affects both unless specified."},
+	"root": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target cannot move."},
+	"taunt": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target is forced to auto-attack the taunter and cannot cast abilities, ultimates, or kite."},
+	"disarm": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target cannot auto-attack."},
+	"slow": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target's movement speed is reduced by a percentage. Only the slow with the highest value is applied."},
+	"knockback": {"color": EFFECT_COLOR_CC, "category": "CC", "description": "The target is pushed away from the source."},
+	"reflect": {"color": EFFECT_COLOR_DEBUFF, "category": "DEBUFF", "description": "A percentage of incoming damage is dealt back to the attacker."},
+	"shield": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Absorbs incoming damage before HP. Decays 1% of the current value per tick."},
+	"stealth": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "The target cannot be targeted by enemies. Can ends prematurely when attacking or casting unless specified."},
+	"heal": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Restores HP to the target. Cannot increase a units HP over maximum unless specified."},
+	"lifesteal": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Restores HP for a percentage of auto-attack damage dealt."},
+	"dodge": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Chance to avoid incoming auto attacks, taking no damage."},
+	"mana": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Resource used to cast ultimates. By default 10 mana is generated per auto attack."},
+	"dash": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
+	"summon": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
+	"physical": {"color": EFFECT_COLOR_PHYSICAL, "category": "DAMAGE", "description": "Reduced by the target's armor."},
+	"magic": {"color": EFFECT_COLOR_MAGIC, "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
+	"true": {"color": EFFECT_COLOR_TRUE, "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
 }
 
 # ========================================

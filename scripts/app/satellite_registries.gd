@@ -3,6 +3,7 @@ extends Node
 
 const SatelliteSpecScript := preload("res://scripts/app/satellite_spec.gd")
 const SimConstants := preload("res://scripts/simulation/sim_constants.gd")
+const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 
 static var _content_builders: Dictionary = {}
 static var _layout_strategies: Dictionary = {}
@@ -29,7 +30,7 @@ static func _color_keywords_in_text(text: String) -> String:
 	
 	for keyword in SimConstants.EFFECT_METADATA:
 		var metadata: Dictionary = SimConstants.EFFECT_METADATA[keyword]
-		var color: String = metadata.get("color", "#ffffff")
+		var color: String = metadata.get("color", SimConstants.EFFECT_COLOR_UNKNOWN)
 		var regex: RegEx = _compiled_regexes[keyword]
 		result = regex.sub(result, "[color=%s]$1[/color]" % color, true)
 	
@@ -92,9 +93,9 @@ static func get_style_preset(preset_key: StringName) -> Dictionary:
 static func _register_style_presets() -> void:
 	# Minion style - neutral border, smaller font
 	_style_presets[&"minion"] = {
-		"border_color": Color(0.71, 0.71, 0.75, 1.0),
+		"border_color": UiTokensScript.COLOR_SUBTLE,
 		"border_width": 1,
-		"bg_color": Color(0.11, 0.11, 0.149, 1.0),
+		"bg_color": UiTokensScript.COLOR_PANEL,
 		"font_size": 18,
 		"min_width": 475,
 		"corner_radius": 3,
@@ -103,9 +104,9 @@ static func _register_style_presets() -> void:
 	
 	# Status style - effect-colored borders, compact
 	_style_presets[&"status"] = {
-		"border_color": Color(0.9, 0.4, 0.4, 1.0),  # Red default
+		"border_color": UiTokensScript.COLOR_STAT_NERF,
 		"border_width": 1,
-		"bg_color": Color(0.11, 0.11, 0.149, 1.0),
+		"bg_color": UiTokensScript.COLOR_PANEL,
 		"font_size": 16,
 		"min_width": 200,
 		"corner_radius": 3,
@@ -114,9 +115,9 @@ static func _register_style_presets() -> void:
 	
 	# Modifier style - buff/nerf colored
 	_style_presets[&"modifier"] = {
-		"border_color": Color(0.4, 0.9, 0.4, 1.0),  # Green default
+		"border_color": UiTokensScript.COLOR_STAT_BUFF,
 		"border_width": 1,
-		"bg_color": Color(0.11, 0.11, 0.149, 1.0),
+		"bg_color": UiTokensScript.COLOR_PANEL,
 		"font_size": 16,
 		"min_width": 250,
 		"corner_radius": 3,
@@ -125,9 +126,9 @@ static func _register_style_presets() -> void:
 	
 	# Neutral style
 	_style_presets[&"neutral"] = {
-		"border_color": Color(0.71, 0.71, 0.75, 1.0),
+		"border_color": UiTokensScript.COLOR_SUBTLE,
 		"border_width": 1,
-		"bg_color": Color(0.11, 0.11, 0.149, 1.0),
+		"bg_color": UiTokensScript.COLOR_PANEL,
 		"font_size": 18,
 		"min_width": 400,
 		"corner_radius": 3,
@@ -148,7 +149,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	var name: String = str(stats.get("name", minion_id))
 	
 	var lines: PackedStringArray = PackedStringArray()
-	lines.append("[color=#b4b4b4]%s (MINION)[/color]" % name)
+	lines.append("[color=%s]%s (MINION)[/color]" % [SimConstants.MINION_TITLE_COLOR, name])
 	
 	# Description
 	var description: String = str(minion_data.get("description", ""))
@@ -205,7 +206,7 @@ static func _build_status_content(data: Dictionary, context) -> String:
 	var unit_data: Dictionary = context.get_main_data(&"unit_data") if context else {}
 	
 	# Use SimConstants.EFFECT_METADATA for color, category, and description
-	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(effect_type), {"color": "#e66666", "category": "EFFECT", "description": ""})
+	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(effect_type), {"color": SimConstants.EFFECT_COLOR_ERROR, "category": "EFFECT", "description": ""})
 	var description: String = metadata.get("description", "")
 	
 	var duration: float = 0.0
@@ -242,7 +243,7 @@ static func _build_status_content(data: Dictionary, context) -> String:
 		return ""
 	
 	# Get color and category from metadata (already declared above)
-	var color: String = metadata.get("color", "#e66666")
+	var color: String = metadata.get("color", SimConstants.EFFECT_COLOR_ERROR)
 	var effect_category: String = metadata.get("category", "EFFECT")
 	# Capitalize to title case, CC becomes "Crowd Control"
 	if effect_category == "CC":
@@ -268,7 +269,7 @@ static func _build_modifier_content(data: Dictionary, context) -> String:
 	var value: float = data.get("value", 0.0)
 	var is_buff: bool = data.get("is_buff", true)
 	
-	var color: String = "#66e666" if is_buff else "#e66666"
+	var color: String = UiTokensScript.COLOR_STAT_BUFF.to_html(false) if is_buff else UiTokensScript.COLOR_STAT_NERF.to_html(false)
 	var sign: String = "+" if value > 0 and is_buff else ""
 	
 	return "[color=%s]%s: %s%.2f[/color]" % [color, str(stat_name).to_upper(), sign, value]
@@ -279,8 +280,8 @@ static func _build_damage_type_content(data: Dictionary, context) -> String:
 	var damage_type: StringName = data.get("damage_type", &"")
 	
 	# Use SimConstants.EFFECT_METADATA for color, category, and description
-	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(damage_type), {"color": "#ffffff", "category": "DAMAGE", "description": ""})
-	var color: String = metadata.get("color", "#ffffff")
+	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(damage_type), {"color": SimConstants.EFFECT_COLOR_UNKNOWN, "category": "DAMAGE", "description": ""})
+	var color: String = metadata.get("color", SimConstants.EFFECT_COLOR_UNKNOWN)
 	var effect_category: String = metadata.get("category", "DAMAGE")
 	# Capitalize to title case
 	effect_category = effect_category.capitalize()

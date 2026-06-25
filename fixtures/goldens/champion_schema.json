@@ -136,7 +136,7 @@
 				"reason": "Shell Shock"
 			}
 		},
-		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
+		"ability_desc": "Explosive shell that deals 150% physical damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ability_name": "Explosive Shell",
 		"description": "A fragile slow backline siege unit that deals explosive damage to anything in its sights.",
 		"name": "Artillery",

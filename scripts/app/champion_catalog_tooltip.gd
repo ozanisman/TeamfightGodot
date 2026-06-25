@@ -193,7 +193,7 @@ static func _color_keywords_in_text(text: String) -> String:
 	
 	for keyword in SimConstants.EFFECT_METADATA:
 		var metadata: Dictionary = SimConstants.EFFECT_METADATA[keyword]
-		var color: String = metadata.get("color", "#ffffff")
+		var color: String = metadata.get("color", SimConstants.EFFECT_COLOR_UNKNOWN)
 		# Match word boundaries with case-insensitive flag
 		var regex: RegEx = RegEx.new()
 		regex.compile("(?i)\\b([a-zA-Z]*%s[a-zA-Z]*)\\b" % keyword)

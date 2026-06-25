@@ -178,9 +178,9 @@ func _get_or_create_panel(spec: SatelliteSpec) -> PanelContainer:
 func _apply_style_to_panel(panel: PanelContainer, style_config: Dictionary) -> void:
 	var style := StyleBoxFlat.new()
 	
-	var border_color: Color = style_config.get("border_color", Color(0.71, 0.71, 0.75, 1.0))
+	var border_color: Color = style_config.get("border_color", UiTokensScript.COLOR_SUBTLE)
 	var border_width: int = style_config.get("border_width", 1)
-	var bg_color: Color = style_config.get("bg_color", Color(0.11, 0.11, 0.149, 1.0))
+	var bg_color: Color = style_config.get("bg_color", UiTokensScript.COLOR_PANEL)
 	var corner_radius: int = style_config.get("corner_radius", 3)
 	var content_margin: int = style_config.get("content_margin", 8)
 	var font_size: int = style_config.get("font_size", 18)

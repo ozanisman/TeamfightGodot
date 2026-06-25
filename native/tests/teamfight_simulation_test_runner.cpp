@@ -55,6 +55,47 @@ Dictionary damage_based_heal_effect(double ratio) {
 	return effect("damage_based_heal", params);
 }
 
+Dictionary damage_based_shield_effect(double ratio) {
+	Dictionary params;
+	params["damage_ratio"] = ratio;
+	params["reason"] = "Native test damage shield";
+	return effect("damage_based_shield", params);
+}
+
+Dictionary stat_additive_effect(const char *stat_name, double additive, bool target_self, const char *reason) {
+	Dictionary params;
+	params["stat_name"] = stat_name;
+	params["additive"] = additive;
+	params["duration"] = 8.0;
+	params["target_self"] = target_self;
+	params["reason"] = reason;
+	return effect("stat_modifier", params);
+}
+
+Dictionary constant_multiplier_effect(double multiplier) {
+	Dictionary params;
+	params["multiplier"] = multiplier;
+	return effect("constant_multiplier", params);
+}
+
+Dictionary redirect_damage_effect(double redirect_ratio, double reduction_ratio, double redirect_cap = 0.0) {
+	Dictionary params;
+	params["redirect_ratio"] = redirect_ratio;
+	params["reduction_ratio"] = reduction_ratio;
+	params["redirect_cap"] = redirect_cap;
+	params["reason"] = "Native test redirect";
+	return effect("redirect_damage", params);
+}
+
+Dictionary require_result(Dictionary effect_dict, const char *from, const char *field, bool value) {
+	Dictionary params = effect_dict["params"];
+	params["requires_result_from"] = from;
+	params["requires_field"] = field;
+	params["requires_value"] = value;
+	effect_dict["params"] = params;
+	return effect_dict;
+}
+
 Dictionary multi_target_effect(const Array &sub_effects) {
 	Dictionary params;
 	params["target_count"] = 1;
@@ -175,8 +216,22 @@ struct TestWorld {
 		return index;
 	}
 
+	int64_t add_player(int64_t instance_id, double hp = 500.0) {
+		return add_unit(instance_id, StringName("player"), hp);
+	}
+
+	int64_t add_enemy(int64_t instance_id, double hp = 500.0) {
+		return add_unit(instance_id, StringName("enemy"), hp);
+	}
+
 	sim::UnitState &unit_at(int64_t index) {
 		return units[static_cast<size_t>(index)];
+	}
+
+	void add_passive(int64_t unit_index, size_t bucket, const Dictionary &effect_dict) {
+		sim::SimWorld sim_world = world();
+		sim::uc(sim_world, unit_at(unit_index)).passive_effects[bucket].push_back(
+				sim::effects::compile::compile_effect(effect_dict));
 	}
 
 	sim::SimWorld world() {
@@ -395,6 +450,112 @@ bool test_post_heal_inherits_action_chain(String &failure) {
 			expect(context.knockback_applied, "post heal should not mutate parent knockback state", failure);
 }
 
+bool test_post_take_damage_contract(String &failure) {
+	TestWorld test;
+	const int64_t attacker_index = test.add_enemy(1);
+	const int64_t target_index = test.add_player(2, 400.0);
+	sim::UnitState &attacker = test.unit_at(attacker_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	target.stealth_remaining = 4.0;
+	target.stealth_break_on_damage_taken = true;
+	Array effects;
+	effects.append(damage_based_heal_effect(0.5));
+	effects.append(stat_additive_effect("attack_damage", 7.0, false, "Post damage target must stay null"));
+	test.add_passive(target_index, sim::EFFECT_BUCKET_POST_TAKE_DAMAGE, multi_effect(effects));
+	sim::SimWorld world = test.world();
+	sim::EffectContext context = sim::combat::build_context(attacker, &target, nullptr, 0.0, StringName("ability"));
+	sim::damage::apply_damage(world, test.host, attacker, target, 40.0, StringName("true"), StringName("ability"), context);
+	return expect_close(target.hp, 380.0, "post take damage self heal uses damage payload", failure) &&
+			expect_close(attacker.stat_additive_attack_damage, 0.0, "post take damage target should be null", failure) &&
+			expect_close(target.stat_additive_attack_damage, 0.0, "post take damage target should not be damaged unit", failure) &&
+			expect_close(target.stealth_remaining, 0.0, "post take damage stealth break with bucket", failure) &&
+			expect(!target.stealth_break_on_damage_taken, "post take damage stealth flag remained set", failure);
+}
+
+bool test_on_takedown_contract(String &failure) {
+	TestWorld test;
+	const int64_t participant_index = test.add_player(1);
+	const int64_t victim_index = test.add_enemy(2);
+	sim::UnitState &participant = test.unit_at(participant_index);
+	sim::UnitState &victim = test.unit_at(victim_index);
+	test.add_passive(participant_index, sim::EFFECT_BUCKET_ON_TAKEDOWN,
+			require_result(stat_additive_effect("attack_damage", 4.0, true, "Takedown inherited result"), "damage", "success", true));
+	test.add_passive(participant_index, sim::EFFECT_BUCKET_ON_TAKEDOWN, damage_effect(7.0));
+	test.add_passive(participant_index, sim::EFFECT_BUCKET_ON_TAKEDOWN, damage_based_shield_effect(1.0));
+	sim::SimWorld world = test.world();
+	sim::EffectContext context = sim::combat::build_context(participant, &victim, nullptr, 30.0, StringName("takedown"));
+	Dictionary inherited_damage_result;
+	inherited_damage_result["success"] = true;
+	context.accumulated_results[StringName("damage")] = inherited_damage_result;
+	sim::combat::run_on_takedown_effects(world, test.host, participant, victim, 30.0, true, context);
+	return expect_close(participant.stat_additive_attack_damage, 4.0, "takedown inherited result modifier", failure) &&
+			expect_close(victim.hp, 493.0, "takedown victim target", failure) &&
+			expect_close(participant.shield, 37.0, "takedown damage payload chain", failure) &&
+			expect_close(context.damage, 30.0, "takedown should not merge damage into parent", failure) &&
+			expect(!context.accumulated_results.has("damage_based_shield"), "takedown should not merge new results into parent", failure);
+}
+
+bool test_on_ally_defense_contract(String &failure) {
+	TestWorld test;
+	const int64_t attacker_index = test.add_enemy(1);
+	const int64_t target_index = test.add_player(2);
+	const int64_t protector_index = test.add_player(3);
+	const int64_t far_protector_index = test.add_player(4);
+	sim::UnitState &attacker = test.unit_at(attacker_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	sim::UnitState &protector = test.unit_at(protector_index);
+	sim::UnitState &far_protector = test.unit_at(far_protector_index);
+	target.pos_x = 0.0;
+	target.pos_y = 0.0;
+	protector.pos_x = 1.0;
+	protector.pos_y = 0.0;
+	far_protector.pos_x = 10.0;
+	far_protector.pos_y = 0.0;
+	test.add_passive(protector_index, sim::EFFECT_BUCKET_ON_ALLY_DEFENSE, redirect_damage_effect(0.25, 0.20));
+	test.add_passive(protector_index, sim::EFFECT_BUCKET_ON_ALLY_DEFENSE, damage_effect(10.0, true));
+	test.add_passive(protector_index, sim::EFFECT_BUCKET_ON_ABILITY, constant_multiplier_effect(2.0));
+	test.add_passive(far_protector_index, sim::EFFECT_BUCKET_ON_ALLY_DEFENSE, redirect_damage_effect(0.50, 0.0));
+	sim::SimWorld world = test.world();
+	sim::uc(world, protector).on_ally_defense_radius = 2.0;
+	sim::uc(world, far_protector).on_ally_defense_radius = 1.0;
+	sim::PassiveReflectEntry reflect;
+	reflect.percentage = 1.0;
+	reflect.damage_type = StringName("true");
+	reflect.action_kind = StringName("passive");
+	sim::uc(world, protector).passive_reflect_entries.push_back(reflect);
+	sim::EffectContext context = sim::combat::build_context(attacker, &target, nullptr, 100.0, StringName("ability"));
+	sim::damage::apply_damage(world, test.host, attacker, target, 100.0, StringName("true"), StringName("ability"), context);
+	return expect_close(target.hp, 425.0, "ally defense redirected target damage", failure) &&
+			expect_close(protector.hp, 460.0, "ally defense redirect and preserved ability action", failure) &&
+			expect_close(attacker.hp, 500.0, "ally defense redirected damage should suppress reflect", failure) &&
+			expect_close(far_protector.hp, 500.0, "ally defense radius gate", failure);
+}
+
+bool test_post_attack_multiple_result_merge(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1, 200.0);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	test.add_passive(source_index, sim::EFFECT_BUCKET_POST_ATTACK,
+			require_result(stat_additive_effect("armor", 3.0, true, "Post attack inherited result"), "damage", "success", true));
+	test.add_passive(source_index, sim::EFFECT_BUCKET_POST_ATTACK, damage_effect(8.0));
+	test.add_passive(source_index, sim::EFFECT_BUCKET_POST_ATTACK,
+			require_result(damage_based_shield_effect(0.5), "damage", "success", true));
+	sim::SimWorld world = test.world();
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 20.0, StringName("auto"));
+	Dictionary inherited_damage_result;
+	inherited_damage_result["success"] = true;
+	context.accumulated_results[StringName("damage")] = inherited_damage_result;
+	sim::combat::run_post_attack_effects(world, test.host, source, target, 20.0, context);
+	return expect_close(source.stat_additive_armor, 3.0, "post attack inherited result modifier", failure) &&
+			expect_close(target.hp, 492.0, "post attack chained damage", failure) &&
+			expect_close(source.shield, 14.0, "post attack ordered damage result", failure) &&
+			expect_close(context.damage, 28.0, "post attack merged damage delta", failure) &&
+			expect(context.accumulated_results.has("stat_modifier"), "post attack stat result missing", failure) &&
+			expect(context.accumulated_results.has("damage_based_shield"), "post attack shield result missing", failure);
+}
+
 bool test_stealth_break_without_post_damage_bucket(String &failure) {
 	TestWorld test;
 	const int64_t source_index = test.add_unit(1, StringName("player"));
@@ -433,6 +594,10 @@ Dictionary TeamfightSimulationTestRunner::run_all() {
 		{ "knockback_action_terminal", &test_knockback_action_terminal },
 		{ "heal_accumulation_and_post_heal_chain", &test_heal_accumulation_and_post_heal_chain },
 		{ "post_heal_inherits_action_chain", &test_post_heal_inherits_action_chain },
+		{ "post_take_damage_contract", &test_post_take_damage_contract },
+		{ "on_takedown_contract", &test_on_takedown_contract },
+		{ "on_ally_defense_contract", &test_on_ally_defense_contract },
+		{ "post_attack_multiple_result_merge", &test_post_attack_multiple_result_merge },
 		{ "stealth_break_without_post_damage_bucket", &test_stealth_break_without_post_damage_bucket },
 	};
 

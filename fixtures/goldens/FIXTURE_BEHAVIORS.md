@@ -55,4 +55,4 @@ Synthetic effect chains are defined in `native/tests/teamfight_simulation_test_r
 .\run_godot.ps1 -- --check-native-simulation-tests
 ```
 
-The native suite covers deferred projectile continuation, deferred `multi_effect` siblings, passive-hook merge and result chaining, cumulative healing, terminal knockback hooks, and stealth break without a post-damage bucket.
+The native suite covers deferred projectile continuation, deferred `multi_effect` siblings, passive-hook merge and result chaining, passive terminal isolation, `post_take_damage`, `on_takedown`, `on_ally_defense`, cumulative healing, terminal knockback hooks, and stealth break without a post-damage bucket.

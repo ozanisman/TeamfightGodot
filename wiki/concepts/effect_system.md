@@ -138,7 +138,7 @@ When defer applies:
 
 Channel projectile impacts still credit `channel_accumulated_damage` when the source is channeling.
 
-Focused synthetic coverage for defer, passive-hook, heal-chain, and stealth-break paths runs through `--check-native-simulation-tests`. Real-champion end-to-end coverage remains in [`fixtures/goldens/FIXTURE_BEHAVIORS.md`](../../fixtures/goldens/FIXTURE_BEHAVIORS.md).
+Focused synthetic coverage for defer, passive-hook merge/isolation, `post_take_damage`, `on_takedown`, `on_ally_defense`, heal-chain, and stealth-break paths runs through `--check-native-simulation-tests`. Real-champion end-to-end coverage remains in [`fixtures/goldens/FIXTURE_BEHAVIORS.md`](../../fixtures/goldens/FIXTURE_BEHAVIORS.md).
 
 ## MULTI_TARGET parameters
 

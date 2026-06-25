@@ -31,7 +31,7 @@ void inherit_chain_fields(EffectContext &scratch, const EffectContext &parent, C
 		scratch.damage = parent.damage;
 	}
 	if ((flags & static_cast<uint8_t>(ChainInherit::AccumulatedResults)) != 0) {
-		scratch.accumulated_results = parent.accumulated_results;
+		scratch.accumulated_results = parent.accumulated_results.duplicate(true);
 	}
 	if ((flags & static_cast<uint8_t>(ChainInherit::KnockbackApplied)) != 0) {
 		scratch.knockback_applied = parent.knockback_applied;

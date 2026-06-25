@@ -36,24 +36,27 @@ static func generate_satellites(champion_id: StringName, unit_data: Dictionary =
 			minion_satellites.append(satellite)
 		else:
 			effect_satellites.append(satellite)
-	
+
 	# Add CC effects
 	if not unit_data.is_empty():
 		# In-game: use active CC effects from unit data
 		var cc_satellites: Array[SatelliteSpec] = _parse_cc_effects(unit_data)
-		effect_satellites.append_array(cc_satellites)
+		_append_unique_satellites(effect_satellites, cc_satellites)
 	else:
 		# Draft phase: parse CC effects from champion abilities
 		var cc_satellites: Array[SatelliteSpec] = _parse_cc_from_abilities(champion_id)
-		effect_satellites.append_array(cc_satellites)
+		_append_unique_satellites(effect_satellites, cc_satellites)
 		
 		# Draft phase: parse utility effects from champion abilities
 		var utility_satellites: Array[SatelliteSpec] = _parse_utility_from_abilities(champion_id)
-		effect_satellites.append_array(utility_satellites)
+		_append_unique_satellites(effect_satellites, utility_satellites)
 		
 		# Draft phase: parse damage types from champion abilities
 		var damage_satellites: Array[SatelliteSpec] = _parse_damage_types(champion_id)
-		effect_satellites.append_array(damage_satellites)
+		_append_unique_satellites(effect_satellites, damage_satellites)
+
+	for minion_satellite in minion_satellites:
+		_append_minion_keyword_satellites(minion_satellite, effect_satellites)
 	
 	# Sort minions alphabetically by title
 	minion_satellites.sort_custom(func(a, b): 
@@ -100,6 +103,25 @@ static func _extract_keywords_from_text(champion_id: StringName) -> Dictionary:
 	combined_text += str(champion_data.get("ability_desc", "")) + " "
 	combined_text += str(champion_data.get("ultimate_desc", ""))
 
+	return _extract_keywords_from_combined_text(combined_text)
+
+
+static func _extract_keywords_from_minion(minion_id: StringName) -> Dictionary:
+	var minion = ChampionCatalogScript.get_minion(minion_id)
+	if minion == null:
+		return {}
+
+	var minion_data: Dictionary = minion.to_dict()
+	var combined_text: String = ""
+	combined_text += str(minion_data.get("description", "")) + " "
+	combined_text += str(minion_data.get("passive_desc", "")) + " "
+	combined_text += str(minion_data.get("ability_desc", "")) + " "
+	combined_text += str(minion_data.get("ultimate_desc", ""))
+
+	return _extract_keywords_from_combined_text(combined_text)
+
+
+static func _extract_keywords_from_combined_text(combined_text: String) -> Dictionary:
 	var found_keywords: Dictionary = {
 		"CC": [],
 		"UTILITY": [],
@@ -121,6 +143,51 @@ static func _extract_keywords_from_text(champion_id: StringName) -> Dictionary:
 				found_keywords[category].append(keyword)
 
 	return found_keywords
+
+
+static func _append_minion_keyword_satellites(minion_satellite: SatelliteSpec, effect_satellites: Array[SatelliteSpec]) -> void:
+	var minion_data: Dictionary = minion_satellite.data_source.call(null)
+	var minion_id: StringName = StringName(minion_data.get("minion_id", &""))
+	if minion_id.is_empty():
+		return
+
+	var keywords: Dictionary = _extract_keywords_from_minion(minion_id)
+	_append_keyword_satellites(keywords, effect_satellites)
+
+
+static func _append_keyword_satellites(keywords: Dictionary, effect_satellites: Array[SatelliteSpec]) -> void:
+	var cc_keywords: Array = keywords.get("CC", [])
+	for keyword in cc_keywords:
+		var cc_spec: SatelliteSpec = SatelliteRegistriesScript.status(StringName(keyword))
+		_append_unique_satellite(effect_satellites, cc_spec)
+
+	var utility_keywords: Array = keywords.get("UTILITY", [])
+	for keyword in utility_keywords:
+		var display_keyword: String = str(keyword)
+		if display_keyword == "heal_over_time":
+			display_keyword = "heal"
+		var utility_spec: SatelliteSpec = SatelliteRegistriesScript.status(StringName(display_keyword))
+		_append_unique_satellite(effect_satellites, utility_spec)
+
+	var damage_keywords: Array = keywords.get("DAMAGE", [])
+	for keyword in damage_keywords:
+		var short_name: String = str(keyword).replace(" damage", "")
+		var damage_spec: SatelliteSpec = SatelliteRegistriesScript.damage_type(StringName(short_name))
+		_append_unique_satellite(effect_satellites, damage_spec)
+
+
+static func _append_unique_satellite(satellites: Array[SatelliteSpec], spec: SatelliteSpec) -> void:
+	if spec == null:
+		return
+	for existing in satellites:
+		if existing.id == spec.id:
+			return
+	satellites.append(spec)
+
+
+static func _append_unique_satellites(satellites: Array[SatelliteSpec], specs: Array[SatelliteSpec]) -> void:
+	for spec in specs:
+		_append_unique_satellite(satellites, spec)
 
 
 ## Parse summon effects from champion abilities.

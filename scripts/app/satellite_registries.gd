@@ -11,10 +11,14 @@ static var _initialized: bool = false
 static var _compiled_regexes: Dictionary[String, RegEx] = {}
 
 
+static func _escape_bbcode_plain(text: String) -> String:
+	return str(text).replace("[", "[lb]").replace("]", "[rb]")
+
+
 ## Color keywords in text using BBCode tags.
 ## Case-insensitive, matches full words containing keywords.
 static func _color_keywords_in_text(text: String) -> String:
-	var result: String = text
+	var result: String = _escape_bbcode_plain(text)
 	
 	# Lazily compile regexes on first call
 	if _compiled_regexes.is_empty():
@@ -149,7 +153,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	# Description
 	var description: String = str(minion_data.get("description", ""))
 	if not description.is_empty():
-		lines.append(description)
+		lines.append(_color_keywords_in_text(description))
 		lines.append("")  # Line break
 	
 	# Core stats
@@ -172,7 +176,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	var passive_desc: String = str(minion_data.get("passive_desc", ""))
 	if not passive_name.is_empty() or not passive_desc.is_empty():
 		lines.append("")
-		lines.append("%s (passive): %s" % [passive_name if not passive_name.is_empty() else "Passive", passive_desc])
+		lines.append("%s (passive): %s" % [passive_name if not passive_name.is_empty() else "Passive", _color_keywords_in_text(passive_desc)])
 	
 	# Ability
 	var ability_name: String = str(minion_data.get("ability_name", ""))
@@ -181,7 +185,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	if not ability_name.is_empty() or not ability_desc.is_empty():
 		lines.append("")
 		var cd_str: String = "%.1fs" % ability_cd if ability_cd > 0 else ""
-		lines.append("%s (%s): %s" % [ability_name if not ability_name.is_empty() else "Ability", cd_str, ability_desc])
+		lines.append("%s (%s): %s" % [ability_name if not ability_name.is_empty() else "Ability", cd_str, _color_keywords_in_text(ability_desc)])
 	
 	# Ultimate
 	var ultimate_name: String = str(minion_data.get("ultimate_name", ""))
@@ -190,7 +194,7 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	if not ultimate_name.is_empty() or not ultimate_desc.is_empty():
 		lines.append("")
 		var mana_str: String = "%.0f" % mana_cost if mana_cost > 0 else ""
-		lines.append("%s (%s mana): %s" % [ultimate_name if not ultimate_name.is_empty() else "Ultimate", mana_str, ultimate_desc])
+		lines.append("%s (%s mana): %s" % [ultimate_name if not ultimate_name.is_empty() else "Ultimate", mana_str, _color_keywords_in_text(ultimate_desc)])
 	
 	return "\n".join(lines)
 
@@ -283,7 +287,7 @@ static func _build_damage_type_content(data: Dictionary, context) -> String:
 	effect_category = effect_category.capitalize()
 	var description: String = metadata.get("description", "")
 	
-	var type_name: String = str(damage_type).to_upper()
+	var type_name: String = ("%s damage" % damage_type).to_upper()
 	
 	var lines: PackedStringArray = []
 	lines.append("[color=%s]%s (%s)[/color]" % [color, type_name, effect_category])
@@ -320,7 +324,7 @@ static func _layout_grid(satellites: Array, origin: Vector2, spacing: Vector2 = 
 	
 	var current_x: float = origin.x + offset_x
 	var current_y: float = origin.y
-	var max_height: float = 600.0
+	var max_height: float = maxf(600.0, viewport_size.y - origin.y - 4.0)
 	var col_height: float = 0.0
 	
 	for satellite in satellites:

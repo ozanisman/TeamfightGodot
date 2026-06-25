@@ -187,7 +187,6 @@ static func _escape_bbcode_plain(s: String) -> String:
 ## Color keywords in text using BBCode tags.
 ## Escapes text first, then applies coloring to keywords.
 ## Case-insensitive, matches full words containing keywords.
-## TODO: Expand to minion tooltips if needed
 static func _color_keywords_in_text(text: String) -> String:
 	var escaped: String = _escape_bbcode_plain(text)
 	var result: String = escaped

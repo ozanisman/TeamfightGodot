@@ -133,7 +133,7 @@ struct EffectContext {
 	StringName action_kind;
 	double distance = 0.0;
 	double heal_amount = 0.0;
-	double heal_gained = 0.0;
+	double heal_gained = 0.0; // Cumulative heal applied in the current chain; hook payloads may seed an initial value.
 	bool use_heal_gained = false;
 	// Set when a knockback occurs anywhere in this effect chain. Preserved through knockback hooks so they can see the context that triggered them.
 	bool knockback_applied = false;

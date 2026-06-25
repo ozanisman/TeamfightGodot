@@ -50,7 +50,7 @@ void run_on_knockback_effects(
 		SimHostCallbacks &host,
 		UnitState &source,
 		UnitState *target,
-		const EffectContext &base_context);
+		EffectContext &base_context);
 void run_on_knockback_action_effects(
 		SimWorld &world,
 		SimHostCallbacks &host,

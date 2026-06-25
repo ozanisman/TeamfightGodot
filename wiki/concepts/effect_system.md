@@ -66,17 +66,35 @@ AOE variants: AOE_SLOW, AOE_ROOT, AOE_SILENCE, AOE_DISARM, AOE_KNOCKBACK, AOE_RE
 
 Effects can nest recursively via `effects` arrays and `splash` dicts. Execution passes an `EffectContext` with source/target/distance/action_kind. Results are accumulated in a per-opcode slot store for conditional chaining via `requires_result_from`, `requires_field`, `requires_value`.
 
-Passive effects trigger on hooks: `on_tick`, `on_take_damage`, `on_deal_damage`, `on_heal`, `on_takedown`, `on_ally_defense`, `on_knockback`, `on_knockback_action`.
+Passive effects trigger on hooks: `on_tick`, `on_attack`, `on_defense`, `on_ability`, `on_ultimate`, `post_attack`, `post_take_damage`, `post_heal`, `on_takedown`, `on_ally_defense`, `on_knockback`, `on_knockback_action`.
 
-## Cumulative Damage Context
+Modifier hooks (`on_attack`, `on_defense`, `on_ability`, `on_ultimate`) evaluate damage multipliers with a fresh context per call. Execute hooks (`post_*`, `on_takedown`, `on_knockback*`) run full effect trees via `sim_passive_hooks` (`native/src/simulation/sim_passive_hooks.*`).
+
+## Passive hook execution (`sim_passive_hooks`)
+
+All execute hooks share one runner (`passive_hooks::run_bucket`) driven by a declarative `Event` payload:
+
+- **Isolation:** channel fields, unrelated heal/takedown state, and `suppress_reflect_chain` are cleared unless the event sets them.
+- **Inheritance:** `ChainInherit::ActionChain` copies cumulative `damage`, `accumulated_results`, and `knockback_applied` from a parent action context.
+- **Distance:** recomputed from `source` and `target` after the payload is applied.
+- **Chaining:** each effect in the hook bucket stores its result in scratch `accumulated_results` (supports `requires_result_from` across separate passive records).
+- **Merge-back:** mid-chain hooks (`post_attack`, `on_knockback`) use `MergePolicy::ToParent` to fold damage deltas, `knockback_applied`, and `accumulated_results` into the parent action context. Terminal hooks (`on_knockback_action`, `post_heal`, `on_takedown`, `post_take_damage`) do not merge.
+
+`post_heal` hook buckets should not include `heal` / `damage_based_heal` opcodes: those opcodes re-enter `run_post_heal_effects` and can recurse. Use `stat_modifier` with `heal_gained_ratio`, or test heal opcode accumulation inside ability `multi_effect` chains instead.
+
+## Cumulative chain context
 
 `EffectContext.damage` is a running total of damage dealt within the current effect chain. Every `damage` opcode and `aoe_damage` opcode adds its dealt amount to the current value. Effects that scale from dealt damage, such as `damage_based_heal`, `damage_based_shield`, and `shield` with `damage_ratio`, read this cumulative value.
 
+`EffectContext.heal_gained` accumulates across heal opcodes in the same chain (`heal`, `damage_based_heal`, `consume_stacks_heal`). Hook payloads can seed an initial value (e.g. `post_heal`).
+
+`EffectContext.distance` is recomputed from unit positions whenever hook scratch context is built.
+
 This lets multi-effect passives and abilities build on previous damage effects. For example, a `post_attack` passive with a `damage` effect followed by a `damage_based_shield` will create a shield based on the attack damage plus the extra damage from the first effect.
 
-Hook helpers initialize the context with the triggering event damage (`run_post_attack_effects`, `run_on_takedown_effects`, `run_post_take_damage_passives`). `run_post_attack_effects` also merges any extra dealt damage from passive sub-effects back into the parent action context.
+Hook helpers initialize event fields (`run_post_attack_effects`, `run_on_takedown_effects`, `run_post_take_damage_passives`, `run_post_heal_effects`). `run_post_attack_effects` and `on_knockback` merge chain deltas back into the parent action context when the hook runs mid-chain.
 
-Knockback hooks preserve action `damage` and `accumulated_results` so conditional hook effects can chain off prior opcodes in the same action.
+Knockback hooks inherit action `damage` and `accumulated_results` so conditional hook effects can chain off prior opcodes in the same action.
 
 `damage_based_shield` supports `use_accumulated_damage` (same as `damage_based_heal`) to scale from `channel_accumulated_damage` on channel finishers.
 
@@ -120,9 +138,7 @@ When defer applies:
 
 Channel projectile impacts still credit `channel_accumulated_damage` when the source is channeling.
 
-Golden coverage for defer, channel, and cumulative-damage paths: [`fixtures/goldens/FIXTURE_BEHAVIORS.md`](../../fixtures/goldens/FIXTURE_BEHAVIORS.md).
-
-> **Out of scope for this pass:** Only `damage` is accumulated across effects. `heal_amount`, `heal_gained`, `distance`, and other `EffectContext` fields are not yet accumulated by their respective opcodes.
+Focused synthetic coverage for defer, passive-hook, heal-chain, and stealth-break paths runs through `--check-native-simulation-tests`. Real-champion end-to-end coverage remains in [`fixtures/goldens/FIXTURE_BEHAVIORS.md`](../../fixtures/goldens/FIXTURE_BEHAVIORS.md).
 
 ## MULTI_TARGET parameters
 

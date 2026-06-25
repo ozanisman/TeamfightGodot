@@ -57,8 +57,9 @@ endif()
 set(GODOTCPP_GDEXTENSION_DIR "${GODOT_CPP_PATH}/gdextension" CACHE PATH "" FORCE)
 add_subdirectory("${GODOT_CPP_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/godot-cpp" EXCLUDE_FROM_ALL)
 
-set(TEAMFIGHT_SIMULATION_SOURCES
-    src/register_types.cpp
+option(TEAMFIGHT_BUILD_NATIVE_TESTS "Build the Godot-hosted native simulation test extension" ON)
+
+set(TEAMFIGHT_SIMULATION_RUNTIME_SOURCES
     src/simulation/sim_allocation_tracker.cpp
     src/simulation/sim_stats.cpp
     src/simulation/sim_spatial.cpp
@@ -89,6 +90,7 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_draft_ai_recommender.cpp
     src/simulation/sim_stats_modifiers.cpp
     src/simulation/sim_combat.cpp
+    src/simulation/sim_passive_hooks.cpp
     src/simulation/sim_combat_internal.cpp
     src/simulation/sim_combat_actions.cpp
     src/simulation/sim_combat_projectile.cpp
@@ -127,6 +129,11 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_match_runtime_state.cpp
     src/simulation/sim_viewer_fx.cpp
     src/simulation/sim_viewer_snapshot.cpp
+    src/simulation/sim_profile.cpp
+)
+
+set(TEAMFIGHT_SIMULATION_CORE_SOURCES
+    src/register_types.cpp
     src/simulation/sim_match_benchmark.cpp
     src/simulation/sim_match_benchmark_stats.cpp
     src/simulation/sim_match_benchmark_stats_internal.cpp
@@ -139,13 +146,17 @@ set(TEAMFIGHT_SIMULATION_SOURCES
     src/simulation/sim_coordinator_bindings.cpp
     src/simulation/sim_coordinator_tick.cpp
     src/simulation/sim_coordinator_host.cpp
-    src/simulation/sim_profile.cpp
     src/teamfight_simulation_core.cpp
 )
 
-add_library(teamfight_simulation_core SHARED ${TEAMFIGHT_SIMULATION_SOURCES})
+add_library(teamfight_simulation_runtime STATIC ${TEAMFIGHT_SIMULATION_RUNTIME_SOURCES})
+set_target_properties(teamfight_simulation_runtime PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_library(teamfight_simulation_core SHARED ${TEAMFIGHT_SIMULATION_CORE_SOURCES})
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(teamfight_simulation_runtime PRIVATE
+        $<$<CONFIG:Release>:-flto>
+    )
     target_compile_options(teamfight_simulation_core PRIVATE
         $<$<CONFIG:Release>:-flto>
     )
@@ -153,6 +164,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         $<$<CONFIG:Release>:-flto>
     )
 elseif(MSVC)
+    target_compile_options(teamfight_simulation_runtime PRIVATE
+        $<$<CONFIG:Release>:/GL>
+    )
     target_compile_options(teamfight_simulation_core PRIVATE
         $<$<CONFIG:Release>:/GL>
     )
@@ -164,10 +178,12 @@ endif()
 # Generate champion schema JSON from GDScript before building
 set(CHAMPION_SCHEMA_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/goldens/champion_schema.json")
 set(EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/tools/export_champion_schema.gd")
+set(CHAMPION_CATALOG_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/simulation/champion_catalog.gd")
 
 add_custom_command(
     OUTPUT ${CHAMPION_SCHEMA_OUTPUT}
     COMMAND ${GODOT_EXE} --headless --script ${EXPORT_SCRIPT}
+    DEPENDS ${EXPORT_SCRIPT} ${CHAMPION_CATALOG_SOURCE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
     COMMENT "Generating champion schema from GDScript"
     VERBATIM
@@ -205,9 +221,67 @@ target_include_directories(teamfight_simulation_core PRIVATE
     ${GODOT_CPP_PATH}/gen/include
 )
 
+target_include_directories(teamfight_simulation_runtime PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${GODOT_CPP_PATH}/include
+    ${GODOT_CPP_PATH}/gen/include
+)
+
 target_compile_definitions(teamfight_simulation_core PRIVATE
     GD_EXTENSION_BUILD
     $<$<CONFIG:Debug>:DEBUG_BUILD>
 )
 
-target_link_libraries(teamfight_simulation_core PRIVATE godot-cpp)
+target_compile_definitions(teamfight_simulation_runtime PRIVATE
+    GD_EXTENSION_BUILD
+    $<$<CONFIG:Debug>:DEBUG_BUILD>
+)
+
+target_link_libraries(teamfight_simulation_runtime PUBLIC godot-cpp)
+target_link_libraries(teamfight_simulation_core PRIVATE teamfight_simulation_runtime godot-cpp)
+
+if(TEAMFIGHT_BUILD_NATIVE_TESTS)
+    add_library(teamfight_simulation_tests SHARED
+        tests/register_test_types.cpp
+        tests/teamfight_simulation_test_runner.cpp
+    )
+    target_include_directories(teamfight_simulation_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests
+        ${GODOT_CPP_PATH}/include
+        ${GODOT_CPP_PATH}/gen/include
+    )
+    target_compile_definitions(teamfight_simulation_tests PRIVATE
+        GD_EXTENSION_BUILD
+        $<$<CONFIG:Debug>:DEBUG_BUILD>
+    )
+    target_link_libraries(teamfight_simulation_tests PRIVATE teamfight_simulation_runtime godot-cpp)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_link_options(teamfight_simulation_tests PRIVATE
+            $<$<CONFIG:Release>:-flto>
+        )
+    elseif(MSVC)
+        target_link_options(teamfight_simulation_tests PRIVATE
+            $<$<CONFIG:Release>:/LTCG>
+        )
+    endif()
+    set_target_properties(teamfight_simulation_tests PROPERTIES
+        OUTPUT_NAME "teamfight_simulation_tests"
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+        ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_SOURCE_DIR}/bin/tests"
+    )
+endif()

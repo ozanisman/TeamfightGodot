@@ -61,6 +61,7 @@ Dictionary exec_status_heal_shield(
 			double old_hp = heal_target.hp;
 			sim::status::heal_unit(world, source, heal_target, heal_amount, context.action_kind, false, &host);
 			double heal_gained = heal_target.hp - old_hp;
+			context.heal_gained += heal_gained;
 			sim::combat::run_post_heal_effects(world, host, source, heal_target, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
@@ -77,6 +78,7 @@ Dictionary exec_status_heal_shield(
 			double heal_amount = damage_to_use * effect.scalar0;
 			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind, false, &host);
 			double heal_gained = source.hp - old_hp;
+			context.heal_gained += heal_gained;
 			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			heal_result["heal_applied"] = true;
 			heal_result["amount"] = heal_gained;
@@ -112,6 +114,7 @@ Dictionary exec_status_heal_shield(
 			double old_hp = source.hp;
 			sim::status::heal_unit(world, source, source, heal_amount, context.action_kind, false, &host);
 			double heal_gained = source.hp - old_hp;
+			context.heal_gained += heal_gained;
 			sim::combat::run_post_heal_effects(world, host, source, source, heal_amount, heal_gained, context);
 			result["heal_applied"] = true;
 			result["amount"] = heal_gained;

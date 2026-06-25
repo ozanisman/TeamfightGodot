@@ -193,6 +193,7 @@ void perform_auto_attack(
 			const double heal_amount = dealt * life_steal;
 			heal_with_hooks(world, host, unit, unit, heal_amount, sn_auto(), false);
 			const double heal_gained = unit.hp - old_hp;
+			context.heal_gained += heal_gained;
 			run_post_heal_effects(world, host, unit, unit, heal_amount, heal_gained, context);
 		}
 	}

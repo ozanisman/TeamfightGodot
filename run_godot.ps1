@@ -10,7 +10,9 @@ $logFile = Join-Path $logsDir "godot.log"
 $null = New-Item -ItemType Directory -Force -Path $logsDir
 $timeoutSeconds = 120
 $checkOnly = $Arguments -contains "--check-only"
+$exportChampionSchema = $Arguments -contains "--export-champion-schema"
 $checkNativeLoad = $Arguments -contains "--check-native-load"
+$checkNativeSimulationTests = $Arguments -contains "--check-native-simulation-tests"
 $checkDeterminism = $Arguments -contains "--check-determinism"
 $checkBenchmark = $Arguments -contains "--check-benchmark"
 $checkBenchmarkSharded = $Arguments -contains "--check-benchmark-sharded"
@@ -276,8 +278,14 @@ if ($checkOnly) {
 	}
 	$godotArgs += @("--script", "res://scripts/tools/check_gdscript_preload.gd")
 }
+elseif ($exportChampionSchema) {
+	$godotArgs += @("--script", "res://scripts/tools/export_champion_schema.gd")
+}
 elseif ($checkNativeLoad) {
 	$godotArgs += @("--script", "res://scripts/tools/check_native_load.gd")
+}
+elseif ($checkNativeSimulationTests) {
+	$godotArgs += @("--script", "res://scripts/tools/check_native_simulation_tests.gd")
 }
 elseif ($checkMatchTelemetry) {
 	$godotArgs += @("--script", "res://scripts/tools/check_match_telemetry.gd")
@@ -394,7 +402,7 @@ elseif ($testPartialCompScoring) {
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
-elseif (-not $checkOnly -and -not $checkNativeLoad -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isInteractiveGui) {
+elseif (-not $checkOnly -and -not $exportChampionSchema -and -not $checkNativeLoad -and -not $checkNativeSimulationTests -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isInteractiveGui) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {
@@ -402,13 +410,13 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if (($checkOnly -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) -and (Test-Path $logFile)) {
+if (($checkOnly -or $checkNativeSimulationTests -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
 
 try {
-	if ($checkOnly -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism) {
+	if ($checkOnly -or $checkNativeSimulationTests -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism) {
 		$deadline = (Get-Date).AddSeconds($timeoutSeconds)
 		while ((Get-Date) -lt $deadline) {
 			if ($process.HasExited) {
@@ -451,10 +459,10 @@ try {
 	}
 
 	$process.Refresh()
-	if ($checkNativeLoad -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) {
+	if ($checkNativeLoad -or $checkNativeSimulationTests -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) {
 		if (Test-Path $logFile) {
 			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
-			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|CrashHandlerException|Program crashed with signal|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|main_menu: .*missing|draft_ui: .*missing|check_main_menu_load: FAILED|check_draft_ui_load: FAILED"
+			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|CrashHandlerException|Program crashed with signal|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|native_simulation_tests: (?!OK)|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|main_menu: .*missing|draft_ui: .*missing|check_main_menu_load: FAILED|check_draft_ui_load: FAILED"
 			if ($tail -match $failurePattern) {
 				Write-Error "Godot check failed. See $logFile."
 				exit 1

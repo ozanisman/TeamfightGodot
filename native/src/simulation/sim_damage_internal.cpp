@@ -1,5 +1,6 @@
 #include "sim_damage_internal.hpp"
 
+#include "sim_passive_hooks.hpp"
 #include "sim_stats.hpp"
 
 #include <godot_cpp/core/math.hpp>
@@ -130,23 +131,20 @@ void run_post_take_damage_passives(
 		double total_damage,
 		const EffectContext &context) {
 	const std::vector<EffectRecord> &post_take_damage_effects = uc(world, target).passive_effects[EFFECT_BUCKET_POST_TAKE_DAMAGE];
-	EffectContext post_context = context;
-	post_context.source = &target;
-	post_context.target = nullptr;
-	post_context.damage = total_damage;
-	post_context.action_kind = sn_passive();
 	if (target.stealth_remaining > 0.0 && target.stealth_break_on_damage_taken) {
 		target.stealth_remaining = 0.0;
 		target.stealth_break_on_attack = false;
 		target.stealth_break_on_ability = false;
 		target.stealth_break_on_damage_taken = false;
 	}
-	if (host.execute_effect == nullptr) {
+	if (post_take_damage_effects.empty()) {
 		return;
 	}
-	for (const EffectRecord &effect : post_take_damage_effects) {
-		host.execute_effect(host, effect, post_context);
-	}
+	combat::passive_hooks::Event event;
+	event.source = &target;
+	event.set_damage = true;
+	event.damage = total_damage;
+	combat::passive_hooks::run_bucket(world, host, post_take_damage_effects, event, nullptr);
 }
 
 } // namespace internal

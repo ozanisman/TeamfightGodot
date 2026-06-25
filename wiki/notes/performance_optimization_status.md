@@ -41,7 +41,7 @@ Release build, **2000 matches**, **5v5**, **`--bench-skip-summaries`**, **worker
 |--------|-------|
 | Matches/sec | **~103–110** |
 | `duration_sec` | ~18–19 |
-| Fixtures | **9/9** (unchanged gate) |
+| Fixtures | **15/15** real-champion cases |
 
 Recorded after native refactor + hygiene pass. Re-run the gate before merge or when claiming a perf change; numbers vary with background load.
 

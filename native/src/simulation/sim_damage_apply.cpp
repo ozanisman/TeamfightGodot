@@ -1,6 +1,8 @@
 #include "sim_damage.hpp"
 #include "sim_damage_internal.hpp"
 
+#include "sim_passive_hooks.hpp"
+
 #include "sim_constants.hpp"
 #include "sim_spatial.hpp"
 #include "sim_stats.hpp"
@@ -267,13 +269,15 @@ double trigger_ally_defense_effects(
 			continue;
 		}
 
-		EffectContext ally_context = context;
-		ally_context.source = &ally;
-		ally_context.target = &target;
-		ally_context.target_ally = nullptr;
-		ally_context.damage = damage;
-		ally_context.action_kind = action_kind;
-		ally_context.distance = distance_between_coords(ally.pos_x, ally.pos_y, target.pos_x, target.pos_y);
+		combat::passive_hooks::Event ally_event;
+		ally_event.source = &ally;
+		ally_event.target = &target;
+		ally_event.set_damage = true;
+		ally_event.damage = damage;
+		ally_event.preserve_action_kind = true;
+		ally_event.action_kind = action_kind;
+		EffectContext ally_context = combat::passive_hooks::build_scratch_context(ally_event, nullptr);
+		ally_context.suppress_reflect_chain = context.suppress_reflect_chain;
 
 		for (const EffectRecord &effect : ally_defense_effects) {
 			if (effect.opcode == EFFECT_OPCODE_REDIRECT_DAMAGE) {

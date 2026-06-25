@@ -5,6 +5,7 @@ Maps each entry in [`match_fixtures.json`](match_fixtures.json) to effect-contex
 Regenerate summaries after input or champion changes:
 
 ```powershell
+.\run_godot.ps1 -- --export-champion-schema
 .\run_godot.ps1 -- --rewrite-fixture-summaries=res://fixtures/goldens/match_fixtures.json
 ```
 
@@ -29,8 +30,6 @@ Tune a single fixture with combat trace:
 | `summoner_support_skirmish` | warlock, siren, necromancer, mistcaller | summons + support | — | team totals | `general_combat` |
 | `warlock_chaos_rift_channel` | warlock, guardian | channel tick `multi_effect` [aoe + `damage_based_heal`]; post-complete `use_accumulated_damage` | Channel accumulated damage | `damage_dealt_ability`, `healing_done_ability` | channel **complete** path |
 | `archer_volley` | archer, guardian | `multi_target` repeat projectiles, **no** defer | Projectile deferred damage | `damage_dealt_ability` | parallel volley (repeat only) |
-| `fixture_probe_defer_heal` | fixture_probe, guardian | `multi_target` [projectile, `damage_based_heal`] defer + scratch resume | Projectile deferred damage | `healing_done_ability`, `damage_dealt_ability` | isolated defer heal |
-| `fixture_probe_multi_effect_defer` | fixture_probe, guardian | `multi_effect` [defer `multi_target`, damage sibling] | Projectile deferred damage | `healing_done_ability`, `damage_dealt_ultimate` | multi_effect sibling pause |
 | `archer_rain_of_arrows_channel` | archer, guardian | channel + `multi_target` repeat projectiles per tick | Channel + multi_target | `damage_dealt_ultimate` | Rain of Arrows |
 | `valkyrie_whirlwind_shield` | valkyrie, guardian | sync `multi_effect` [aoe, `damage_based_shield`] | Cumulative damage | `shielding_done_ultimate`, `damage_dealt_ultimate` | Whirlwind |
 | `valkyrie_sweeping_strikes` | valkyrie, guardian | `post_attack` `multi_effect` [aoe, `damage_based_heal`] | Cumulative damage | `healing_done_passive`, `damage_dealt_passive` | Sweeping Strikes passive |
@@ -42,12 +41,18 @@ These paths are hard to stabilize in summary hash tests. Use `--debug-fixture-na
 
 | Behavior | Suggested setup | What to verify |
 |----------|-----------------|----------------|
-| Target dies before deferred projectile impact | `fixture_probe_defer_heal`; burst guardian during volley | `deferred_multi_target_active` clears; no stuck outstanding count |
+| Target dies before deferred projectile impact | extend the focused native projectile test | `deferred_multi_target_active` clears; no stuck outstanding count |
 | Sudden death mid-projectile batch | any 5v5 near kill threshold | outstanding decrements via abandon; chain resumes or clears |
-| Killer defer preserved on kill | probe vs low-HP dummy; killer has open defer | killer defer chain continues after kill (lifecycle) |
+| Killer defer preserved on kill | focused native test with a low-HP target | killer defer chain continues after kill (lifecycle) |
 | Channel tick skipped while defer pending | hypothetical channel + `[projectile, damage_based_heal]` tick | tick skipped; no overwrite of defer state |
 | Scratch skip when deferred target dies | multi-target defer; kill deferred target before impact | resume uses fresh scratch for next target ID |
 
-## `fixture_probe` champion
+## Focused native coverage
 
-Defined only in [`champion_catalog.gd`](../../scripts/simulation/champion_catalog.gd). **Do not add to 5v5 comp fixtures.** Used exclusively by `fixture_probe_*` goldens.
+Synthetic effect chains are defined in `native/tests/teamfight_simulation_test_runner.cpp`, not in the production champion catalog. Run them with:
+
+```powershell
+.\run_godot.ps1 -- --check-native-simulation-tests
+```
+
+The native suite covers deferred projectile continuation, deferred `multi_effect` siblings, passive-hook merge and result chaining, cumulative healing, terminal knockback hooks, and stealth break without a post-damage bucket.

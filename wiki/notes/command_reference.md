@@ -10,8 +10,9 @@ Canonical validation gate: [README#validation-gate](../../README.md#validation-g
 |------|--------|---------|-------------|
 | `--check-only` | `check_gdscript_preload.gd` (+ Python struct check) | GDScript preload/compile gate | 15 |
 | `--check-native-load` | `check_native_load.gd` | GDExtension load smoke | 15 |
+| `--check-native-simulation-tests` | `check_native_simulation_tests.gd` | Focused native effects/combat module tests | 120 |
 | `--check-match-telemetry` | `check_match_telemetry.gd` | Match telemetry schema check | 15 |
-| `--fixture-file=res://fixtures/goldens/match_fixtures.json` | `headless_bootstrap.gd` → `headless_runner.gd` | Golden parity (9 fixtures) | 120 |
+| `--fixture-file=res://fixtures/goldens/match_fixtures.json` | `headless_bootstrap.gd` → `headless_runner.gd` | Real-champion golden parity (15 fixtures) | 120 |
 | `--check-benchmark` | `check_benchmark.gd` | Throughput benchmark | 180 |
 | `--check-benchmark-sharded` | `run_benchmark_sharded.ps1` | Sharded benchmark driver | 300 |
 

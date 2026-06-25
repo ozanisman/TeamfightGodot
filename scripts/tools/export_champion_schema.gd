@@ -8,4 +8,4 @@ func _init():
 		print("Successfully generated champion schema to fixtures/goldens/champion_schema.json")
 	else:
 		print("Failed to generate champion schema")
-	quit()
+	quit(0 if success else 1)

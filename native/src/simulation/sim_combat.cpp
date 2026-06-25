@@ -1,5 +1,6 @@
 #include "sim_combat.hpp"
 #include "sim_combat_internal.hpp"
+#include "sim_passive_hooks.hpp"
 
 #include "sim_stats.hpp"
 
@@ -9,6 +10,7 @@ namespace sim {
 namespace combat {
 
 using namespace internal;
+using namespace passive_hooks;
 
 EffectContext build_context(UnitState &source, UnitState *target, UnitState *target_ally, double damage, const StringName &action_kind) {
 	EffectContext context;
@@ -18,9 +20,7 @@ EffectContext build_context(UnitState &source, UnitState *target, UnitState *tar
 	context.target_ally = target_ally;
 	context.damage = damage;
 	context.action_kind = action_kind;
-	if (target != nullptr) {
-		context.distance = distance_between_coords(source.pos_x, source.pos_y, target->pos_x, target->pos_y);
-	}
+	recompute_distance(context);
 	return context;
 }
 
@@ -97,18 +97,14 @@ void run_post_attack_effects(SimWorld &world, SimHostCallbacks &host, UnitState 
 	if (post_attack_effects.empty()) {
 		return;
 	}
-	EffectContext effect_context = context;
-	effect_context.damage = damage;
-	effect_context.action_kind = sn_passive();
-	for (const EffectRecord &effect : post_attack_effects) {
-		if (host.execute_effect != nullptr) {
-			host.execute_effect(host, effect, effect_context);
-		}
-	}
-	context.knockback_applied = context.knockback_applied || effect_context.knockback_applied;
-	if (effect_context.damage > damage) {
-		context.damage += effect_context.damage - damage;
-	}
+	Event event;
+	event.source = &source;
+	event.target = &target;
+	event.set_damage = true;
+	event.damage = damage;
+	event.inherit = ChainInherit::ActionChain;
+	event.merge = MergePolicy::ToParent;
+	run_bucket(world, host, post_attack_effects, event, &context);
 }
 
 void run_post_heal_effects(
@@ -123,17 +119,15 @@ void run_post_heal_effects(
 	if (post_heal_effects.empty()) {
 		return;
 	}
-	EffectContext effect_context = base_context;
-	effect_context.heal_amount = heal_amount;
-	effect_context.heal_gained = heal_gained;
-	effect_context.action_kind = sn_passive();
-	effect_context.source = &source;
-	effect_context.target = &target;
-	for (const EffectRecord &effect : post_heal_effects) {
-		if (host.execute_effect != nullptr) {
-			host.execute_effect(host, effect, effect_context);
-		}
-	}
+	Event event;
+	event.source = &source;
+	event.target = &target;
+	event.set_heal = true;
+	event.heal_amount = heal_amount;
+	event.heal_gained = heal_gained;
+	event.inherit = ChainInherit::ActionChain;
+	EffectContext parent = base_context;
+	run_bucket(world, host, post_heal_effects, event, &parent);
 }
 
 void run_on_takedown_effects(
@@ -148,37 +142,18 @@ void run_on_takedown_effects(
 	if (takedown_effects.empty()) {
 		return;
 	}
-	EffectContext effect_context = base_context;
-	effect_context.takedown_target_id = victim.instance_id;
-	effect_context.takedown_damage_dealt = damage_dealt;
-	effect_context.is_takedown_kill = is_kill;
-	effect_context.damage = damage_dealt;
-	effect_context.action_kind = sn_passive();
-	effect_context.source = &participant;
-	effect_context.target = &victim;
-	for (const EffectRecord &effect : takedown_effects) {
-		if (host.execute_effect != nullptr) {
-			host.execute_effect(host, effect, effect_context);
-		}
-	}
-}
-
-static void sanitize_knockback_effect_context(EffectContext &effect_context) {
-	// Clear action-specific fields (distance, heal, etc.) but keep knockback_applied and damage.
-	// knockback_applied tells hook effects they are running in a knockback context.
-	// damage is preserved so effects can build on the cumulative damage of the triggering action.
-	// knockback_hook_depth is the actual recursion guard.
-	// TODO: Only damage is cumulative across effects. If the design is extended to heal/distance/other
-	// EffectContext fields, update this sanitizer and the relevant opcodes to preserve/accumulate them.
-	effect_context.distance = 0.0;
-	effect_context.target_ally = nullptr;
-	effect_context.heal_amount = 0.0;
-	effect_context.heal_gained = 0.0;
-	effect_context.use_heal_gained = false;
-	effect_context.takedown_target_id = 0;
-	effect_context.takedown_damage_dealt = 0.0;
-	effect_context.is_takedown_kill = false;
-	effect_context.suppress_reflect_chain = false;
+	Event event;
+	event.source = &participant;
+	event.target = &victim;
+	event.set_damage = true;
+	event.damage = damage_dealt;
+	event.set_takedown = true;
+	event.takedown_target_id = victim.instance_id;
+	event.takedown_damage_dealt = damage_dealt;
+	event.is_takedown_kill = is_kill;
+	event.inherit = ChainInherit::ActionChain;
+	EffectContext parent = base_context;
+	run_bucket(world, host, takedown_effects, event, &parent);
 }
 
 void run_on_knockback_effects(
@@ -186,7 +161,7 @@ void run_on_knockback_effects(
 		SimHostCallbacks &host,
 		UnitState &source,
 		UnitState *target,
-		const EffectContext &base_context) {
+		EffectContext &base_context) {
 	if (!source.alive) {
 		return;
 	}
@@ -194,18 +169,14 @@ void run_on_knockback_effects(
 	if (knockback_effects.empty()) {
 		return;
 	}
-	EffectContext effect_context = base_context;
-	effect_context.action_kind = sn_passive();
-	effect_context.source = &source;
-	effect_context.target = target;
-	sanitize_knockback_effect_context(effect_context);
-	// Bump depth so nested knockbacks do not re-enter the same hooks; knockback_applied stays true to preserve context.
-	effect_context.knockback_hook_depth = base_context.knockback_hook_depth + 1;
-	for (const EffectRecord &effect : knockback_effects) {
-		if (host.execute_effect != nullptr) {
-			host.execute_effect(host, effect, effect_context);
-		}
-	}
+	Event event;
+	event.source = &source;
+	event.target = target;
+	event.inherit = ChainInherit::ActionChain;
+	event.merge = MergePolicy::ToParent;
+	event.set_knockback_hook_depth = true;
+	event.knockback_hook_depth = base_context.knockback_hook_depth + 1;
+	run_bucket(world, host, knockback_effects, event, &base_context);
 }
 
 void run_on_knockback_action_effects(
@@ -221,18 +192,15 @@ void run_on_knockback_action_effects(
 	if (knockback_action_effects.empty()) {
 		return;
 	}
-	EffectContext effect_context = base_context;
-	effect_context.action_kind = sn_passive();
-	effect_context.source = &source;
-	effect_context.target = target;
-	sanitize_knockback_effect_context(effect_context);
-	// Bump depth so nested knockbacks do not re-enter the same hooks; knockback_applied stays true to preserve context.
-	effect_context.knockback_hook_depth = base_context.knockback_hook_depth + 1;
-	for (const EffectRecord &effect : knockback_action_effects) {
-		if (host.execute_effect != nullptr) {
-			host.execute_effect(host, effect, effect_context);
-		}
-	}
+	Event event;
+	event.source = &source;
+	event.target = target;
+	event.inherit = ChainInherit::ActionChain;
+	event.merge = MergePolicy::None;
+	event.set_knockback_hook_depth = true;
+	event.knockback_hook_depth = base_context.knockback_hook_depth + 1;
+	EffectContext parent = base_context;
+	run_bucket(world, host, knockback_action_effects, event, &parent);
 }
 
 } // namespace combat

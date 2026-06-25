@@ -28,6 +28,7 @@ cmake --build native/build --config Release
 
 .\run_godot.ps1 -- --check-only
 .\run_godot.ps1 -- --check-native-load
+.\run_godot.ps1 -- --check-native-simulation-tests
 
 # Interactive hub (main menu → viewer / stats / draft testing)
 .\run_godot.ps1 --main-menu
@@ -94,7 +95,7 @@ Native build output lands in `native/bin/` and is loaded via [`teamfight_simulat
 
 Set the Godot executable in `run_godot.ps1` (and `GODOT_EXE` / `GODOT` for cmake) if it is not at `C:\Godot\godot.exe`.
 
-There is **no repo-root CI** and **no unit-test suite** — correctness is enforced by local headless gates and golden fixtures.
+There is **no repo-root CI**; correctness is enforced by the Godot-hosted native module suite, local headless gates, and real-champion golden fixtures.
 
 ## Validation gate
 
@@ -104,6 +105,7 @@ Run after native or simulation changes (in order):
 cmake --build native/build --config Release
 .\run_godot.ps1 -- --check-only
 .\run_godot.ps1 -- --check-native-load
+.\run_godot.ps1 -- --check-native-simulation-tests
 .\run_godot.ps1 -- --check-match-telemetry
 .\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json
 .\run_godot.ps1 -- --check-benchmark --batch-count=2000 --team-size=5 --bench-skip-summaries --workers=1
@@ -136,7 +138,7 @@ All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeout
 | `.\run_godot.ps1 -- --check-balance-patches` | Balance patch and kit resolution |
 | `.\run_godot.ps1 -- --check-stats-aggregator` | Stats CSV aggregator roundtrip |
 | `.\run_godot.ps1 -- --check-projectile-payloads` | Projectile payload regression |
-| `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Golden parity (9 fixtures) |
+| `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Real-champion golden parity (15 fixtures) |
 | `.\run_godot.ps1 -- --check-benchmark ...` | Throughput benchmark |
 
 ## Draft AI

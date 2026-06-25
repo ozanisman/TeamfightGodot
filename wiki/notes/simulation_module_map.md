@@ -22,6 +22,10 @@ Coordinator `.cpp` files include `teamfight_simulation_core.hpp` directly (no em
 
 **Match loop call pattern:** build `match::MatchLoopState` / `match::MatchLoopHost` locals from `_match_loop_state()` / `_match_loop_host()` before `simulate` / `step_tick` (reference aggregates; do not pass temporaries).
 
+## Native test boundary
+
+Coordinator-independent simulation modules build into `teamfight_simulation_runtime` and link into both the production extension and the test-only extension. `native/tests/teamfight_simulation_test_runner.cpp` constructs typed `SimWorld` fixtures directly; it does not add champions, catalog overlays, or test methods to `TeamfightSimulationCore`. Run the suite with `--check-native-simulation-tests`; production packaging may configure `TEAMFIGHT_BUILD_NATIVE_TESTS=OFF`.
+
 ## Simulation modules
 
 | Module | Responsibility |
@@ -40,7 +44,8 @@ Coordinator `.cpp` files include `teamfight_simulation_core.hpp` directly (no em
 | `sim_effects_exec` (+ `_damage`, `_status`, `_heal`, `_cc`, `_channel`, `_mana`, `_spawn`, `_aoe`) | Effect VM; status split TUs + thin dispatcher |
 | `sim_viewer.hpp` (+ `_fx`, `_snapshot`) | FX buffer, `build_tick_snapshot` (no stub `sim_viewer.cpp`) |
 | `sim_periodic.hpp` (+ `_internal`, `_dot_hot`, `_aoe`, `_reflect`) | DoT / HoT, AOE periodic, knockback, reflect |
-| `sim_combat` (+ `_internal`, `_actions`, `_projectile`) | Cast, auto-attack, projectiles, post-attack / heal |
+| `sim_combat` (+ `_internal`, `_actions`, `_projectile`) | Cast, auto-attack, projectiles |
+| `sim_passive_hooks` | Unified execute-hook runner (`post_*`, `on_takedown`, `on_knockback*`) |
 | `sim_movement` | Move toward target, kite, separation (spatial bucket cache) |
 | `sim_unit_tick` (+ `_internal`, `_cooldowns`, `_regen`, `_cast`, `_combat`, `_movement`) | Per-unit tick sequencer |
 | `sim_effects_host` | `EffectExecBindings`, `host_execute_effect` (no coordinator hop) |
@@ -93,5 +98,5 @@ Nested effects: `SimHostCallbacks::execute_effect` → `sim::effects::host_execu
 
 ## Tooling / IDE
 
-- **Validation:** canonical gate in [performance_optimization_status.md](performance_optimization_status.md).
+- **Validation:** canonical gate in [README.md#validation-gate](../../README.md#validation-gate), including the focused native module suite before golden parity.
 - **clangd:** [`.clangd`](../../.clangd) uses `UnusedIncludes: Strict`. Facade headers use `// IWYU pragma: export` on `.inl.hpp` includes (e.g. `sim_stats.hpp`). `.inl.hpp` files that use Godot types include `using namespace godot;` so standalone parsing works.

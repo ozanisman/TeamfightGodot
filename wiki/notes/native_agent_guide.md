@@ -21,8 +21,9 @@
 | Types / opcodes | `native/src/simulation/simulation_types.hpp` |
 | Stat getters (X-macro) | `native/src/simulation/sim_stats.inl.hpp` (include via `sim_stats.hpp`) |
 | Effect kind strings | `native/src/simulation/sim_effect_kinds.inl.hpp` |
+| Focused native tests | `native/tests/teamfight_simulation_test_runner.cpp` via `--check-native-simulation-tests` |
 | Draft AI (off hot path) | `sim_draft_ai_*` (pick/ban), `sim_draft_recommender.*` (winner prediction); see [native_draft_ai.md](native_draft_ai.md) |
-| Build list | `native/CMakeLists.txt` → `TEAMFIGHT_SIMULATION_SOURCES` |
+| Build lists | `native/CMakeLists.txt` -> `TEAMFIGHT_SIMULATION_RUNTIME_SOURCES` / `TEAMFIGHT_SIMULATION_CORE_SOURCES` |
 
 ## Task → where to edit
 

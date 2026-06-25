@@ -699,7 +699,7 @@ const CHAMPION_DATA := {
 		},
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"passive_name": "Bloodlust",
-		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
+		"passive_desc": "Has innate 10% lifesteal and gains +5% lifesteal per takedown.",
 		"ability_name": "Blood Sacrifice",
 		"ability_desc": "Damages himself for 20% current HP, gains a 40% max HP shield, and gains 20% attack speed for 2.5s.",
 		"ultimate_name": "Ravage",

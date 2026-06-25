@@ -233,7 +233,7 @@
 		"ability_name": "Blood Sacrifice",
 		"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 		"name": "Berserker",
-		"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
+		"passive_desc": "Has innate 10% lifesteal and gains +5% lifesteal per takedown.",
 		"passive_ids": [
 			"bloodlust"
 		],

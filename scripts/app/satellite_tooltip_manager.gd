@@ -14,6 +14,8 @@ var _origin: Vector2 = Vector2.ZERO
 var _context: SatelliteContext
 var _tooltip_size: Vector2 = Vector2.ZERO
 
+const VIEWPORT_MARGIN := 4.0
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT
@@ -261,23 +263,67 @@ func _position_satellites() -> void:
 		
 		# Get viewport size for dynamic positioning
 		var viewport := get_viewport()
-		var viewport_size: Vector2 = viewport.get_visible_rect().size if viewport else Vector2(1920, 1080)
+		var viewport_rect: Rect2 = viewport.get_visible_rect() if viewport else Rect2(Vector2.ZERO, Vector2(1920, 1080))
+		var viewport_size: Vector2 = viewport_rect.size
 		
 		# Calculate positions
 		var positions: Array[Vector2] = layout.call(satellite_array, _origin, Vector2(10, 10), viewport_size, _tooltip_size)
+		var clamped_positions: Array[Vector2] = _clamp_position_group_to_viewport(positions, satellites, viewport_rect)
 		
 		# Apply positions
 		for i in range(satellites.size()):
+			if i >= clamped_positions.size():
+				break
 			var satellite_data: Dictionary = satellites[i]
 			var panel: PanelContainer = satellite_data.panel
-			var pos: Vector2 = positions[i]
-			
-			# Clamp to viewport
-			var vp: Rect2 = get_viewport().get_visible_rect()
-			var size: Vector2 = panel.get_combined_minimum_size()
-			var clamped_x = clampf(pos.x, vp.position.x + 4.0, vp.end.x - size.x - 4.0)
-			var clamped_y = clampf(pos.y, vp.position.y + 4.0, vp.end.y - size.y - 4.0)
-			pos.x = clamped_x
-			pos.y = clamped_y
-			
-			panel.global_position = pos
+			panel.global_position = clamped_positions[i]
+
+
+func _clamp_position_group_to_viewport(positions: Array[Vector2], satellites: Array, viewport_rect: Rect2) -> Array[Vector2]:
+	if positions.is_empty():
+		return positions
+
+	var has_bounds := false
+	var min_pos := Vector2.ZERO
+	var max_pos := Vector2.ZERO
+	for i in range(mini(positions.size(), satellites.size())):
+		var satellite_data: Dictionary = satellites[i]
+		var panel: PanelContainer = satellite_data.panel
+		if panel == null:
+			continue
+		var pos: Vector2 = positions[i]
+		var size: Vector2 = panel.get_combined_minimum_size()
+		var end_pos: Vector2 = pos + size
+		if not has_bounds:
+			min_pos = pos
+			max_pos = end_pos
+			has_bounds = true
+		else:
+			min_pos.x = minf(min_pos.x, pos.x)
+			min_pos.y = minf(min_pos.y, pos.y)
+			max_pos.x = maxf(max_pos.x, end_pos.x)
+			max_pos.y = maxf(max_pos.y, end_pos.y)
+
+	if not has_bounds:
+		return positions
+
+	var delta := Vector2.ZERO
+	var left_bound: float = viewport_rect.position.x + VIEWPORT_MARGIN
+	var top_bound: float = viewport_rect.position.y + VIEWPORT_MARGIN
+	var right_bound: float = viewport_rect.end.x - VIEWPORT_MARGIN
+	var bottom_bound: float = viewport_rect.end.y - VIEWPORT_MARGIN
+
+	if max_pos.x > right_bound:
+		delta.x = right_bound - max_pos.x
+	if min_pos.x + delta.x < left_bound:
+		delta.x = left_bound - min_pos.x
+
+	if max_pos.y > bottom_bound:
+		delta.y = bottom_bound - max_pos.y
+	if min_pos.y + delta.y < top_bound:
+		delta.y = top_bound - min_pos.y
+
+	var clamped_positions: Array[Vector2] = []
+	for pos in positions:
+		clamped_positions.append(pos + delta)
+	return clamped_positions

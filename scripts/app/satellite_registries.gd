@@ -324,8 +324,6 @@ static func _layout_grid(satellites: Array, origin: Vector2, spacing: Vector2 = 
 	
 	var current_x: float = origin.x + offset_x
 	var current_y: float = origin.y
-	var max_height: float = maxf(600.0, viewport_size.y - origin.y - 4.0)
-	var col_height: float = 0.0
 	
 	for satellite in satellites:
 		var panel: PanelContainer = satellite.get("panel")
@@ -334,15 +332,8 @@ static func _layout_grid(satellites: Array, origin: Vector2, spacing: Vector2 = 
 		
 		var size: Vector2 = panel.get_combined_minimum_size()
 		
-		# Check if we need to wrap to next column
-		if col_height + size.y > max_height and col_height > 0:
-			current_x += size.x + spacing.x
-			current_y = origin.y
-			col_height = 0.0
-		
 		positions.append(Vector2(current_x, current_y))
 		current_y += size.y + spacing.y
-		col_height += size.y + spacing.y
 	
 	return positions
 

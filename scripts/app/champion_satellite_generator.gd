@@ -171,8 +171,7 @@ static func _append_keyword_satellites(keywords: Dictionary, effect_satellites: 
 
 	var damage_keywords: Array = keywords.get("DAMAGE", [])
 	for keyword in damage_keywords:
-		var short_name: String = str(keyword).replace(" damage", "")
-		var damage_spec: SatelliteSpec = SatelliteRegistriesScript.damage_type(StringName(short_name))
+		var damage_spec: SatelliteSpec = SatelliteRegistriesScript.damage_type(StringName(keyword))
 		_append_unique_satellite(effect_satellites, damage_spec)
 
 
@@ -254,9 +253,7 @@ static func _parse_damage_types(champion_id: StringName) -> Array[SatelliteSpec]
 	var damage_keywords: Array = keywords.get("DAMAGE", [])
 
 	for keyword in damage_keywords:
-		# Strip " damage" suffix to match existing usage
-		var short_name: String = keyword.replace(" damage", "")
-		var damage_type: StringName = StringName(short_name)
+		var damage_type: StringName = StringName(keyword)
 		var spec: SatelliteSpec = SatelliteRegistriesScript.damage_type(damage_type)
 		if spec != null:
 			satellites.append(spec)

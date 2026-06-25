@@ -279,15 +279,14 @@ static func _build_damage_type_content(data: Dictionary, context) -> String:
 	var damage_type: StringName = data.get("damage_type", &"")
 	
 	# Use SimConstants.EFFECT_METADATA for color, category, and description
-	var keyword_key: String = "%s damage" % damage_type
-	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(keyword_key, {"color": "#ffffff", "category": "DAMAGE", "description": ""})
+	var metadata: Dictionary = SimConstants.EFFECT_METADATA.get(String(damage_type), {"color": "#ffffff", "category": "DAMAGE", "description": ""})
 	var color: String = metadata.get("color", "#ffffff")
 	var effect_category: String = metadata.get("category", "DAMAGE")
 	# Capitalize to title case
 	effect_category = effect_category.capitalize()
 	var description: String = metadata.get("description", "")
 	
-	var type_name: String = ("%s damage" % damage_type).to_upper()
+	var type_name: String = str(damage_type).to_upper()
 	
 	var lines: PackedStringArray = []
 	lines.append("[color=%s]%s (%s)[/color]" % [color, type_name, effect_category])

@@ -74,13 +74,14 @@ const EFFECT_METADATA: Dictionary = {
 	"shield": {"color": "#66e666", "category": "UTILITY", "description": "Absorbs incoming damage before HP. Decays 1% of the current value per tick."},
 	"stealth": {"color": "#66e666", "category": "UTILITY", "description": "The target cannot be targeted by enemies. Can ends prematurely when attacking or casting unless specified."},
 	"heal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP to the target. Cannot increase a units HP over maximum unless specified."},
+	"lifesteal": {"color": "#66e666", "category": "UTILITY", "description": "Restores HP for a percentage of auto-attack damage dealt."},
 	"dodge": {"color": "#66e666", "category": "UTILITY", "description": "Chance to avoid incoming auto attacks, taking no damage."},
 	"mana": {"color": "#66e666", "category": "UTILITY", "description": "Resource used to cast ultimates. By default 10 mana is generated per auto attack."},
 	"dash": {"color": "#66e666", "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
 	"summon": {"color": "#66e666", "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
-	"physical damage": {"color": "#ff5555", "category": "DAMAGE", "description": "Reduced by the target's armor."},
-	"magic damage": {"color": "#55aaff", "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
-	"true damage": {"color": "#eecfa1", "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
+	"physical": {"color": "#ff5555", "category": "DAMAGE", "description": "Reduced by the target's armor."},
+	"magic": {"color": "#55aaff", "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
+	"true": {"color": "#eecfa1", "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
 }
 
 # ========================================
@@ -172,16 +173,14 @@ static func get_effect_kinds() -> Array[StringName]:
 			kinds.append(StringName(key))
 	return kinds
 
-## Get all damage types from EFFECT_METADATA (short names, e.g., "physical" not "physical damage")
+## Get all damage types from EFFECT_METADATA.
 static func get_damage_types() -> Array[StringName]:
 	var types: Array[StringName] = []
 	for key in EFFECT_METADATA:
 		var metadata: Dictionary = EFFECT_METADATA[key]
 		var category: String = metadata.get("category", "")
 		if category == "DAMAGE":
-			# Strip " damage" suffix to match existing usage
-			var short_name: String = key.replace(" damage", "")
-			types.append(StringName(short_name))
+			types.append(StringName(key))
 	return types
 
 ## Get base effect kind from AOE variant (e.g., "aoe_taunt" → "taunt")

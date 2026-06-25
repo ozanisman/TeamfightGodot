@@ -1403,7 +1403,7 @@ const CHAMPION_DATA := {
 		"passive_name": "Demolition",
 		"passive_desc": "Attacks deal additional 30% physical damage as splash in a 0.5 tile radius.",
 		"ability_name": "Explosive Shell",
-		"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
+		"ability_desc": "Explosive shell that deals 150% physical damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 		"ultimate_name": "Barrage",
 		"ultimate_desc": "Fires a massive artillery shell for 330% physical damage with a 2.0 tile collision radius.",
 		"ability": {

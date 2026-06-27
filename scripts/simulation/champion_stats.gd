@@ -12,7 +12,7 @@ var attack_speed: float = 0.0
 var move_speed: float = 0.0
 var role: StringName = &""
 var armor: float = 0.0
-var magic_resist: float = 0.0
+var ward: float = 0.0
 var tenacity: float = 0.0
 var life_steal: float = 0.0
 var mana_cost: float = 50.0
@@ -34,7 +34,7 @@ func to_dict() -> Dictionary:
 		"move_speed": move_speed,
 		"role": String(role),
 		"armor": armor,
-		"magic_resist": magic_resist,
+		"ward": ward,
 		"tenacity": tenacity,
 		"life_steal": life_steal,
 		"mana_cost": mana_cost,
@@ -57,7 +57,7 @@ static func from_dict(data: Dictionary):
 	stats.move_speed = float(data.get("move_speed", 0.0))
 	stats.role = StringName(String(data.get("role", "")))
 	stats.armor = float(data.get("armor", 0.0))
-	stats.magic_resist = float(data.get("magic_resist", 0.0))
+	stats.ward = float(data.get("ward", 0.0))
 	stats.tenacity = float(data.get("tenacity", 0.0))
 	stats.life_steal = float(data.get("life_steal", 0.0))
 	stats.mana_cost = float(data.get("mana_cost", 50.0))

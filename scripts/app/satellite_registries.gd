@@ -167,10 +167,10 @@ static func _build_minion_content(data: Dictionary, context) -> String:
 	
 	# Defensive stats
 	var armor: float = stats.get("armor", 0.0)
-	var mr: float = stats.get("magic_resist", 0.0)
+	var ward: float = stats.get("ward", 0.0)
 	var tenacity: float = stats.get("tenacity", 0.0) * 100
 	var lifesteal: float = stats.get("life_steal", 0.0) * 100
-	lines.append("Armor: %.0f%% | MR: %.0f%% | Tenacity: %.0f%% | Lifesteal: %.0f%%" % [armor, mr, tenacity, lifesteal])
+	lines.append("Armor: %.0f%% | Ward: %.0f%% | Tenacity: %.0f%% | Lifesteal: %.0f%%" % [armor, ward, tenacity, lifesteal])
 	
 	# Passive
 	var passive_name: String = str(minion_data.get("passive_name", ""))

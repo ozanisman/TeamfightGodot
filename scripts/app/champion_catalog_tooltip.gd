@@ -241,7 +241,7 @@ func _build_champion_bbcode(champion_id: StringName, unit_data: Dictionary = {})
 	
 	# Defensive stats (higher is better)
 	var armor_str: String = _format_stat_diff_higher_better(float(base_stats.get("armor", 0.0)), float(st.get("armor", 0.0)), "Armor: %.0f%%")
-	var mr_str: String = _format_stat_diff_higher_better(float(base_stats.get("magic_resist", 0.0)), float(st.get("magic_resist", 0.0)), "MR: %.0f%%")
+	var mr_str: String = _format_stat_diff_higher_better(float(base_stats.get("ward", 0.0)), float(st.get("ward", 0.0)), "Ward: %.0f%%")
 	var tenacity_str: String = _format_stat_diff_higher_better(float(base_stats.get("tenacity", 0.0)) * 100, float(st.get("tenacity", 0.0)) * 100, "Tenacity: %.0f%%")
 	var lifesteal_str: String = _format_stat_diff_higher_better(float(base_stats.get("life_steal", 0.0)) * 100, float(st.get("life_steal", 0.0)) * 100, "Lifesteal: %.0f%%")
 	lines.append("%s | %s | %s | %s" % [armor_str, mr_str, tenacity_str, lifesteal_str])
@@ -281,8 +281,8 @@ func _build_effective_stats_from_unit_data(unit_data: Dictionary, champion_id: S
 		effective_stats["move_speed"] = float(unit_data["move_speed"])
 	if unit_data.has("armor"):
 		effective_stats["armor"] = float(unit_data["armor"])
-	if unit_data.has("magic_resist"):
-		effective_stats["magic_resist"] = float(unit_data["magic_resist"])
+	if unit_data.has("ward"):
+		effective_stats["ward"] = float(unit_data["ward"])
 	if unit_data.has("tenacity"):
 		effective_stats["tenacity"] = float(unit_data["tenacity"])
 	if unit_data.has("life_steal"):

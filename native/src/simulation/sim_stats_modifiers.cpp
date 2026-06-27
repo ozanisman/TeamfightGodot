@@ -277,6 +277,10 @@ void apply_stacked_stat_modifier(UnitState &source, UnitState &target, StringNam
 	target.stat_stacks[stack_key] = stack_entry;
 }
 
+// TODO: Support a shared stack cap across multiple stats for one modifier (e.g. Earthbender's
+// Earthen Protection needs +5 armor and +5 ward on the same stack). Currently each stat has a
+// separate stack key "stat_name|reason", so the same reason on two stats produces two
+// independent stacks. Add a stack_group or multi_stat_modifier concept to enforce one cap.
 String get_stack_key(StringName stat_name, const String &reason) {
 	return String(stat_name) + "|" + reason;
 }

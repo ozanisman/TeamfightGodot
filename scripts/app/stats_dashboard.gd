@@ -164,6 +164,7 @@ var _matchup_right_panel: VBoxContainer
 var _aggregate_extremes_panel: VBoxContainer
 var _champion_list: ItemList
 var _current_champion: String = ""
+var _champion_search_text: String = ""
 var _current_view_mode: int = 2  # 0=vs, 1=with, 2=both
 var _current_sort_mode: int = 0  # 0=winrate_desc, 1=winrate_asc, 2=wins, 3=losses, 4=alpha
 var _restoring_selection: bool = false  # Flag to prevent recursive calls during selection restore
@@ -1787,6 +1788,7 @@ func _build_matchup_ui() -> void:
 	left_panel.add_child(_section_label("CHAMPION"))
 	var champion_search := LineEdit.new()
 	champion_search.placeholder_text = "Search champion..."
+	champion_search.text = _champion_search_text
 	champion_search.custom_minimum_size.y = UI_MIN_CONTROL_H
 	champion_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	champion_search.text_changed.connect(_on_champion_search_changed)
@@ -1798,16 +1800,7 @@ func _build_matchup_ui() -> void:
 	left_panel.add_child(champion_list)
 	champion_list.item_selected.connect(_on_champion_selected)
 	_champion_list = champion_list  # Store reference for refresh
-	
-	# Populate champion list
-	for champion_unit_id in _matchup_loader.champions:
-		var champion_name := _unit_id_to_name(champion_unit_id)
-		var index = champion_list.add_item(champion_name)
-		var role: String = str(_unit_roles.get(champion_unit_id, ""))
-		var color: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
-		champion_list.set_item_custom_fg_color(index, color)
-		# Store unit_id as metadata for selection
-		champion_list.set_item_metadata(index, champion_unit_id)
+	_populate_matchup_champion_list()
 	
 	# View mode
 	left_panel.add_child(_section_label("VIEW MODE"))
@@ -2036,6 +2029,10 @@ func _show_matchup_error(error_message: String) -> void:
 
 
 func _show_matchup_placeholder(parent: Control) -> void:
+	if parent == null:
+		return
+	for child in parent.get_children():
+		child.queue_free()
 	var placeholder := Label.new()
 	placeholder.text = "Select a champion to view matchup analysis"
 	placeholder.add_theme_color_override("font_color", UiTokensScript.COLOR_SUBTLE)
@@ -2046,8 +2043,37 @@ func _show_matchup_placeholder(parent: Control) -> void:
 	parent.add_child(placeholder)
 
 
+func _populate_matchup_champion_list() -> void:
+	if _champion_list == null:
+		return
+	var saved_champion: String = _current_champion
+	var query: String = _champion_search_text.strip_edges().to_lower()
+	_champion_list.clear()
+	for champion_unit_id in _matchup_loader.champions:
+		var champion_key := String(champion_unit_id)
+		var champion_name := _unit_id_to_name(champion_key)
+		if not query.is_empty() and not champion_name.to_lower().contains(query) and not champion_key.to_lower().contains(query):
+			continue
+		var index: int = _champion_list.add_item(champion_name)
+		var role: String = str(_unit_roles.get(champion_key, ""))
+		var color: Color = SimConstantsScript.ROLE_COLORS.get(role, UiTokensScript.COLOR_TEXT) as Color
+		_champion_list.set_item_custom_fg_color(index, color)
+		_champion_list.set_item_metadata(index, champion_key)
+
+	if saved_champion.is_empty():
+		return
+	for i in range(_champion_list.get_item_count()):
+		if String(_champion_list.get_item_metadata(i)) == saved_champion:
+			_champion_list.select(i)
+			return
+	_current_champion = ""
+	if _matchup_right_panel != null:
+		_show_matchup_placeholder(_matchup_right_panel)
+
+
 func _on_champion_search_changed(text: String) -> void:
-	pass  # TODO: Implement search filtering
+	_champion_search_text = text
+	_populate_matchup_champion_list()
 
 
 func _on_champion_selected(index: int) -> void:
@@ -2543,7 +2569,7 @@ func _refresh_matchup_data() -> void:
 		if not saved_champion.is_empty() and _champion_list != null:
 			var champion_index = -1
 			for i in range(_champion_list.get_item_count()):
-				if _champion_list.get_item_text(i) == saved_champion:
+				if String(_champion_list.get_item_metadata(i)) == saved_champion:
 					champion_index = i
 					break
 			

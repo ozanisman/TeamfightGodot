@@ -57,7 +57,7 @@ double apply_damage(
 		const double armor = target.stats_dirty ? get_effective_armor(target) : target.cached_armor;
 		final_damage *= (1.0 - armor / DEFENSE_PERCENT_SCALE);
 	} else if (damage_is_magic) {
-		const double mr = target.stats_dirty ? get_effective_magic_resist(target) : target.cached_magic_resist;
+		const double mr = target.stats_dirty ? get_effective_ward(target) : target.cached_ward;
 		final_damage *= (1.0 - mr / DEFENSE_PERCENT_SCALE);
 	}
 

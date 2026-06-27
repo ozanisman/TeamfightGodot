@@ -31,7 +31,7 @@ The draft recommender's older batch metric plateaued near 63.5% accuracy, but th
 
 **Catalog data still not fully modeled:**
 - 50+ effect kinds (damage, CC, mobility, sustain, defense, utility, advanced triggers)
-- Champion stats: max_hp, attack_damage, attack_range, attack_speed, move_speed, armor, magic_resist, tenacity, life_steal, mana_cost, ability_cd, projectile_speed, projectile_radius
+- Champion stats: max_hp, attack_damage, attack_range, attack_speed, move_speed, armor, ward, tenacity, life_steal, mana_cost, ability_cd, projectile_speed, projectile_radius
 - Advanced mechanics: hp_threshold_damage_multiplier, distance_threshold_multiplier, target_status_multiplier, every_n_attacks_stun, stealth, summon_ally, redirect_damage, reflect_damage
 - Effect parameters: radius, duration, damage_ratio, cooldown, mana cost, conditionals
 

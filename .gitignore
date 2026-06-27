@@ -28,6 +28,7 @@ native/build_ninja/
 *.uid
 .aider*
 *.csv
+!fixtures/stats_dashboard/role_combinations.csv
 wiki/.obsidian/
 compile_commands.json
 

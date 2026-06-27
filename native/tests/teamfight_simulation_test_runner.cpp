@@ -190,13 +190,13 @@ struct TestWorld {
 		unit.combat.max_hp = 500.0;
 		unit.combat.attack_damage = 20.0;
 		unit.combat.armor = 0.0;
-		unit.combat.magic_resist = 0.0;
+		unit.combat.ward = 0.0;
 		unit.combat.projectile_speed = 10.0;
 		unit.combat.projectile_radius = 0.0;
 		unit.cached_max_hp = unit.combat.max_hp;
 		unit.cached_attack_damage = unit.combat.attack_damage;
 		unit.cached_armor = unit.combat.armor;
-		unit.cached_magic_resist = unit.combat.magic_resist;
+		unit.cached_ward = unit.combat.ward;
 		unit.cached_projectile_speed = unit.combat.projectile_speed;
 		unit.cached_projectile_radius = unit.combat.projectile_radius;
 		unit.stats_dirty = false;

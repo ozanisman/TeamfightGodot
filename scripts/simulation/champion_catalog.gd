@@ -174,7 +174,7 @@ static func _build_stats(data: Dictionary) -> ChampionStatsScript:
 	stats.attack_speed = data.get("attack_speed", 0.0)
 	stats.move_speed = data.get("move_speed", 0.0)
 	stats.armor = data.get("armor", 0.0)
-	stats.magic_resist = data.get("magic_resist", 0.0)
+	stats.ward = data.get("ward", 0.0)
 	stats.tenacity = data.get("tenacity", 0.0)
 	stats.life_steal = data.get("life_steal", 0.0)
 	stats.mana_cost = data.get("mana_cost", 50.0)
@@ -249,7 +249,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.15,
 			"move_speed": 0.75,
 			"armor": 20,
-			"magic_resist": 20,
+			"ward": 20,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 90.0,
@@ -343,7 +343,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.10,
 			"move_speed": 0.80,
 			"armor": 5,
-			"magic_resist": 5,
+			"ward": 5,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -354,9 +354,9 @@ const CHAMPION_DATA := {
 			"passive_id": &"eagle_eye",
 			"respawn_time": 0.0,
 		},
-		"description": "A swift ranged attacker who fires volleys of arrows that reduce enemy armor.",
+		"description": "A swift ranged attacker who fires volleys of arrows that shred enemy Armor.",
 		"passive_name": "Eagle Eye",
-		"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
+		"passive_desc": "Each arrow reduces the target's Armor by 2 for 3.0 seconds. (Max 7 stacks)",
 		"ability_name": "Volley",
 		"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
 		"ultimate_name": "Rain of Arrows",
@@ -437,7 +437,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.75,
 			"move_speed": 0.58,
 			"armor": 32,
-			"magic_resist": 32,
+			"ward": 32,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -539,7 +539,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.15,
 			"move_speed": 0.90,
 			"armor": 11,
-			"magic_resist": 11,
+			"ward": 11,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -622,7 +622,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.70,
 			"move_speed": 0.65,
 			"armor": 5,
-			"magic_resist": 5,
+			"ward": 5,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -637,9 +637,9 @@ const CHAMPION_DATA := {
 		"passive_name": "Deadeye",
 		"passive_desc": "Deals 30% bonus damage to targets at least 2.0 tiles away.",
 		"ability_name": "Headshot",
-		"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
+		"ability_desc": "Fires a precise shot for 150% physical damage.",
 		"ultimate_name": "Snipe",
-		"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
+		"ultimate_desc": "Fires a lethal long-range shot for 350% physical damage.",
 		"ability": {
 			"kind": &"projectile",
 			"params": {
@@ -686,7 +686,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.10,
 			"move_speed": 0.80,
 			"armor": 18,
-			"magic_resist": 15,
+			"ward": 15,
 			"tenacity": 0.0,
 			"life_steal": 0.10,
 			"mana_cost": 100.0,
@@ -764,7 +764,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.70,
 			"move_speed": 0.7,
 			"armor": 35,
-			"magic_resist": 45,
+			"ward": 45,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 90.0,
@@ -830,7 +830,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.4,
 			"move_speed": 0.98,
 			"armor": 10,
-			"magic_resist": 10,
+			"ward": 10,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -886,7 +886,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.75,
 			"move_speed": 0.45,
 			"armor": 5,
-			"magic_resist": 15,
+			"ward": 15,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -948,7 +948,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.70,
 			"move_speed": 0.60,
 			"armor": 40,
-			"magic_resist": 40,
+			"ward": 40,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -1039,7 +1039,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.85,
 			"move_speed": 0.9,
 			"armor": 10,
-			"magic_resist": 10,
+			"ward": 10,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -1114,18 +1114,18 @@ const CHAMPION_DATA := {
 			"unit_id": &"warlock",
 			"name": &"Warlock",
 			"role": &"mage",
-			"max_hp": 250.0,
-			"attack_damage": 16.0,
+			"max_hp": 230.0,
+			"attack_damage": 15.0,
 			"attack_range": 0.3,
 			"attack_speed": 0.70,
 			"move_speed": 0.70,
-			"armor": 15,
-			"magic_resist": 15,
+			"armor": 12,
+			"ward": 12,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"mana_cost": 30.0,
+			"mana_cost": 80.0,
 			"mana_per_attack": 10.0,
-			"ability_cd": 2.5,
+			"ability_cd": 3.0,
 			"projectile_speed": 0.0,
 			"projectile_radius": 0.0,
 			"passive_id": &"soul_feast",
@@ -1133,11 +1133,11 @@ const CHAMPION_DATA := {
 		},
 		"description": "A melee sorcerer who siphons the life force of his enemies to sustain himself.",
 		"passive_name": "Soul Feast",
-		"passive_desc": "Gains permanent max HP equal to 50% of self healing.",
+		"passive_desc": "Gains max HP equal to 50% of self healing.",
 		"ability_name": "Chaos Rift",
-		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. At the end, explodes in a 3.0 tile radius for 50% of the total damage dealt and heals for the same amount. If interrupted, explodes in a 3.0 tile radius for 100% of the total damage dealt and heals for the same amount.",
-		"ultimate_name": "",
-		"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
+		"ability_desc": "Channels for 3s. Every 0.5s deals 50% magic damage in a 1.5 tile radius and heals for 25% of damage dealt. When finished or interrupted, explodes in a 2.0 tile radius for 50% of the total damage dealt and heals for 50% of the damage dealt.",
+		"ultimate_name": "Soul Collapse",
+		"ultimate_desc": "Deals 300% magic damage in a 3.0 tile radius and heals for 50% of damage dealt.",
 		"ability": {
 			"kind": &"channel",
 			"params": {
@@ -1178,7 +1178,7 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"aoe_damage",
 								"params": {
-									"radius": 3.0,
+									"radius": 2.0,
 									"damage_ratio": 0.5,
 									"use_accumulated_damage": true,
 									"damage_type": "magic",
@@ -1188,7 +1188,7 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"damage_based_heal",
 								"params": {
-									"damage_ratio": 1.0,
+									"damage_ratio": 0.5,
 									"use_accumulated_damage": true,
 									"reason": "Chaos Rift"
 								}
@@ -1204,8 +1204,8 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"aoe_damage",
 								"params": {
-									"radius": 3.0,
-									"damage_ratio": 1.0,
+									"radius": 2.0,
+									"damage_ratio": 0.5,
 									"use_accumulated_damage": true,
 									"damage_type": "magic",
 									"reason": "Chaos Rift"
@@ -1214,7 +1214,7 @@ const CHAMPION_DATA := {
 							{
 								"kind": &"damage_based_heal",
 								"params": {
-									"damage_ratio": 1.0,
+									"damage_ratio": 0.5,
 									"use_accumulated_damage": true,
 									"reason": "Chaos Rift"
 								}
@@ -1224,10 +1224,33 @@ const CHAMPION_DATA := {
 					}
 				}
 			},
-			"cast_range": 0.0
+			"cast_range": 1.0
 		},
 		"ultimate": {
-			
+			"kind": &"multi_effect",
+			"params": {
+				"effects": [
+					{
+						"kind": &"aoe_damage",
+						"params": {
+							"radius": 3.0,
+							"damage_ratio": 3.0,
+							"damage_type": "magic",
+							"reason": "Soul Collapse"
+						}
+					},
+					{
+						"kind": &"damage_based_heal",
+						"params": {
+							"damage_ratio": 0.50,
+							"use_accumulated_damage": false,
+							"reason": "Soul Collapse"
+						}
+					}
+				],
+				"reason": "Soul Collapse"
+			},
+			"cast_range": 0.0
 		},
 		"passive_ids": [&"soul_feast"],
 	},
@@ -1242,7 +1265,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.87,
 			"move_speed": 0.5,
 			"armor": 5,
-			"magic_resist": 13,
+			"ward": 13,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -1307,7 +1330,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.10,
 			"move_speed": 0.76,
 			"armor": 22,
-			"magic_resist": 22,
+			"ward": 22,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -1388,7 +1411,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.5,
 			"move_speed": 0.2,
 			"armor": 5,
-			"magic_resist": 5,
+			"ward": 5,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -1475,7 +1498,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.0,
 			"move_speed": 0.75,
 			"armor": 7,
-			"magic_resist": 10,
+			"ward": 10,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -1530,7 +1553,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.15,
 			"move_speed": 0.48,
 			"armor": 4,
-			"magic_resist": 13,
+			"ward": 13,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -1594,7 +1617,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.0,
 			"move_speed": 0.75,
 			"armor": 15,
-			"magic_resist": 15,
+			"ward": 15,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -1682,7 +1705,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.80,
 			"move_speed": 0.5,
 			"armor": 10,
-			"magic_resist": 15,
+			"ward": 15,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -1770,7 +1793,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.75,
 			"move_speed": 0.65,
 			"armor": 13,
-			"magic_resist": 13,
+			"ward": 13,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 70.0,
@@ -1783,7 +1806,7 @@ const CHAMPION_DATA := {
 		},
 		"description": "A master of earth manipulation who builds up his durability during combat and roots enemies in place to control the battlefield.",
 		"passive_name": "Earthen Protection",
-		"passive_desc": "When taking damage, gain a stack of 5% armor and magic resist for 5.0s. (Max 12 armor stacks, 10 magic resist stacks)",
+		"passive_desc": "When taking damage, gain a stack of 5 Armor and Ward for 5.0s. (Max 12 stacks)",
 		"ability_name": "Tendril Grasp",
 		"ability_desc": "Creates a tree tendril that roots the target for 2.0s and deals 130% magic damage.",
 		"ultimate_name": "Earthquake",
@@ -1856,7 +1879,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.25,
 			"move_speed": 0.95,
 			"armor": 17,
-			"magic_resist": 13,
+			"ward": 13,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 70.0,
@@ -1944,7 +1967,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 1.10,
 			"move_speed": 0.75,
 			"armor": 22,
-			"magic_resist": 18,
+			"ward": 18,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 90.0,
@@ -2018,7 +2041,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.8,
 			"move_speed": 0.65,
 			"armor": 10,
-			"magic_resist": 18,
+			"ward": 18,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -2114,7 +2137,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.85,
 			"move_speed": 0.6,
 			"armor": 40,
-			"magic_resist": 35,
+			"ward": 35,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 80.0,
@@ -2184,7 +2207,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.8,
 			"move_speed": 0.48,
 			"armor": 6,
-			"magic_resist": 6,
+			"ward": 6,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 100.0,
@@ -2197,11 +2220,11 @@ const CHAMPION_DATA := {
 		},
 		"description": "A restorative support who healls allies with enchanted mists through prolonged fights.",
 		"passive_name": "Restorative Mist",
-		"passive_desc": "All of Mistcaller's healing can overheal. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing HP over 3s.",
+		"passive_desc": "All of Mistcaller's healing can overheal, granting temporary HP. Every 5s, heals all allies in a 3.0 tile radius for 5 + 5% missing HP over 3s.",
 		"ability_name": "Healing Bloom",
-		"ability_desc": "Heals a target for 15% of their maximum HP over 3s.",
+		"ability_desc": "Heals a target for 15% of their max HP over 3s.",
 		"ultimate_name": "Enveloping Mist",
-		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their maximum HP over 3s. Healing can overheal.",
+		"ultimate_desc": "Heals all allies in a 3.5 tile radius for 25% of their max HP over 3s. Healing can overheal.",
 		"ability": {
 			"kind": &"heal_over_time",
 			"params": {
@@ -2245,7 +2268,7 @@ const CHAMPION_DATA := {
 			"attack_speed": 0.70,
 			"move_speed": 0.65,
 			"armor": 10,
-			"magic_resist": 20,
+			"ward": 20,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 120.0,
@@ -2554,11 +2577,11 @@ const PASSIVE_DATA := {
 		{
 			"kind": &"stat_modifier",
 			"params": {
-				"stat_name": "magic_resist",
+				"stat_name": "ward",
 				"additive": 5,
 				"duration": 5.0,
 				"duration_type": "respawn",
-				"max_stacks": 10,
+				"max_stacks": 12,
 				"stack_behavior": "refresh",
 				"reason": "Earthen Protection",
 				"target_self": true
@@ -2704,7 +2727,7 @@ const MINION_DATA := {
 			"attack_speed": 0.85,
 			"move_speed": 0.75,
 			"armor": 5,
-			"magic_resist": 5,
+			"ward": 5,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 0.0,
@@ -2737,7 +2760,7 @@ const MINION_DATA := {
 			"attack_speed": 1.3,
 			"move_speed": 0.9,
 			"armor": 8,
-			"magic_resist": 8,
+			"ward": 8,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
 			"mana_cost": 0.0,
@@ -2770,7 +2793,7 @@ const MINION_DATA := {
 			"attack_speed": 0.9,
 			"move_speed": 0.5,
 			"armor": 15,
-			"magic_resist": 15,
+			"ward": 15,
 			"tenacity": 0.0,
 			"life_steal": 0.15,
 			"mana_cost": 0.0,

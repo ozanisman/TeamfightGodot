@@ -402,7 +402,7 @@ func _load_mechanical_signals() -> Dictionary:
 		var ability_cycle: float = maxf(stats.ability_cd, stats.mana_cost / maxf(stats.mana_per_attack * stats.attack_speed, 0.001))
 		var ability_dps: float = (damage_ratio_sum * stats.attack_damage) / maxf(ability_cycle, 0.001)
 		var estimated_dps: float = attack_dps + ability_dps
-		var avg_resist: float = (stats.armor + stats.magic_resist) * 0.5
+		var avg_resist: float = (stats.armor + stats.ward) * 0.5
 		var effective_hp: float = stats.max_hp * (1.0 + maxf(avg_resist, 0.0) / SimConstantsScript.DEFENSE_PERCENT_SCALE)
 		var burst_estimate: float = stats.attack_damage * (1.0 + damage_ratio_sum)
 		var sustain_per_sec: float = (attack_dps * stats.life_steal) + ((sustain_ratio_sum * stats.max_hp) / maxf(ability_cycle, 0.001))

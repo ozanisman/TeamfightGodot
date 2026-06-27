@@ -28,9 +28,9 @@
 			},
 			"ability_desc": "Fires 3 arrows at the closest enemy, each dealing 70% physical damage.",
 			"ability_name": "Volley",
-			"description": "A swift ranged attacker who fires volleys of arrows that reduce enemy armor.",
+			"description": "A swift ranged attacker who fires volleys of arrows that shred enemy Armor.",
 			"name": "Archer",
-			"passive_desc": "Each arrow reduces the target's armor by 2 for 3.0 seconds. (Max 7 stacks)",
+			"passive_desc": "Each arrow reduces the target's Armor by 2 for 3.0 seconds. (Max 7 stacks)",
 			"passive_ids": [
 				"eagle_eye"
 			],
@@ -43,7 +43,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 1.1,
 				"life_steal": 0.0,
-				"magic_resist": 5.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 150.0,
@@ -55,7 +54,8 @@
 				"respawn_time": 5.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"unit_id": "archer"
+				"unit_id": "archer",
+				"ward": 5.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -137,7 +137,7 @@
 					"reason": "Shell Shock"
 				}
 			},
-			"ability_desc": "Explosive shell that deals 150% physical  damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
+			"ability_desc": "Explosive shell that deals 150% physical damage, stuns for 0.5s, and knocks the target 1.0 tiles away.",
 			"ability_name": "Explosive Shell",
 			"description": "A fragile slow backline siege unit that deals explosive damage to anything in its sights.",
 			"name": "Artillery",
@@ -154,7 +154,6 @@
 				"attack_range": 5.5,
 				"attack_speed": 0.5,
 				"life_steal": 0.0,
-				"magic_resist": 5.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 140.0,
@@ -166,7 +165,8 @@
 				"respawn_time": 5.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"unit_id": "artillery"
+				"unit_id": "artillery",
+				"ward": 5.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -234,7 +234,7 @@
 			"ability_name": "Blood Sacrifice",
 			"description": "A savage warrior who thrives in the heat of battle, healing himself through sheer aggression.",
 			"name": "Berserker",
-			"passive_desc": "Has innate 10% lifesteal and permanent gains +5% lifesteal per takedown.",
+			"passive_desc": "Has innate 10% lifesteal and gains +5% lifesteal per takedown.",
 			"passive_ids": [
 				"bloodlust"
 			],
@@ -247,7 +247,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.1,
 				"life_steal": 0.1,
-				"magic_resist": 15.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 270.0,
@@ -259,7 +258,8 @@
 				"respawn_time": 5.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"unit_id": "berserker"
+				"unit_id": "berserker",
+				"ward": 15.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -301,7 +301,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 0.0,
 				"life_steal": 0.0,
-				"magic_resist": 10.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 115.0,
@@ -313,7 +312,8 @@
 				"respawn_time": 5.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"unit_id": "cleric"
+				"unit_id": "cleric",
+				"ward": 10.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -385,7 +385,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.7,
 				"life_steal": 0.0,
-				"magic_resist": 40.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 350.0,
@@ -397,7 +396,8 @@
 				"respawn_time": 5.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"unit_id": "colossus"
+				"unit_id": "colossus",
+				"ward": 40.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -479,7 +479,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.1,
 				"life_steal": 0.0,
-				"magic_resist": 18.0,
 				"mana_cost": 90.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 280.0,
@@ -491,7 +490,8 @@
 				"respawn_time": 5.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"unit_id": "disarmer"
+				"unit_id": "disarmer",
+				"ward": 18.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -549,7 +549,7 @@
 			"ability_name": "Tendril Grasp",
 			"description": "A master of earth manipulation who builds up his durability during combat and roots enemies in place to control the battlefield.",
 			"name": "Earthbender",
-			"passive_desc": "When taking damage, gain a stack of 5% armor and magic resist for 5.0s. (Max 12 armor stacks, 10 magic resist stacks)",
+			"passive_desc": "When taking damage, gain a stack of 5% Armor and Ward for 5.0s. (Max 12 stacks)",
 			"passive_ids": [
 				"earthen_protection"
 			],
@@ -562,7 +562,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.75,
 				"life_steal": 0.0,
-				"magic_resist": 13.0,
 				"mana_cost": 70.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 360.0,
@@ -574,7 +573,8 @@
 				"respawn_time": 5.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"unit_id": "earthbender"
+				"unit_id": "earthbender",
+				"ward": 13.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -658,7 +658,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 0.8,
 				"life_steal": 0.0,
-				"magic_resist": 15.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 140.0,
@@ -670,7 +669,8 @@
 				"respawn_time": 5.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"unit_id": "frost_mage"
+				"unit_id": "frost_mage",
+				"ward": 15.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -768,7 +768,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.75,
 				"life_steal": 0.0,
-				"magic_resist": 32.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 375.0,
@@ -780,7 +779,8 @@
 				"respawn_time": 5.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"unit_id": "guardian"
+				"unit_id": "guardian",
+				"ward": 32.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -864,7 +864,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.85,
 				"life_steal": 0.0,
-				"magic_resist": 35.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 350.0,
@@ -876,7 +875,8 @@
 				"respawn_time": 5.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"unit_id": "mirror_knight"
+				"unit_id": "mirror_knight",
+				"ward": 35.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -926,7 +926,6 @@
 				"attack_range": 3,
 				"attack_speed": 0.8,
 				"life_steal": 0.0,
-				"magic_resist": 6.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 150.0,
@@ -938,7 +937,8 @@
 				"respawn_time": 5.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"unit_id": "mistcaller"
+				"unit_id": "mistcaller",
+				"ward": 6.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -1005,7 +1005,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.1,
 				"life_steal": 0.0,
-				"magic_resist": 22.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 285.0,
@@ -1017,7 +1016,8 @@
 				"respawn_time": 5.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"unit_id": "monk"
+				"unit_id": "monk",
+				"ward": 22.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -1081,7 +1081,6 @@
 				"attack_range": 2.7,
 				"attack_speed": 0.7,
 				"life_steal": 0.0,
-				"magic_resist": 20.0,
 				"mana_cost": 120.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 200.0,
@@ -1093,7 +1092,8 @@
 				"respawn_time": 5.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"unit_id": "necromancer"
+				"unit_id": "necromancer",
+				"ward": 20.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -1169,7 +1169,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.15,
 				"life_steal": 0.0,
-				"magic_resist": 11.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 180.0,
@@ -1181,7 +1180,8 @@
 				"respawn_time": 5.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"unit_id": "ninja"
+				"unit_id": "ninja",
+				"ward": 11.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -1230,7 +1230,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 0.75,
 				"life_steal": 0.0,
-				"magic_resist": 15.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 185.0,
@@ -1242,7 +1241,8 @@
 				"respawn_time": 5.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"unit_id": "oracle"
+				"unit_id": "oracle",
+				"ward": 15.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -1283,7 +1283,7 @@
 					"target_self": true
 				}
 			},
-			"ability_desc": "Heals self for 20% max HP. [MAKE MORE INTERESTING]",
+			"ability_desc": "Restores 20% max HP to self.",
 			"ability_name": "Lay on Hands",
 			"description": "A holy knight who balances immense durability with powerful self-healing and divine judgment.",
 			"name": "Paladin",
@@ -1300,7 +1300,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.7,
 				"life_steal": 0.0,
-				"magic_resist": 45.0,
 				"mana_cost": 90.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 350.0,
@@ -1312,7 +1311,8 @@
 				"respawn_time": 5.0,
 				"role": "tank",
 				"tenacity": 0.0,
-				"unit_id": "paladin"
+				"unit_id": "paladin",
+				"ward": 45.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -1342,7 +1342,7 @@
 					"reason": "Divine Judgment"
 				}
 			},
-			"ultimate_desc": "Heals self for 40% max HP and deals 200% true damage. [MAKE MORE INTERESTING]",
+			"ultimate_desc": "Restores 40% max HP to self and deals 200% true damage.",
 			"ultimate_name": "Divine Judgment",
 			"unit_id": "paladin"
 		},
@@ -1536,10 +1536,10 @@
 							"additive": 5.0,
 							"duration": 5.0,
 							"duration_type": "respawn",
-							"max_stacks": 10.0,
+							"max_stacks": 12.0,
 							"reason": "Earthen Protection",
 							"stack_behavior": "refresh",
-							"stat_name": "magic_resist",
+							"stat_name": "ward",
 							"target_self": true
 						}
 					}
@@ -1589,7 +1589,17 @@
 				]
 			},
 			"gust_protection": {
-
+				"on_knockback_action": [
+					{
+						"cast_range": -1.0,
+						"kind": "shield",
+						"params": {
+							"max_hp_ratio": 0.1,
+							"reason": "Gust Protection",
+							"target_self": true
+						}
+					}
+				]
 			},
 			"mana_font": {
 				"on_tick": [
@@ -1804,7 +1814,7 @@
 					"reason": "Backstab"
 				}
 			},
-			"ability_desc": "Deals 200% physical damage. [MAKE MORE INTERESTING]",
+			"ability_desc": "Strikes a target for 200% physical damage.",
 			"ability_name": "Backstab",
 			"description": "A nimble backline specialist who strikes with precision and vanishes before being targeted.",
 			"name": "Rogue",
@@ -1821,7 +1831,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.4,
 				"life_steal": 0.0,
-				"magic_resist": 10.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 210.0,
@@ -1833,7 +1842,8 @@
 				"respawn_time": 5.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"unit_id": "rogue"
+				"unit_id": "rogue",
+				"ward": 10.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -1843,7 +1853,7 @@
 					"reason": "Eviscerate"
 				}
 			},
-			"ultimate_desc": "Lethal execution dealing 600% physical damage. [MAKE MORE INTERESTING]",
+			"ultimate_desc": "Executes a target for 600% physical damage.",
 			"ultimate_name": "Execute",
 			"unit_id": "rogue"
 		},
@@ -1944,7 +1954,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.25,
 				"life_steal": 0.0,
-				"magic_resist": 13.0,
 				"mana_cost": 70.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 230.0,
@@ -1956,7 +1965,8 @@
 				"respawn_time": 5.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"unit_id": "silencer"
+				"unit_id": "silencer",
+				"ward": 13.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -2021,7 +2031,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 1.15,
 				"life_steal": 0.0,
-				"magic_resist": 13.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 150.0,
@@ -2033,7 +2042,8 @@
 				"respawn_time": 5.0,
 				"role": "support",
 				"tenacity": 0.0,
-				"unit_id": "siren"
+				"unit_id": "siren",
+				"ward": 13.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -2083,7 +2093,7 @@
 					"reason": "Headshot"
 				}
 			},
-			"ability_desc": "High-precision strike for 150% physical damage. [MAKE MORE INTERESTING]",
+			"ability_desc": "Fires a precise shot for 150% physical damage.",
 			"ability_name": "Headshot",
 			"description": "An elite marksman specializing in devastating single-target shots.",
 			"name": "Sniper",
@@ -2100,7 +2110,6 @@
 				"attack_range": 4.5,
 				"attack_speed": 0.7,
 				"life_steal": 0.0,
-				"magic_resist": 5.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 140.0,
@@ -2112,7 +2121,8 @@
 				"respawn_time": 5.0,
 				"role": "marksman",
 				"tenacity": 0.0,
-				"unit_id": "sniper"
+				"unit_id": "sniper",
+				"ward": 5.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -2131,7 +2141,7 @@
 					"speed_override": 15.0
 				}
 			},
-			"ultimate_desc": "Lethal long-range shot for 350% physical damage. [MAKE MORE INTERESTING]",
+			"ultimate_desc": "Fires a lethal long-range shot for 350% physical damage.",
 			"ultimate_name": "Snipe",
 			"unit_id": "sniper"
 		},
@@ -2184,7 +2194,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.15,
 				"life_steal": 0.0,
-				"magic_resist": 20.0,
 				"mana_cost": 90.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 290.0,
@@ -2196,7 +2205,8 @@
 				"respawn_time": 5.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"unit_id": "swordsman"
+				"unit_id": "swordsman",
+				"ward": 20.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -2291,7 +2301,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 1.0,
 				"life_steal": 0.0,
-				"magic_resist": 15.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 270.0,
@@ -2303,7 +2312,8 @@
 				"respawn_time": 5.0,
 				"role": "fighter",
 				"tenacity": 0.0,
-				"unit_id": "valkyrie"
+				"unit_id": "valkyrie",
+				"ward": 15.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -2443,7 +2453,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.7,
 				"life_steal": 0.0,
-				"magic_resist": 15.0,
 				"mana_cost": 30.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 250.0,
@@ -2455,11 +2464,39 @@
 				"respawn_time": 5.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"unit_id": "warlock"
+				"unit_id": "warlock",
+				"ward": 15.0
 			},
-			"ultimate": null,
-			"ultimate_desc": "[NEED TO ADD AN ULTIMATE]",
-			"ultimate_name": "",
+			"ultimate": {
+				"cast_range": 0.0,
+				"kind": "multi_effect",
+				"params": {
+					"effects": [
+						{
+							"cast_range": -1.0,
+							"kind": "aoe_damage",
+							"params": {
+								"damage_ratio": 3.0,
+								"damage_type": "magic",
+								"radius": 3.0,
+								"reason": "Soul Collapse"
+							}
+						},
+						{
+							"cast_range": -1.0,
+							"kind": "damage_based_heal",
+							"params": {
+								"damage_ratio": 0.5,
+								"reason": "Soul Collapse",
+								"use_accumulated_damage": false
+							}
+						}
+					],
+					"reason": "Soul Collapse"
+				}
+			},
+			"ultimate_desc": "Deals 300% magic damage in a 3.0 tile radius and heals for 50% of damage dealt.",
+			"ultimate_name": "Soul Collapse",
 			"unit_id": "warlock"
 		},
 		"windcaller": {
@@ -2495,17 +2532,6 @@
 								"reason": "Wind Blast",
 								"slow_percentage": 0.2
 							}
-						},
-						{
-							"cast_range": -1.0,
-							"kind": "shield",
-							"params": {
-								"max_hp_ratio": 0.1,
-								"reason": "Gust Protection",
-								"requires_field": "knockback_applied",
-								"requires_result_from": "knockback",
-								"requires_value": true
-							}
 						}
 					],
 					"reason": "Wind Blast"
@@ -2528,7 +2554,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 0.8,
 				"life_steal": 0.0,
-				"magic_resist": 18.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 160.0,
@@ -2540,7 +2565,8 @@
 				"respawn_time": 5.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"unit_id": "windcaller"
+				"unit_id": "windcaller",
+				"ward": 18.0
 			},
 			"ultimate": {
 				"cast_range": 0.0,
@@ -2569,17 +2595,6 @@
 								"radius": 3.5,
 								"reason": "Tornado",
 								"shape": "circle"
-							}
-						},
-						{
-							"cast_range": -1.0,
-							"kind": "shield",
-							"params": {
-								"max_hp_ratio": 0.1,
-								"reason": "Gust Protection",
-								"requires_field": "knockback_applied",
-								"requires_result_from": "aoe_knockback",
-								"requires_value": true
 							}
 						}
 					],
@@ -2625,7 +2640,6 @@
 				"attack_range": 3.5,
 				"attack_speed": 0.87,
 				"life_steal": 0.0,
-				"magic_resist": 13.0,
 				"mana_cost": 100.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 150.0,
@@ -2637,7 +2651,8 @@
 				"respawn_time": 5.0,
 				"role": "mage",
 				"tenacity": 0.0,
-				"unit_id": "wizard"
+				"unit_id": "wizard",
+				"ward": 13.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -2705,7 +2720,6 @@
 				"attack_range": 0.3,
 				"attack_speed": 0.85,
 				"life_steal": 0.0,
-				"magic_resist": 10.0,
 				"mana_cost": 80.0,
 				"mana_per_attack": 10.0,
 				"max_hp": 210.0,
@@ -2717,7 +2731,8 @@
 				"respawn_time": 5.0,
 				"role": "assassin",
 				"tenacity": 0.0,
-				"unit_id": "wraith"
+				"unit_id": "wraith",
+				"ward": 10.0
 			},
 			"ultimate": {
 				"cast_range": -1.0,
@@ -2746,7 +2761,7 @@
 					"reason": "Phantom Strike"
 				}
 			},
-			"ultimate_desc": "Deals 250% magic damage and 1.5s stun. [MAKE MORE INTERESTING]",
+			"ultimate_desc": "Haunts a target for 250% magic damage and a 1.5s stun.",
 			"ultimate_name": "Haunt",
 			"unit_id": "wraith"
 		}

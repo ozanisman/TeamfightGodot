@@ -32,7 +32,7 @@ const STAT_MOD_TYPES: Dictionary = {
 	&"move_speed": "multiply",
 }
 
-# Armor and magic resist are stored as integer points (22 = 22% reduction).
+# Armor and Ward are stored as integer points (22 = 22% reduction).
 const DEFENSE_PERCENT_SCALE: float = 100.0
 
 # ========================================
@@ -90,7 +90,7 @@ const EFFECT_METADATA: Dictionary = {
 	"dash": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Rapidly moves the unit to a target location."},
 	"summon": {"color": EFFECT_COLOR_UTILITY, "category": "UTILITY", "description": "Creates allied units to fight alongside the caster. Their deaths do not count for score."},
 	"physical": {"color": EFFECT_COLOR_PHYSICAL, "category": "DAMAGE", "description": "Reduced by the target's armor."},
-	"magic": {"color": EFFECT_COLOR_MAGIC, "category": "DAMAGE", "description": "Reduced by the target's magic resist."},
+	"magic": {"color": EFFECT_COLOR_MAGIC, "category": "DAMAGE", "description": "Reduced by the target's Ward."},
 	"true": {"color": EFFECT_COLOR_TRUE, "category": "DAMAGE", "description": "Ignores ALL of the target's defensive stats."}
 }
 

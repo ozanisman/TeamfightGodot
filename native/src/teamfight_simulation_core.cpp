@@ -97,6 +97,7 @@ TeamfightSimulationCore::TeamfightSimulationCore() {
 	_bind_sim_host();
 	_refresh_match_context();
 	_match_context_hosts_cached = true;
+	_ensure_catalog_loaded();
 
 	_scratch_projectiles.reserve(32);
 	_active_projectiles.reserve(32);
@@ -791,7 +792,9 @@ double TeamfightSimulationCore::_randf() {
 }
 
 bool TeamfightSimulationCore::is_ready() const {
-	return true;
+	return _catalog.catalog_loaded && !_catalog.champion_catalog.is_empty() && !_catalog.minion_catalog.is_empty() &&
+			!_catalog.role_configs.is_empty() && !_catalog.effective_champion_by_archetype.is_empty() &&
+			!_catalog.passive_registry.is_empty();
 }
 
 void TeamfightSimulationCore::clear() {

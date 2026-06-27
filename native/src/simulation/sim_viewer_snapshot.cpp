@@ -112,7 +112,7 @@ Dictionary build_tick_snapshot(const TickSnapshotInput &input) {
 		d["attack_damage"] = u.stats_dirty ? get_effective_attack_damage(u) : u.cached_attack_damage;
 		d["move_speed"] = u.stats_dirty ? get_effective_move_speed(u) : u.cached_move_speed;
 		d["armor"] = u.stats_dirty ? get_effective_armor(u) : u.cached_armor;
-		d["magic_resist"] = u.stats_dirty ? get_effective_magic_resist(u) : u.cached_magic_resist;
+		d["ward"] = u.stats_dirty ? get_effective_ward(u) : u.cached_ward;
 		d["tenacity"] = u.stats_dirty ? get_effective_tenacity(u) : u.cached_tenacity;
 		d["life_steal"] = u.stats_dirty ? get_effective_life_steal(u) : u.cached_life_steal;
 		d["casting_remaining"] = u.casting_remaining;

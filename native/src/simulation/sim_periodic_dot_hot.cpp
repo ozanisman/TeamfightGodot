@@ -61,6 +61,9 @@ void apply_dot(
 		return;
 	}
 
+	// TODO: Scalar duration preserves fractions, but the periodic engine still requires
+	// duration / tick_interval to be a whole number. Support arbitrary fractional durations
+	// by rounding tick_count and adjusting the final tick proportionally.
 	const double tick_count = duration / tick_interval;
 	const double tick_count_rounded = Math::round(tick_count);
 	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
@@ -191,6 +194,9 @@ void apply_hot(
 		host.viewer_record_hot_status_fx(host.user_data, target, duration, effect_type);
 	}
 
+	// TODO: Scalar duration preserves fractions, but the periodic engine still requires
+	// duration / tick_interval to be a whole number. Support arbitrary fractional durations
+	// by rounding tick_count and adjusting the final tick proportionally.
 	const double tick_count = duration / tick_interval;
 	const double tick_count_rounded = Math::round(tick_count);
 	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
@@ -307,6 +313,7 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 			}
 
 			double damage_per_tick = 0.0;
+			// TODO: review DoT/HoT dynamic calculation: divides by tick_count+1 vs tick_count and recalculates full total instead of remaining.
 			if (effect.damage_total > 0.0) {
 				if (effect.calculation_mode == StringName("dynamic")) {
 					UnitState *source = targeting::unit_by_id(world, effect.source_instance_id);

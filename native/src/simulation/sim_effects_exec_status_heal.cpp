@@ -30,6 +30,7 @@ Dictionary exec_status_heal_shield(
 			UnitState &shield_target = (effect.int0 == 1) ? source : (target_ally == nullptr ? source : *target_ally);
 			double amount = (shield_target.stats_dirty ? get_effective_max_hp(shield_target) : shield_target.cached_max_hp) * effect.scalar0;
 
+			// TODO: review merging shield (damage_ratio via scalar1) and damage_based_shield semantics.
 			double damage_for_ratio = context.damage;
 			if (damage_for_ratio <= 0.0 && context.accumulated_results.has("damage")) {
 				Dictionary damage_result = context.accumulated_results["damage"];

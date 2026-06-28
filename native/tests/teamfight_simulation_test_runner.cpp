@@ -62,6 +62,21 @@ Dictionary damage_based_shield_effect(double ratio) {
 	return effect("damage_based_shield", params);
 }
 
+Dictionary post_damage_mana_gain_effect(double ratio) {
+	Dictionary params;
+	params["damage_ratio"] = ratio;
+	return effect("post_damage_mana_gain", params);
+}
+
+Dictionary accumulated_damage_effect(double ratio) {
+	Dictionary params;
+	params["damage_ratio"] = ratio;
+	params["damage_type"] = "true";
+	params["use_accumulated_damage"] = true;
+	params["reason"] = "Native test accumulated damage";
+	return effect("damage", params);
+}
+
 Dictionary stat_additive_effect(const char *stat_name, double additive, bool target_self, const char *reason) {
 	Dictionary params;
 	params["stat_name"] = stat_name;
@@ -92,6 +107,13 @@ Dictionary require_result(Dictionary effect_dict, const char *from, const char *
 	params["requires_result_from"] = from;
 	params["requires_field"] = field;
 	params["requires_value"] = value;
+	effect_dict["params"] = params;
+	return effect_dict;
+}
+
+Dictionary with_result_key(Dictionary effect_dict, const char *key) {
+	Dictionary params = effect_dict["params"];
+	params["result_key"] = key;
 	effect_dict["params"] = params;
 	return effect_dict;
 }
@@ -296,6 +318,53 @@ bool test_deferred_multi_effect_sibling(String &failure) {
 			expect(!sim::uc(world, source).deferred_multi_effect_active, "deferred multi effect: continuation did not clear", failure);
 }
 
+bool test_deferred_projectile_post_damage_mana_gain(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_unit(1, StringName("player"));
+	const int64_t target_index = test.add_unit(2, StringName("enemy"));
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array sub_effects;
+	sub_effects.append(projectile_effect(60.0));
+	sub_effects.append(post_damage_mana_gain_effect(1.0));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_target_effect(sub_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	test.execute(record, context);
+	sim::SimWorld world = test.world();
+	if (!expect(test.projectiles.size() == 1, "deferred mana: projectile was not created", failure) ||
+			!expect_close(source.mana, 0.0, "deferred mana before impact", failure)) {
+		return false;
+	}
+	sim::combat::CombatHostHooks hooks;
+	sim::combat::resolve_projectile(world, test.host, hooks, test.projectiles.front());
+	return expect_close(source.mana, 50.0, "deferred mana after impact", failure) &&
+			expect_close(target.hp, 440.0, "deferred mana target hp", failure);
+}
+
+bool test_deferred_projectile_channel_accumulated_damage(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_unit(1, StringName("player"));
+	const int64_t target_index = test.add_unit(2, StringName("enemy"));
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	test.cold[static_cast<size_t>(source_index)].is_channeling = true;
+	test.cold[static_cast<size_t>(source_index)].channel_accumulated_damage = 50.0;
+	Array sub_effects;
+	sub_effects.append(projectile_effect(60.0));
+	sub_effects.append(accumulated_damage_effect(1.0));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_target_effect(sub_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	test.execute(record, context);
+	sim::SimWorld world = test.world();
+	if (!expect(test.projectiles.size() == 1, "deferred channel acc: projectile was not created", failure) ||
+			!expect_close(target.hp, 500.0, "deferred channel acc before impact", failure)) {
+		return false;
+	}
+	sim::combat::CombatHostHooks hooks;
+	sim::combat::resolve_projectile(world, test.host, hooks, test.projectiles.front());
+	return expect_close(target.hp, 330.0, "deferred channel acc target hp", failure);
+}
+
 bool test_knockback_mid_chain_merge(String &failure) {
 	TestWorld test;
 	const int64_t source_index = test.add_unit(1, StringName("player"));
@@ -344,6 +413,148 @@ bool test_post_attack_result_chain(String &failure) {
 			expect_close(source.hp, 216.0, "post attack source hp", failure) &&
 			expect_close(context.damage, 32.0, "post attack merged damage", failure) &&
 			expect(context.accumulated_results.has("damage"), "post attack result was not merged", failure);
+}
+
+bool test_multi_effect_result_key_disambiguates_same_kind(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Dictionary skipped_params;
+	skipped_params["flat_amount"] = 200.0;
+	skipped_params["damage_type"] = "true";
+	skipped_params["requires_result_from"] = "opening_damage";
+	skipped_params["requires_field"] = "success";
+	skipped_params["requires_value"] = false;
+	skipped_params["reason"] = "Skipped same-kind damage";
+	Array effects;
+	effects.append(with_result_key(damage_effect(12.0), "opening_damage"));
+	effects.append(effect("damage", skipped_params));
+	effects.append(require_result(damage_based_shield_effect(1.0), "opening_damage", "success", true));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_effect(effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	test.execute(record, context);
+	return expect_close(target.hp, 488.0, "result key target hp", failure) &&
+			expect_close(source.shield, 12.0, "result key shield", failure) &&
+			expect(context.accumulated_results.has("opening_damage"), "result key missing from accumulated results", failure);
+}
+
+bool test_multi_effect_result_key_reports_success(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array combo_effects;
+	combo_effects.append(damage_effect(12.0));
+	Array top_effects;
+	top_effects.append(with_result_key(multi_effect(combo_effects), "combo"));
+	top_effects.append(require_result(damage_effect(10.0), "combo", "success", true));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_effect(top_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	Dictionary result = test.execute(record, context);
+	Dictionary combo_result = result.get("combo", Dictionary());
+	return expect_close(target.hp, 478.0, "multi_effect success target hp", failure) &&
+			expect(bool(combo_result.get("success", false)), "multi_effect combo result missing success", failure);
+}
+
+bool test_aoe_heal_over_time_preserves_fractional_duration(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1, 400.0);
+	const int64_t ally_index = test.add_player(2, 300.0);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &ally = test.unit_at(ally_index);
+	source.pos_x = 0.0;
+	source.pos_y = 0.0;
+	ally.pos_x = 1.0;
+	ally.pos_y = 0.0;
+	Dictionary params;
+	params["radius"] = 2.0;
+	params["flat_amount"] = 30.0;
+	params["duration"] = 1.5;
+	params["tick_interval"] = 0.5;
+	params["target_self"] = true;
+	params["effect_type"] = "fractional_aoe_hot";
+	params["reason"] = "Fractional AoE HoT";
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(effect("aoe_heal_over_time", params));
+	sim::EffectContext context = sim::combat::build_context(source, &source, &source, 0.0, StringName("ability"));
+	test.execute(record, context);
+	sim::SimWorld world = test.world();
+	const auto &source_effects = sim::uc(world, source).periodic_effects;
+	const auto &ally_effects = sim::uc(world, ally).periodic_effects;
+	if (!expect(source_effects.size() == 1, "fractional aoe hot source effect missing", failure) ||
+			!expect(ally_effects.size() == 1, "fractional aoe hot ally effect missing", failure)) {
+		return false;
+	}
+	return expect_close(source_effects[0].remaining_duration, 1.5, "fractional aoe hot source duration", failure) &&
+			expect_close(source_effects[0].tick_interval, 0.5, "fractional aoe hot source tick", failure) &&
+			expect_close(ally_effects[0].remaining_duration, 1.5, "fractional aoe hot ally duration", failure) &&
+			expect_close(ally_effects[0].original_tick_count, 3.0, "fractional aoe hot tick count", failure);
+}
+
+bool test_multi_target_result_key_disambiguates_same_kind(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array sub_effects;
+	sub_effects.append(with_result_key(damage_effect(12.0), "first_hit"));
+	sub_effects.append(damage_effect(10.0));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_target_effect(sub_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	Dictionary result = test.execute(record, context);
+	Dictionary nested_results = result.get("results", Dictionary());
+	return expect_close(target.hp, 478.0, "multi_target result key target hp", failure) &&
+			expect(nested_results.has("first_hit"), "multi_target results missing first_hit key", failure) &&
+			expect(nested_results.has("damage"), "multi_target results missing damage key", failure);
+}
+
+bool test_multi_effect_rejects_success_result_key(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array effects;
+	effects.append(with_result_key(damage_effect(12.0), "success"));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_effect(effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	Dictionary result = test.execute(record, context);
+	return expect(result["success"].get_type() == Variant::BOOL, "multi_effect success field was clobbered by result_key", failure) &&
+			expect(result.has("damage"), "multi_effect missing damage child result after result_key rejected", failure);
+}
+
+bool test_multi_target_success_reports_child_failures(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array sub_effects;
+	sub_effects.append(require_result(damage_effect(12.0), "missing_key", "success", true));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_target_effect(sub_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	Dictionary result = test.execute(record, context);
+	return expect(result["success"].get_type() == Variant::BOOL, "multi_target success is not a bool", failure) &&
+			expect(!bool(result.get("success", true)), "multi_target success should be false when all sub-effects fail", failure);
+}
+
+bool test_multi_target_success_reports_any_child_success(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	Array sub_effects;
+	sub_effects.append(damage_effect(12.0));
+	sub_effects.append(require_result(damage_effect(10.0), "missing_key", "success", true));
+	const sim::EffectRecord record = sim::effects::compile::compile_effect(multi_target_effect(sub_effects));
+	sim::EffectContext context = sim::combat::build_context(source, &target, nullptr, 0.0, StringName("ability"));
+	Dictionary result = test.execute(record, context);
+	return expect(result["success"].get_type() == Variant::BOOL, "multi_target success is not a bool", failure) &&
+			expect(bool(result.get("success", false)), "multi_target success should be true when any sub-effect succeeds", failure);
 }
 
 bool test_knockback_action_terminal(String &failure) {
@@ -589,8 +800,17 @@ Dictionary TeamfightSimulationTestRunner::run_all() {
 	const TestEntry tests[] = {
 		{ "deferred_projectile_heal", &test_deferred_projectile_heal },
 		{ "deferred_multi_effect_sibling", &test_deferred_multi_effect_sibling },
+		{ "deferred_projectile_post_damage_mana_gain", &test_deferred_projectile_post_damage_mana_gain },
+		{ "deferred_projectile_channel_accumulated_damage", &test_deferred_projectile_channel_accumulated_damage },
 		{ "knockback_mid_chain_merge", &test_knockback_mid_chain_merge },
 		{ "post_attack_result_chain", &test_post_attack_result_chain },
+		{ "multi_effect_result_key_disambiguates_same_kind", &test_multi_effect_result_key_disambiguates_same_kind },
+		{ "multi_effect_result_key_reports_success", &test_multi_effect_result_key_reports_success },
+		{ "aoe_heal_over_time_preserves_fractional_duration", &test_aoe_heal_over_time_preserves_fractional_duration },
+		{ "multi_target_result_key_disambiguates_same_kind", &test_multi_target_result_key_disambiguates_same_kind },
+		{ "multi_target_success_reports_child_failures", &test_multi_target_success_reports_child_failures },
+		{ "multi_target_success_reports_any_child_success", &test_multi_target_success_reports_any_child_success },
+		{ "multi_effect_rejects_success_result_key", &test_multi_effect_rejects_success_result_key },
 		{ "knockback_action_terminal", &test_knockback_action_terminal },
 		{ "heal_accumulation_and_post_heal_chain", &test_heal_accumulation_and_post_heal_chain },
 		{ "post_heal_inherits_action_chain", &test_post_heal_inherits_action_chain },

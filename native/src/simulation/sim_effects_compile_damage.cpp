@@ -168,23 +168,22 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		return true;
 	}
 	if (kind == sn_aoe_heal_over_time()) {
-		// AoE parameters
-		compiled.scalar0 = double(tracker.get("radius", 0.0));
+		// AoE parameters (radius is parsed into aoe_shape_params below)
+		compiled.scalar0 = double(tracker.get("tick_interval", 1.0));
 		// HoT ratio parameters (now represent TOTAL amounts over full duration)
 		compiled.scalar1 = double(tracker.get("max_hp_ratio", 0.0));
 		compiled.scalar2 = double(tracker.get("current_hp_ratio", 0.0));
 		compiled.scalar3 = double(tracker.get("missing_hp_ratio", 0.0));
 		compiled.scalar4 = double(tracker.get("flat_amount", 0.0));
-		compiled.scalar5 = double(tracker.get("tick_interval", 1.0));
+		compiled.scalar5 = double(tracker.get("duration", 0.0));  // Duration must stay in a scalar to preserve fractions
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
-		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.reason = String(tracker.get("reason", "AOE Heal Over Time"));
 		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
-		compiled.int1 = int64_t(tracker.get("duration", 0.0));  // Duration stays in int1
-		compiled.int2 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
-		compiled.int3 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.int1 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
+		compiled.int2 = tracker.get("target_self", false) ? 1 : 0;
 		String calculation_str = String(tracker.get("calculation", "fixed"));
-		compiled.int4 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
+		compiled.int3 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
 		compiled.aoe_shape_params = parse_aoe_shape_metadata(params, tracker);
 		return true;
 	}

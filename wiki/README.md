@@ -65,6 +65,7 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 | [projectile_system.md](concepts/projectile_system.md) | Projectile movement, collision, splash damage |
 | [shield_system.md](concepts/shield_system.md) | Shield mechanics, decay, tracking |
 | [mana_system.md](concepts/mana_system.md) | Mana resource mechanics |
+| [match_telemetry.md](concepts/match_telemetry.md) | Per-unit telemetry counters |
 | [channel_system.md](concepts/channel_system.md) | Sustained interruptible channel effects |
 | [spawn_system.md](concepts/spawn_system.md) | Initial team composition and positioning |
 | [respawn_system.md](concepts/respawn_system.md) | Death, respawn timing, spawn slots |

@@ -161,7 +161,7 @@ bool effect_target_self(const EffectRecord &e) {
 			return e.int0 != 0;
 		case EFFECT_OPCODE_STEALTH:
 		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME:
-			return e.int3 != 0;
+			return e.int2 != 0;
 		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME:
 			return e.int2 != 0;
 		default:

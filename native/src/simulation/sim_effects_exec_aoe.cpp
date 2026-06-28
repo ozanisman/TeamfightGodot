@@ -102,8 +102,8 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 			Dictionary aoe_hot_result;
 			aoe_hot_result["success"] = true;
 			sim::periodic::apply_aoe_hot_shape(world, host, source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
-					   double(effect.int1), effect.scalar5,
-					   effect.stacking_mode, effect.int0, effect.int2 != 0, effect.effect_type, effect.reason, effect.int3 != 0, context.action_kind, effect.int4 == 1);
+					   effect.scalar5, effect.scalar0,
+					   effect.stacking_mode, effect.int0, effect.int1 != 0, effect.effect_type, effect.reason, effect.int2 != 0, context.action_kind, effect.int3 == 1);
 			aoe_hot_result["aoe_hot_applied"] = true;
 			return aoe_hot_result;
 		}

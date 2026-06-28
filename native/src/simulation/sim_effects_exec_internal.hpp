@@ -1,6 +1,7 @@
 #ifndef SIM_EFFECTS_EXEC_INTERNAL_HPP
 #define SIM_EFFECTS_EXEC_INTERNAL_HPP
 
+#include "sim_effects_compile.hpp"
 #include "sim_effects_host.hpp"
 #include "sim_effect_kinds.inl.hpp"
 #include "sim_status.hpp"
@@ -15,6 +16,7 @@ namespace sim::effects::execution {
 namespace internal {
 
 using namespace sim::effect_kinds;
+using sim::effects::compile::result_slot_key;
 
 inline UnitState *unit_by_id(SimWorld &world, int64_t instance_id) {
 	auto it = world.unit_index_map.find(instance_id);

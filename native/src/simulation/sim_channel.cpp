@@ -65,6 +65,7 @@ void clear_channel_state(UnitStateCold &cold, bool preserve_deferred_chains = fa
 }
 
 bool should_interrupt_channel(SimWorld &world, UnitState &unit, const UnitStateCold &cold) {
+	// TODO: full review of channel range-check logic (root skip, ally-targeted channels, etc.).
 	if (!unit.alive) {
 		return true;
 	}

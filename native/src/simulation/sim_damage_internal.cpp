@@ -140,6 +140,7 @@ void run_post_take_damage_passives(
 	if (post_take_damage_effects.empty()) {
 		return;
 	}
+	// TODO: review post_take_damage source semantics. Currently set to target; decide whether attacker should be source.
 	combat::passive_hooks::Event event;
 	event.source = &target;
 	event.set_damage = true;

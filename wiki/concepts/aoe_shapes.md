@@ -8,4 +8,4 @@ Shapes: circle (radius), cone (radius, width, rotation), rectangle (width, heigh
 
 Shape iteration uses spatial broad-phase when alive team count >= 4 (SPATIAL_BROAD_PHASE_TEAM_THRESHOLD = 4). Spatial grid divides world into 8x8 buckets (SPATIAL_GRID_DIM = 8) for O(1) lookup instead of O(n) brute force.
 
-AOE effect opcodes: aoe_damage, aoe_heal, aoe_stun, aoe_slow, aoe_root, aoe_silence, aoe_disarm, aoe_taunt, aoe_knockback, aoe_reflect, aoe_damage_over_time, aoe_heal_over_time. Each applies effect to all units matching shape and team_filter (ally/enemy).
+AOE effect opcodes: aoe_damage, aoe_stun, aoe_slow, aoe_root, aoe_silence, aoe_disarm, aoe_taunt, aoe_knockback, aoe_reflect, aoe_damage_over_time, aoe_heal_over_time. Each applies effect to all units matching shape and team_filter (ally/enemy).

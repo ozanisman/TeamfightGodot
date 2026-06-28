@@ -34,6 +34,13 @@ struct ParamTracker {
 int64_t opcode_for_kind(const StringName &kind);
 const StringName &kind_for_opcode(int64_t opcode);
 
+inline const StringName &result_slot_key(const EffectRecord &effect) {
+	if (!effect.result_key.is_empty()) {
+		return effect.result_key;
+	}
+	return kind_for_opcode(effect.opcode);
+}
+
 EffectRecord compile_effect(const Dictionary &effect);
 std::vector<EffectRecord> compile_effect_array(const Array &effects);
 

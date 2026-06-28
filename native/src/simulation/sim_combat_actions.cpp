@@ -89,6 +89,7 @@ bool start_cast(
 	if (action_kind == sn_ability()) {
 		ur(world, unit).abilities += 1;
 	} else {
+		ur(world, unit).ultimates += 1;
 		unit.mana = Math::max(0.0, unit.mana - (unit.stats_dirty ? get_effective_mana_cost(unit) : unit.cached_mana_cost));
 	}
 	UnitStateCold &ucast = uc(world, unit);

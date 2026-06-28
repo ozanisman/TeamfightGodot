@@ -2149,7 +2149,6 @@
 			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
-				"cast_range": -1,
 				"effects": [
 					{
 						"cast_range": -1.0,
@@ -2211,7 +2210,6 @@
 			"cast_range": -1.0,
 			"kind": "multi_effect",
 			"params": {
-				"cast_range": -1,
 				"effects": [
 					{
 						"cast_range": -1.0,
@@ -2452,7 +2450,7 @@
 			"attack_range": 0.3,
 			"attack_speed": 0.7,
 			"life_steal": 0.0,
-			"mana_cost": 80.0,
+			"mana_cost": 50.0,
 			"mana_per_attack": 10.0,
 			"max_hp": 230.0,
 			"move_speed": 0.7,

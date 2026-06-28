@@ -1,44 +1,140 @@
 {
 	"kits": {
-		"test_ability": {
+		"artillery_nuke_ability": {
 			"ability": {
 				"cast_range": -1.0,
 				"kind": "projectile",
 				"params": {
 					"on_hit": {
-						"kind": "damage",
+						"kind": "multi_effect",
 						"params": {
-							"damage_ratio": 1.0,
-							"damage_type": "physical",
-							"reason": "Test",
-							"trigger_on_hit": true
+							"effects": [
+								{
+									"kind": "damage",
+									"params": {
+										"damage_ratio": 3.0,
+										"damage_type": "magic",
+										"reason": "Artillery Nuke",
+										"trigger_on_hit": true
+									}
+								},
+								{
+									"kind": "stun",
+									"params": {
+										"duration": 1.5,
+										"reason": "Artillery Nuke"
+									}
+								}
+							],
+							"reason": "Artillery Nuke"
 						}
 					},
-					"reason": "Test"
+					"radius_override": 2.0,
+					"reason": "Artillery Nuke",
+					"speed_override": 3.0
 				}
 			}
 		},
-		"test_passive": {
+		"assassin_dodge_passive": {
 			"passive_ids": [
 				"agility",
 				"technique"
 			]
 		},
-		"test_ultimate": {
-			"ultimate": {
+		"balance_suite_weak_artillery_ability": {
+			"ability": {
 				"cast_range": -1.0,
+				"kind": "projectile",
+				"params": {
+					"on_hit": {
+						"kind": "multi_effect",
+						"params": {
+							"effects": [
+								{
+									"kind": "damage",
+									"params": {
+										"damage_ratio": 0.05,
+										"damage_type": "physical",
+										"reason": "Balance suite kit_id test",
+										"trigger_on_hit": true
+									}
+								},
+								{
+									"kind": "stun",
+									"params": {
+										"duration": 0.8,
+										"reason": "Balance suite kit_id test"
+									}
+								}
+							],
+							"reason": "Balance suite kit_id test"
+						}
+					},
+					"radius_override": null,
+					"reason": "Balance suite kit_id test",
+					"speed_override": null
+				}
+			}
+		},
+		"support_heal_ultimate": {
+			"passive_ids": [
+				"rejuvenation"
+			],
+			"ultimate": {
+				"cast_range": 0.0,
 				"kind": "multi_effect",
 				"params": {
 					"effects": [
 						{
-							"kind": "damage",
+							"cast_range": -1.0,
+							"kind": "aoe_heal_over_time",
 							"params": {
-								"damage_ratio": 2.0,
-								"reason": "Test Ultimate"
+								"duration": 1.0,
+								"max_hp_ratio": 0.3,
+								"radius": 2.5,
+								"reason": "Support Heal Ultimate",
+								"tick_interval": 1.0
+							}
+						},
+						{
+							"cast_range": -1.0,
+							"kind": "mana_regen",
+							"params": {
+								"flat_amount": 50.0,
+								"reason": "Support Heal Ultimate"
 							}
 						}
 					],
-					"reason": "Test Ultimate"
+					"reason": "Support Heal Ultimate"
+				}
+			}
+		},
+		"tank_aoe_ultimate": {
+			"ultimate": {
+				"cast_range": 0.0,
+				"kind": "multi_effect",
+				"params": {
+					"effects": [
+						{
+							"cast_range": -1.0,
+							"kind": "aoe_damage",
+							"params": {
+								"damage_type": "physical",
+								"flat_amount": 200.0,
+								"radius": 3.0,
+								"reason": "Tank AOE Ultimate"
+							}
+						},
+						{
+							"cast_range": -1.0,
+							"kind": "stun",
+							"params": {
+								"duration": 2.0,
+								"reason": "Tank AOE Ultimate"
+							}
+						}
+					],
+					"reason": "Tank AOE Ultimate"
 				}
 			}
 		}

@@ -64,7 +64,7 @@ Effects are defined as `EffectSpec` with a `kind` (opcode) and `params` dict. Op
 
 AOE variants: AOE_SLOW, AOE_ROOT, AOE_SILENCE, AOE_DISARM, AOE_KNOCKBACK, AOE_REFLECT (supports damage_type parameter: physical, magic, true, or all), AOE_STUN, AOE_DAMAGE_OVER_TIME, AOE_HEAL_OVER_TIME.
 
-Effects can nest recursively via `effects` arrays and `splash` dicts. Execution passes an `EffectContext` with source/target/distance/action_kind. Results are accumulated in a per-opcode slot store for conditional chaining via `requires_result_from`, `requires_field`, `requires_value`.
+Effects can nest recursively via `effects` arrays and `splash` dicts. Execution passes an `EffectContext` with source/target/distance/action_kind. Results are accumulated in a slot store for conditional chaining via `requires_result_from`, `requires_field`, `requires_value`. By default the slot key is the effect kind; set `result_key` on an effect when a chain contains multiple effects of the same kind and a later effect must read a specific earlier result.
 
 Passive effects trigger on hooks: `on_tick`, `on_attack`, `on_defense`, `on_ability`, `on_ultimate`, `post_attack`, `post_take_damage`, `post_heal`, `on_takedown`, `on_ally_defense`, `on_knockback`, `on_knockback_action`.
 
@@ -77,7 +77,7 @@ All execute hooks share one runner (`passive_hooks::run_bucket`) driven by a dec
 - **Isolation:** channel fields, unrelated heal/takedown state, and `suppress_reflect_chain` are cleared unless the event sets them.
 - **Inheritance:** `ChainInherit::ActionChain` copies cumulative `damage`, `accumulated_results`, and `knockback_applied` from a parent action context.
 - **Distance:** recomputed from `source` and `target` after the payload is applied.
-- **Chaining:** each effect in the hook bucket stores its result in scratch `accumulated_results` (supports `requires_result_from` across separate passive records).
+- **Chaining:** each effect in the hook bucket stores its result in scratch `accumulated_results` under `result_key` or its effect kind (supports `requires_result_from` across separate passive records).
 - **Merge-back:** mid-chain hooks (`post_attack`, `on_knockback`) use `MergePolicy::ToParent` to fold damage deltas, `knockback_applied`, and `accumulated_results` into the parent action context. Terminal hooks (`on_knockback_action`, `post_heal`, `on_takedown`, `post_take_damage`) do not merge.
 
 `post_heal` hook buckets should not include `heal` / `damage_based_heal` opcodes: those opcodes re-enter `run_post_heal_effects` and can recurse. Use `stat_modifier` with `heal_gained_ratio`, or test heal opcode accumulation inside ability `multi_effect` chains instead.
@@ -104,7 +104,7 @@ Knockback hooks inherit action `damage` and `accumulated_results` so conditional
 
 - The first application to a unit copies the parent context into scratch; later `stack` selections for the same unit reuse that scratch.
 - All `sub_effects` and `repeat_count` iterations for that unit share scratch, so sub-effects can chain (e.g. `damage` then `damage_based_heal`).
-- Each sub-effect stores its result in scratch `accumulated_results` for `requires_result_from` conditionals on later sub-effects (no `multi_effect` wrapper required).
+- Each sub-effect stores its result in scratch `accumulated_results` under `result_key` or its effect kind for `requires_result_from` conditionals on later sub-effects (no `multi_effect` wrapper required).
 - When a target application pass finishes, only the **dealt-damage delta** is merged into the parent `context.damage`.
 
 `knockback_applied` is merged to the parent after each sub-effect execution.

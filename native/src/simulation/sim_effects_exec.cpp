@@ -23,14 +23,18 @@ Dictionary run_multi_effect_children_impl(
 		SimHostCallbacks &host,
 		const SimExecCallbacks &hooks,
 		const ::sim::effects::SimMatchHost &match_host) {
+	bool any_success = false;
 	for (size_t child_index = start_child_index; child_index < effect.children.size(); ++child_index) {
 		const EffectRecord &child = effect.children[child_index];
 		context.multi_effect_has_remaining_siblings = (child_index + 1 < effect.children.size());
 		context.accumulated_results = combined_results;
 		Dictionary child_result = execute_recursive(child, context, world, host, hooks, match_host);
-		const StringName &child_kind = sim::effects::compile::kind_for_opcode(child.opcode);
-		if (!child_kind.is_empty()) {
-			combined_results[child_kind] = child_result;
+		if (child_result.has("success") && bool(child_result.get("success", false))) {
+			any_success = true;
+		}
+		const StringName &child_key = result_slot_key(child);
+		if (!child_key.is_empty()) {
+			combined_results[child_key] = child_result;
 			context.accumulated_results = combined_results;
 		}
 		if (child.opcode == EFFECT_OPCODE_MULTI_TARGET && context.source != nullptr) {
@@ -41,10 +45,12 @@ Dictionary run_multi_effect_children_impl(
 				cold.deferred_multi_effect_next_child = child_index + 1;
 				cold.deferred_multi_effect_context = context;
 				cold.deferred_multi_effect_combined_results = combined_results;
+				combined_results["success"] = any_success;
 				return combined_results;
 			}
 		}
 	}
+	combined_results["success"] = any_success;
 	return combined_results;
 }
 
@@ -69,6 +75,7 @@ void resume_deferred_multi_effect(SimWorld &world, SimHostCallbacks &host, UnitS
 	}
 	EffectContext context = cold.deferred_multi_effect_context;
 	context.damage += cold.deferred_effect_projectile_dealt_damage;
+	context.channel_accumulated_damage = cold.channel_accumulated_damage;
 	cold.deferred_effect_projectile_dealt_damage = 0.0;
 	run_multi_effect_children_impl(
 			cold.deferred_multi_effect_record,
@@ -91,30 +98,31 @@ static void record_multi_target_sub_result(
 		Dictionary &nested_results,
 		Dictionary &summary_applications) {
 	const StringName &effect_kind = sim::effects::compile::kind_for_opcode(sub_effect.opcode);
-	if (effect_kind.is_empty()) {
+	const StringName &result_key = sim::effects::compile::result_slot_key(sub_effect);
+	if (result_key.is_empty()) {
 		return;
 	}
 	if (!sub_result.has("success") || !bool(sub_result.get("success", false))) {
 		return;
 	}
-	String effect_kind_str = String(effect_kind);
-	if (!nested_results.has(effect_kind_str)) {
+	String result_key_str = String(result_key);
+	if (!nested_results.has(result_key_str)) {
 		Dictionary effect_dict;
 		Dictionary by_target_dict;
 		effect_dict["by_target"] = by_target_dict;
 		effect_dict["total"] = 0.0;
-		nested_results[effect_kind_str] = effect_dict;
+		nested_results[result_key_str] = effect_dict;
 	}
-	Dictionary effect_dict = nested_results[effect_kind_str];
+	Dictionary effect_dict = nested_results[result_key_str];
 	Dictionary by_target = effect_dict["by_target"];
 	if (!by_target.has(target_id)) {
 		by_target[target_id] = 0.0;
 	}
-	if (!summary_applications.has(effect_kind_str)) {
+	if (!summary_applications.has(result_key_str)) {
 		Dictionary summary_by_target;
-		summary_applications[effect_kind_str] = summary_by_target;
+		summary_applications[result_key_str] = summary_by_target;
 	}
-	Dictionary summary_by_target = summary_applications[effect_kind_str];
+	Dictionary summary_by_target = summary_applications[result_key_str];
 	if (!summary_by_target.has(target_id)) {
 		Array applications;
 		summary_by_target[target_id] = applications;
@@ -132,10 +140,10 @@ static void record_multi_target_sub_result(
 	Array applications = summary_by_target[target_id];
 	applications.append(value);
 	summary_by_target[target_id] = applications;
-	summary_applications[effect_kind_str] = summary_by_target;
+	summary_applications[result_key_str] = summary_by_target;
 	by_target[target_id] = double(by_target[target_id]) + value;
 	effect_dict["total"] = double(effect_dict["total"]) + value;
-	nested_results[effect_kind_str] = effect_dict;
+	nested_results[result_key_str] = effect_dict;
 }
 
 static bool sub_effect_reads_chain_damage(const EffectRecord &sub_effect) {
@@ -146,6 +154,14 @@ static bool sub_effect_reads_chain_damage(const EffectRecord &sub_effect) {
 			return true;
 		case EFFECT_OPCODE_SHIELD:
 			return sub_effect.scalar1 > 0.0;
+		case EFFECT_OPCODE_POST_DAMAGE_MANA_GAIN:
+			return sub_effect.scalar0 != 0.0;
+		case EFFECT_OPCODE_DAMAGE:
+			return sub_effect.int1 != 0;
+		case EFFECT_OPCODE_AOE_DAMAGE:
+			// TODO: aoe_damage only defers when reading channel_accumulated_damage.
+			//       To support splash scaled from projectile impact damage, add a use_context_damage flag to the opcode.
+			return sub_effect.int0 != 0;
 		default:
 			return false;
 	}
@@ -170,13 +186,15 @@ static void save_deferred_multi_target_state(
 		const std::vector<UnitState *> &targets,
 		int64_t scratch_target_id,
 		size_t next_sub_effect,
-		int64_t next_repeat) {
+		int64_t next_repeat,
+		bool any_success) {
 	cold.deferred_multi_target_active = true;
 	cold.deferred_multi_target_effect = effect;
 	cold.deferred_multi_target_parent_context = parent_context;
 	cold.deferred_multi_target_target_context = target_context;
 	cold.deferred_multi_target_nested_results = nested_results;
 	cold.deferred_multi_target_summary_applications = summary_applications;
+	cold.deferred_multi_target_any_success = any_success;
 	cold.deferred_multi_target_target_ids.clear();
 	cold.deferred_multi_target_target_ids.reserve(targets.size());
 	for (UnitState *target_unit : targets) {
@@ -210,7 +228,8 @@ static Dictionary run_multi_target_impl(
 		int64_t start_repeat_index,
 		Dictionary nested_results,
 		Dictionary summary_applications,
-		std::unordered_map<int64_t, EffectContext> *resume_scratch_by_target) {
+		std::unordered_map<int64_t, EffectContext> *resume_scratch_by_target,
+		bool &any_success) {
 	Dictionary multi_result;
 	multi_result["success"] = true;
 
@@ -283,11 +302,14 @@ static Dictionary run_multi_target_impl(
 				}
 				Dictionary sub_result = execute_recursive(sub_effect, target_context, world, host, hooks, match_host);
 				target_context.track_spawned_projectile_for_deferred_chain = false;
+				if (sub_result.has("success") && bool(sub_result.get("success", false))) {
+					any_success = true;
+				}
 
-				const StringName &sub_kind = sim::effects::compile::kind_for_opcode(sub_effect.opcode);
-				if (!sub_kind.is_empty()) {
+				const StringName &sub_key = result_slot_key(sub_effect);
+				if (!sub_key.is_empty()) {
 					Dictionary accumulated = target_context.accumulated_results;
-					accumulated[sub_kind] = sub_result;
+					accumulated[sub_key] = sub_result;
 					target_context.accumulated_results = accumulated;
 				}
 
@@ -315,10 +337,11 @@ static Dictionary run_multi_target_impl(
 							targets,
 							target_id,
 							next_sub,
-							next_repeat);
+							next_repeat,
+							any_success);
 					multi_result["targets_affected"] = targets.size();
 					multi_result["results"] = nested_results;
-					multi_result["success"] = true;
+					multi_result["success"] = any_success;
 					return multi_result;
 				}
 			}
@@ -330,7 +353,7 @@ static Dictionary run_multi_target_impl(
 	uc(world, source).deferred_multi_target_active = false;
 	multi_result["targets_affected"] = targets.size();
 	multi_result["results"] = nested_results;
-	multi_result["success"] = true;
+	multi_result["success"] = any_success;
 	return multi_result;
 }
 
@@ -359,6 +382,7 @@ void resume_deferred_multi_target(SimWorld &world, SimHostCallbacks &host, UnitS
 	EffectContext parent_context = cold.deferred_multi_target_parent_context;
 	const double projectile_dealt = cold.deferred_effect_projectile_dealt_damage;
 	parent_context.damage += projectile_dealt;
+	parent_context.channel_accumulated_damage = cold.channel_accumulated_damage;
 	cold.deferred_effect_projectile_dealt_damage = 0.0;
 
 	const int64_t target_id = cold.deferred_multi_target_target_ids[cold.deferred_multi_target_target_entry_index];
@@ -367,6 +391,7 @@ void resume_deferred_multi_target(SimWorld &world, SimHostCallbacks &host, UnitS
 	if (target_id == scratch_target_id) {
 		EffectContext target_scratch = cold.deferred_multi_target_target_context;
 		target_scratch.damage += projectile_dealt;
+		target_scratch.channel_accumulated_damage = cold.channel_accumulated_damage;
 		scratch_by_target.emplace(target_id, target_scratch);
 	}
 
@@ -406,9 +431,11 @@ void resume_deferred_multi_target(SimWorld &world, SimHostCallbacks &host, UnitS
 			cold.deferred_multi_target_next_repeat,
 			cold.deferred_multi_target_nested_results,
 			cold.deferred_multi_target_summary_applications,
-			&scratch_by_target);
+			&scratch_by_target,
+			cold.deferred_multi_target_any_success);
 	if (!cold.deferred_multi_target_active && cold.deferred_multi_effect_active) {
 		cold.deferred_multi_effect_context.damage = parent_context.damage;
+		cold.deferred_multi_effect_context.channel_accumulated_damage = parent_context.channel_accumulated_damage;
 		cold.deferred_multi_effect_context.knockback_applied =
 				cold.deferred_multi_effect_context.knockback_applied || parent_context.knockback_applied;
 	}
@@ -663,6 +690,7 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 			}
 			
 			// Select targets and run applications (may defer in-flight projectile sub-effects).
+			bool any_success = false;
 			return run_multi_target_impl(
 					effect,
 					context,
@@ -677,7 +705,8 @@ Dictionary execute_impl(const EffectRecord &effect, EffectContext &context, SimW
 					0,
 					Dictionary(),
 					Dictionary(),
-					nullptr);
+					nullptr,
+					any_success);
 		}
 		case ExecRoute::DefaultOk:
 		default: {

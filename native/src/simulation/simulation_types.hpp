@@ -82,6 +82,7 @@ struct EffectRecord {
 	String string1; // General purpose string (stack_reason for consume_stacks)
 	String reason;
 	std::vector<EffectRecord> children;
+	StringName result_key; // Optional stable key for requires_result_from chaining.
 	StringName requires_result_from; // Which previous effect to check
 	StringName requires_field; // Which field to check
 	Variant requires_value; // What value to require
@@ -441,6 +442,7 @@ struct UnitStateCold {
 	int64_t deferred_multi_target_scratch_target_id = 0;
 	size_t deferred_multi_target_next_sub_effect = 0;
 	int64_t deferred_multi_target_next_repeat = 0;
+	bool deferred_multi_target_any_success = false;
 };
 
 /// Per-tick combat and movement hot path; keep compact—cold lives in `UnitStateCold` at same index.

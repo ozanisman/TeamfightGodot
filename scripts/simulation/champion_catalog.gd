@@ -269,6 +269,7 @@ const CHAMPION_DATA := {
 		"ultimate_desc": "Deals 250% physical damage. Consumes all passive stacks to increase the damage by 50% per stack. If it kills the target, gain full passive stacks.",
 		"ability": {
 			"kind": &"multi_effect",
+			"cast_range": -1,
 			"params": {
 				"effects": [
 					{
@@ -291,12 +292,12 @@ const CHAMPION_DATA := {
 						}
 					}
 				],
-				"cast_range": -1,
 				"reason": "Bleeding Cut"
 			}
 		},
 		"ultimate": {
 			"kind": &"multi_effect",
+			"cast_range": -1,
 			"params": {
 				"effects": [
 					{
@@ -326,7 +327,6 @@ const CHAMPION_DATA := {
 						}
 					}
 				],
-				"cast_range": -1,
 				"reason": "Execution"
 			}
 		},
@@ -1123,7 +1123,7 @@ const CHAMPION_DATA := {
 			"ward": 12,
 			"tenacity": 0.0,
 			"life_steal": 0.0,
-			"mana_cost": 80.0,
+			"mana_cost": 50.0,
 			"mana_per_attack": 10.0,
 			"ability_cd": 3.0,
 			"projectile_speed": 0.0,

@@ -87,7 +87,7 @@ const KIT_DATA := {
 	# Example ultimate swap kits
 	"tank_aoe_ultimate": {
 		"ultimate": {
-			"kind": "multi",
+			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
@@ -121,19 +121,21 @@ const KIT_DATA := {
 	# Combined kits with multiple components
 	"support_heal_ultimate": {
 		"ultimate": {
-			"kind": "multi",
+			"kind": "multi_effect",
 			"params": {
 				"effects": [
 					{
-						"kind": "aoe_heal",
+						"kind": "aoe_heal_over_time",
 						"params": {
-							"damage_ratio": 0.3,
+							"max_hp_ratio": 0.3,
 							"radius": 2.5,
+							"duration": 1.0,
+							"tick_interval": 1.0,
 							"reason": "Support Heal Ultimate"
 						}
 					},
 					{
-						"kind": "mana_restore",
+						"kind": "mana_regen",
 						"params": {
 							"flat_amount": 50.0,
 							"reason": "Support Heal Ultimate"
@@ -185,12 +187,18 @@ static func build_kit_catalog() -> Dictionary:
 		
 		# Set passive IDs if present
 		if kit_data.has("passive_ids"):
-			kit.passive_ids = kit_data["passive_ids"]
+			var passive_ids: Array[StringName] = []
+			for passive_id in kit_data["passive_ids"]:
+				passive_ids.append(StringName(String(passive_id)))
+			kit.passive_ids = passive_ids
 		
 		catalog[kit_id] = kit
 	
 	_kit_cache = catalog
-	_kit_ids_cache = catalog.keys()
+	var kit_ids: Array[StringName] = []
+	for kit_id in catalog.keys():
+		kit_ids.append(StringName(String(kit_id)))
+	_kit_ids_cache = kit_ids
 	
 	return catalog.duplicate(true)
 

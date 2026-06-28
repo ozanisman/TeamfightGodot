@@ -11,6 +11,26 @@ namespace sim::effects::compile {
 
 using namespace sim::effect_kinds;
 
+static StringName validated_result_key(const StringName &candidate, const String &kind_str) {
+	if (candidate == sn_success()) {
+		UtilityFunctions::push_error(vformat("Effect kind '%s' uses reserved result_key 'success'. result_key cannot match the runtime success field.", kind_str));
+		return StringName();
+	}
+	if (candidate == sn_condition_failed()) {
+		UtilityFunctions::push_error(vformat("Effect kind '%s' uses reserved result_key 'condition_failed'. result_key cannot match the runtime condition failure field.", kind_str));
+		return StringName();
+	}
+	return candidate;
+}
+
+static StringName validated_status_target(const StringName &candidate) {
+	if (candidate.is_empty() || candidate == sn_source() || candidate == sn_target()) {
+		return candidate;
+	}
+	UtilityFunctions::push_error(vformat("Invalid status_target '%s' in effect parameters. Valid values: 'source', 'target'", String(candidate)));
+	return sn_target();
+}
+
 void ParamTracker::report_unused(const String &effect_kind) const {
 	Array keys = params.keys();
 	for (int i = 0; i < keys.size(); i++) {
@@ -140,6 +160,15 @@ EffectRecord compile_effect(const Dictionary &effect) {
 		Variant effects_value = tracker.get("effects", Variant());
 		Array effects = effects_value.get_type() == Variant::ARRAY ? Array(effects_value) : Array();
 		compiled.children = compile_effect_array(effects);
+		compiled.result_key = validated_result_key(StringName(String(tracker.get("result_key", ""))), kind_str);
+		compiled.requires_result_from = StringName(String(tracker.get("requires_result_from", "")));
+		compiled.requires_field = StringName(String(tracker.get("requires_field", "")));
+		compiled.requires_value = tracker.get("requires_value", Variant());
+		compiled.requires_target_status = StringName(String(tracker.get("requires_target_status", "")));
+		compiled.status_target = validated_status_target(StringName(String(tracker.get("status_target", "target"))));
+		compiled.reason = String(tracker.get("reason", ""));
+		tracker.reason = compiled.reason;
+		tracker.report_unused(kind_str);
 		return compiled;
 	}
 	internal::fill_compiled_kind_fields(compiled, kind, tracker, params);
@@ -152,13 +181,9 @@ EffectRecord compile_effect(const Dictionary &effect) {
 	compiled.requires_result_from = StringName(String(tracker.get("requires_result_from", "")));
 	compiled.requires_field = StringName(String(tracker.get("requires_field", "")));
 	compiled.requires_value = tracker.get("requires_value", Variant());
+	compiled.result_key = validated_result_key(StringName(String(tracker.get("result_key", ""))), kind_str);
 	compiled.requires_target_status = StringName(String(tracker.get("requires_target_status", "")));
-	compiled.status_target = StringName(String(tracker.get("status_target", "target")));
-
-	if (!compiled.status_target.is_empty() && compiled.status_target != sn_source() && compiled.status_target != sn_target()) {
-		UtilityFunctions::push_error(vformat("Invalid status_target '%s' in effect parameters. Valid values: 'source', 'target'", String(compiled.status_target)));
-		compiled.status_target = sn_target();
-	}
+	compiled.status_target = validated_status_target(StringName(String(tracker.get("status_target", "target"))));
 
 	compiled.on_tick_interval = double(tracker.get("on_tick_interval", 1.0));
 	compiled.on_tick_interval = Math::max(compiled.on_tick_interval, DEFAULT_TICK_RATE);

@@ -12,7 +12,7 @@ namespace passive_hooks {
 
 namespace {
 
-using sim::effects::compile::kind_for_opcode;
+using sim::effects::compile::result_slot_key;
 
 void merge_accumulated_results(Dictionary &target, const Dictionary &source) {
 	if (source.is_empty()) {
@@ -139,9 +139,9 @@ void run_bucket(
 
 	for (const EffectRecord &effect : effects) {
 		Dictionary result = host.execute_effect(host, effect, scratch);
-		const StringName &effect_kind = kind_for_opcode(effect.opcode);
-		if (!effect_kind.is_empty()) {
-			scratch.accumulated_results[effect_kind] = result;
+		const StringName &effect_key = result_slot_key(effect);
+		if (!effect_key.is_empty()) {
+			scratch.accumulated_results[effect_key] = result;
 		}
 	}
 

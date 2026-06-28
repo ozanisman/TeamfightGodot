@@ -490,7 +490,7 @@ bool test_aoe_heal_over_time_preserves_fractional_duration(String &failure) {
 	return expect_close(source_effects[0].remaining_duration, 1.5, "fractional aoe hot source duration", failure) &&
 			expect_close(source_effects[0].tick_interval, 0.5, "fractional aoe hot source tick", failure) &&
 			expect_close(ally_effects[0].remaining_duration, 1.5, "fractional aoe hot ally duration", failure) &&
-			expect_close(ally_effects[0].original_tick_count, 3.0, "fractional aoe hot tick count", failure);
+			expect_close(ally_effects[0].original_tick_count, 4.0, "fractional aoe hot tick count", failure);
 }
 
 bool test_multi_target_result_key_disambiguates_same_kind(String &failure) {

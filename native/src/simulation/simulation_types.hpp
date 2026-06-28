@@ -366,7 +366,7 @@ struct UnitStateCold {
 		double remaining_duration = 0.0;
 		double tick_interval = 0.0;
 		double tick_accumulator = 0.0;
-		double original_tick_count = 0.0; // Total ticks over original duration (duration / tick_interval)
+		double original_tick_count = 0.0; // Total ticks including instant application tick (Math::floor(duration / tick_interval) + 1)
 		int64_t source_instance_id = 0;
 		StringName damage_type; // "physical", "magical", "true"
 		StringName stacking_mode; // "refresh", "extend", "separate"

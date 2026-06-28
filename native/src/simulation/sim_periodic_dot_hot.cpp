@@ -63,6 +63,9 @@ void apply_dot(
 
 	const double tick_count = duration / tick_interval;
 	const double tick_count_rounded = Math::floor(tick_count);
+	if (tick_count != tick_count_rounded) {
+		UtilityFunctions::push_warning(vformat("DoT effect '%s' has non-divisible duration (%f) for tick_interval (%f). tick_count is %f, rounded to %f. Duration adjusted from %f to %f.", String(effect_type), duration, tick_interval, tick_count, tick_count_rounded, duration, tick_count_rounded * tick_interval));
+	}
 	if (tick_count_rounded < 1.0) {
 		UtilityFunctions::push_error(vformat("DoT effect '%s' has duration (%f) too short for tick_interval (%f). tick_count is %f (should be >= 1).", String(effect_type), duration, tick_interval, tick_count));
 		return;
@@ -193,6 +196,9 @@ void apply_hot(
 
 	const double tick_count = duration / tick_interval;
 	const double tick_count_rounded = Math::floor(tick_count);
+	if (tick_count != tick_count_rounded) {
+		UtilityFunctions::push_warning(vformat("HoT effect '%s' has non-divisible duration (%f) for tick_interval (%f). tick_count is %f, rounded to %f. Duration adjusted from %f to %f.", String(effect_type), duration, tick_interval, tick_count, tick_count_rounded, duration, tick_count_rounded * tick_interval));
+	}
 	if (tick_count_rounded < 1.0) {
 		UtilityFunctions::push_error(vformat("HoT effect '%s' has duration (%f) too short for tick_interval (%f). tick_count is %f (should be >= 1).", String(effect_type), duration, tick_interval, tick_count));
 		return;

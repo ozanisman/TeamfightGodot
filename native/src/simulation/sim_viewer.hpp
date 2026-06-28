@@ -34,6 +34,12 @@ struct ViewerHooks {
 			double duration,
 			const StringName &effect_type) = nullptr;
 
+	void (*record_dot_status_fx)(
+			void *user_data,
+			const UnitState &target,
+			double duration,
+			const StringName &effect_type) = nullptr;
+
 	void (*record_aoe_shape_fx)(
 			void *user_data,
 			const UnitState &source,
@@ -84,6 +90,8 @@ void record_aoe_shape_fx(
 		const StringName &kind);
 
 void record_hot_status_fx(ViewerFxBuffer &buffer, const UnitState &target, double duration, const StringName &effect_type);
+
+void record_dot_status_fx(ViewerFxBuffer &buffer, const UnitState &target, double duration, const StringName &effect_type);
 
 void record_passive_aoe_fx(ViewerFxBuffer &buffer, const UnitState &unit, double radius, const StringName &passive_id);
 

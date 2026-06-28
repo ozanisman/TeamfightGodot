@@ -123,6 +123,11 @@ struct SimHostCallbacks {
 			const UnitState &target,
 			double duration,
 			const StringName &effect_type) = nullptr;
+	void (*viewer_record_dot_status_fx)(
+			void *user_data,
+			const UnitState &target,
+			double duration,
+			const StringName &effect_type) = nullptr;
 	double (*randf)(void *user_data) = nullptr;
 };
 

@@ -162,6 +162,15 @@ void record_hot_status_fx(ViewerFxBuffer &buffer, const UnitState &target, doubl
 	buffer.push(ev);
 }
 
+void record_dot_status_fx(ViewerFxBuffer &buffer, const UnitState &target, double duration, const StringName & /*effect_type*/) {
+	ViewerFxEvent ev;
+	ev.kind = StringName("dot_status");
+	ev.target_id = target.instance_id;
+	ev.val = duration;
+	ev.radius = 0.0;
+	buffer.push(ev);
+}
+
 void record_passive_aoe_fx(ViewerFxBuffer &buffer, const UnitState &unit, double radius, const StringName &passive_id) {
 	ViewerFxEvent ev;
 	ev.kind = StringName("passive_aoe");

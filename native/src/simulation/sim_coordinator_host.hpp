@@ -44,6 +44,7 @@ void sim_host_viewer_record_damage_fx(
 		const StringName &action_kind,
 		const StringName &damage_type);
 void sim_host_viewer_record_hot_status_fx(void *user_data, const UnitState &target, double duration, const StringName &effect_type);
+void sim_host_viewer_record_dot_status_fx(void *user_data, const UnitState &target, double duration, const StringName &effect_type);
 void sim_host_viewer_record_heal_fx(void *user_data, const UnitState &target, double amount);
 void sim_host_viewer_record_shield_fx(void *user_data, const UnitState &target, double amount);
 void sim_host_viewer_record_aoe_shape_fx(

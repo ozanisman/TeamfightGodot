@@ -61,6 +61,10 @@ void apply_dot(
 		return;
 	}
 
+	if (host.viewer_record_dot_status_fx != nullptr) {
+		host.viewer_record_dot_status_fx(host.user_data, target, duration, effect_type);
+	}
+
 	const double tick_count = duration / tick_interval;
 	const double tick_count_rounded = Math::floor(tick_count);
 	if (tick_count != tick_count_rounded) {

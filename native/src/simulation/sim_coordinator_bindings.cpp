@@ -95,12 +95,14 @@ void TeamfightSimulationCore::_bind_sim_host() {
 	_sim_host_callbacks.viewer_record_heal_fx = &sim_host_viewer_record_heal_fx;
 	_sim_host_callbacks.viewer_record_shield_fx = &sim_host_viewer_record_shield_fx;
 	_sim_host_callbacks.viewer_record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
+	_sim_host_callbacks.viewer_record_dot_status_fx = &sim_host_viewer_record_dot_status_fx;
 	_sim_host_callbacks.randf = &sim_host_randf;
 	_viewer_hooks.user_data = this;
 	_viewer_hooks.record_damage_fx = &sim_host_viewer_record_damage_fx;
 	_viewer_hooks.record_heal_fx = &sim_host_viewer_record_heal_fx;
 	_viewer_hooks.record_shield_fx = &sim_host_viewer_record_shield_fx;
 	_viewer_hooks.record_hot_status_fx = &sim_host_viewer_record_hot_status_fx;
+	_viewer_hooks.record_dot_status_fx = &sim_host_viewer_record_dot_status_fx;
 	_viewer_hooks.record_aoe_shape_fx = &sim_host_viewer_record_aoe_shape_fx;
 	_viewer_hooks.record_passive_aoe_fx = &sim_host_viewer_record_passive_aoe_fx;
 	_viewer_hooks.record_unit_death_fx = &sim_host_viewer_record_unit_death_fx;

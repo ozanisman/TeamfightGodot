@@ -101,6 +101,11 @@ void sim_host_viewer_record_hot_status_fx(void *user_data, const UnitState &targ
 	sim::viewer::record_hot_status_fx(CoordinatorHostAccess::viewer_fx(core), target, duration, effect_type);
 }
 
+void sim_host_viewer_record_dot_status_fx(void *user_data, const UnitState &target, double duration, const StringName &effect_type) {
+	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
+	sim::viewer::record_dot_status_fx(CoordinatorHostAccess::viewer_fx(core), target, duration, effect_type);
+}
+
 void sim_host_viewer_record_heal_fx(void *user_data, const UnitState &target, double amount) {
 	auto *core = static_cast<TeamfightSimulationCore *>(user_data);
 	sim::viewer::record_heal_fx(CoordinatorHostAccess::viewer_fx(core), target, amount);

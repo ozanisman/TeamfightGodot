@@ -69,6 +69,7 @@ struct EffectRecord {
 	double scalar3 = 0.0;
 	double scalar4 = 0.0;
 	double scalar5 = 0.0;
+	double scalar6 = 0.0;
 	// Casting windup override; -1.0 means use global CASTING_WINDUP. NOTE: Compiling for all effect kinds adds memory overhead (~8 bytes per effect). Revisit if this becomes an issue.
 	double windup = -1.0;
 	int64_t int0 = 0;

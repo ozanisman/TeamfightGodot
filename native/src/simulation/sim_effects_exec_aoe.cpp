@@ -91,8 +91,8 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_DAMAGE_OVER_TIME: {
 			Dictionary aoe_dot_result;
 			aoe_dot_result["success"] = true;
-			sim::periodic::apply_aoe_dot_shape(world, host, source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3,
-					   effect.scalar5, effect.scalar4,
+			sim::periodic::apply_aoe_dot_shape(world, host, source, target, effect, effect.scalar3, effect.scalar2, effect.scalar4,
+					   effect.scalar5, effect.scalar1,
 					   effect.damage_type.is_empty() ? StringName("physical") : effect.damage_type,
 					   effect.stacking_mode, effect.int0, effect.effect_type, effect.reason, effect.int2 != 0, context.action_kind, effect.int1 == 1);
 			aoe_dot_result["aoe_dot_applied"] = true;
@@ -101,8 +101,8 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 		case EFFECT_OPCODE_AOE_HEAL_OVER_TIME: {
 			Dictionary aoe_hot_result;
 			aoe_hot_result["success"] = true;
-			sim::periodic::apply_aoe_hot_shape(world, host, source, target, effect, effect.scalar1, effect.scalar2, effect.scalar3, effect.scalar4,
-					   effect.scalar5, effect.scalar0,
+			sim::periodic::apply_aoe_hot_shape(world, host, source, target, effect, effect.scalar2, effect.scalar3, effect.scalar4, effect.scalar6,
+					   effect.scalar5, effect.scalar1,
 					   effect.stacking_mode, effect.int0, effect.int1 != 0, effect.effect_type, effect.reason, effect.int2 != 0, context.action_kind, effect.int3 == 1);
 			aoe_hot_result["aoe_hot_applied"] = true;
 			return aoe_hot_result;

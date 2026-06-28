@@ -144,7 +144,6 @@ void apply_dot(
 	new_effect.stacking_mode = stacking_mode;
 	new_effect.reason = reason;
 	new_effect.allow_overheal = false;
-	new_effect.stack_count = 1;
 	new_effect.max_stacks = max_stacks;
 	new_effect.action_kind = action_kind;
 	new_effect.total_attack_damage_ratio = attack_damage_ratio;
@@ -278,7 +277,6 @@ void apply_hot(
 	new_effect.stacking_mode = stacking_mode;
 	new_effect.reason = reason;
 	new_effect.allow_overheal = allow_overheal;
-	new_effect.stack_count = 1;
 	new_effect.max_stacks = max_stacks;
 	new_effect.action_kind = action_kind;
 	new_effect.total_max_hp_ratio = max_hp_ratio;

@@ -373,7 +373,6 @@ struct UnitStateCold {
 		StringName stacking_mode; // "refresh", "extend", "separate"
 		String reason;
 		bool allow_overheal = false;
-		int stack_count = 0;
 		int max_stacks = 0;
 		StringName action_kind; // "auto", "ability", "ultimate", "passive"
 

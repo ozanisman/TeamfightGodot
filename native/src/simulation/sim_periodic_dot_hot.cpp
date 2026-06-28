@@ -61,15 +61,13 @@ void apply_dot(
 		return;
 	}
 
-	// TODO: Scalar duration preserves fractions, but the periodic engine still requires
-	// duration / tick_interval to be a whole number. Support arbitrary fractional durations
-	// by rounding tick_count and adjusting the final tick proportionally.
 	const double tick_count = duration / tick_interval;
-	const double tick_count_rounded = Math::round(tick_count);
-	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
-		UtilityFunctions::push_error(vformat("DoT effect '%s' has non-divisible duration (%f) and tick_interval (%f). tick_count is %f (should be integer).", String(effect_type), duration, tick_interval, tick_count));
+	const double tick_count_rounded = Math::floor(tick_count);
+	if (tick_count_rounded < 1.0) {
+		UtilityFunctions::push_error(vformat("DoT effect '%s' has duration (%f) too short for tick_interval (%f). tick_count is %f (should be >= 1).", String(effect_type), duration, tick_interval, tick_count));
 		return;
 	}
+	const double adjusted_duration = tick_count_rounded * tick_interval;
 
 	auto &periodic_effects = uc(world, target).periodic_effects;
 
@@ -81,8 +79,8 @@ void apply_dot(
 					existing.total_attack_damage_ratio = attack_damage_ratio;
 					existing.total_max_hp_ratio = max_hp_ratio;
 					existing.total_flat_amount = flat_amount;
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
+					existing.remaining_duration = adjusted_duration;
+					existing.original_tick_count = tick_count_rounded;
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				}
@@ -100,11 +98,10 @@ void apply_dot(
 					existing.total_attack_damage_ratio = existing.total_attack_damage_ratio * damage_scaling_factor + attack_damage_ratio;
 					existing.total_max_hp_ratio = existing.total_max_hp_ratio * damage_scaling_factor + max_hp_ratio;
 					existing.total_flat_amount = existing.total_flat_amount * damage_scaling_factor + flat_amount;
-					existing.remaining_duration = existing.remaining_duration + duration;
+					existing.remaining_duration = existing.remaining_duration + adjusted_duration;
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
 					return;
 				}
 			}
@@ -123,21 +120,21 @@ void apply_dot(
 		}
 	}
 
-	const double per_tick = damage_total / (tick_count + 1.0);
+	const double per_tick = damage_total / (tick_count_rounded + 1.0);
 	if (per_tick > 0.0) {
 		EffectContext context = combat::build_context(source, &target, nullptr, per_tick, action_kind);
 		damage::apply_damage(world, host, source, target, per_tick, damage_type, action_kind, context);
 	}
 
-	const double adjusted_damage_total = per_tick * tick_count;
+	const double adjusted_damage_total = per_tick * (tick_count_rounded + 1.0);
 
 	UnitStateCold::PeriodicEffect new_effect;
 	new_effect.effect_type = effect_type;
 	new_effect.damage_total = adjusted_damage_total;
 	new_effect.heal_total = 0.0;
-	new_effect.remaining_duration = duration;
+	new_effect.remaining_duration = adjusted_duration;
 	new_effect.tick_interval = tick_interval;
-	new_effect.original_tick_count = tick_count;
+	new_effect.original_tick_count = tick_count_rounded;
 	new_effect.tick_accumulator = 0.0;
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = damage_type;
@@ -194,15 +191,13 @@ void apply_hot(
 		host.viewer_record_hot_status_fx(host.user_data, target, duration, effect_type);
 	}
 
-	// TODO: Scalar duration preserves fractions, but the periodic engine still requires
-	// duration / tick_interval to be a whole number. Support arbitrary fractional durations
-	// by rounding tick_count and adjusting the final tick proportionally.
 	const double tick_count = duration / tick_interval;
-	const double tick_count_rounded = Math::round(tick_count);
-	if (Math::abs(tick_count - tick_count_rounded) > 0.0001) {
-		UtilityFunctions::push_error(vformat("HoT effect '%s' has non-divisible duration (%f) and tick_interval (%f). tick_count is %f (should be integer).", String(effect_type), duration, tick_interval, tick_count));
+	const double tick_count_rounded = Math::floor(tick_count);
+	if (tick_count_rounded < 1.0) {
+		UtilityFunctions::push_error(vformat("HoT effect '%s' has duration (%f) too short for tick_interval (%f). tick_count is %f (should be >= 1).", String(effect_type), duration, tick_interval, tick_count));
 		return;
 	}
+	const double adjusted_duration = tick_count_rounded * tick_interval;
 
 	auto &periodic_effects = uc(world, target).periodic_effects;
 	if (stacking_mode != StringName("separate")) {
@@ -215,8 +210,8 @@ void apply_hot(
 					existing.total_missing_hp_ratio = missing_hp_ratio;
 					existing.total_flat_amount = flat_amount;
 					existing.allow_overheal = allow_overheal;
-					existing.remaining_duration = duration;
-					existing.original_tick_count = tick_count;
+					existing.remaining_duration = adjusted_duration;
+					existing.original_tick_count = tick_count_rounded;
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				}
@@ -235,11 +230,10 @@ void apply_hot(
 					existing.total_current_hp_ratio = existing.total_current_hp_ratio * heal_scaling_factor + current_hp_ratio;
 					existing.total_missing_hp_ratio = existing.total_missing_hp_ratio * heal_scaling_factor + missing_hp_ratio;
 					existing.total_flat_amount = existing.total_flat_amount * heal_scaling_factor + flat_amount;
-					existing.remaining_duration = existing.remaining_duration + duration;
+					existing.remaining_duration = existing.remaining_duration + adjusted_duration;
 					if (existing.tick_interval <= 0.0) {
 						existing.tick_interval = tick_interval;
 					}
-					existing.original_tick_count = existing.remaining_duration / existing.tick_interval;
 					return;
 				}
 			}
@@ -258,20 +252,20 @@ void apply_hot(
 		}
 	}
 
-	const double per_tick = heal_total / (tick_count + 1.0);
+	const double per_tick = heal_total / (tick_count_rounded + 1.0);
 	if (per_tick > 0.0) {
 		apply_hot_tick_heal(world, host, source, target, per_tick, action_kind, allow_overheal);
 	}
 
-	const double adjusted_heal_total = per_tick * tick_count;
+	const double adjusted_heal_total = per_tick * (tick_count_rounded + 1.0);
 
 	UnitStateCold::PeriodicEffect new_effect;
 	new_effect.effect_type = effect_type;
 	new_effect.damage_total = 0.0;
 	new_effect.heal_total = adjusted_heal_total;
-	new_effect.remaining_duration = duration;
+	new_effect.remaining_duration = adjusted_duration;
 	new_effect.tick_interval = tick_interval;
-	new_effect.original_tick_count = tick_count;
+	new_effect.original_tick_count = tick_count_rounded;
 	new_effect.tick_accumulator = 0.0;
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = StringName();
@@ -313,7 +307,6 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 			}
 
 			double damage_per_tick = 0.0;
-			// TODO: review DoT/HoT dynamic calculation: divides by tick_count+1 vs tick_count and recalculates full total instead of remaining.
 			if (effect.damage_total > 0.0) {
 				if (effect.calculation_mode == StringName("dynamic")) {
 					UnitState *source = targeting::unit_by_id(world, effect.source_instance_id);
@@ -321,7 +314,8 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 						double damage_total = (source->stats_dirty ? get_effective_attack_damage(*source) : source->cached_attack_damage) * effect.total_attack_damage_ratio;
 						damage_total += (unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) * effect.total_max_hp_ratio;
 						damage_total += effect.total_flat_amount;
-						damage_per_tick = damage_total / (tick_count + 1.0);
+						const double remaining_ticks = effect.remaining_duration / effect.tick_interval;
+						damage_per_tick = damage_total / (remaining_ticks + 1.0);
 					} else {
 						damage_per_tick = effect.damage_total / tick_count;
 					}
@@ -339,7 +333,8 @@ void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &u
 						heal_total += unit.hp * effect.total_current_hp_ratio;
 						heal_total += ((unit.stats_dirty ? get_effective_max_hp(unit) : unit.cached_max_hp) - unit.hp) * effect.total_missing_hp_ratio;
 						heal_total += effect.total_flat_amount;
-						heal_per_tick = heal_total / (tick_count + 1.0);
+						const double remaining_ticks = effect.remaining_duration / effect.tick_interval;
+						heal_per_tick = heal_total / (remaining_ticks + 1.0);
 					} else {
 						heal_per_tick = effect.heal_total / tick_count;
 					}

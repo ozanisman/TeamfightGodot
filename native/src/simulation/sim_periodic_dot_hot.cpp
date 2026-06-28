@@ -80,7 +80,7 @@ void apply_dot(
 					existing.total_max_hp_ratio = max_hp_ratio;
 					existing.total_flat_amount = flat_amount;
 					existing.remaining_duration = adjusted_duration;
-					existing.original_tick_count = tick_count_rounded;
+					existing.original_tick_count = tick_count_rounded + 1.0;
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				}
@@ -134,7 +134,7 @@ void apply_dot(
 	new_effect.heal_total = 0.0;
 	new_effect.remaining_duration = adjusted_duration;
 	new_effect.tick_interval = tick_interval;
-	new_effect.original_tick_count = tick_count_rounded;
+	new_effect.original_tick_count = tick_count_rounded + 1.0;
 	new_effect.tick_accumulator = 0.0;
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = damage_type;
@@ -211,7 +211,7 @@ void apply_hot(
 					existing.total_flat_amount = flat_amount;
 					existing.allow_overheal = allow_overheal;
 					existing.remaining_duration = adjusted_duration;
-					existing.original_tick_count = tick_count_rounded;
+					existing.original_tick_count = tick_count_rounded + 1.0;
 					existing.calculation_mode = is_dynamic ? StringName("dynamic") : StringName("fixed");
 					return;
 				}
@@ -265,7 +265,7 @@ void apply_hot(
 	new_effect.heal_total = adjusted_heal_total;
 	new_effect.remaining_duration = adjusted_duration;
 	new_effect.tick_interval = tick_interval;
-	new_effect.original_tick_count = tick_count_rounded;
+	new_effect.original_tick_count = tick_count_rounded + 1.0;
 	new_effect.tick_accumulator = 0.0;
 	new_effect.source_instance_id = source.instance_id;
 	new_effect.damage_type = StringName();

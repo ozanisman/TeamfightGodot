@@ -743,7 +743,9 @@ enum EffectOpcode : int64_t {
 	EFFECT_OPCODE_CONSUME_STACKS_DAMAGE = 14,
 	EFFECT_OPCODE_REDIRECT_DAMAGE = 15,
 	EFFECT_OPCODE_SUMMON_ALLY = 16,
-	// 17-99: Reserved for future core effects
+	EFFECT_OPCODE_CLEANSE_DOTS = 17,
+	EFFECT_OPCODE_CLEANSE_HOTS = 18,
+	// 19-99: Reserved for future core effects
 
 	// Status effects (100-199): Unit status effects
 	EFFECT_OPCODE_STUN = 100,

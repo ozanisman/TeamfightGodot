@@ -48,6 +48,12 @@ int64_t opcode_for_kind(const StringName &kind) {
 	if (kind == sn_damage_over_time()) {
 		return EFFECT_OPCODE_DAMAGE_OVER_TIME;
 	}
+	if (kind == sn_cleanse_dots()) {
+		return EFFECT_OPCODE_CLEANSE_DOTS;
+	}
+	if (kind == sn_cleanse_hots()) {
+		return EFFECT_OPCODE_CLEANSE_HOTS;
+	}
 	if (kind == sn_consume_stacks_damage()) {
 		return EFFECT_OPCODE_CONSUME_STACKS_DAMAGE;
 	}
@@ -192,6 +198,10 @@ const StringName &kind_for_opcode(int64_t opcode) {
 			return sn_stat_modifier();
 		case EFFECT_OPCODE_DAMAGE_OVER_TIME:
 			return sn_damage_over_time();
+		case EFFECT_OPCODE_CLEANSE_DOTS:
+			return sn_cleanse_dots();
+		case EFFECT_OPCODE_CLEANSE_HOTS:
+			return sn_cleanse_hots();
 		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE:
 			return sn_consume_stacks_damage();
 		case EFFECT_OPCODE_REDIRECT_DAMAGE:

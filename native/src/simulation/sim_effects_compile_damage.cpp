@@ -220,6 +220,18 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
+	if (kind == sn_cleanse_dots()) {
+		compiled.effect_type = StringName(tracker.get("effect_type_filter", ""));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Cleanse DoTs"));
+		return true;
+	}
+	if (kind == sn_cleanse_hots()) {
+		compiled.effect_type = StringName(tracker.get("effect_type_filter", ""));
+		compiled.int0 = tracker.get("target_self", false) ? 1 : 0;
+		compiled.reason = String(tracker.get("reason", "Cleanse HoTs"));
+		return true;
+	}
 	if (kind == sn_consume_stacks_damage()) {
 		compiled.stat_name = StringName(tracker.get("stat_name", ""));
 		compiled.scalar0 = double(tracker.get("base_damage_ratio", 0.0));

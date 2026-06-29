@@ -6,6 +6,7 @@
 #include "sim_damage.hpp"
 #include "sim_stats.hpp"
 #include "sim_status.hpp"
+#include "sim_periodic.hpp"
 
 #include "stat_definitions.hpp"
 
@@ -196,6 +197,28 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 				stat_result["reason"] = effect.reason;
 			}
 			return stat_result;
+		}
+		case EFFECT_OPCODE_CLEANSE_DOTS: {
+			Dictionary cleanse_result;
+			cleanse_result["success"] = false;
+			UnitState *cleanse_target = (effect.int0 == 1) ? &source : target;
+			if (cleanse_target != nullptr) {
+				sim::periodic::cleanse_dots(world, *cleanse_target, effect.effect_type);
+				cleanse_result["success"] = true;
+				cleanse_result["cleansed"] = true;
+			}
+			return cleanse_result;
+		}
+		case EFFECT_OPCODE_CLEANSE_HOTS: {
+			Dictionary cleanse_result;
+			cleanse_result["success"] = false;
+			UnitState *cleanse_target = (effect.int0 == 1) ? &source : target;
+			if (cleanse_target != nullptr) {
+				sim::periodic::cleanse_hots(world, *cleanse_target, effect.effect_type);
+				cleanse_result["success"] = true;
+				cleanse_result["cleansed"] = true;
+			}
+			return cleanse_result;
 		}
 	}
 	UtilityFunctions::push_error(vformat("exec_damage: unhandled opcode %d", effect.opcode));

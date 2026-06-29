@@ -14,6 +14,6 @@ DoT/HoT effects tick at intervals (default 1.0s tick_interval) for duration. **I
 
 Stacking modes (string for periodic effects): refresh (reset duration and total amounts), extend (add duration with proportional scaling), separate (independent instances). Note: Stat modifiers use a different StackBehavior enum (Refresh, Accumulate, Reset) with different semantics.
 
-Effect_type identifies DoT/HoT for cleanse/resist interactions (burn, poison, regen, etc.). Max_stacks limits concurrent instances. Tick accumulator ensures deterministic timing: when accumulator >= tick_interval, process tick and subtract tick_interval.
+Effect_type identifies DoT/HoT for cleanse/resist interactions (burn, poison, regen, etc.). Max_stacks limits concurrent instances (0 = unlimited). Tick accumulator ensures deterministic timing: when accumulator >= tick_interval, process tick and subtract tick_interval.
 
 Channel effects are periodic with tick_interval, allow_movement flag, post_complete_effect, post_interrupt_effect. Interrupt on stun, silence, death, or manual interrupt.

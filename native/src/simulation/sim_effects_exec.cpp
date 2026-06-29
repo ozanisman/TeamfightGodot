@@ -500,6 +500,10 @@ ExecRoute exec_route_for_opcode(int64_t opcode) {
 			return ExecRoute::Damage;
 		case EFFECT_OPCODE_DAMAGE_OVER_TIME: // 13
 			return ExecRoute::Aoe;
+		case EFFECT_OPCODE_CLEANSE_DOTS: // 17
+			return ExecRoute::Damage;
+		case EFFECT_OPCODE_CLEANSE_HOTS: // 18
+			return ExecRoute::Damage;
 		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE: // 14
 			return ExecRoute::Damage;
 		case EFFECT_OPCODE_REDIRECT_DAMAGE: // 15

@@ -46,6 +46,7 @@ void apply_hot(
 
 void tick_periodic_effects(SimWorld &world, SimHostCallbacks &host, UnitState &unit, double delta);
 void cleanse_dots(SimWorld &world, UnitState &unit, const StringName &effect_type_filter);
+void cleanse_hots(SimWorld &world, UnitState &unit, const StringName &effect_type_filter);
 void clear_periodic_effects(SimWorld &world, UnitState &unit);
 
 void apply_aoe_dot(

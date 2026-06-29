@@ -99,6 +99,14 @@ inline const StringName &sn_aoe_heal_over_time() {
 	static const StringName s("aoe_heal_over_time");
 	return s;
 }
+inline const StringName &sn_cleanse_dots() {
+	static const StringName s("cleanse_dots");
+	return s;
+}
+inline const StringName &sn_cleanse_hots() {
+	static const StringName s("cleanse_hots");
+	return s;
+}
 inline const StringName &sn_mana_regen() {
 	static const StringName s("mana_regen");
 	return s;

@@ -159,7 +159,9 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		}
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
-		compiled.reason = String(tracker.get("reason", "AOE Damage Over Time"));
+		// reason defaults to empty because periodic stacking matches by (effect_type, source, reason);
+		// a non-empty default would split stacks unexpectedly.
+		compiled.reason = String(tracker.get("reason", ""));
 		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int1 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
@@ -179,7 +181,9 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		compiled.scalar6 = double(tracker.get("flat_amount", 0.0));  // Store flat_amount in scalar6 (preserves precision)
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
-		compiled.reason = String(tracker.get("reason", "AOE Heal Over Time"));
+		// reason defaults to empty because periodic stacking matches by (effect_type, source, reason);
+		// a non-empty default would split stacks unexpectedly.
+		compiled.reason = String(tracker.get("reason", ""));
 		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
 		compiled.int1 = bool(tracker.get("allow_overheal", false)) ? 1 : 0;
 		compiled.int2 = tracker.get("target_self", false) ? 1 : 0;

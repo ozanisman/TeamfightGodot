@@ -93,6 +93,13 @@ Dictionary constant_multiplier_effect(double multiplier) {
 	return effect("constant_multiplier", params);
 }
 
+Dictionary target_status_multiplier_effect(const char *status_kind, double multiplier) {
+	Dictionary params;
+	params["status_kind"] = status_kind;
+	params["multiplier"] = multiplier;
+	return effect("target_status_multiplier", params);
+}
+
 Dictionary redirect_damage_effect(double redirect_ratio, double reduction_ratio, double redirect_cap = 0.0) {
 	Dictionary params;
 	params["redirect_ratio"] = redirect_ratio;
@@ -742,6 +749,27 @@ bool test_on_ally_defense_contract(String &failure) {
 			expect_close(far_protector.hp, 500.0, "ally defense radius gate", failure);
 }
 
+bool test_target_status_multiplier(String &failure) {
+	TestWorld test;
+	const int64_t source_index = test.add_player(1);
+	const int64_t target_index = test.add_enemy(2);
+	sim::UnitState &source = test.unit_at(source_index);
+	sim::UnitState &target = test.unit_at(target_index);
+	test.add_passive(source_index, sim::EFFECT_BUCKET_ON_ATTACK,
+			target_status_multiplier_effect("silence", 1.5));
+	sim::SimWorld world = test.world();
+	const double base_damage = 100.0;
+	const double without_status = sim::damage::apply_attack_modifiers(
+			world, test.host, source, target, 1.0, base_damage);
+	if (!expect_close(without_status, base_damage, "target_status_multiplier defaults without status", failure)) {
+		return false;
+	}
+	target.silence_remaining = 5.0;
+	const double with_status = sim::damage::apply_attack_modifiers(
+			world, test.host, source, target, 1.0, base_damage);
+	return expect_close(with_status, base_damage * 1.5, "target_status_multiplier applies with status", failure);
+}
+
 bool test_post_attack_multiple_result_merge(String &failure) {
 	TestWorld test;
 	const int64_t source_index = test.add_player(1, 200.0);
@@ -817,6 +845,7 @@ Dictionary TeamfightSimulationTestRunner::run_all() {
 		{ "post_take_damage_contract", &test_post_take_damage_contract },
 		{ "on_takedown_contract", &test_on_takedown_contract },
 		{ "on_ally_defense_contract", &test_on_ally_defense_contract },
+		{ "target_status_multiplier", &test_target_status_multiplier },
 		{ "post_attack_multiple_result_merge", &test_post_attack_multiple_result_merge },
 		{ "stealth_break_without_post_damage_bucket", &test_stealth_break_without_post_damage_bucket },
 	};

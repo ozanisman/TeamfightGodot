@@ -213,6 +213,11 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 		} else {
 			compiled.int3 = 0;
 		}
+		// TODO: The default reason "Stat modifier" becomes part of the stack key
+		// (stat_name|reason) in sim_stats_modifiers.cpp. Two different modifiers on
+		// the same stat with omitted reasons therefore share a stack. Fix later by
+		// separating display reason from stack identity, requiring explicit reasons,
+		// or choosing a unique default.
 		compiled.reason = String(tracker.get("reason", "Stat modifier"));
 		return true;
 	}

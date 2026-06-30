@@ -83,17 +83,16 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 			return damage_result;
 		}
 	case EFFECT_OPCODE_DAMAGE_THRESHOLD_TRIGGER: {
-		{
-			Dictionary threshold_result;
+		Dictionary threshold_result;
+		threshold_result["success"] = false;
+		threshold_result["triggered"] = false;
+		if (context.damage > (source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage) * effect.scalar0 && !effect.children.empty()) {
+			Dictionary child_result = execute_recursive(effect.children[0], context, world, host, hooks, match_host);
 			threshold_result["success"] = true;
-			if (context.damage > (source.stats_dirty ? get_effective_attack_damage(source) : source.cached_attack_damage) * effect.scalar0 && !effect.children.empty()) {
-				Dictionary child_result = execute_recursive(effect.children[0], context, world, host, hooks, match_host);
-				threshold_result["triggered"] = true;
-				merge_accumulated_results(threshold_result, child_result);
-				return threshold_result;
-			}
+			threshold_result["triggered"] = true;
+			merge_accumulated_results(threshold_result, child_result);
 		}
-		return Dictionary(); // INCONSISTENT: returns empty Dictionary instead of success=false
+		return threshold_result;
 	}
 		case EFFECT_OPCODE_CONSUME_STACKS_DAMAGE: {
 			Dictionary result;
@@ -126,7 +125,9 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 		case EFFECT_OPCODE_REFLECT_DAMAGE: {
 			Dictionary rd_noop;
 			rd_noop["success"] = true;
-			// INCONSISTENT: returns only success with no information about the passive effect it enables
+			rd_noop["reflect_enabled"] = true;
+			rd_noop["reflect_percentage"] = effect.scalar0;
+			rd_noop["reflect_type"] = effect.damage_type;
 			return rd_noop;
 		}
 		case EFFECT_OPCODE_REDIRECT_DAMAGE: {
@@ -143,8 +144,12 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 		case EFFECT_OPCODE_AUTO_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
-		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
-		// INCONSISTENT: multiplier effects fallthrough to stat_modifier execution case instead of having separate logic
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER: {
+			Dictionary multiplier_result;
+			multiplier_result["success"] = true;
+			multiplier_result["passive_only"] = true;
+			return multiplier_result;
+		}
 		case EFFECT_OPCODE_STAT_MODIFIER: {
 			Dictionary stat_result;
 			stat_result["success"] = true;

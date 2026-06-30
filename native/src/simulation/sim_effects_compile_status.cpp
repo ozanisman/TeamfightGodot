@@ -78,12 +78,12 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 	}
 	if (kind == sn_mana_restore_on_hit()) {
 		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_drain_target_mana_on_hit()) {
 		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_every_n_attacks_stun()) {
@@ -97,14 +97,14 @@ bool try_fill_status(EffectRecord &compiled, const StringName &kind, ParamTracke
 		Dictionary direction = Dictionary(tracker.get("direction", Dictionary()));
 		compiled.scalar1 = double(direction.get("x", 0.0));
 		compiled.scalar2 = double(direction.get("y", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_auto_dodge()) {
 		compiled.scalar0 = double(tracker.get("dodge_chance", 0.0));
 		compiled.scalar1 = double(tracker.get("on_dodge_multiplier", 0.0));
 		compiled.scalar2 = double(tracker.get("on_hit_multiplier", 1.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_slow()) {

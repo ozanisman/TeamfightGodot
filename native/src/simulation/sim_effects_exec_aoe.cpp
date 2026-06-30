@@ -33,10 +33,6 @@ Dictionary exec_aoe(const EffectRecord &effect, EffectContext &context, SimWorld
 			Dictionary taunt_result;
 			taunt_result["success"] = true;
 			sim::periodic::apply_aoe_taunt_shape(world, source, target, effect, effect.scalar1, &host);
-			taunt_result["taunt_applied"] = true;
-			taunt_result["radius"] = effect.scalar0;
-			taunt_result["duration"] = effect.scalar1;
-			// INCONSISTENT: has extra fields (taunt_applied, radius, duration) while other AOE status effects only return success
 			return taunt_result;
 		}
 		case EFFECT_OPCODE_AOE_DAMAGE: {

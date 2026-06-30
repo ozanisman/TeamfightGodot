@@ -35,20 +35,20 @@ StringName validated_projectile_policy(
 bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracker &tracker, const Dictionary &params) {
 	if (kind == sn_constant_multiplier()) {
 		compiled.scalar0 = double(tracker.get("multiplier", 1.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_hp_threshold_damage_multiplier()) {
 		compiled.scalar0 = double(tracker.get("above_hp_ratio", 0.0));
 		compiled.scalar1 = double(tracker.get("below_hp_ratio", 0.0));
 		compiled.scalar2 = double(tracker.get("multiplier", 1.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_distance_threshold_multiplier()) {
 		compiled.scalar0 = double(tracker.get("min_distance", 0.0));
 		compiled.scalar1 = double(tracker.get("multiplier", 1.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_damage()) {
@@ -159,7 +159,7 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		}
 		compiled.stacking_mode = StringName(tracker.get("stacking_mode", "refresh"));
 		compiled.effect_type = StringName(tracker.get("effect_type", "generic"));
-		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.reason = String(tracker.get("reason", "AOE Damage Over Time"));
 		compiled.int0 = int64_t(tracker.get("max_stacks", 0));
 		String calculation_str = String(tracker.get("calculation", "fixed"));
 		compiled.int1 = (calculation_str == "dynamic") ? 1 : 0;  // 0=fixed, 1=dynamic
@@ -194,18 +194,18 @@ bool try_fill_damage(EffectRecord &compiled, const StringName &kind, ParamTracke
 		if (nested.get_type() == Variant::DICTIONARY) {
 			compiled.children.push_back(compile_effect(Dictionary(nested)));
 		}
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_mana_regen()) {
 		compiled.scalar0 = double(tracker.get("flat_amount", 0.0));
 		compiled.scalar1 = double(tracker.get("mana_cost_ratio", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_post_damage_mana_gain()) {
 		compiled.scalar0 = double(tracker.get("damage_ratio", 0.0));
-		// INCONSISTENT: no reason string
+		compiled.reason = String(tracker.get("reason", ""));
 		return true;
 	}
 	if (kind == sn_damage_based_heal()) {

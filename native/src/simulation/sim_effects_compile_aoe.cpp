@@ -16,7 +16,7 @@ bool try_fill_aoe(EffectRecord &compiled, const StringName &kind, ParamTracker &
 	if (kind == sn_aoe_taunt()) {
 		compiled.scalar0 = double(tracker.get("radius", 0.0));
 		compiled.scalar1 = double(tracker.get("duration", 0.0));
-		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.reason = String(tracker.get("reason", "AOE Taunt"));
 		compiled.aoe_shape_params = parse_aoe_shape_metadata(params, tracker);
 		return true;
 	}
@@ -37,7 +37,7 @@ bool try_fill_aoe(EffectRecord &compiled, const StringName &kind, ParamTracker &
 		} else {
 			compiled.damage_type = StringName(damage_type_str);
 		}
-		compiled.reason = String(tracker.get("reason", "")); // INCONSISTENT: other AOE effects use descriptive defaults like "AOE Slow"
+		compiled.reason = String(tracker.get("reason", "AOE Damage"));
 		compiled.aoe_shape_params = parse_aoe_shape_metadata(params, tracker);
 		return true;
 	}

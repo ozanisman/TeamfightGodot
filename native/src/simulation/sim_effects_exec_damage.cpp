@@ -144,7 +144,8 @@ Dictionary exec_damage(const EffectRecord &effect, EffectContext &context, SimWo
 		case EFFECT_OPCODE_AUTO_DODGE:
 		case EFFECT_OPCODE_CONSTANT_MULTIPLIER:
 		case EFFECT_OPCODE_HP_THRESHOLD_DAMAGE_MULTIPLIER:
-		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER: {
+		case EFFECT_OPCODE_DISTANCE_THRESHOLD_MULTIPLIER:
+		case EFFECT_OPCODE_TARGET_STATUS_MULTIPLIER: {
 			Dictionary multiplier_result;
 			multiplier_result["success"] = true;
 			multiplier_result["passive_only"] = true;

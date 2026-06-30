@@ -749,6 +749,7 @@ bool test_on_ally_defense_contract(String &failure) {
 			expect_close(far_protector.hp, 500.0, "ally defense radius gate", failure);
 }
 
+// TODO: Expand coverage to additional statuses (stun, root, disarm, slow) and verify no-status default.
 bool test_target_status_multiplier(String &failure) {
 	TestWorld test;
 	const int64_t source_index = test.add_player(1);

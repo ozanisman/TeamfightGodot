@@ -9,7 +9,8 @@ extends SceneTree
 ##     -- --trials=25 --sims-per-draft=25 \
 ##     --blue-strategies=native_full \
 ##     --red-strategies=random,base_power_only \
-##     --output=res://model_stats/native_draft_validation.csv
+##     --output=res://model_stats/native_draft_validation.csv \
+##     --draft-summary-output=res://model_stats/native_draft_validation_drafts.csv
 
 const TEAM_SIZE: int = 5
 
@@ -27,6 +28,7 @@ const DraftStrategyBasePowerOnlyPath := "res://scripts/tools/draft_strategy_base
 var _backend: RefCounted = null
 var _stats_dir: String = "res://model_stats/stats_output_100k"
 var _output_path: String = "res://model_stats/native_draft_validation.csv"
+var _draft_summary_output_path: String = ""
 var _trials: int = 50
 var _sims_per_draft: int = 25
 var _base_seed: int = 100000
@@ -68,6 +70,7 @@ func _run() -> void:
 	_base_seed = int(_extract_argument("--base-seed=", "100000"))
 	_stats_dir = _extract_argument("--stats-dir=", "res://model_stats/stats_output_100k")
 	_output_path = _extract_argument("--output=", "res://model_stats/native_draft_validation.csv")
+	_draft_summary_output_path = _extract_argument("--draft-summary-output=", "")
 	_blue_strategy_names = _parse_strategy_names(_extract_argument("--blue-strategies=", "native_full"))
 	_red_strategy_names = _parse_strategy_names(_extract_argument("--red-strategies=", "random,base_power_only"))
 
@@ -111,6 +114,14 @@ func _run() -> void:
 		"total_score,phase_label,candidate_role,comp_fingerprint"
 	)
 
+	var draft_summary_rows: Array[String] = []
+	var emit_draft_summary: bool = not _draft_summary_output_path.is_empty()
+	if emit_draft_summary:
+		draft_summary_rows.append(
+			"draft_seed,blue_strategy,red_strategy,blue_picks,red_picks," +
+			"blue_bans,red_bans,blue_wins,red_wins,draws,blue_winrate,red_winrate,drawrate,total_matches"
+		)
+
 	var pool_rng := RandomNumberGenerator.new()
 	var pairing_index: int = 0
 
@@ -132,6 +143,8 @@ func _run() -> void:
 					pool.duplicate(), blue_strat, red_strat, draft_seed, blue_name, red_name
 				)
 				csv_rows.append_array(draft_result.rows)
+				if emit_draft_summary:
+					draft_summary_rows.append(_format_draft_summary_row(draft_seed, blue_name, red_name, draft_result))
 
 				if trial == 0 and blue_name == _blue_strategy_names[0] and red_name == _red_strategy_names[0]:
 					print("sample draft: blue=%s red=%s" % [draft_result.blue_picks, draft_result.red_picks])
@@ -145,6 +158,16 @@ func _run() -> void:
 	f.close()
 
 	print("native_draft_validation_harness: wrote %s (%d rows)" % [_output_path, csv_rows.size() - 1])
+
+	if emit_draft_summary:
+		var df := FileAccess.open(ProjectSettings.globalize_path(_draft_summary_output_path), FileAccess.WRITE)
+		if df == null:
+			push_error("native_draft_validation_harness: could not open draft summary %s" % _draft_summary_output_path)
+			await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+			return
+		df.store_string("\n".join(draft_summary_rows) + "\n")
+		df.close()
+		print("native_draft_validation_harness: wrote %s (%d rows)" % [_draft_summary_output_path, draft_summary_rows.size() - 1])
 
 	if _backend.has_method("clear"):
 		_backend.call("clear")
@@ -245,7 +268,15 @@ func _run_full_draft(
 	return {
 		"rows": rows,
 		"blue_picks": blue_picks,
-		"red_picks": red_picks
+		"red_picks": red_picks,
+		"blue_bans": blue_bans,
+		"red_bans": red_bans,
+		"blue_wins": sim["blue_wins"],
+		"red_wins": sim["red_wins"],
+		"draws": sim["draws"],
+		"blue_winrate": sim["blue_winrate"],
+		"red_winrate": sim["red_winrate"],
+		"drawrate": sim["drawrate"]
 	}
 
 
@@ -408,6 +439,32 @@ func _format_row(
 		String(diag.get("phase_label", "")),
 		String(diag.get("candidate_role", "")),
 		String(diag.get("comp_fingerprint", ""))
+	]
+	return ",".join(parts)
+
+
+func _format_draft_summary_row(
+	draft_seed: int,
+	blue_name: String,
+	red_name: String,
+	result: Dictionary
+) -> String:
+	var total_matches: int = int(result["blue_wins"]) + int(result["red_wins"]) + int(result["draws"])
+	var parts: Array[String] = [
+		str(draft_seed),
+		blue_name,
+		red_name,
+		"|".join(result["blue_picks"]),
+		"|".join(result["red_picks"]),
+		"|".join(result["blue_bans"]),
+		"|".join(result["red_bans"]),
+		str(result["blue_wins"]),
+		str(result["red_wins"]),
+		str(result["draws"]),
+		"%.6f" % float(result["blue_winrate"]),
+		"%.6f" % float(result["red_winrate"]),
+		"%.6f" % float(result["drawrate"]),
+		str(total_matches)
 	]
 	return ",".join(parts)
 

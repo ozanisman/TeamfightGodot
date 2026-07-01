@@ -24,6 +24,7 @@ const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.g
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
 const DraftStrategyBasePowerOnlyPath := "res://scripts/tools/draft_strategy_base_power_only.gd"
+const DraftStrategyNativeAblationPath := "res://scripts/tools/draft_strategy_native_ablation.gd"
 
 var _backend: RefCounted = null
 var _stats_dir: String = "res://model_stats/stats_output_100k"
@@ -104,6 +105,9 @@ func _run() -> void:
 
 	var blue_strategies: Dictionary = _build_strategy_map(_blue_strategy_names)
 	var red_strategies: Dictionary = _build_strategy_map(_red_strategy_names)
+	if not _validate_strategy_map(blue_strategies, "blue") or not _validate_strategy_map(red_strategies, "red"):
+		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
+		return
 
 	var csv_rows: Array[String] = []
 	csv_rows.append(
@@ -182,6 +186,15 @@ func _build_strategy_map(names: Array[String]) -> Dictionary:
 	return out
 
 
+func _validate_strategy_map(map: Dictionary, side: String) -> bool:
+	var valid: bool = true
+	for name in map.keys():
+		if map[name] == null:
+			push_error("native_draft_validation_harness: failed to build %s strategy '%s'" % [side, name])
+			valid = false
+	return valid
+
+
 func _build_strategy(name: String):
 	match name:
 		"native_full":
@@ -191,8 +204,15 @@ func _build_strategy(name: String):
 		"base_power_only":
 			return load(DraftStrategyBasePowerOnlyPath).new(_stats_dir)
 		_:
-			push_error("native_draft_validation_harness: unknown strategy '%s', falling back to random" % name)
-			return load(DraftStrategyRandomPath).new()
+			if name.begins_with("native_ablation_"):
+				var variant: String = name.substr("native_ablation_".length())
+				var ablation = load(DraftStrategyNativeAblationPath).new(_stats_dir, variant)
+				if ablation._pick_zero.is_empty() and ablation._ban_zero.is_empty():
+					push_error("native_draft_validation_harness: unknown ablation variant '%s'" % variant)
+					return null
+				return ablation
+			push_error("native_draft_validation_harness: unknown strategy '%s'" % name)
+			return null
 
 
 func _run_full_draft(

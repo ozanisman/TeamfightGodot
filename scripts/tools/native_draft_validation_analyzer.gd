@@ -74,9 +74,9 @@ func _run() -> void:
 	_ab_control_red = _extract_argument("--ab-control-red=", "")
 	_ab_treatment_blue = _extract_argument("--ab-treatment-blue=", "")
 	_ab_treatment_red = _extract_argument("--ab-treatment-red=", "")
-	_ab_mde = maxf(0.001, float(_extract_argument("--ab-mde=", "0.05")))
-	_ab_alpha = clampf(float(_extract_argument("--ab-alpha=", "0.05")), 0.001, 0.5)
-	_ab_power = clampf(float(_extract_argument("--ab-power=", "0.80")), 0.5, 0.999)
+	_ab_mde = _parse_float_arg("--ab-mde=", "0.05", 0.001, INF)
+	_ab_alpha = _parse_float_arg("--ab-alpha=", "0.05", 0.001, 0.5)
+	_ab_power = _parse_float_arg("--ab-power=", "0.80", 0.5, 0.999)
 
 	var drafts: Array[Dictionary]
 	if not _draft_summary_path.is_empty():
@@ -135,6 +135,7 @@ func _load_draft_summaries(path: String) -> Array[Dictionary]:
 	var idx: Dictionary = _header_index(header)
 	if not idx.has("draft_seed") or not idx.has("blue_strategy") or not idx.has("red_strategy"):
 		push_error("native_draft_validation_analyzer: draft summary missing required columns")
+		f.close()
 		return drafts
 
 	while not f.eof_reached():
@@ -158,6 +159,7 @@ func _infer_drafts_from_steps(path: String) -> Array[Dictionary]:
 	var idx: Dictionary = _header_index(header)
 	if not idx.has("draft_seed") or not idx.has("blue_strategy") or not idx.has("red_strategy") or not idx.has("step_index"):
 		push_error("native_draft_validation_analyzer: per-step input missing required columns")
+		f.close()
 		return drafts
 
 	var best_by_key: Dictionary = {}
@@ -202,10 +204,34 @@ func _draft_from_fields(fields: Array, idx: Dictionary) -> Dictionary:
 	return draft
 
 
+func _parse_float_arg(prefix: String, default_value: String, min_val: float, max_val: float) -> float:
+	var raw: String = _extract_argument(prefix, default_value)
+	if not raw.is_valid_float():
+		push_warning("native_draft_validation_analyzer: invalid float for %s (%s), using default %s" % [prefix, raw, default_value])
+		raw = default_value
+	return clampf(float(raw), min_val, max_val)
+
+
 func _split_csv_line(line: String) -> Array:
 	var out: Array = []
-	for field in line.split(","):
-		out.append(field.strip_edges())
+	var current: String = ""
+	var in_quotes: bool = false
+	var i: int = 0
+	while i < line.length():
+		var c: String = line[i]
+		if c == "\"":
+			if in_quotes and i + 1 < line.length() and line[i + 1] == "\"":
+				current += "\""
+				i += 1
+			else:
+				in_quotes = not in_quotes
+		elif c == "," and not in_quotes:
+			out.append(current.strip_edges())
+			current = ""
+		else:
+			current += c
+		i += 1
+	out.append(current.strip_edges())
 	return out
 
 

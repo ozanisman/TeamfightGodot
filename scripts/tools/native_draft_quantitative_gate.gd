@@ -77,6 +77,9 @@ func _override_thresholds() -> void:
 	for key in _thresholds.keys():
 		var val: String = _extract_argument("--%s=" % key, "")
 		if not val.is_empty():
+			if not val.is_valid_float():
+				push_warning("native_draft_quantitative_gate: invalid float for %s (%s), ignoring override" % [key, val])
+				continue
 			_thresholds[key] = float(val)
 
 
@@ -109,8 +112,24 @@ func _header_index(header: Array) -> Dictionary:
 
 func _split_csv_line(line: String) -> Array:
 	var out: Array = []
-	for field in line.split(","):
-		out.append(field.strip_edges())
+	var current: String = ""
+	var in_quotes: bool = false
+	var i: int = 0
+	while i < line.length():
+		var c: String = line[i]
+		if c == "\"":
+			if in_quotes and i + 1 < line.length() and line[i + 1] == "\"":
+				current += "\""
+				i += 1
+			else:
+				in_quotes = not in_quotes
+		elif c == "," and not in_quotes:
+			out.append(current.strip_edges())
+			current = ""
+		else:
+			current += c
+		i += 1
+	out.append(current.strip_edges())
 	return out
 
 

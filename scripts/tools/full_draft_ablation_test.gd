@@ -247,6 +247,8 @@ func _run() -> void:
 		var results = _run_matchup(
 			strategies[strategy_a_name],
 			strategies[strategy_b_name],
+			strategy_a_name,
+			strategy_b_name,
 			trials,
 			sims_per_draft,
 			base_seed + matchup_idx * 10000,
@@ -283,7 +285,7 @@ func _run() -> void:
 	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)
 
 
-func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, trials: int, sims_per_draft: int, base_seed: int, champion_ids: Array[StringName]) -> Dictionary:
+func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, strategy_a_name: String, strategy_b_name: String, trials: int, sims_per_draft: int, base_seed: int, champion_ids: Array[StringName]) -> Dictionary:
 	var blue_wins = 0
 	var red_wins = 0
 	var draws = 0
@@ -298,7 +300,7 @@ func _run_matchup(strategy_a: RefCounted, strategy_b: RefCounted, trials: int, s
 		seed_rng(seed)
 
 		if trial % 5 == 0:
-			print("Matchup %s vs %s: Trial %d/%d" % [strategy_a.get_strategy_name(), strategy_b.get_strategy_name(), trial, trials])
+			print("Matchup %s vs %s: Trial %d/%d" % [strategy_a_name, strategy_b_name, trial, trials])
 
 		var available = champion_ids.duplicate()
 		available.shuffle()

@@ -14,6 +14,7 @@ const UiStylesScript := preload("res://scripts/ui/ui_styles.gd")
 const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const DraftChampionTileScene := preload("res://scenes/components/draft_champion_tile.tscn")
 const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
+const DraftPolicyScript := preload("res://scripts/tools/draft_policy.gd")
 
 ## World units map to this fraction of min(viewport) for a consistent projectile read.
 const VIEWER_BASE_MIN_AXIS: float = 720.0
@@ -1836,61 +1837,7 @@ func _power_score_for_pick(champion_id: StringName) -> float:
 
 
 func _softmax_select(recommendations: Array, temperature: float = 1.0) -> StringName:
-	if temperature <= 0.0:
-		push_error("_softmax_select: temperature must be positive, got %f" % temperature)
-		temperature = 0.01
-	elif temperature > 100.0:
-		push_warning("_softmax_select: temperature unusually high (%f), clamping to 100.0" % temperature)
-		temperature = 100.0
-	
-	var scores: Array[float] = []
-	var champions: Array[StringName] = []
-	for rec in recommendations:
-		var score: float = rec.get("total_score", 0.0)
-		var champion: StringName = StringName(rec.get("candidate", ""))
-		if not champion.is_empty():
-			scores.append(score)
-			champions.append(champion)
-	
-	if champions.is_empty():
-		return StringName()
-	
-	# Numerical stability: subtract max scaled score before exp
-	var max_scaled: float = scores[0] * AI_SCORE_SCALE
-	for score in scores:
-		var scaled: float = score * AI_SCORE_SCALE
-		if scaled > max_scaled:
-			max_scaled = scaled
-	
-	var exp_values: Array[float] = []
-	var exp_sum: float = 0.0
-	for score in scores:
-		var temp_score: float = (score * AI_SCORE_SCALE - max_scaled) / temperature
-		var exp_val: float = exp(temp_score)
-		exp_values.append(exp_val)
-		exp_sum += exp_val
-	
-	var probabilities: Array[float] = []
-	for exp_val in exp_values:
-		probabilities.append(exp_val / exp_sum)
-	
-	if _debug_mode:
-		print("  --- Softmax Details (temp=%.2f, scale=%.1f) ---" % [temperature, AI_SCORE_SCALE])
-		for i in range(champions.size()):
-			print("    #%d: %s | raw_score=%.4f | scaled=%.4f | exp_val=%.4f | prob=%.2f%%" % [i + 1, champions[i], scores[i], scores[i] * AI_SCORE_SCALE, exp_values[i], probabilities[i] * 100])
-	
-	var rand_val: float = randf()
-	if _debug_mode:
-		print("  Random sample: %.4f" % rand_val)
-	var cumulative: float = 0.0
-	for i in range(probabilities.size()):
-		cumulative += probabilities[i]
-		if rand_val <= cumulative:
-			if _debug_mode:
-				print("  Selected rank #%d (score: %.4f, prob: %.2f%%)" % [i + 1, scores[i], probabilities[i] * 100])
-			return champions[i]
-	
-	return champions[champions.size() - 1]
+	return DraftPolicyScript.softmax_select(recommendations, temperature, AI_SCORE_SCALE, _debug_mode)
 
 
 ## Returns true if the given draft turn string (e.g. "B_PICK", "R_BAN") belongs to the player side.

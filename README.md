@@ -113,6 +113,39 @@ cmake --build native/build --config Release
 
 Ensure no Godot processes remain when finished. Benchmark expectations and latest numbers: [`wiki/notes/performance_optimization_status.md`](wiki/notes/performance_optimization_status.md).
 
+### Draft AI validation gate
+
+Run after draft AI or stats changes to catch quantitative regressions (win rates, side bias):
+
+```powershell
+# 1. Generate full-draft validation data (slowest step; adjust N as needed)
+godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd \
+  -- --trials=50 --sims-per-draft=25 \
+     --blue-strategies=native_full,native_softmax \
+     --red-strategies=random,native_full,native_softmax \
+     --output=res://model_stats/native_draft_validation.csv \
+     --draft-summary-output=res://model_stats/native_draft_validation_drafts.csv
+
+# 2. Analyze with Wilson CIs / A/B report
+godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd \
+  -- --input=res://model_stats/native_draft_validation.csv \
+     --draft-summary=res://model_stats/native_draft_validation_drafts.csv \
+     --output=res://model_stats/native_draft_validation_summary.csv \
+     --ab-output=res://model_stats/native_draft_validation_ab_report.csv \
+     --native-strategy-names=native_full,native_softmax
+
+# 3. Check quantitative thresholds and emit PASS/FAIL report
+godot --headless --path . --script res://scripts/tools/native_draft_quantitative_gate.gd \
+  -- --summary=res://model_stats/native_draft_validation_summary.csv \
+     --ab-report=res://model_stats/native_draft_validation_ab_report.csv \
+     --output=res://logs/native_draft_quantitative_gate_report.md
+
+# 4. Aggregate into the suite report (reads all PASS/FAIL files)
+godot --headless --path . --script res://scripts/tools/run_draft_ai_validation_suite.gd
+```
+
+Thresholds default to the refreshed baselines in [`wiki/notes/draft_ai_improvement_plan.md`](wiki/notes/draft_ai_improvement_plan.md). Override any threshold with `--<metric>=<value>` (e.g., `--native_softmax_self_play_bias_max_pp=15.0`).
+
 ## Common commands
 
 All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeouts). After GDScript edits, run `--check-only` before long smoke or benchmark scenes. Full flag list: [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md).

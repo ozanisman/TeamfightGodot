@@ -25,6 +25,7 @@ const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
 const DraftStrategyBasePowerOnlyPath := "res://scripts/tools/draft_strategy_base_power_only.gd"
 const DraftStrategyNativeAblationPath := "res://scripts/tools/draft_strategy_native_ablation.gd"
+const DraftStrategyNativeSoftmaxPath := "res://scripts/tools/draft_strategy_native_softmax.gd"
 
 var _backend: RefCounted = null
 var _stats_dir: String = "res://model_stats/stats_output_100k"
@@ -203,6 +204,8 @@ func _build_strategy(name: String):
 			return load(DraftStrategyRandomPath).new()
 		"base_power_only":
 			return load(DraftStrategyBasePowerOnlyPath).new(_stats_dir)
+		"native_softmax":
+			return load(DraftStrategyNativeSoftmaxPath).new(_stats_dir)
 		_:
 			if name.begins_with("native_ablation_"):
 				var variant: String = name.substr("native_ablation_".length())

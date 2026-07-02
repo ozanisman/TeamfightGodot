@@ -280,13 +280,100 @@ godot --headless --path . --script res://scripts/tools/full_draft_ab_test.gd -- 
 
 **Note:** Both tools now produce consistent results (native self-play blue win rate ~60%). Prior to Phase 70, `full_draft_ab_test` produced ~47% blue due to the broken stats path.
 
-## Current A/B Baseline (Phase 65)
+## Current A/B Baseline (Phase 65) — SUPERSEDED, see Stats Refresh below
 
 - **Report path:** `res://logs/full_draft_ab_test_report.txt` (generated on run, not committed)
 - **Date:** 2026-06-15
 - **Strategy matchups tested:** native vs random, random vs native, native vs native
 - **Native self-play bias:** 59.8% Blue / 40.2% Red (~19.6 pp)
 - **Default changed:** No. `native` remains default. Archetype scoring removed.
+
+## Stats Refresh (2026-07-01) — IMPORTANT: baseline numbers above are stale
+
+While validating the Draft AI Improvement Plan's Workstream 0.1 (unify selection policy), the
+Phase 65 baseline above was found to no longer match runtime behavior of `model_stats/stats_output_100k/`
+against the current simulation engine:
+
+- **Symptom:** `native_draft_validation_harness.gd` and `full_draft_ab_test.gd` (independently,
+  both using `res://model_stats/stats_output_100k/`) agreed with each other but *not* with the
+  documented Phase 65 numbers: native self-play measured 42.2% Blue / 57.8% Red (bias reversed
+  from documented), native vs random measured ~70%/58% (far below documented ~89%/89%).
+- **Root cause confirmed:** regenerated `combat_stats.csv` from scratch with the current
+  simulation engine (`generate_simulation_stats.gd --team-sizes=5 --matches-per-size=20000`) and
+  diffed per-champion win rates against the production CSV. Deltas of 9-16 percentage points on
+  many champions (e.g. ninja -15.6pp, paladin -12.7pp, wraith -11.1pp, guardian +11.2pp,
+  necromancer +9.5pp) — far beyond sampling noise at this scale (95% CI ~±1.1pp). The production
+  stats snapshot had drifted out of sync with the live combat/effect resolution engine (likely via
+  the recent damage/status/periodic-effect refactors) and was never regenerated to match. Champion
+  roster count matched (26/26) so this was not a missing-champion issue.
+- **Action taken:** regenerated `combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`,
+  `role_combinations.csv`, `role_stats.csv`, `summary_stats.csv` under
+  `model_stats/stats_output_100k/` at 20,000 matches/team-size-5 (base seed 500000). Old files
+  backed up to `model_stats/stats_output_100k_backup_20260701_220202/` (gitignored, local only).
+- **New measured baseline** (`native_draft_validation_harness.gd`, 25 trials x 25 sims/draft,
+  base seed 300000):
+  - native_full vs random: **96.8% Blue / 90.2% Red-as-native** (up sharply from stale-data ~70%)
+  - native_full self-play (mirror): **38.6% Blue / 61.4% Red** — bias not just smaller than
+    documented, but reversed direction and *larger* in magnitude (22.8pp Red-favored) than the old
+    19.6pp Blue-favored figure.
+  - native_softmax (see below) vs random: 86.9% Blue / 89.9% Red-as-native.
+
+**Root cause of the side-bias reversal, diagnosed 2026-07-01 (see
+`wiki/notes/draft_order_bias_audit.md` "Stats-Sensitivity Finding" for full writeup):** confirmed
+`SimConstantsScript.DRAFT_SEQUENCE` is byte-identical to the historical "current" order documented
+in the audit (not accidentally swapped to "mirrored_current") — this is not a sequence/code bug.
+At larger sample size (n=2500/matchup) the bias is even more pronounced and diverges sharply by
+selection policy:
+- `native_full` (deterministic top-1) self-play: **28.6pp Red-favored** (35.7%/64.3%)
+- `native_softmax` (the actual shipped gameplay policy) self-play: **11.6pp Blue-favored**
+  (55.8%/44.2%) — opposite sign and roughly 2.5x smaller magnitude than `native_full`.
+
+**Conclusion:** the previously-documented "~19.6% Blue advantage is structural (from draft order)
+and safe to treat as a constant" is falsified. The effect is dominated by an interaction between
+the deterministic argmax recommender and the specific champion-power snapshot in
+`combat_stats.csv` (which pick chain the deterministic policy converges to depends on which
+champions are currently strongest), not by the fixed snake order alone — the same order produces
+opposite-signed bias under the stochastic policy. This is a direct, concrete confirmation of
+Guiding Principle #1 in `draft_ai_improvement_plan.md` ("measure the policy you ship"): the
+historical bias figure was measured against `native_full`, a policy nobody actually plays against,
+and does not predict the sign or magnitude of the bias players actually experience via
+`native_softmax`. Any future side-bias regression gate must track `native_full` and
+`native_softmax` bias separately — they are not interchangeable — and should not assume either
+figure is a fixed constant given it has now moved substantially across two stats regenerations.
+- **Implication for the improvement plan:** the "Known baseline numbers to preserve as regression
+  anchors" in `wiki/notes/draft_ai_improvement_plan.md` §6 are stale and should not be used as-is;
+  they should be re-derived from this refreshed stats snapshot. This also confirms the plan's own
+  §5.4/§0.3 diagnosis (no stats provenance/versioning, no regeneration loop) is a live, active
+  problem, not just a theoretical risk.
+
+## Certified Holdout / Bayes Ceiling Re-Verification (2026-07-01)
+
+The old "certified holdout ≈ 76.1% acc / MSE 0.0484; Bayes ceiling ≈ 75.4%" numbers from
+`draft_ai_improvement_plan.md` §6 were re-measured against the refreshed stats and current engine.
+
+- **Bayes ceiling:** `measure_draft_ceiling.gd` (mirror mode, 500 comps × 100 seeds, 100,000 decisive
+  matches) reports **78.6%** split-half ceiling (95% CI ±0.4%, n=50,000). Raw-max cross-check: 79.0%.
+  This is higher than the old 75.4%/75.8% figures, reflecting the current simulation engine's larger
+  comp imbalance distribution.
+- **Pairwise logistic holdout:** `verify_pairwise_signal.gd` on the same side-debiased holdout, with
+  `--stats-dir=res://model_stats/stats_output_100k`, reports the retrained pairwise logistic at
+  **78.0% test accuracy / MSE 0.0401**. The handcoded current heuristic baseline is 77.0% / MSE 0.0804.
+  The pairwise model is therefore within ~0.6pp of the mirror Bayes ceiling, leaving little
+  complete-team prediction signal on the table.
+- **Interpretation:** the certified winner-predictor is not the bottleneck. The remaining headroom is
+  in the draft policy (greedy, deterministic-vs-softmax, no search), not in the quality of the
+  pairwise probability signal.
+
+## Softmax Validation Strategy (`native_softmax`)
+
+Added `scripts/tools/draft_strategy_native_softmax.gd` and `scripts/tools/draft_policy.gd` to
+close the Section 3.5 determinism-vs-gameplay-softmax mismatch: gameplay
+(`simulation_viewer_base.gd::_try_enemy_draft_ai`) requests top-5 recommendations and samples via
+softmax (temperature=0.5, scale=100), but the validation harness previously only ever exercised
+deterministic top-1 (`native_full`). `native_softmax` reproduces the exact shipped policy so the
+harness can measure the policy players actually face. `simulation_viewer_base.gd::_softmax_select`
+now delegates to the shared `DraftPolicy.softmax_select()` used by both (behavior-preserving
+refactor, verified bit-identical via git-stash diff on `native_full`/`random` matchups).
 
 ## Weight Override Behavior
 
@@ -320,9 +407,11 @@ strategy.set_weight_overrides({
 
 Quarantined strategies; did not improve bias. Signal ceiling and failed feature gates: [draft_prediction_context.md](draft_prediction_context.md).
 
-## Draft order bias (Phase 38)
+## Draft order bias (Phase 38 / post-refresh update)
 
-Production retains snake order (~19.6% Blue advantage in native self-play). Full audit: [draft_order_bias_audit.md](draft_order_bias_audit.md). Phase 29 baseline metrics: [native_draft_ai_baseline.md](native_draft_ai_baseline.md).
+The old ~19.6% Blue-advantage figure is **no longer valid** after the stats refresh. Current
+snapshot behavior: [draft_order_bias_audit.md](draft_order_bias_audit.md). Phase 29 baseline metrics:
+[native_draft_ai_baseline.md](native_draft_ai_baseline.md).
 
 ## Validation Suite
 

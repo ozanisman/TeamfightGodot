@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ## Usage:
 ##   godot --headless --script res://scripts/tools/full_draft_ablation_test.gd \
-##     -- --trials=25 --sims-per-draft=25
+##     -- --trials=25 --sims-per-draft=25 --draft-order=current --include-native-softmax \
+##        --output=res://logs/full_draft_ablation_report.txt
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
@@ -13,6 +14,7 @@ const DraftStrategyRandomPath := preload("res://scripts/tools/draft_strategy_ran
 const DraftStrategyNativePath := preload("res://scripts/tools/draft_strategy_native.gd")
 const DraftStrategyNativePicksRandomBansPath := preload("res://scripts/tools/draft_strategy_native_picks_random_bans.gd")
 const DraftStrategyRandomPicksNativeBansPath := preload("res://scripts/tools/draft_strategy_random_picks_native_bans.gd")
+const DraftStrategyNativeSoftmaxPath := preload("res://scripts/tools/draft_strategy_native_softmax.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
@@ -127,6 +129,13 @@ func _extract_argument(prefix: String, default_value: String) -> String:
 	return default_value
 
 
+func _flag_enabled(name: String) -> bool:
+	for a in OS.get_cmdline_user_args():
+		if str(a) == name:
+			return true
+	return false
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -144,6 +153,8 @@ func _run() -> void:
 	var base_seed := int(_extract_argument("--base-seed=", "90000"))
 	var weight_profile_name := _extract_argument("--weight-profile=", "current")
 	var draft_order_name := _extract_argument("--draft-order=", "current")
+	var include_native_softmax := _flag_enabled("--include-native-softmax")
+	var report_output_path := _extract_argument("--output=", "res://logs/full_draft_ablation_report.txt")
 
 	# Select draft order
 	if draft_order_name in _draft_orders:
@@ -211,6 +222,15 @@ func _run() -> void:
 		["random_full", "native_full"]   # Random vs native
 	]
 
+	if include_native_softmax:
+		strategies["native_softmax"] = DraftStrategyNativeSoftmaxPath.new(_stats_dir)
+		strategies["native_softmax"].set_weight_overrides(weight_overrides)
+		matchups.append_array([
+			["native_softmax", "native_softmax"],  # Softmax self-play bias
+			["native_softmax", "random_full"],     # Softmax vs random
+			["random_full", "native_softmax"]      # Random vs softmax
+		])
+
 	var report_lines = []
 	report_lines.append("=== DRAFT ORDER BIAS AUDIT RESULTS ===")
 	report_lines.append("Draft order: %s" % draft_order_name)
@@ -257,9 +277,9 @@ func _run() -> void:
 	report_lines.append("- native_full vs random_picks_native_bans: picks contribution")
 	report_lines.append("")
 	report_lines.append("=== TEST COMPLETE ===")
-	_write_report(report_lines)
+	_write_report(report_lines, report_output_path)
 
-	print("Full draft ablation test complete. Report written to full_draft_ablation_report.txt")
+	print("Full draft ablation test complete. Report written to %s" % report_output_path)
 	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)
 
 
@@ -439,8 +459,7 @@ func seed_rng(seed: int) -> void:
 	seed(seed)
 
 
-func _write_report(lines: Array) -> void:
-	var output_path = "res://logs/full_draft_ablation_report.txt"
+func _write_report(lines: Array, output_path: String = "res://logs/full_draft_ablation_report.txt") -> void:
 	var f = FileAccess.open(ProjectSettings.globalize_path(output_path), FileAccess.WRITE)
 	if f:
 		f.store_string("\n".join(lines))

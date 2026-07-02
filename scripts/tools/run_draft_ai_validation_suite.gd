@@ -36,6 +36,7 @@ func _run() -> void:
 
 	# Run required checks (check existing report files)
 	_run_check("Full Draft Validation (native)", "full_draft_validation.gd", "full_draft_validation_report_native.txt")
+	_run_check("Native Draft Quantitative Gate", "native_draft_quantitative_gate.gd", "native_draft_quantitative_gate_report.md")
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 
 	# Run optional checks if available

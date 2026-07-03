@@ -26,6 +26,9 @@ extends SceneTree
 ##     --ab-mde=0.05 --ab-alpha=0.05 --ab-power=0.80
 
 const Z_95: float = 1.959963984540054
+const NORMAL_CDF_INV_ITERATIONS: int = 50
+
+const REQUIRED_DRAFT_COLUMNS: Array[String] = ["draft_seed", "blue_strategy", "red_strategy", "blue_wins", "red_wins", "draws", "blue_winrate", "red_winrate", "drawrate"]
 
 var _native_strategy_names: Array[String] = ["native_full"]
 
@@ -133,17 +136,20 @@ func _load_draft_summaries(path: String) -> Array[Dictionary]:
 
 	var header: Array = _split_csv_line(f.get_line())
 	var idx: Dictionary = _header_index(header)
-	if not idx.has("draft_seed") or not idx.has("blue_strategy") or not idx.has("red_strategy"):
-		push_error("native_draft_validation_analyzer: draft summary missing required columns")
-		f.close()
-		return drafts
+	for col in REQUIRED_DRAFT_COLUMNS:
+		if not idx.has(col):
+			push_error("native_draft_validation_analyzer: draft summary missing required column %s" % col)
+			f.close()
+			return drafts
 
 	while not f.eof_reached():
 		var line: String = f.get_line()
 		if line.strip_edges().is_empty():
 			continue
 		var fields: Array = _split_csv_line(line)
-		drafts.append(_draft_from_fields(fields, idx))
+		var draft: Dictionary = _draft_from_fields(fields, idx)
+		if not draft.is_empty():
+			drafts.append(draft)
 	f.close()
 	return drafts
 
@@ -157,8 +163,13 @@ func _infer_drafts_from_steps(path: String) -> Array[Dictionary]:
 
 	var header: Array = _split_csv_line(f.get_line())
 	var idx: Dictionary = _header_index(header)
-	if not idx.has("draft_seed") or not idx.has("blue_strategy") or not idx.has("red_strategy") or not idx.has("step_index"):
-		push_error("native_draft_validation_analyzer: per-step input missing required columns")
+	for col in REQUIRED_DRAFT_COLUMNS:
+		if not idx.has(col):
+			push_error("native_draft_validation_analyzer: per-step input missing required column %s" % col)
+			f.close()
+			return drafts
+	if not idx.has("step_index"):
+		push_error("native_draft_validation_analyzer: per-step input missing required column step_index")
 		f.close()
 		return drafts
 
@@ -169,7 +180,16 @@ func _infer_drafts_from_steps(path: String) -> Array[Dictionary]:
 			continue
 		var fields: Array = _split_csv_line(line)
 		var draft: Dictionary = _draft_from_fields(fields, idx)
-		var step_index: int = int(fields[idx["step_index"]])
+		if draft.is_empty():
+			continue
+		if idx["step_index"] >= fields.size():
+			push_warning("native_draft_validation_analyzer: malformed row, missing step_index")
+			continue
+		var step_index_str: String = fields[idx["step_index"]].strip_edges()
+		if not step_index_str.is_valid_int():
+			push_warning("native_draft_validation_analyzer: invalid step_index '%s', skipping row" % step_index_str)
+			continue
+		var step_index: int = int(step_index_str)
 		var key: String = "%s|%s|%s" % [draft["draft_seed"], draft["blue_strategy"], draft["red_strategy"]]
 		if not best_by_key.has(key) or step_index > best_by_key[key]["step_index"]:
 			best_by_key[key] = draft
@@ -185,23 +205,45 @@ func _infer_drafts_from_steps(path: String) -> Array[Dictionary]:
 func _header_index(header: Array) -> Dictionary:
 	var idx: Dictionary = {}
 	for i in range(header.size()):
-		idx[header[i]] = i
+		idx[header[i].strip_edges()] = i
 	return idx
 
 
 func _draft_from_fields(fields: Array, idx: Dictionary) -> Dictionary:
-	var draft: Dictionary = {
-		"draft_seed": int(fields[idx["draft_seed"]]),
-		"blue_strategy": String(fields[idx["blue_strategy"]]),
-		"red_strategy": String(fields[idx["red_strategy"]]),
-		"blue_wins": int(fields[idx["blue_wins"]]),
-		"red_wins": int(fields[idx["red_wins"]]),
-		"draws": int(fields[idx["draws"]]),
-		"blue_winrate": float(fields[idx["blue_winrate"]]),
-		"red_winrate": float(fields[idx["red_winrate"]]),
-		"drawrate": float(fields[idx["drawrate"]])
-	}
+	for col in REQUIRED_DRAFT_COLUMNS:
+		if not idx.has(col) or idx[col] >= fields.size():
+			push_warning("native_draft_validation_analyzer: malformed row, missing column %s" % col)
+			return {}
+
+	var draft: Dictionary = {}
+	if not _read_int_field(fields, idx, "draft_seed", draft): return {}
+	draft["blue_strategy"] = String(fields[idx["blue_strategy"]])
+	draft["red_strategy"] = String(fields[idx["red_strategy"]])
+	if not _read_int_field(fields, idx, "blue_wins", draft): return {}
+	if not _read_int_field(fields, idx, "red_wins", draft): return {}
+	if not _read_int_field(fields, idx, "draws", draft): return {}
+	if not _read_float_field(fields, idx, "blue_winrate", draft): return {}
+	if not _read_float_field(fields, idx, "red_winrate", draft): return {}
+	if not _read_float_field(fields, idx, "drawrate", draft): return {}
 	return draft
+
+
+func _read_int_field(fields: Array, idx: Dictionary, col: String, out: Dictionary) -> bool:
+	var s: String = fields[idx[col]].strip_edges()
+	if not s.is_valid_int():
+		push_warning("native_draft_validation_analyzer: malformed row, invalid %s '%s'" % [col, s])
+		return false
+	out[col] = int(s)
+	return true
+
+
+func _read_float_field(fields: Array, idx: Dictionary, col: String, out: Dictionary) -> bool:
+	var s: String = fields[idx[col]].strip_edges()
+	if not s.is_valid_float():
+		push_warning("native_draft_validation_analyzer: malformed row, invalid %s '%s'" % [col, s])
+		return false
+	out[col] = float(s)
+	return true
 
 
 func _parse_float_arg(prefix: String, default_value: String, min_val: float, max_val: float) -> float:
@@ -226,23 +268,30 @@ func _split_csv_line(line: String) -> Array:
 			else:
 				in_quotes = not in_quotes
 		elif c == "," and not in_quotes:
-			out.append(current.strip_edges())
+			out.append(current)
 			current = ""
 		else:
 			current += c
 		i += 1
-	out.append(current.strip_edges())
+	out.append(current)
 	return out
+
+
+func _csv_field(s: String) -> String:
+	if s.find(",") >= 0 or s.find("\"") >= 0 or s.find("\n") >= 0 or s.find("\r") >= 0:
+		return "\"" + s.replace("\"", "\"\"") + "\""
+	return s
 
 
 func _format_metric_row(metric: String, grouping: String, trials: int, wins: int, losses: int, draws: int) -> String:
 	var total_matches: int = wins + losses + draws
-	if total_matches <= 0:
-		total_matches = 1
-	var winrate: float = float(wins) / float(total_matches)
-	var drawrate: float = float(draws) / float(total_matches)
+	var winrate: float = 0.0
+	var drawrate: float = 0.0
+	if total_matches > 0:
+		winrate = float(wins) / float(total_matches)
+		drawrate = float(draws) / float(total_matches)
 	return "%s,%s,%d,%d,%d,%d,%d,%.6f,%.6f" % [
-		metric, grouping, trials, total_matches, wins, losses, draws, winrate, drawrate
+		_csv_field(metric), _csv_field(grouping), trials, total_matches, wins, losses, draws, winrate, drawrate
 	]
 
 
@@ -411,7 +460,7 @@ func _build_ab_report(drafts: Array[Dictionary]) -> Array[String]:
 		var ci: Array = _wilson_ci(wins, losses, Z_95)
 		var winrate: float = float(wins) / float(maxi(1, wins + losses))
 		rows.append("matchup_winrate_ci,%s,%d,%d,%d,%.6f,%.6f,%.6f,,,,,,,,,,,," % [
-			key, g["trials"], wins, losses, winrate, ci[0], ci[1]
+			_csv_field(key), g["trials"], wins, losses, winrate, ci[0], ci[1]
 		])
 
 	if _ab_control_blue.is_empty() or _ab_control_red.is_empty():
@@ -444,6 +493,10 @@ func _build_ab_report(drafts: Array[Dictionary]) -> Array[String]:
 	var treatment_p: float = float(treatment_wins) / float(maxi(1, treatment_n))
 	var treatment_ci: Array = _wilson_ci(treatment_wins, treatment_losses, Z_95)
 
+	if control_n <= 0 or treatment_n <= 0:
+		push_warning("native_draft_validation_analyzer: A/B comparison requires decisive matches in both control and treatment")
+		return rows
+
 	var delta: float = treatment_p - control_p
 	var se_delta: float = sqrt(
 		control_p * (1.0 - control_p) / float(maxi(1, control_n)) +
@@ -458,9 +511,10 @@ func _build_ab_report(drafts: Array[Dictionary]) -> Array[String]:
 
 	var required_n: int = _required_n_per_group(control_p, _ab_mde, _ab_alpha, _ab_power)
 
+	var ab_grouping: String = "%s vs %s" % [control_key, treatment_key]
 	rows.append(
-		"ab_comparison,%s vs %s,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d" % [
-			control_key, treatment_key,
+		"ab_comparison,%s,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d" % [
+			_csv_field(ab_grouping),
 			control["trials"], control_wins, control_losses,
 			control_p, control_ci[0], control_ci[1],
 			control_p, control_ci[0], control_ci[1],
@@ -538,7 +592,7 @@ func _normal_cdf_inv(p: float) -> float:
 	var lo: float = -5.0
 	var hi: float = 5.0
 	var mid: float = 0.0
-	for _i in range(50):
+	for _i in range(NORMAL_CDF_INV_ITERATIONS):
 		mid = (lo + hi) / 2.0
 		if _normal_cdf(mid) < p:
 			lo = mid

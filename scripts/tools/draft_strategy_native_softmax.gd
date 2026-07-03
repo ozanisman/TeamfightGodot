@@ -23,12 +23,12 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array, draft_
 		return StringName("")
 	if _backend == null or not _backend.is_available():
 		push_error("NativeSoftmaxStrategy: native backend unavailable")
-		return StringName(available[0])
+		return StringName("")
 
 	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
-		push_warning("NativeSoftmaxStrategy: no pick recommendations returned, falling back to first available")
-		return StringName(available[0])
+		push_error("NativeSoftmaxStrategy: no pick recommendations returned")
+		return StringName("")
 
 	var selected: StringName = DraftPolicyScript.softmax_select(recommendations, TEMPERATURE, SCALE)
 	if selected.is_empty():
@@ -42,12 +42,12 @@ func recommend_next_ban(allies: Array, enemies: Array, available: Array, draft_s
 		return StringName("")
 	if _backend == null or not _backend.is_available():
 		push_error("NativeSoftmaxStrategy: native backend unavailable")
-		return StringName(available[0])
+		return StringName("")
 
-	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, side, weight_overrides, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
+	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, side, _weight_overrides, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
-		push_warning("NativeSoftmaxStrategy: no ban recommendations returned, falling back to first available")
-		return StringName(available[0])
+		push_error("NativeSoftmaxStrategy: no ban recommendations returned")
+		return StringName("")
 
 	var selected: StringName = DraftPolicyScript.softmax_select(recommendations, TEMPERATURE, SCALE)
 	if selected.is_empty():

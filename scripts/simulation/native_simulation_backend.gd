@@ -385,12 +385,12 @@ func get_draft_recommendation_names(allies: Array, enemies: Array, available: Ar
 	return []
 
 
-func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, draft_position: int = 0, early_pick_base_weight: float = 0.7, late_pick_counter_weight: float = 0.4) -> Array:
+func get_draft_recommendations_with_breakdowns(allies: Array, enemies: Array, available: Array, top_n: int = 3, stats_dir: String = "res://model_stats/certified_pairwise_testing_250k", base_weight: float = 0.50, synergy_weight: float = 0.25, counter_weight: float = 0.25, draft_position: int = 0, early_pick_base_weight: float = 0.7, late_pick_counter_weight: float = 0.4, config_path: String = "") -> Array:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
 	if _backend.has_method("get_draft_recommendations_with_breakdowns"):
-		return _backend.call("get_draft_recommendations_with_breakdowns", allies, enemies, available, top_n, stats_dir, base_weight, synergy_weight, counter_weight, 1.2, 1.2, draft_position, early_pick_base_weight, late_pick_counter_weight)
+		return _backend.call("get_draft_recommendations_with_breakdowns", allies, enemies, available, top_n, stats_dir, base_weight, synergy_weight, counter_weight, 1.2, 1.2, draft_position, early_pick_base_weight, late_pick_counter_weight, config_path)
 	push_error("Native simulation backend is missing get_draft_recommendations_with_breakdowns().")
 	return []
 

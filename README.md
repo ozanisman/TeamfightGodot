@@ -146,6 +146,18 @@ godot --headless --path . --script res://scripts/tools/run_draft_ai_validation_s
 
 Thresholds default to the refreshed baselines in [`wiki/notes/draft_ai_improvement_plan.md`](wiki/notes/draft_ai_improvement_plan.md). Override any threshold with `--<metric>=<value>` (e.g., `--native_softmax_self_play_bias_max_pp=15.0`).
 
+Stats snapshots now include a `stats_manifest.json` with `schema_version`, `snapshot_id`, `generated_at`, `catalog_version`, `generator_name`, `generator_args`, and file hashes. File hashes are `String.hash()` 32-bit values and the native loader validates every listed CSV file hash against the file on disk. The native `DraftStatsDatabase` warns when the manifest is missing, has an unsupported schema, contains invalid types, or has a hash mismatch. `generator_args` records the CLI arguments passed to the generator, so avoid passing secrets in stats-generation commands. To fail loudly on a mismatch, add a `certification` section to `model_stats/draft_ai_config.json`:
+
+```json
+{
+  "certification": {
+    "stats_snapshot_id": "<snapshot_id_from_manifest>"
+  }
+}
+```
+
+When `certification.stats_snapshot_id` is set, every native pick/ban recommendation call compares the loaded stats snapshot against the configured ID and returns an empty result with an error if they differ. The validation harness and quantitative gate inherit this check because they use the same native recommendation API.
+
 ## Common commands
 
 All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeouts). After GDScript edits, run `--check-only` before long smoke or benchmark scenes. Full flag list: [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md).

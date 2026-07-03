@@ -1,6 +1,7 @@
 #include "sim_draft_ai_stats_database.hpp"
 
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <algorithm>
 
@@ -15,6 +16,8 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 	_role_combination_stats.clear();
 	_loaded = false;
 	_last_error = String();
+	_snapshot_id = String();
+	_manifest_error = String();
 
 	String normalized = dir_path.trim_suffix("/");
 
@@ -34,6 +37,8 @@ bool DraftStatsDatabase::load_from_dir(const String &dir_path) {
 		return false;
 	}
 
+	_load_manifest(normalized);
+
 	_loaded = true;
 	return true;
 }
@@ -44,6 +49,126 @@ bool DraftStatsDatabase::is_loaded() const {
 
 String DraftStatsDatabase::last_error() const {
 	return _last_error;
+}
+
+String DraftStatsDatabase::snapshot_id() const {
+	return _snapshot_id;
+}
+
+String DraftStatsDatabase::manifest_error() const {
+	return _manifest_error;
+}
+
+static String _compute_file_hash(const String &path) {
+	if (!FileAccess::file_exists(path)) {
+		return String();
+	}
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		return String();
+	}
+	const String text = file->get_as_text();
+	// Match GDScript: str(text.hash()) formats the 32-bit unsigned hash as a positive decimal string.
+	return String::num_uint64(text.hash());
+}
+
+void DraftStatsDatabase::_load_manifest(const String &dir_path) {
+	_snapshot_id = String();
+	_manifest_error = String();
+
+	const String path = dir_path + String("/stats_manifest.json");
+	if (!FileAccess::file_exists(path)) {
+		_manifest_error = vformat("missing stats_manifest.json in %s", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		_manifest_error = vformat("cannot open stats_manifest.json in %s", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const String text = file->get_as_text();
+	const Variant parsed = JSON::parse_string(text);
+	if (parsed.get_type() != Variant::DICTIONARY) {
+		_manifest_error = vformat("stats_manifest.json in %s is not a valid JSON object", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const Dictionary manifest = parsed;
+	if (!manifest.has("schema_version")) {
+		_manifest_error = vformat("stats_manifest.json in %s is missing schema_version", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const int schema_version = int(manifest["schema_version"]);
+	if (schema_version != 1) {
+		_manifest_error = vformat("stats_manifest.json in %s has unsupported schema_version %d", dir_path, schema_version);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	if (!manifest.has("snapshot_id")) {
+		_manifest_error = vformat("stats_manifest.json in %s is missing snapshot_id", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	if (!manifest.has("files")) {
+		_manifest_error = vformat("stats_manifest.json in %s is missing files", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const Variant files_variant = manifest["files"];
+	if (files_variant.get_type() != Variant::DICTIONARY) {
+		_manifest_error = vformat("stats_manifest.json in %s has invalid files type", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const Dictionary files = files_variant;
+	if (files.is_empty()) {
+		_manifest_error = vformat("stats_manifest.json in %s has no files", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+
+	const Array keys = files.keys();
+	for (int i = 0; i < keys.size(); ++i) {
+		const String file_name = keys[i];
+		const String file_path = dir_path + String("/") + file_name;
+		if (!FileAccess::file_exists(file_path)) {
+			_manifest_error = vformat("manifest references missing file: %s", file_name);
+			UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+			return;
+		}
+		const Variant expected_variant = files[file_name];
+		if (expected_variant.get_type() != Variant::STRING) {
+			_manifest_error = vformat("manifest hash for %s is not a string", file_name);
+			UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+			return;
+		}
+		const String expected = expected_variant;
+		const String actual = _compute_file_hash(file_path);
+		if (expected != actual) {
+			_manifest_error = vformat("hash mismatch for %s (expected %s, got %s)", file_name, expected, actual);
+			UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+			return;
+		}
+	}
+
+	const Variant snapshot_id_variant = manifest["snapshot_id"];
+	if (snapshot_id_variant.get_type() != Variant::STRING) {
+		_manifest_error = vformat("stats_manifest.json in %s has invalid snapshot_id type", dir_path);
+		UtilityFunctions::push_warning(vformat("DraftStatsDatabase: %s", _manifest_error));
+		return;
+	}
+	_snapshot_id = String(snapshot_id_variant);
 }
 
 DraftStatValue DraftStatsDatabase::base_winrate_for(const StringName &champion) const {

@@ -8,6 +8,7 @@ const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulatio
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
 const StatsCsvAggregatorScript := preload("res://scripts/tools/stats_csv_aggregator.gd")
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
+const StatsManifestScript := preload("res://scripts/tools/stats_manifest.gd")
 
 ## Upper bound on parallel export workers (avoids huge thread counts on high-core CPUs).
 const DEFAULT_EXPORT_MAX_WORKER_THREADS: int = 16
@@ -361,6 +362,16 @@ func run(
 			"stats_profile": profile_state,
 			"stats_profile_summary": _build_profile_summary(profile_state),
 		})
+
+	# Write provenance manifest
+	var manifest := StatsManifestScript.build_manifest(
+		output_dir,
+		"stats_simulation_csv_generator",
+		OS.get_cmdline_user_args()
+	)
+	if not StatsManifestScript.write_manifest(output_dir, manifest):
+		push_error("StatsSimulationCsvGenerator: failed to write manifest")
+		return ERR_FILE_CANT_WRITE
 
 	if evaluate_draft_predictions:
 		_evaluate_draft_predictions(

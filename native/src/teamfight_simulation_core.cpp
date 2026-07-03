@@ -139,7 +139,7 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("debug_print_draft_recommendations", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "debug_mode", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::debug_print_draft_recommendations, DEFVAL(5), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_debug_draft_evaluation_batch", "allies", "enemies", "available", "num_runs", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_debug_draft_evaluation_batch, DEFVAL(50), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("get_draft_recommendation_names", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::get_draft_recommendation_names, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
-	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
+	ClassDB::bind_method(D_METHOD("get_draft_recommendations_with_breakdowns", "allies", "enemies", "available", "top_n", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "synergy_amplification", "matchup_amplification", "draft_position", "early_pick_base_weight", "late_pick_counter_weight", "config_path"), &TeamfightSimulationCore::get_draft_recommendations_with_breakdowns, DEFVAL(3), DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4), DEFVAL(""));
 	ClassDB::bind_method(D_METHOD("predict_draft_winner", "team1", "team2", "stats_dir", "base_weight", "synergy_weight", "counter_weight", "matchup_weight", "composition_weight", "logistic_k", "include_breakdown", "synergy_amplification", "matchup_amplification", "scoring_mode", "variance_weight", "cc_weight", "mobility_weight", "sustain_weight", "best_counter_weight", "worst_counter_weight", "best_synergy_weight", "worst_synergy_weight", "synergy_aggregation", "counter_aggregation", "use_decorrelated_scoring", "draft_position", "early_pick_base_weight", "late_pick_counter_weight"), &TeamfightSimulationCore::predict_draft_winner, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(0.0), DEFVAL(10.0), DEFVAL(false), DEFVAL(1.2), DEFVAL(1.2), DEFVAL(static_cast<int>(sim::draft::ScoringMode::CERTIFIED_PAIRWISE_PROBABILITY)), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(0.0), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(static_cast<int>(sim::draft::AggregationMode::FLAT_AVERAGE)), DEFVAL(false), DEFVAL(0), DEFVAL(0.7), DEFVAL(0.4));
 	ClassDB::bind_method(D_METHOD("analyze_draft_signal_influence", "candidate", "allies", "enemies", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::analyze_draft_signal_influence, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
 	ClassDB::bind_method(D_METHOD("run_controlled_draft_evaluation", "allies", "enemies", "available", "stats_dir", "base_weight", "synergy_weight", "matchup_weight", "synergy_amplification", "matchup_amplification"), &TeamfightSimulationCore::run_controlled_draft_evaluation, DEFVAL("res://stats_output"), DEFVAL(0.50), DEFVAL(0.25), DEFVAL(0.25), DEFVAL(1.2), DEFVAL(1.2));
@@ -214,6 +214,7 @@ struct DraftAiThreadCache {
 	sim::draft_ai::DraftStatsDatabase cached_database;
 	sim::catalog::CatalogState cached_catalog;
 	bool cache_loaded = false;
+	uint64_t cached_manifest_mtime = 0;
 
 	String cached_config_path;
 	sim::draft_ai::Config cached_config;
@@ -247,6 +248,50 @@ void ensure_draft_ai_config_loaded(DraftAiThreadCache &cache, const String &conf
 DraftAiThreadCache &draft_ai_thread_cache() {
 	static thread_local DraftAiThreadCache cache;
 	return cache;
+}
+
+// Returns true if the loaded stats snapshot is acceptable for the configured certification.
+// If the config specifies a required snapshot_id and the loaded stats do not match, emits an
+// error and returns false so the caller can bail out with an empty result.
+bool check_stats_certification(const sim::draft_ai::DraftStatsDatabase &database, const sim::draft_ai::Config &config, const String &stats_dir) {
+	const String &required = config.certification.stats_snapshot_id;
+	if (required.is_empty()) {
+		return true;
+	}
+	const String &manifest_error = database.manifest_error();
+	if (!manifest_error.is_empty()) {
+		UtilityFunctions::push_error(vformat("Draft AI stats certification failed for %s: %s (required snapshot_id: %s)", stats_dir, manifest_error, required));
+		return false;
+	}
+	const String loaded = database.snapshot_id();
+	if (loaded != required) {
+		UtilityFunctions::push_error(vformat("Draft AI stats certification failed for %s: loaded snapshot_id %s does not match required %s", stats_dir, loaded, required));
+		return false;
+	}
+	return true;
+}
+
+uint64_t get_stats_dir_mtime(const String &stats_dir) {
+	uint64_t max_mtime = 0;
+	const String manifest_path = stats_dir + String("/stats_manifest.json");
+	if (FileAccess::file_exists(manifest_path)) {
+		max_mtime = std::max(max_mtime, FileAccess::get_modified_time(manifest_path));
+	}
+	const std::vector<String> canonical_csvs = {
+		"summary_stats.csv",
+		"combat_stats.csv",
+		"role_stats.csv",
+		"role_combinations.csv",
+		"matchup_vs.csv",
+		"matchup_with.csv",
+	};
+	for (const String &csv_name : canonical_csvs) {
+		const String csv_path = stats_dir + String("/") + csv_name;
+		if (FileAccess::file_exists(csv_path)) {
+			max_mtime = std::max(max_mtime, FileAccess::get_modified_time(csv_path));
+		}
+	}
+	return max_mtime;
 }
 
 }
@@ -368,16 +413,17 @@ Array TeamfightSimulationCore::get_draft_recommendations_with_breakdowns(
 		double matchup_amplification,
 		int draft_position,
 		double early_pick_base_weight,
-		double late_pick_counter_weight) {
+		double late_pick_counter_weight,
+		const String &config_path) {
 	// Route to sim::draft_ai system (experimental draft AI)
 	// Note: weight parameters are not used by draft_ai system, kept for API compatibility
 	// draft_position maps to draft_step parameter (both represent position in draft order)
 	// strategy parameter: 0 = NATIVE strategy (default)
-	(void)base_weight; (void)synergy_weight; (void)counter_weight; 
+	(void)base_weight; (void)synergy_weight; (void)counter_weight;
 	(void)synergy_amplification; (void)matchup_amplification;
 	(void)early_pick_base_weight; (void)late_pick_counter_weight; // Suppress unused parameter warnings
-	
-	auto recommendations = get_draft_ai_pick_recommendations(stats_dir, available, allies, enemies, top_n, draft_position, 0);
+
+	auto recommendations = get_draft_ai_pick_recommendations(stats_dir, available, allies, enemies, top_n, draft_position, 0, config_path);
 	
 	// Check for failure (empty array indicates database load failure)
 	if (recommendations.is_empty()) {
@@ -1206,30 +1252,36 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 ) {
 	// Use shared thread-local cache for database and catalog
 	DraftAiThreadCache &cache = draft_ai_thread_cache();
-	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir) {
+	const uint64_t current_stats_dir_mtime = get_stats_dir_mtime(stats_dir);
+	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir || cache.cached_manifest_mtime != current_stats_dir_mtime) {
 		sim::draft_ai::DraftStatsDatabase fresh;
 		if (!fresh.load_from_dir(stats_dir)) {
 			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
 			return Array();
 		}
-		
+
 		// Load catalog for tag access
 		sim::catalog::CatalogState catalog;
 		sim::catalog::CatalogHooks hooks = _catalog_hooks();
 		sim::catalog::ensure_loaded(catalog, hooks);
 		fresh.set_catalog(&catalog);
-		
+
 		cache.cached_database = std::move(fresh);
 		cache.cached_catalog = std::move(catalog);
 		cache.cached_stats_dir = stats_dir;
+		cache.cached_manifest_mtime = current_stats_dir_mtime;
 		cache.cache_loaded = true;
 	}
 
 	ensure_draft_ai_config_loaded(cache, config_path);
-	
+
 	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
 	sim::catalog::CatalogState &catalog = cache.cached_catalog;
 	sim::draft_ai::Config &config = cache.cached_config;
+
+	if (!check_stats_certification(database, config, stats_dir)) {
+		return Array();
+	}
 
 	sim::draft_ai::DraftEvaluator evaluator(&database, &config);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database, &config);
@@ -1313,30 +1365,36 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 ) {
 	// Use shared thread-local cache with pick recommendations (same database and catalog)
 	DraftAiThreadCache &cache = draft_ai_thread_cache();
-	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir) {
+	const uint64_t current_stats_dir_mtime = get_stats_dir_mtime(stats_dir);
+	if (!cache.cache_loaded || cache.cached_stats_dir != stats_dir || cache.cached_manifest_mtime != current_stats_dir_mtime) {
 		sim::draft_ai::DraftStatsDatabase fresh;
 		if (!fresh.load_from_dir(stats_dir)) {
 			UtilityFunctions::push_warning(vformat("Failed to load draft AI stats from %s: %s", stats_dir, fresh.last_error()));
 			return Array();
 		}
-		
+
 		// Load catalog for tag access
 		sim::catalog::CatalogState catalog;
 		sim::catalog::CatalogHooks hooks = _catalog_hooks();
 		sim::catalog::ensure_loaded(catalog, hooks);
 		fresh.set_catalog(&catalog);
-		
+
 		cache.cached_database = std::move(fresh);
 		cache.cached_catalog = std::move(catalog);
 		cache.cached_stats_dir = stats_dir;
+		cache.cached_manifest_mtime = current_stats_dir_mtime;
 		cache.cache_loaded = true;
 	}
 
 	ensure_draft_ai_config_loaded(cache, config_path);
-	
+
 	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
 	sim::catalog::CatalogState &catalog = cache.cached_catalog;
 	sim::draft_ai::Config &config = cache.cached_config;
+
+	if (!check_stats_certification(database, config, stats_dir)) {
+		return Array();
+	}
 
 	sim::draft_ai::DraftEvaluator evaluator(&database, &config);
 	sim::draft_ai::DraftRecommender recommender(&evaluator, &database, &config);

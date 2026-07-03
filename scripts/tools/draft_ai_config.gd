@@ -44,7 +44,7 @@ static func _get_float(softmax: Dictionary, key: String, default_value: float, c
 		push_warning("DraftAiConfig: '%s' is not numeric in %s, using default %s" % [key, config_path, default_value])
 		return default_value
 	var result: float = float(v)
-	if not result.is_finite():
+	if not is_finite(result):
 		push_warning("DraftAiConfig: '%s' is not finite in %s, using default %s" % [key, config_path, default_value])
 		return default_value
 	return result
@@ -58,7 +58,7 @@ static func _get_int(softmax: Dictionary, key: String, default_value: int, confi
 		return default_value
 	if typeof(v) == TYPE_FLOAT:
 		var result: float = float(v)
-		if not result.is_finite():
+		if not is_finite(result):
 			push_warning("DraftAiConfig: '%s' is not finite in %s, using default %s" % [key, config_path, default_value])
 			return default_value
 	return int(v)

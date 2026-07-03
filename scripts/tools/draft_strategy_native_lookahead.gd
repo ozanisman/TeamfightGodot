@@ -5,6 +5,7 @@
 extends "res://scripts/tools/draft_strategy.gd"
 
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 var _backend: RefCounted = null
 var _stats_dir: String = "res://model_stats/stats_output_100k"
@@ -30,12 +31,12 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array, draft_
 		return StringName("")
 	if _backend == null or not _backend.is_available():
 		push_error("NativeLookaheadStrategy: native backend unavailable")
-		return StringName(available[0])
+		return StringName("")
 
-	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY)
+	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
-		push_warning("NativeLookaheadStrategy: no pick recommendations returned, falling back to first available")
-		return StringName(available[0])
+		push_error("NativeLookaheadStrategy: no pick recommendations returned")
+		return StringName("")
 
 	var top_rec: Dictionary = recommendations[0]
 	var champion: StringName = StringName(top_rec.candidate)
@@ -47,12 +48,12 @@ func recommend_next_ban(allies: Array, enemies: Array, available: Array, draft_s
 		return StringName("")
 	if _backend == null or not _backend.is_available():
 		push_error("NativeLookaheadStrategy: native backend unavailable")
-		return StringName(available[0])
+		return StringName("")
 
-	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, side, _weight_overrides, STRATEGY)
+	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, side, _weight_overrides, STRATEGY, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
-		push_warning("NativeLookaheadStrategy: no ban recommendations returned, falling back to first available")
-		return StringName(available[0])
+		push_error("NativeLookaheadStrategy: no ban recommendations returned")
+		return StringName("")
 
 	var top_rec: Dictionary = recommendations[0]
 	var champion: StringName = StringName(top_rec.candidate)

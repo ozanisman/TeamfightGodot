@@ -8,6 +8,7 @@ extends SceneTree
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 const TEAM_SIZE: int = 5
 const DEFAULT_OUTPUT := "res://model_stats/certified_pairwise_testing_250k/pick_recommendation_validation.csv"
@@ -37,6 +38,7 @@ func _run() -> void:
 	var draft_depth := clampi(int(_extract_argument("--draft-depth=", "4")), 0, TEAM_SIZE - 1)
 	var base_seed := int(_extract_argument("--base-seed=", "70000"))
 	var stats_dir := _extract_argument("--stats-dir=", "res://model_stats/certified_pairwise_testing_250k")
+	var config_path := _extract_argument("--config-path=", DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	var output_path := _extract_argument("--output=", DEFAULT_OUTPUT)
 
 	var backend := NativeSimulationBackendScript.new()
@@ -72,7 +74,7 @@ func _run() -> void:
 		var available: Array[StringName] = state["available"]
 		var picking_team: String = state["picking_team"]
 
-		var baseline := _baseline_recommendations(backend, allies, enemies, available, stats_dir)
+		var baseline := _baseline_recommendations(backend, allies, enemies, available, stats_dir, config_path)
 		if baseline.is_empty():
 			push_error("validate_pick_recommendations: baseline returned no recommendations for state %d" % state_index)
 			quit(1)
@@ -174,9 +176,9 @@ func _sample_state(champion_ids: Array[StringName], draft_depth: int, seed: int)
 	}
 
 
-func _baseline_recommendations(backend: RefCounted, allies: Array[StringName], enemies: Array[StringName], available: Array[StringName], stats_dir: String) -> Array[StringName]:
+func _baseline_recommendations(backend: RefCounted, allies: Array[StringName], enemies: Array[StringName], available: Array[StringName], stats_dir: String, config_path: String) -> Array[StringName]:
 	var rows: Array = backend.get_draft_recommendations_with_breakdowns(
-		allies, enemies, available, available.size(), stats_dir, 0.50, 0.25, 0.25
+		allies, enemies, available, available.size(), stats_dir, 0.50, 0.25, 0.25, 0, 0.7, 0.4, config_path
 	)
 	var result: Array[StringName] = []
 	for row in rows:

@@ -20,6 +20,8 @@ public:
 	bool load_from_dir(const String &dir_path);
 	bool is_loaded() const;
 	String last_error() const;
+	String snapshot_id() const;
+	String manifest_error() const;
 
 	DraftStatValue base_winrate_for(const StringName &champion) const;
 	DraftStatValue synergy_winrate_for(const StringName &champion, const StringName &ally) const;
@@ -48,9 +50,12 @@ private:
 	std::map<String, StatRecord> _role_combination_stats;
 	bool _loaded = false;
 	String _last_error;
+	String _snapshot_id;
+	String _manifest_error;
 	const catalog::CatalogState *_catalog = nullptr;
 
 	bool _load_combat_stats(const String &path);
+	void _load_manifest(const String &dir_path);
 	bool _load_matchup_stats(const String &path, MatchupMap &target);
 	bool _load_role_combinations(const String &path);
 	DraftStatValue _apply_smoothing(const StatRecord &record, const DraftPredictionConfig &config) const;

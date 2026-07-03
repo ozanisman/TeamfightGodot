@@ -180,6 +180,13 @@ Config Config::load_with_optional_override(const String &override_path) {
 		config.lookahead.denial_negligible_epsilon = dget(lookahead, "denial_negligible_epsilon", config.lookahead.denial_negligible_epsilon, override_path);
 	}
 
+	if (root.has("certification")) {
+		Dictionary cert = root["certification"];
+		if (cert.has("stats_snapshot_id")) {
+			config.certification.stats_snapshot_id = String(cert["stats_snapshot_id"]);
+		}
+	}
+
 	return config;
 }
 

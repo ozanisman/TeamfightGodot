@@ -2910,6 +2910,24 @@ static func get_champion_ids() -> Array[StringName]:
 		thread_cache["champion_ids"] = ids
 	return thread_cache["champion_ids"].duplicate()
 
+
+static func get_catalog_version() -> String:
+	# Stable fingerprint of the champion roster (IDs + roles). Not sensitive to whitespace or
+	# comments, but changes when champions or their role assignments change.
+	var ids := get_champion_ids()
+	ids.sort()
+	var parts: PackedStringArray = []
+	for id in ids:
+		var champion = get_champion(id)
+		var role := StringName("")
+		if champion != null and champion.stats != null:
+			role = champion.stats.role
+		if role.is_empty():
+			push_warning("ChampionCatalog: champion %s has no role; catalog_version will ignore it" % id)
+		parts.append("%s:%s" % [id, role])
+	var text := "|".join(parts)
+	return str(text.hash())
+
 static func get_champion(unit_id: StringName):
 	return build_catalog().get(unit_id, null)
 

@@ -88,6 +88,12 @@ struct LookaheadParams {
 	double denial_negligible_epsilon = 0.001;
 };
 
+// Certification metadata: records which external artifacts the current build was certified
+// against. Empty values keep the current permissive behavior (warnings only).
+struct Certification {
+	String stats_snapshot_id;
+};
+
 // Centralized tunables for the sim::draft_ai recommender/evaluator. Default member
 // initializers reproduce today's hardcoded behavior exactly; an optional JSON override
 // file can selectively replace values for tuning experiments.
@@ -106,6 +112,7 @@ struct Config {
 	FillsRoleSteps fills_role_steps;
 	EvaluatorWeights evaluator_weights;
 	LookaheadParams lookahead;
+	Certification certification;
 
 	// Returns defaults if override_path is empty, the file does not exist, or parsing fails
 	// (a warning is emitted for the latter case). Missing keys within a present file fall

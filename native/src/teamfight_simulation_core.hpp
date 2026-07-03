@@ -290,8 +290,8 @@ public:
 	void debug_test_draft_ai_ban_eval(const String &stats_dir = "res://model_stats/stats_output_100k");
 	void debug_test_draft_ai_ban_recommendations(const String &stats_dir = "res://model_stats/stats_output_100k");
 	void debug_lookahead_turn_diagnostic();
-	Array get_draft_ai_pick_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, int strategy = 0);
-	Array get_draft_ai_ban_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, const String &acting_side = "blue", const Dictionary &weight_overrides = Dictionary(), int strategy = 0);
+	Array get_draft_ai_pick_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, int strategy = 0, const String &config_path = "");
+	Array get_draft_ai_ban_recommendations(const String &stats_dir, const Array &available, const Array &allies, const Array &enemies, int max_results = 3, int draft_step = -1, const String &acting_side = "blue", const Dictionary &weight_overrides = Dictionary(), int strategy = 0, const String &config_path = "");
 };
 
 #endif

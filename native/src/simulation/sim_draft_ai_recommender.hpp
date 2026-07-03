@@ -4,6 +4,7 @@
 #include "sim_draft_ai_types.hpp"
 #include "sim_draft_ai_evaluator.hpp"
 #include "sim_draft_ai_stats_database.hpp"
+#include "sim_draft_ai_config.hpp"
 
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -17,7 +18,7 @@ namespace draft_ai {
 
 class DraftRecommender {
 public:
-	explicit DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database);
+	explicit DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database, const Config *config = nullptr);
 	~DraftRecommender() = default;
 
 	std::vector<DraftPickScoreBreakdown> recommend_picks(
@@ -46,6 +47,8 @@ public:
 private:
 	const DraftEvaluator *_evaluator;
 	const DraftStatsDatabase *_database;
+	Config _default_config;
+	const Config *_config;
 
 	// Lookahead turn logic helpers
 	static bool is_pick_step(int step);

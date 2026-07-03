@@ -3,8 +3,8 @@
 namespace sim {
 namespace draft_ai {
 
-DraftEvaluator::DraftEvaluator(const DraftStatsDatabase *stats_database)
-	: _stats_database(stats_database) {
+DraftEvaluator::DraftEvaluator(const DraftStatsDatabase *stats_database, const Config *config)
+	: _stats_database(stats_database), _config(config ? config : &_default_config) {
 }
 
 DraftPickScoreBreakdown DraftEvaluator::evaluate_candidate_pick(
@@ -45,12 +45,12 @@ DraftPickScoreBreakdown DraftEvaluator::evaluate_candidate_pick(
 	}
 	result.counter_risk = enemies.empty() ? 0.0 : counter_risk_sum / static_cast<double>(enemies.size());
 
-	// Total score
+	// Total score (NOTE: overwritten by DraftRecommender with phase-aware weights before use).
 	result.total_score =
-		BASE_POWER_WEIGHT * result.base_power +
-		ALLY_SYNERGY_WEIGHT * result.ally_synergy +
-		ENEMY_COUNTER_VALUE_WEIGHT * result.enemy_counter_value -
-		COUNTER_RISK_WEIGHT * result.counter_risk;
+		_config->evaluator_weights.base_power_weight * result.base_power +
+		_config->evaluator_weights.ally_synergy_weight * result.ally_synergy +
+		_config->evaluator_weights.enemy_counter_value_weight * result.enemy_counter_value -
+		_config->evaluator_weights.counter_risk_weight * result.counter_risk;
 
 	return result;
 }
@@ -99,13 +99,14 @@ DraftBanScoreBreakdown DraftEvaluator::evaluate_candidate_ban(
 	result.denial_value = positive_enemy_value - positive_own_value;
 	
 	// Legacy field for backward compatibility/debug
-	result.own_pick_value_penalty = -positive_own_value * OWN_PICK_VALUE_PENALTY_WEIGHT;
+	result.own_pick_value_penalty = -positive_own_value * _config->evaluator_weights.own_pick_value_penalty_weight;
 
-	// Total ban score with differential denial
+	// Total ban score with differential denial (NOTE: overwritten by DraftRecommender with
+	// phase-aware weights before use).
 	result.total_score =
-		OWN_PICK_VALUE_PENALTY_WEIGHT * result.denial_value +
-		ENEMY_SYNERGY_WEIGHT * result.enemy_synergy +
-		COUNTERS_MY_TEAM_WEIGHT * result.counters_my_team;
+		_config->evaluator_weights.own_pick_value_penalty_weight * result.denial_value +
+		_config->evaluator_weights.enemy_synergy_weight * result.enemy_synergy +
+		_config->evaluator_weights.counters_my_team_weight * result.counters_my_team;
 
 	return result;
 }

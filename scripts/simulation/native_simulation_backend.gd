@@ -428,21 +428,21 @@ func predict_draft_winner(team1: Array, team2: Array, stats_dir: String = "res:/
 ## New draft AI API (Phase 1-6)
 ## Uses DraftStatsDatabase, DraftEvaluator, DraftRecommender
 
-func get_draft_ai_pick_recommendations(stats_dir: String, available: Array, allies: Array, enemies: Array, max_results: int = 3, draft_step: int = -1, strategy: int = 0) -> Array:
+func get_draft_ai_pick_recommendations(stats_dir: String, available: Array, allies: Array, enemies: Array, max_results: int = 3, draft_step: int = -1, strategy: int = 0, config_path: String = "") -> Array:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
 	if _backend.has_method("get_draft_ai_pick_recommendations"):
-		return _backend.call("get_draft_ai_pick_recommendations", stats_dir, available, allies, enemies, max_results, draft_step, strategy)
+		return _backend.call("get_draft_ai_pick_recommendations", stats_dir, available, allies, enemies, max_results, draft_step, strategy, config_path)
 	push_error("Native simulation backend is missing get_draft_ai_pick_recommendations().")
 	return []
 
-func get_draft_ai_ban_recommendations(stats_dir: String, available: Array, allies: Array, enemies: Array, max_results: int = 3, draft_step: int = -1, acting_side: String = "blue", weight_overrides: Dictionary = {}, strategy: int = 0) -> Array:
+func get_draft_ai_ban_recommendations(stats_dir: String, available: Array, allies: Array, enemies: Array, max_results: int = 3, draft_step: int = -1, acting_side: String = "blue", weight_overrides: Dictionary = {}, strategy: int = 0, config_path: String = "") -> Array:
 	if not _ensure_native_backend():
 		push_error("Simulation backend is not available.")
 		return []
 	if _backend.has_method("get_draft_ai_ban_recommendations"):
-		return _backend.call("get_draft_ai_ban_recommendations", stats_dir, available, allies, enemies, max_results, draft_step, acting_side, weight_overrides, strategy)
+		return _backend.call("get_draft_ai_ban_recommendations", stats_dir, available, allies, enemies, max_results, draft_step, acting_side, weight_overrides, strategy, config_path)
 	push_error("Native simulation backend is missing get_draft_ai_ban_recommendations().")
 	return []
 

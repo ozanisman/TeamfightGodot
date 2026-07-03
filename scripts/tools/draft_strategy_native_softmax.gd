@@ -5,10 +5,13 @@
 extends "res://scripts/tools/draft_strategy_native.gd"
 
 const DraftPolicyScript := preload("res://scripts/tools/draft_policy.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
-const TOP_K: int = 5
-const TEMPERATURE: float = 0.5
-const SCALE: float = 100.0
+# Centralized in draft_ai_config.gd (Workstream 0.2); falls back to hardcoded defaults
+# (top_k=5, temperature=0.5, scale=100.0) reproducing prior behavior exactly.
+var TOP_K: int = DraftAiConfigScript.get_softmax_top_k()
+var TEMPERATURE: float = DraftAiConfigScript.get_softmax_temperature()
+var SCALE: float = DraftAiConfigScript.get_softmax_scale()
 
 
 func get_strategy_name() -> String:
@@ -22,7 +25,7 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array, draft_
 		push_error("NativeSoftmaxStrategy: native backend unavailable")
 		return StringName(available[0])
 
-	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step)
+	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
 		push_warning("NativeSoftmaxStrategy: no pick recommendations returned, falling back to first available")
 		return StringName(available[0])
@@ -41,7 +44,7 @@ func recommend_next_ban(allies: Array, enemies: Array, available: Array, draft_s
 		push_error("NativeSoftmaxStrategy: native backend unavailable")
 		return StringName(available[0])
 
-	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, side, weight_overrides)
+	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, TOP_K, draft_step, side, weight_overrides, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
 	if recommendations.is_empty():
 		push_warning("NativeSoftmaxStrategy: no ban recommendations returned, falling back to first available")
 		return StringName(available[0])

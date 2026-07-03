@@ -15,6 +15,7 @@ const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const DraftChampionTileScene := preload("res://scenes/components/draft_champion_tile.tscn")
 const DraftScreenShellScene := preload("res://scenes/components/draft_screen_shell.tscn")
 const DraftPolicyScript := preload("res://scripts/tools/draft_policy.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 ## World units map to this fraction of min(viewport) for a consistent projectile read.
 const VIEWER_BASE_MIN_AXIS: float = 720.0
@@ -45,8 +46,11 @@ enum GameState {
 
 # Draft configuration - Modified for manual selection of both teams
 const MAX_TEAM_SIZE := 5
-const AI_SELECTION_TEMPERATURE: float = 0.5  # Softmax temperature (0.3=very top-heavy, 0.5=top-heavy, 1.0=balanced, 2.0=random)
-const AI_SCORE_SCALE: float = 100.0  # Multiply raw scores before softmax so small-magnitude differences matter
+# Softmax temperature/scale, centralized in draft_ai_config.gd (Workstream 0.2). Loaded once per
+# instance; reads the optional JSON override file if present, otherwise the hardcoded defaults
+# (temperature=0.5, scale=100.0) that reproduce prior behavior exactly.
+var AI_SELECTION_TEMPERATURE: float = DraftAiConfigScript.get_softmax_temperature()
+var AI_SCORE_SCALE: float = DraftAiConfigScript.get_softmax_scale()
 
 # Which side is human vs AI. Can be "blue" or "red".
 var _player_side: String = "blue"
@@ -1887,7 +1891,8 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 			_draft_step_index,
 			_ai_side,  # acting_side
 			Dictionary(),  # weight_overrides
-			0  # strategy (NATIVE)
+			0,  # strategy (NATIVE)
+			DraftAiConfigScript.DEFAULT_CONFIG_PATH
 		)
 	else:
 		recommendations = _backend.get_draft_ai_pick_recommendations(
@@ -1897,7 +1902,8 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 			_player_picks,
 			5,  # max_results
 			_draft_step_index,
-			0  # strategy (NATIVE)
+			0,  # strategy (NATIVE)
+			DraftAiConfigScript.DEFAULT_CONFIG_PATH
 		)
 	
 	if _debug_mode:

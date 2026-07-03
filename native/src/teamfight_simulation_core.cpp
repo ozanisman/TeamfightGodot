@@ -14,6 +14,7 @@
 STAT_LIST
 #undef X
 
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -150,8 +151,8 @@ void TeamfightSimulationCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_eval", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_eval, DEFVAL("res://model_stats/stats_output_100k"));
 	ClassDB::bind_method(D_METHOD("debug_test_draft_ai_ban_recommendations", "stats_dir"), &TeamfightSimulationCore::debug_test_draft_ai_ban_recommendations, DEFVAL("res://model_stats/stats_output_100k"));
 	ClassDB::bind_method(D_METHOD("debug_lookahead_turn_diagnostic"), &TeamfightSimulationCore::debug_lookahead_turn_diagnostic);
-	ClassDB::bind_method(D_METHOD("get_draft_ai_pick_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "strategy"), &TeamfightSimulationCore::get_draft_ai_pick_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("get_draft_ai_ban_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "acting_side", "weight_overrides", "strategy"), &TeamfightSimulationCore::get_draft_ai_ban_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL("blue"), DEFVAL(Dictionary()), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_draft_ai_pick_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "strategy", "config_path"), &TeamfightSimulationCore::get_draft_ai_pick_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL(0), DEFVAL(""));
+	ClassDB::bind_method(D_METHOD("get_draft_ai_ban_recommendations", "stats_dir", "available", "allies", "enemies", "max_results", "draft_step", "acting_side", "weight_overrides", "strategy", "config_path"), &TeamfightSimulationCore::get_draft_ai_ban_recommendations, DEFVAL(3), DEFVAL(-1), DEFVAL("blue"), DEFVAL(Dictionary()), DEFVAL(0), DEFVAL(""));
 }
 
 void TeamfightSimulationCore::flush_stdio() {
@@ -213,7 +214,35 @@ struct DraftAiThreadCache {
 	sim::draft_ai::DraftStatsDatabase cached_database;
 	sim::catalog::CatalogState cached_catalog;
 	bool cache_loaded = false;
+
+	String cached_config_path;
+	sim::draft_ai::Config cached_config;
+	uint64_t cached_config_mtime = 0;
+	bool config_loaded = false;
 };
+
+// Ensure the cached draft-ai config is loaded and still fresh. If config_path is empty, defaults
+// are used. If the file at config_path has been modified since the last load (or the path changed),
+// the config is reloaded from JSON. Missing/malformed files fall back to defaults with a warning.
+void ensure_draft_ai_config_loaded(DraftAiThreadCache &cache, const String &config_path) {
+	if (config_path.is_empty()) {
+		if (!cache.config_loaded || !cache.cached_config_path.is_empty()) {
+			cache.cached_config = sim::draft_ai::Config();
+			cache.cached_config_path = "";
+			cache.cached_config_mtime = 0;
+			cache.config_loaded = true;
+		}
+		return;
+	}
+
+	uint64_t current_mtime = FileAccess::get_modified_time(config_path);
+	if (!cache.config_loaded || cache.cached_config_path != config_path || cache.cached_config_mtime != current_mtime) {
+		cache.cached_config = sim::draft_ai::Config::load_with_optional_override(config_path);
+		cache.cached_config_path = config_path;
+		cache.cached_config_mtime = current_mtime;
+		cache.config_loaded = true;
+	}
+}
 
 DraftAiThreadCache &draft_ai_thread_cache() {
 	static thread_local DraftAiThreadCache cache;
@@ -1172,7 +1201,8 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 	const Array &enemies,
 	int max_results,
 	int draft_step,
-	int strategy
+	int strategy,
+	const String &config_path
 ) {
 	// Use shared thread-local cache for database and catalog
 	DraftAiThreadCache &cache = draft_ai_thread_cache();
@@ -1194,12 +1224,15 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		cache.cached_stats_dir = stats_dir;
 		cache.cache_loaded = true;
 	}
+
+	ensure_draft_ai_config_loaded(cache, config_path);
 	
 	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
 	sim::catalog::CatalogState &catalog = cache.cached_catalog;
+	sim::draft_ai::Config &config = cache.cached_config;
 
-	sim::draft_ai::DraftEvaluator evaluator(&database);
-	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+	sim::draft_ai::DraftEvaluator evaluator(&database, &config);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database, &config);
 	database.set_catalog(&catalog);
 
 	// Convert strategy int to enum
@@ -1275,7 +1308,8 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 	int draft_step,
 	const String &acting_side,
 	const Dictionary &weight_overrides,
-	int strategy
+	int strategy,
+	const String &config_path
 ) {
 	// Use shared thread-local cache with pick recommendations (same database and catalog)
 	DraftAiThreadCache &cache = draft_ai_thread_cache();
@@ -1297,12 +1331,15 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		cache.cached_stats_dir = stats_dir;
 		cache.cache_loaded = true;
 	}
+
+	ensure_draft_ai_config_loaded(cache, config_path);
 	
 	sim::draft_ai::DraftStatsDatabase &database = cache.cached_database;
 	sim::catalog::CatalogState &catalog = cache.cached_catalog;
+	sim::draft_ai::Config &config = cache.cached_config;
 
-	sim::draft_ai::DraftEvaluator evaluator(&database);
-	sim::draft_ai::DraftRecommender recommender(&evaluator, &database);
+	sim::draft_ai::DraftEvaluator evaluator(&database, &config);
+	sim::draft_ai::DraftRecommender recommender(&evaluator, &database, &config);
 	database.set_catalog(&catalog);
 
 	// Convert strategy int to enum

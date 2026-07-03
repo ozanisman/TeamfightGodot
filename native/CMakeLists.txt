@@ -86,6 +86,7 @@ set(TEAMFIGHT_SIMULATION_RUNTIME_SOURCES
     src/simulation/sim_channel.cpp
     src/simulation/sim_draft_recommender.cpp
     src/simulation/sim_draft_ai_stats_database.cpp
+    src/simulation/sim_draft_ai_config.cpp
     src/simulation/sim_draft_ai_evaluator.cpp
     src/simulation/sim_draft_ai_recommender.cpp
     src/simulation/sim_stats_modifiers.cpp

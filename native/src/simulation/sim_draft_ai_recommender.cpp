@@ -8,8 +8,8 @@
 namespace sim {
 namespace draft_ai {
 
-DraftRecommender::DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database)
-	: _evaluator(evaluator), _database(database) {
+DraftRecommender::DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database, const Config *config)
+	: _evaluator(evaluator), _database(database), _config(config ? config : &_default_config) {
 }
 
 std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
@@ -23,42 +23,27 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 	std::vector<DraftPickScoreBreakdown> results;
 
 	// Determine phase and weights
-	double base_power_weight = 0.35;
-	double ally_synergy_weight = 0.25;
-	double enemy_counter_value_weight = 0.25;
-	double counter_risk_weight = -0.15;
-	double role_fit_weight = 0.10;
-	double comp_fit_weight = 0.08;
+	const PickPhaseRanges &pick_ranges = _config->pick_ranges;
+	PickPhaseWeights phase_weights = _config->pick_default;
 	String phase_label = "default";
 
-	if (draft_step >= 6 && draft_step <= 8) {
-		// Early pick: steps 6-8
-		base_power_weight = 0.45;
-		ally_synergy_weight = 0.20;
-		enemy_counter_value_weight = 0.15;
-		counter_risk_weight = -0.20;
-		role_fit_weight = 0.05;
-		comp_fit_weight = 0.04;
+	if (draft_step >= pick_ranges.early_start && draft_step <= pick_ranges.early_end) {
+		phase_weights = _config->pick_early;
 		phase_label = "early_pick";
-	} else if (draft_step >= 9 && draft_step <= 11) {
-		// Mid pick: steps 9-11
-		base_power_weight = 0.35;
-		ally_synergy_weight = 0.25;
-		enemy_counter_value_weight = 0.25;
-		counter_risk_weight = -0.15;
-		role_fit_weight = 0.10;
-		comp_fit_weight = 0.08;
+	} else if (draft_step >= pick_ranges.mid_start && draft_step <= pick_ranges.mid_end) {
+		phase_weights = _config->pick_default;
 		phase_label = "mid_pick";
-	} else if (draft_step >= 16 && draft_step <= 19) {
-		// Late pick: steps 16-19
-		base_power_weight = 0.25;
-		ally_synergy_weight = 0.30;
-		enemy_counter_value_weight = 0.35;
-		counter_risk_weight = -0.10;
-		role_fit_weight = 0.15;
-		comp_fit_weight = 0.10;
+	} else if (draft_step >= pick_ranges.late_start && draft_step <= pick_ranges.late_end) {
+		phase_weights = _config->pick_late;
 		phase_label = "late_pick";
 	}
+
+	double base_power_weight = phase_weights.base_power;
+	double ally_synergy_weight = phase_weights.ally_synergy;
+	double enemy_counter_value_weight = phase_weights.enemy_counter_value;
+	double counter_risk_weight = phase_weights.counter_risk;
+	double role_fit_weight = phase_weights.role_fit;
+	double comp_fit_weight = phase_weights.comp_fit;
 
 	// Count allied roles
 	std::map<StringName, int> allied_role_counts;
@@ -79,19 +64,20 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 		
 		double role_fit = 0.0;
 		if (!candidate_role.is_empty()) {
+			const RoleFitSteps &steps = _config->role_fit_steps;
 			auto it = allied_role_counts.find(candidate_role);
 			if (it == allied_role_counts.end()) {
 				// Role not present - positive bonus
-				role_fit = 0.050;
+				role_fit = steps.not_present;
 			} else if (it->second == 1) {
 				// Role appears once - small positive
-				role_fit = 0.020;
+				role_fit = steps.once;
 			} else if (it->second == 2) {
 				// Role appears twice - small negative
-				role_fit = -0.030;
+				role_fit = steps.twice;
 			} else {
 				// Role appears 3+ times - larger negative
-				role_fit = -0.060;
+				role_fit = steps.three_plus;
 			}
 		}
 		breakdown.role_fit = role_fit;
@@ -147,8 +133,8 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 
 	// Apply lookahead if requested
 	if (strategy == DraftStrategy::NATIVE_LOOKAHEAD || strategy == DraftStrategy::NATIVE_LOOKAHEAD_PICK) {
-		const double response_weight = 0.35;
-		const int lookahead_candidates = 8;
+		const double response_weight = _config->lookahead.pick_response_weight;
+		const int lookahead_candidates = _config->lookahead.lookahead_candidates;
 		
 		// Use helper functions to determine if next pick is enemy response
 		const String current_side = side_for_step(draft_step);
@@ -260,31 +246,24 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 	std::vector<DraftBanScoreBreakdown> results;
 
 	// Determine phase and weights
-	double denial_value_weight = 0.60;
-	double enemy_synergy_weight = 0.25;
-	double counters_my_team_weight = 0.25;
-	double fills_enemy_role_need_weight = 0.10;
-	double enemy_comp_fit_weight = 0.08;
-	double early_fallback_multiplier = 0.30;
+	const BanPhaseRanges &ban_ranges = _config->ban_ranges;
+	BanPhaseWeights phase_weights = _config->ban_default;
 	String phase_label = "default";
 
-	if (draft_step >= 0 && draft_step <= 5) {
-		// Phase 1 ban: steps 0-5
-		denial_value_weight = 0.75;
-		enemy_synergy_weight = 0.15;
-		counters_my_team_weight = 0.20;
-		fills_enemy_role_need_weight = 0.05;
-		enemy_comp_fit_weight = 0.04;
+	if (draft_step >= ban_ranges.phase1_start && draft_step <= ban_ranges.phase1_end) {
+		phase_weights = _config->ban_phase1;
 		phase_label = "phase1_ban";
-	} else if (draft_step >= 12 && draft_step <= 15) {
-		// Phase 2 ban: steps 12-15
-		denial_value_weight = 0.50;
-		enemy_synergy_weight = 0.30;
-		counters_my_team_weight = 0.35;
-		fills_enemy_role_need_weight = 0.15;
-		enemy_comp_fit_weight = 0.10;
+	} else if (draft_step >= ban_ranges.phase2_start && draft_step <= ban_ranges.phase2_end) {
+		phase_weights = _config->ban_phase2;
 		phase_label = "phase2_ban";
 	}
+
+	double denial_value_weight = phase_weights.denial_value;
+	double enemy_synergy_weight = phase_weights.enemy_synergy;
+	double counters_my_team_weight = phase_weights.counters_my_team;
+	double fills_enemy_role_need_weight = phase_weights.fills_enemy_role_need;
+	double enemy_comp_fit_weight = phase_weights.enemy_comp_fit;
+	double early_fallback_multiplier = phase_weights.early_fallback_multiplier;
 
 	// Apply weight overrides if provided (multipliers applied to phase-specific weights)
 	if (weight_overrides.size() > 0) {
@@ -339,16 +318,17 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 		
 		double fills_enemy_role_need = 0.0;
 		if (!candidate_role.is_empty()) {
+			const FillsRoleSteps &steps = _config->fills_role_steps;
 			auto it = enemy_role_counts.find(candidate_role);
 			if (it == enemy_role_counts.end()) {
 				// Role not present on enemy team - positive bonus
-				fills_enemy_role_need = 0.050;
+				fills_enemy_role_need = steps.not_present;
 			} else if (it->second == 1) {
 				// Role appears once - small positive
-				fills_enemy_role_need = 0.020;
+				fills_enemy_role_need = steps.once;
 			} else {
 				// Role appears 2+ times - small negative
-				fills_enemy_role_need = -0.020;
+				fills_enemy_role_need = steps.two_plus;
 			}
 		}
 		breakdown.fills_enemy_role_need = fills_enemy_role_need;
@@ -377,7 +357,7 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 		double early_ban_fallback_component = 0.0;
 		
 		// Early ban fallback when denial is negligible
-		if (std::abs(breakdown.denial_value) < 0.001 && (phase_label == "phase1_ban" || phase_label == "phase2_ban")) {
+		if (std::abs(breakdown.denial_value) < _config->lookahead.denial_negligible_epsilon && (phase_label == "phase1_ban" || phase_label == "phase2_ban")) {
 			if (enemy_gets_first_pick_after_ban_phase) {
 				// Enemy gets first pick after this ban phase - use modest enemy-value fallback
 				early_ban_fallback_component = early_fallback_multiplier * std::max(0.0, breakdown.enemy_pick_value);
@@ -421,8 +401,8 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 
 	// Apply lookahead if requested
 	if (strategy == DraftStrategy::NATIVE_LOOKAHEAD || strategy == DraftStrategy::NATIVE_LOOKAHEAD_BAN) {
-		const double denied_enemy_pick_weight = 0.50;
-		const int lookahead_candidates = 8;
+		const double denied_enemy_pick_weight = _config->lookahead.ban_denied_enemy_pick_weight;
+		const int lookahead_candidates = _config->lookahead.lookahead_candidates;
 		
 		// Use helper functions to find enemy's next pick step
 		const String current_side = side_for_step(draft_step);

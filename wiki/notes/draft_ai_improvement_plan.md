@@ -156,6 +156,7 @@ Grouped by theme, roughly by impact.
 - Linear weighted sum cannot represent interactions (e.g., synergy that only matters given a specific enemy). Interaction terms exist only in the separate `sim::draft` predictor, not the production recommender.
 - Confidence is computed but discarded at selection time — no risk-aware or exploration-aware behavior.
 - Composition modeling limited to role fingerprints; documented experiments with mechanical signals and archetypes overfit and were archived.
+- **Workstream 0.2 correction:** `EvaluatorWeights` in `sim_draft_ai_config.hpp` are **not** dead code. `DraftEvaluator::evaluate_candidate_pick/ban` compute a `total_score` using those weights, and `evaluate_candidate_ban` uses that intermediate pick `total_score` directly to derive `denial_value`. Changing the evaluator weights therefore affects ban recommendations. Only the final `total_score` at the end of `evaluate_candidate_ban` is overwritten by `DraftRecommender` with phase-aware weights.
 
 ### 5.4 Data & adaptation
 - Static CSVs, generated offline, never updated from live/self-play results.
@@ -234,8 +235,12 @@ Each workstream is independently valuable; phases are ordered so infrastructure 
 **0.1 Unify the selection policy.** ✅
 Implemented. Introduced `DraftPolicy` (`scripts/tools/draft_policy.gd`) and a `native_softmax` validation strategy (`scripts/tools/draft_strategy_native_softmax.gd`) that share the same temperature/top-5 softmax selection as gameplay (`scripts/app/simulation_viewer_base.gd`). The validation harness now runs the exact shipped policy; the deterministic-vs-softmax mismatch (Section 3.5) is resolved. Difficulty tiers and personas remain future work under Workstreams A.1 and A.4.
 
-**0.2 Centralize tunables.**
-Move all weights, phase ranges, role-fit steps, lookahead constants, priors, and softmax temperature/scale into one config resource (JSON/`.tres` or a `sim::draft_ai::Config` struct loaded from data). Enables systematic tuning and A/B without recompiles. Removes the current magic-number sprawl.
+**0.2 Centralize tunables.** ✅
+Implemented. `sim::draft_ai::Config` (`native/src/simulation/sim_draft_ai_config.{hpp,cpp}`) holds pick/ban phase weights, phase step ranges, role-fit/fills-role step functions, lookahead constants, and evaluator weights, with default member initializers reproducing prior hardcoded behavior exactly. `DraftEvaluator`/`DraftRecommender` take an optional `const Config *` (defaults to the hardcoded struct). `get_draft_ai_pick_recommendations`/`get_draft_ai_ban_recommendations` accept an optional `config_path` that loads/caches a JSON override (missing/malformed file falls back to defaults with a warning; no recompile needed to tune values, only to add new config keys). GDScript softmax tunables (temperature/scale/top-k) are centralized in `scripts/tools/draft_ai_config.gd`, read by `simulation_viewer_base.gd` and `draft_strategy_native_softmax.gd`, sharing the same optional override file (`res://model_stats/draft_ai_config.json`, absent by default). Verified: native rebuild clean, `--check-only` passes, `--check-native-load`, `--check-native-simulation-tests`, `--check-match-telemetry`, fixture parity, `--check-draft-ui`, and `--check-benchmark` all pass.
+Notes:
+- `EvaluatorWeights` are **not** dead code: the intermediate pick `total_score` produced by those weights feeds `denial_value` in `evaluate_candidate_ban`, so changing them affects ban recommendations.
+- Config caching now tracks the file modification time, so edits to `draft_ai_config.json` take effect without restarting Godot.
+- The native JSON loader (`sim_draft_ai_config.cpp`) and GDScript loader (`scripts/tools/draft_ai_config.gd`) now validate that override values are numeric, finite, and (for int fields) within range, emitting a warning and falling back to defaults for non-numeric, infinite, or out-of-range values.
 
 **0.3 Stats provenance/versioning.**
 Stamp each stats snapshot with a version + generation metadata; record which snapshot a recommender build was certified against. Fail loudly on mismatch.
@@ -378,7 +383,7 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 1. **[Foundations] Unify selection policy** ✅: `DraftPolicy` abstraction + `native_softmax` strategy run the shipped softmax policy in the harness; Section 3.5 mismatch resolved.
 2. **[E] Statistical A/B** ✅: Wilson CIs + two-proportion test in the analyzer; report required-N.
 3. **[E] Regression gate** ✅: quantitative thresholds wired into the validation gate; CI fails on regression.
-4. **[Foundations] Centralize tunables** into one config surface (removes magic numbers; unlocks tuning).
+4. **[Foundations] Centralize tunables** ✅: `sim::draft_ai::Config` + `draft_ai_config.gd` with optional JSON override; native/GDScript weights and softmax params unified.
 5. **[E] Self-play Elo ladder**: single transitive strength number per version.
 6. **[A] Difficulty tiers** via temperature/top-k presets, validated per tier.
 7. **[D] Self-play data generation** job feeding stats regeneration.
@@ -398,6 +403,8 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 - Gameplay opponent / softmax selection: `scripts/app/simulation_viewer_base.gd` (`_try_enemy_draft_ai`, `_softmax_select`)
 - Shared policy: `scripts/tools/draft_policy.gd`
 - Stochastic validation strategy: `scripts/tools/draft_strategy_native_softmax.gd`
+- Centralized native config: `native/src/simulation/sim_draft_ai_config.{hpp,cpp}`
+- Centralized GDScript config: `scripts/tools/draft_ai_config.gd`
 - Strategy wrappers: `scripts/tools/draft_strategy*.gd`
 - Validation harness/analyzer: `scripts/tools/native_draft_validation_{harness,analyzer}.gd`
 - Audits: `scripts/tools/audit_native_ban_quality.gd`, `scripts/tools/audit_native_recommendation_explanations.gd`

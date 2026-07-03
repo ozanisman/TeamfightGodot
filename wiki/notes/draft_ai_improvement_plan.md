@@ -15,7 +15,7 @@ The draft AI is a mature, well-instrumented **greedy linear scorer**. It scores 
 Its ceiling, however, is bounded by four structural facts:
 
 1. **It is greedy and one-step.** No robust search of the draft tree. The only lookahead variants are quarantined for causing >20% side bias.
-2. **It is fully deterministic at the scoring layer.** Realism/variety only exists because gameplay adds a softmax on top — and that softmax is *not* exercised by the validation harness, so play-time behavior is under-tested.
+2. **It is fully deterministic at the scoring layer.** The gameplay softmax is now exercised by the validation harness via `native_softmax` (Workstream 0.1), so shipped and measured behavior match.
 3. **It cannot adapt.** Weights are hardcoded constants. There is no player modeling, no meta drift, no learning loop, and stats are loaded once from static CSVs.
 4. **It optimizes proxy signals, not outcomes.** Pairwise historical winrates are a strong proxy, but the recommender never closes the loop against ground-truth simulated match results during selection.
 
@@ -110,13 +110,14 @@ Confidence shrinks low-sample signals toward neutral — good. But note: `confid
 
 `NATIVE_LOOKAHEAD*` strategies do 1-ply search over the top-8 candidates, adjusting scores by the opponent's best deterministic response (`response_weight=0.35` picks, `denied_enemy_pick_weight=0.50` bans). They are **quarantined** because they introduced >20% (up to 42%) side bias in self-play. Root cause is almost certainly that the search assumes a deterministic top-1 opponent and is applied asymmetrically across the fixed snake order, amplifying the structural Blue-side advantage.
 
-### 3.5 Determinism vs. gameplay stochasticity (IMPORTANT MISMATCH)
+### 3.5 Determinism vs. gameplay stochasticity (RESOLVED)
 
 - The C++ recommender is **fully deterministic** (no RNG).
 - The **test strategy** `draft_strategy_native.gd` selects `recommendations[0]` — deterministic top-1.
 - **Gameplay** `simulation_viewer_base.gd::_try_enemy_draft_ai` requests top-5 and applies `_softmax_select(recs, temperature=0.5, scale=100)` — stochastic.
+- **Workstream 0.1 fix:** `DraftPolicy` (`scripts/tools/draft_policy.gd`) centralizes the softmax logic; both gameplay and the `native_softmax` validation strategy (`scripts/tools/draft_strategy_native_softmax.gd`) use the same temperature, top-k, and score scaling.
 
-Consequence: **the behavior that ships to players is not the behavior the validation harness measures.** The harness scores the deterministic argmax policy; players face a temperature-0.5 softmax policy. All win-rate numbers, ablations, and audits describe a policy nobody plays against. This is the most important single finding in this document and is addressed first in the roadmap.
+Consequence: **the behavior that ships to players is now measured by the validation harness.** The `native_softmax` numbers describe the actual policy players face. `native_full` remains available as a deterministic baseline for comparison.
 
 ### 3.6 Magic numbers
 
@@ -140,7 +141,7 @@ All weights, phase step ranges, role-fit steps, lookahead constants, priors, and
 Grouped by theme, roughly by impact.
 
 ### 5.1 Policy realism / dynamism
-- Scoring layer is deterministic; the only variety is a fixed-temperature softmax bolted on in one gameplay path and untested elsewhere.
+- Scoring layer remains deterministic, but the shipped softmax policy is now exercised by the validation harness via `native_softmax`. Difficulty tiers and personas are still future work.
 - No difficulty tiers. A single policy serves all players; cannot present an "easy/normal/hard" opponent.
 - No player modeling: the AI never reacts to *this* opponent's tendencies, comfort picks, or ban patterns.
 - No bluffing, baiting, flex-pick ambiguity, or "save this pick" behaviors that make a human opponent feel alive.
@@ -162,9 +163,9 @@ Grouped by theme, roughly by impact.
 - No provenance/versioning tying a recommender build to the exact stats snapshot it was certified on.
 
 ### 5.5 Validation gaps
-- **Deterministic-vs-softmax mismatch** (Section 3.5).
-- No statistical significance: winrates reported without confidence intervals or hypothesis tests.
-- No automated regression gate on draft quality (only file-exists + `STATUS: PASS` string checks).
+- ~~**Deterministic-vs-softmax mismatch**~~ (resolved by Workstream 0.1).
+- ~~No statistical significance: winrates reported without confidence intervals or hypothesis tests.~~ (resolved by E.1: Wilson CIs + two-proportion z-test in `native_draft_validation_analyzer.gd`).
+- ~~No automated regression gate on draft quality~~ (resolved by E.2: `native_draft_quantitative_gate.gd` checks win-rate floors and side-bias ceilings).
 - No self-play Elo/ladder to rank strategy *strength* transitively.
 - No calibration tracking over time; no longitudinal metric history across model versions.
 - Ban phase under-tested; several non-native strategies still ban randomly (explicit TODOs).
@@ -230,8 +231,8 @@ Each workstream is independently valuable; phases are ordered so infrastructure 
 
 ### Workstream 0 — Foundations (do first)
 
-**0.1 Unify the selection policy.**
-Introduce a single `DraftPolicy` abstraction (temperature, top-k, difficulty tier, optional persona) shared by gameplay *and* the validation harness. Kill the deterministic-vs-softmax mismatch (Section 3.5). The harness must be able to run the exact gameplay policy.
+**0.1 Unify the selection policy.** ✅
+Implemented. Introduced `DraftPolicy` (`scripts/tools/draft_policy.gd`) and a `native_softmax` validation strategy (`scripts/tools/draft_strategy_native_softmax.gd`) that share the same temperature/top-5 softmax selection as gameplay (`scripts/app/simulation_viewer_base.gd`). The validation harness now runs the exact shipped policy; the deterministic-vs-softmax mismatch (Section 3.5) is resolved. Difficulty tiers and personas remain future work under Workstreams A.1 and A.4.
 
 **0.2 Centralize tunables.**
 Move all weights, phase ranges, role-fit steps, lookahead constants, priors, and softmax temperature/scale into one config resource (JSON/`.tres` or a `sim::draft_ai::Config` struct loaded from data). Enables systematic tuning and A/B without recompiles. Removes the current magic-number sprawl.
@@ -374,7 +375,7 @@ Track all of these per version; promotion requires no regression on the guarded 
 
 Ordered for maximum leverage with minimal risk. Each item is small and independently shippable.
 
-1. **[Foundations] Unify selection policy** so the harness measures the shipped softmax policy (fixes Section 3.5). *Nothing else is trustworthy until this is done.*
+1. **[Foundations] Unify selection policy** ✅: `DraftPolicy` abstraction + `native_softmax` strategy run the shipped softmax policy in the harness; Section 3.5 mismatch resolved.
 2. **[E] Statistical A/B** ✅: Wilson CIs + two-proportion test in the analyzer; report required-N.
 3. **[E] Regression gate** ✅: quantitative thresholds wired into the validation gate; CI fails on regression.
 4. **[Foundations] Centralize tunables** into one config surface (removes magic numbers; unlocks tuning).
@@ -394,7 +395,9 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 - Stats DB + smoothing: `native/src/simulation/sim_draft_ai_stats_database.{hpp,cpp}`
 - Types: `native/src/simulation/sim_draft_ai_types.hpp`
 - Winner predictor / analysis: `native/src/simulation/sim_draft_recommender.{hpp,cpp}`
-- Gameplay opponent (softmax): `scripts/app/simulation_viewer_base.gd` (`_try_enemy_draft_ai`, `_softmax_select`)
+- Gameplay opponent / softmax selection: `scripts/app/simulation_viewer_base.gd` (`_try_enemy_draft_ai`, `_softmax_select`)
+- Shared policy: `scripts/tools/draft_policy.gd`
+- Stochastic validation strategy: `scripts/tools/draft_strategy_native_softmax.gd`
 - Strategy wrappers: `scripts/tools/draft_strategy*.gd`
 - Validation harness/analyzer: `scripts/tools/native_draft_validation_{harness,analyzer}.gd`
 - Audits: `scripts/tools/audit_native_ban_quality.gd`, `scripts/tools/audit_native_recommendation_explanations.gd`

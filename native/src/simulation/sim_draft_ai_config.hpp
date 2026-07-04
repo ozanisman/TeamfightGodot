@@ -8,6 +8,11 @@ using namespace godot;
 namespace sim {
 namespace draft_ai {
 
+enum class OpponentModel {
+	TOP1,
+	SOFTMAX_EXPECTATION,
+};
+
 // Phase-specific pick scoring weights. Defaults reproduce the literals that were
 // previously hardcoded in DraftRecommender::recommend_picks.
 struct PickPhaseWeights {
@@ -86,6 +91,10 @@ struct LookaheadParams {
 	double ban_denied_enemy_pick_weight = 0.50;
 	int lookahead_candidates = 8;
 	double denial_negligible_epsilon = 0.001;
+	OpponentModel opponent_model = OpponentModel::SOFTMAX_EXPECTATION;
+	int opponent_top_k = 5;
+	double opponent_temperature = 0.5;
+	double opponent_scale = 100.0;
 };
 
 // Certification metadata: records which external artifacts the current build was certified

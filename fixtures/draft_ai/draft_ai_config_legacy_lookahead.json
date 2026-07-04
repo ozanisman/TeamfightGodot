@@ -1,0 +1,5 @@
+{
+  "lookahead": {
+    "opponent_model": "top1"
+  }
+}

@@ -115,6 +115,41 @@ Gate checks canonical CSVs, manifest hashes, min match count, non-empty `role_co
 
 **Promotion:** Swapping a self-play snapshot into `stats_output_100k` is manual — re-run steps 1–3 against the new snapshot before replacing production stats (D.2 automation deferred).
 
+## Step 3d — Lookahead calibration + gate (optional)
+
+Symmetric harness including `native_lookahead_softmax` (validation-only; not wired to gameplay):
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd `
+  -- --trials=50 --sims-per-draft=25 `
+     --blue-strategies=native_lookahead_softmax,native_softmax,native_full,random `
+     --red-strategies=native_lookahead_softmax,native_softmax,native_full,random `
+     --output=res://model_stats/native_draft_lookahead_calibration.csv `
+     --draft-summary-output=res://model_stats/native_draft_lookahead_calibration_drafts.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd `
+  -- --input=res://model_stats/native_draft_lookahead_calibration.csv `
+     --draft-summary=res://model_stats/native_draft_lookahead_calibration_drafts.csv `
+     --output=res://model_stats/native_draft_lookahead_calibration_summary.csv `
+     --ab-output=res://model_stats/native_draft_lookahead_calibration_ab_report.csv `
+     --native-strategy-names=native_lookahead_softmax,native_softmax,native_full
+
+godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.gd `
+  -- --draft-summary=res://model_stats/native_draft_lookahead_calibration_drafts.csv `
+     --strategies=native_lookahead_softmax,native_softmax,native_full,random `
+     --output-csv=res://model_stats/native_draft_lookahead_elo_ladder.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_lookahead_gate.gd `
+  -- --summary=res://model_stats/native_draft_lookahead_calibration_summary.csv `
+     --ab-report=res://model_stats/native_draft_lookahead_calibration_ab_report.csv `
+     --elo-ladder=res://model_stats/native_draft_lookahead_elo_ladder.csv `
+     --output=res://logs/native_draft_lookahead_gate_report.md
+```
+
+**B.1 baseline** (legacy `native_lookahead` with `opponent_model=top1` config): same harness recipe with `native_lookahead` in the strategy list; report via `native_draft_lookahead_baseline_report.gd`. Per-step diagnostic: `native_draft_lookahead_diagnostic.gd` (`--config-mode=legacy`, `--turn-table`, `--self-test` validates C++ softmax expectation vs GDScript). Lookahead JSON presets are committed under `res://fixtures/draft_ai/`.
+
+**Calibrated thresholds (2026-07-04, n=50):** self-play bias ≤15pp (observed 13.9pp); vs-random blue/overall ≥0.87 (observed 0.90/0.89); Elo gap vs `native_softmax` ≥−40 (observed −26; strength still below greedy softmax).
+
 ## Stats manifest and certification
 
 Stats snapshots include `stats_manifest.json` (schema v1): `snapshot_id`, `generated_at`, `catalog_version`, `generator_name`, `generator_args`, and per-file hashes (`String.hash()` 32-bit). Native `DraftStatsDatabase` warns on missing manifest, unsupported schema, invalid types, or hash mismatch.
@@ -145,6 +180,9 @@ When set, native pick/ban calls return empty on snapshot ID mismatch. Harness an
 | `native_draft_tier_gate.gd` | Tier monotonic separation |
 | `native_draft_self_play_stats.gd` | Policy drafts → stats CSVs + manifest |
 | `native_draft_self_play_stats_gate.gd` | Structural self-play snapshot gate |
+| `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV + softmax self-test |
+| `native_draft_lookahead_baseline_report.gd` | Markdown baseline from analyzer summary |
+| `native_draft_lookahead_gate.gd` | `native_lookahead_softmax` bias/strength gate |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
 | `draft_harness_core.gd` | Shared draft/sim helpers (library, not CLI) |
 

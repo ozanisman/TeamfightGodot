@@ -67,6 +67,9 @@ Unwired scripts (invoke Godot directly; see [draft_ai_validation_gate.md](draft_
 | `native_draft_tier_gate.gd` | Difficulty tier monotonic separation gate (`--min-gap=`, `--self-test`) |
 | `native_draft_self_play_stats.gd` | Policy-draft matches → production stats CSVs + manifest |
 | `native_draft_self_play_stats_gate.gd` | Structural gate for self-play stats snapshots (`--min-matches=`) |
+| `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV; `--self-test` for C++ softmax expectation |
+| `native_draft_lookahead_baseline_report.gd` | Markdown report from lookahead baseline analyzer CSV |
+| `native_draft_lookahead_gate.gd` | Regression gate for `native_lookahead_softmax` |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
 
 ## Interactive UI

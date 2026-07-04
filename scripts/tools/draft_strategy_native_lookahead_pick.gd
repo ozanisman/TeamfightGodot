@@ -6,6 +6,7 @@
 extends "res://scripts/tools/draft_strategy.gd"
 
 const NativeSimulationBackendScript := preload("res://scripts/simulation/native_simulation_backend.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 var _backend: RefCounted = null
 var _stats_dir: String = "res://model_stats/stats_output_100k"
@@ -33,7 +34,10 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array, draft_
 		push_error("NativeLookaheadPickStrategy: native backend unavailable")
 		return StringName(available[0])
 
-	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY)
+	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(
+		_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY,
+		DraftAiConfigScript.LEGACY_LOOKAHEAD_CONFIG_PATH
+	)
 	if recommendations.is_empty():
 		push_warning("NativeLookaheadPickStrategy: no pick recommendations returned, falling back to first available")
 		return StringName(available[0])

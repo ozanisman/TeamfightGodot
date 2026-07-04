@@ -33,7 +33,7 @@ func recommend_next_pick(allies: Array, enemies: Array, available: Array, draft_
 		push_error("NativeLookaheadStrategy: native backend unavailable")
 		return StringName("")
 
-	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
+	var recommendations: Array = _backend.get_draft_ai_pick_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, STRATEGY, DraftAiConfigScript.LEGACY_LOOKAHEAD_CONFIG_PATH)
 	if recommendations.is_empty():
 		push_error("NativeLookaheadStrategy: no pick recommendations returned")
 		return StringName("")
@@ -50,7 +50,7 @@ func recommend_next_ban(allies: Array, enemies: Array, available: Array, draft_s
 		push_error("NativeLookaheadStrategy: native backend unavailable")
 		return StringName("")
 
-	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, side, _weight_overrides, STRATEGY, DraftAiConfigScript.DEFAULT_CONFIG_PATH)
+	var recommendations: Array = _backend.get_draft_ai_ban_recommendations(_stats_dir, available, allies, enemies, 1, draft_step, side, _weight_overrides, STRATEGY, DraftAiConfigScript.LEGACY_LOOKAHEAD_CONFIG_PATH)
 	if recommendations.is_empty():
 		push_error("NativeLookaheadStrategy: no ban recommendations returned")
 		return StringName("")

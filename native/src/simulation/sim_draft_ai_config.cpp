@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <climits>
+#include <cmath>
 
 namespace sim {
 namespace draft_ai {
@@ -95,6 +96,21 @@ void apply_evaluator_weights(const Dictionary &d, EvaluatorWeights &w, const Str
 	w.own_pick_value_penalty_weight = dget(d, "own_pick_value_penalty_weight", w.own_pick_value_penalty_weight, override_path);
 }
 
+OpponentModel parse_opponent_model(const Dictionary &d, const String &key, OpponentModel fallback, const String &override_path) {
+	if (!d.has(key)) {
+		return fallback;
+	}
+	const String model = String(d[key]).to_lower();
+	if (model == "top1" || model == "top_1") {
+		return OpponentModel::TOP1;
+	}
+	if (model == "softmax_expectation" || model == "softmax") {
+		return OpponentModel::SOFTMAX_EXPECTATION;
+	}
+	UtilityFunctions::push_warning(vformat("sim_draft_ai_config: unknown opponent_model '%s' in %s, using default", model, override_path));
+	return fallback;
+}
+
 } // namespace
 
 Config Config::load_with_optional_override(const String &override_path) {
@@ -178,6 +194,10 @@ Config Config::load_with_optional_override(const String &override_path) {
 		config.lookahead.ban_denied_enemy_pick_weight = dget(lookahead, "denied_enemy_pick_weight", config.lookahead.ban_denied_enemy_pick_weight, override_path);
 		config.lookahead.lookahead_candidates = iget(lookahead, "candidates", config.lookahead.lookahead_candidates, override_path);
 		config.lookahead.denial_negligible_epsilon = dget(lookahead, "denial_negligible_epsilon", config.lookahead.denial_negligible_epsilon, override_path);
+		config.lookahead.opponent_model = parse_opponent_model(lookahead, "opponent_model", config.lookahead.opponent_model, override_path);
+		config.lookahead.opponent_top_k = iget(lookahead, "opponent_top_k", config.lookahead.opponent_top_k, override_path);
+		config.lookahead.opponent_temperature = dget(lookahead, "opponent_temperature", config.lookahead.opponent_temperature, override_path);
+		config.lookahead.opponent_scale = dget(lookahead, "opponent_scale", config.lookahead.opponent_scale, override_path);
 	}
 
 	if (root.has("certification")) {

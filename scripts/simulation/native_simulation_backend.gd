@@ -452,4 +452,5 @@ func debug_lookahead_turn_diagnostic() -> void:
 		return
 	if _backend.has_method("debug_lookahead_turn_diagnostic"):
 		_backend.call("debug_lookahead_turn_diagnostic")
+		return
 	push_error("Native simulation backend is missing debug_lookahead_turn_diagnostic().")

@@ -13,6 +13,10 @@ const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
 const DraftStrategyBasePowerOnlyPath := "res://scripts/tools/draft_strategy_base_power_only.gd"
 const DraftStrategyNativeAblationPath := "res://scripts/tools/draft_strategy_native_ablation.gd"
 const DraftStrategyNativeSoftmaxPath := "res://scripts/tools/draft_strategy_native_softmax.gd"
+const DraftStrategyNativeLookaheadPath := "res://scripts/tools/draft_strategy_native_lookahead.gd"
+const DraftStrategyNativeLookaheadPickPath := "res://scripts/tools/draft_strategy_native_lookahead_pick.gd"
+const DraftStrategyNativeLookaheadBanPath := "res://scripts/tools/draft_strategy_native_lookahead_ban.gd"
+const DraftStrategyNativeLookaheadSoftmaxPath := "res://scripts/tools/draft_strategy_native_lookahead_softmax.gd"
 
 
 static func build_strategy(name: String, stats_dir: String):
@@ -29,6 +33,14 @@ static func build_strategy(name: String, stats_dir: String):
 			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "easy")
 		"native_softmax_hard":
 			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "hard")
+		"native_lookahead":
+			return load(DraftStrategyNativeLookaheadPath).new(stats_dir)
+		"native_lookahead_pick_only":
+			return load(DraftStrategyNativeLookaheadPickPath).new(stats_dir)
+		"native_lookahead_ban_only":
+			return load(DraftStrategyNativeLookaheadBanPath).new(stats_dir)
+		"native_lookahead_softmax":
+			return load(DraftStrategyNativeLookaheadSoftmaxPath).new(stats_dir)
 		_:
 			if name.begins_with("native_ablation_"):
 				var variant: String = name.substr("native_ablation_".length())

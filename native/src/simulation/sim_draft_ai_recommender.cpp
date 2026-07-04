@@ -1,12 +1,58 @@
 #include "sim_draft_ai_recommender.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <map>
 
 namespace sim {
 namespace draft_ai {
+
+namespace {
+
+double softmax_expected_score(
+	const std::vector<DraftPickScoreBreakdown> &responses,
+	double temperature,
+	double scale
+) {
+	if (responses.empty()) {
+		return 0.0;
+	}
+	if (temperature <= 0.0) {
+		temperature = 0.01;
+	}
+	double max_scaled = responses[0].total_score * scale;
+	for (size_t i = 1; i < responses.size(); ++i) {
+		max_scaled = std::max(max_scaled, responses[i].total_score * scale);
+	}
+	double exp_sum = 0.0;
+	double weighted_sum = 0.0;
+	for (const DraftPickScoreBreakdown &response : responses) {
+		const double exp_val = std::exp((response.total_score * scale - max_scaled) / temperature);
+		exp_sum += exp_val;
+		weighted_sum += exp_val * response.total_score;
+	}
+	if (exp_sum <= 0.0) {
+		return 0.0;
+	}
+	return weighted_sum / exp_sum;
+}
+
+double opponent_pick_expectation(
+	const std::vector<DraftPickScoreBreakdown> &responses,
+	const LookaheadParams &lookahead
+) {
+	if (responses.empty()) {
+		return 0.0;
+	}
+	if (lookahead.opponent_model == OpponentModel::SOFTMAX_EXPECTATION) {
+		return softmax_expected_score(responses, lookahead.opponent_temperature, lookahead.opponent_scale);
+	}
+	return responses[0].total_score;
+}
+
+} // namespace
 
 DraftRecommender::DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database, const Config *config)
 	: _evaluator(evaluator), _database(database), _config(config ? config : &_default_config) {
@@ -133,8 +179,10 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 
 	// Apply lookahead if requested
 	if (strategy == DraftStrategy::NATIVE_LOOKAHEAD || strategy == DraftStrategy::NATIVE_LOOKAHEAD_PICK) {
-		const double response_weight = _config->lookahead.pick_response_weight;
-		const int lookahead_candidates = _config->lookahead.lookahead_candidates;
+		const LookaheadParams &lookahead = _config->lookahead;
+		const double response_weight = lookahead.pick_response_weight;
+		const int lookahead_candidates = lookahead.lookahead_candidates;
+		const int opponent_top_k = std::max(1, lookahead.opponent_top_k);
 		
 		// Use helper functions to determine if next pick is enemy response
 		const String current_side = side_for_step(draft_step);
@@ -144,13 +192,10 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 		
 		// Only apply lookahead if next pick is an enemy response
 		if (next_pick_is_enemy) {
-			// Keep top 8 candidates for lookahead
 			size_t top_n = std::min(static_cast<size_t>(lookahead_candidates), results.size());
-			std::vector<DraftPickScoreBreakdown> lookahead_results;
-			lookahead_results.reserve(top_n);
 			
 			for (size_t i = 0; i < top_n; ++i) {
-				DraftPickScoreBreakdown candidate = results[i];
+				DraftPickScoreBreakdown &candidate = results[i];
 				
 				// Store immediate score and turn information
 				candidate.immediate_score = candidate.total_score;
@@ -171,20 +216,19 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 					}
 				}
 				
-				// Get enemy's best pick score from their perspective
-				// Enemy's allies = our enemies, enemy's enemies = our new allies
+				// Get enemy pick scores from their perspective
 				std::vector<DraftPickScoreBreakdown> enemy_responses = recommend_picks(
 					new_available,
 					enemies,  // Enemy's allies
 					new_allies,  // Enemy's enemies (us with new pick)
-					1,  // Only need top 1
-					next_pick_step,  // Use the actual next pick step
-					DraftStrategy::NATIVE_FULL  // Use baseline for response
+					opponent_top_k,
+					next_pick_step,
+					DraftStrategy::NATIVE_FULL
 				);
 				
 				if (!enemy_responses.empty()) {
 					candidate.opponent_response_candidate = enemy_responses[0].candidate;
-					candidate.opponent_response_score = enemy_responses[0].total_score;
+					candidate.opponent_response_score = opponent_pick_expectation(enemy_responses, lookahead);
 					candidate.lookahead_adjustment = -response_weight * candidate.opponent_response_score;
 				} else {
 					candidate.opponent_response_candidate = StringName();
@@ -192,22 +236,18 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 					candidate.lookahead_adjustment = 0.0;
 				}
 				
-				// Update total score with lookahead adjustment
+				// Update total score with lookahead adjustment (in place; keep full candidate pool)
 				candidate.total_score = candidate.immediate_score + candidate.lookahead_adjustment;
-				
-				lookahead_results.push_back(candidate);
 			}
 			
-			// Sort lookahead results by adjusted score
-			std::sort(lookahead_results.begin(), lookahead_results.end(), [](const DraftPickScoreBreakdown &a, const DraftPickScoreBreakdown &b) {
+			// Re-sort only the lookahead-evaluated prefix so unadjusted tail cannot
+			// outrank adjusted candidates when callers request a small max_results.
+			std::sort(results.begin(), results.begin() + static_cast<std::ptrdiff_t>(top_n), [](const DraftPickScoreBreakdown &a, const DraftPickScoreBreakdown &b) {
 				if (a.total_score != b.total_score) {
 					return a.total_score > b.total_score;
 				}
 				return a.candidate < b.candidate;
 			});
-			
-			// Replace results with lookahead results
-			results = lookahead_results;
 		}
 	}
 
@@ -401,8 +441,10 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 
 	// Apply lookahead if requested
 	if (strategy == DraftStrategy::NATIVE_LOOKAHEAD || strategy == DraftStrategy::NATIVE_LOOKAHEAD_BAN) {
-		const double denied_enemy_pick_weight = _config->lookahead.ban_denied_enemy_pick_weight;
-		const int lookahead_candidates = _config->lookahead.lookahead_candidates;
+		const LookaheadParams &lookahead = _config->lookahead;
+		const double denied_enemy_pick_weight = lookahead.ban_denied_enemy_pick_weight;
+		const int lookahead_candidates = lookahead.lookahead_candidates;
+		const int opponent_top_k = std::max(1, lookahead.opponent_top_k);
 		
 		// Use helper functions to find enemy's next pick step
 		const String current_side = side_for_step(draft_step);
@@ -411,32 +453,29 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 		
 		// Only apply lookahead if enemy has a future pick
 		if (enemy_next_pick_step >= 0) {
-			// Keep top 8 candidates for lookahead
 			size_t top_n = std::min(static_cast<size_t>(lookahead_candidates), results.size());
-			std::vector<DraftBanScoreBreakdown> lookahead_results;
-			lookahead_results.reserve(top_n);
 			
 			for (size_t i = 0; i < top_n; ++i) {
-				DraftBanScoreBreakdown candidate = results[i];
+				DraftBanScoreBreakdown &candidate = results[i];
 				
 				// Store immediate score and turn information
 				candidate.immediate_score = candidate.total_score;
 				candidate.current_side = current_side;
 				candidate.enemy_next_pick_step = enemy_next_pick_step;
 				
-				// Get enemy's best pick score before ban (from enemy's perspective)
+				// Get enemy pick scores before ban (from enemy's perspective)
 				std::vector<DraftPickScoreBreakdown> enemy_picks_before = recommend_picks(
 					available,
-					enemies,  // Enemy's allies
-					allies,  // Enemy's enemies
-					1,  // Only need top 1
-					enemy_next_pick_step,  // Use enemy's next pick step
-					DraftStrategy::NATIVE_FULL  // Use baseline
+					enemies,
+					allies,
+					opponent_top_k,
+					enemy_next_pick_step,
+					DraftStrategy::NATIVE_FULL
 				);
 				
 				if (!enemy_picks_before.empty()) {
 					candidate.enemy_best_pick_before = enemy_picks_before[0].candidate;
-					candidate.enemy_best_pick_score_before = enemy_picks_before[0].total_score;
+					candidate.enemy_best_pick_score_before = opponent_pick_expectation(enemy_picks_before, lookahead);
 				} else {
 					candidate.enemy_best_pick_before = StringName();
 					candidate.enemy_best_pick_score_before = 0.0;
@@ -452,41 +491,36 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 				
 				std::vector<DraftPickScoreBreakdown> enemy_picks_after = recommend_picks(
 					new_available,
-					enemies,  // Enemy's allies
-					allies,  // Enemy's enemies
-					1,  // Only need top 1
-					enemy_next_pick_step,  // Use enemy's next pick step
-					DraftStrategy::NATIVE_FULL  // Use baseline
+					enemies,
+					allies,
+					opponent_top_k,
+					enemy_next_pick_step,
+					DraftStrategy::NATIVE_FULL
 				);
 				
 				if (!enemy_picks_after.empty()) {
 					candidate.enemy_best_pick_after = enemy_picks_after[0].candidate;
-					candidate.enemy_best_pick_score_after = enemy_picks_after[0].total_score;
+					candidate.enemy_best_pick_score_after = opponent_pick_expectation(enemy_picks_after, lookahead);
 				} else {
 					candidate.enemy_best_pick_after = StringName();
 					candidate.enemy_best_pick_score_after = 0.0;
 				}
 				
-				// Calculate denied value (how much we reduced enemy's best pick)
+				// Calculate denied value (how much we reduced enemy's expected pick)
 				candidate.denied_enemy_pick_value = std::max(0.0, candidate.enemy_best_pick_score_before - candidate.enemy_best_pick_score_after);
 				candidate.lookahead_adjustment = denied_enemy_pick_weight * candidate.denied_enemy_pick_value;
 				
-				// Update total score with lookahead adjustment
+				// Update total score with lookahead adjustment (in place; keep full candidate pool)
 				candidate.total_score = candidate.immediate_score + candidate.lookahead_adjustment;
-				
-				lookahead_results.push_back(candidate);
 			}
 			
-			// Sort lookahead results by adjusted score
-			std::sort(lookahead_results.begin(), lookahead_results.end(), [](const DraftBanScoreBreakdown &a, const DraftBanScoreBreakdown &b) {
+			// Re-sort only the lookahead-evaluated prefix (see pick lookahead).
+			std::sort(results.begin(), results.begin() + static_cast<std::ptrdiff_t>(top_n), [](const DraftBanScoreBreakdown &a, const DraftBanScoreBreakdown &b) {
 				if (a.total_score != b.total_score) {
 					return a.total_score > b.total_score;
 				}
 				return a.candidate < b.candidate;
 			});
-			
-			// Replace results with lookahead results
-			results = lookahead_results;
 		}
 	}
 

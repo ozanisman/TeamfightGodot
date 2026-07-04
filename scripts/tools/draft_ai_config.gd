@@ -8,6 +8,8 @@ extends RefCounted
 ## (sim_draft_ai_config.cpp). Absent by default; when present, both native scoring
 ## weights and this GDScript softmax config read from the same file.
 const DEFAULT_CONFIG_PATH: String = "res://model_stats/draft_ai_config.json"
+const LEGACY_LOOKAHEAD_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_legacy_lookahead.json"
+const LOOKAHEAD_SOFTMAX_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_lookahead_softmax.json"
 
 const DEFAULT_TEMPERATURE: float = 0.5
 const DEFAULT_SCALE: float = 100.0

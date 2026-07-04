@@ -326,9 +326,9 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 ### Workstream B — Search Depth (fix and revive lookahead)
 
-**B.1 Diagnose lookahead side-bias.** Instrument the quarantined lookahead to isolate why it amplifies Blue advantage. Hypothesis: asymmetric application across snake order + assuming a deterministic opponent.
+**B.1 Diagnose lookahead side-bias.** **Done (2026-07-04).** Harness registered `native_lookahead*` strategies; n=50 baseline (`logs/native_draft_lookahead_baseline_report.md`) measured legacy top-1 lookahead at **10.2pp** self-play bias (vs `native_softmax` 9.4pp). `native_draft_lookahead_diagnostic.gd` confirms **0 truncation flags** after the in-place fix (old code replaced the candidate pool with top-8 only).
 
-**B.2 Symmetric, policy-aware lookahead.** Re-implement 1-ply search so the modeled opponent uses the *same stochastic policy* the AI uses (expectation over the opponent's softmax, not its argmax). Enforce side symmetry by construction; add a self-play side-bias test as a hard gate (must stay within the accepted structural band).
+**B.2 Symmetric, policy-aware lookahead.** **Done (validation-only).** C++ `softmax_expected_score()` + `LookaheadParams` (`opponent_model`, `opponent_top_k`, `opponent_temperature`, `opponent_scale`). Pick/ban lookahead uses softmax expectation and in-place prefix adjustment. New strategy `native_lookahead_softmax` + `native_draft_lookahead_gate.gd` (calibrated PASS: **13.9pp** bias, vs-random ≥0.87, Elo gap −26 vs `native_softmax` with floor −40). Config: `fixtures/draft_ai/draft_ai_config_lookahead_softmax.json` (`response_weight=0.20`). Legacy `native_lookahead` uses `fixtures/draft_ai/draft_ai_config_legacy_lookahead.json` (`opponent_model=top1`). **Not promoted to gameplay.**
 
 **B.3 Bounded search / flat-MC rollouts.** Where affordable, replace hand-tuned lookahead adjustment with short simulated rollouts to the end of draft using the current policy, scored by the certified winner predictor (fast) or by actual match simulation (slow, offline). This is the bridge toward MCTS.
 

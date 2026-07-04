@@ -40,6 +40,7 @@ func _run() -> void:
 	_run_elo_checks()
 	_run_tier_checks()
 	_run_self_play_stats_checks()
+	_run_lookahead_gate_checks()
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 
 	# Run optional checks if available
@@ -214,6 +215,29 @@ func _run_self_play_stats_checks() -> void:
 	else:
 		_overall_pass = false
 
+	_report_lines.append("")
+
+
+func _run_lookahead_gate_checks() -> void:
+	print("\nChecking (optional): Native Draft Lookahead Gate")
+	_report_lines.append("## Native Draft Lookahead Gate")
+	_report_lines.append("Script: native_draft_lookahead_gate.gd")
+	var gate_report := "res://logs/native_draft_lookahead_gate_report.md"
+	_report_lines.append("Report file: native_draft_lookahead_gate_report.md")
+
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(gate_report)):
+		_report_lines.append("Result: SKIPPED (report not found; run lookahead calibration + gate)")
+		print("  SKIPPED - report not found")
+		_report_lines.append("")
+		return
+
+	if _check_report_status(gate_report, "PASS"):
+		_report_lines.append("Result: PASS")
+		print("  PASS")
+	else:
+		_report_lines.append("Result: FAIL - gate report not STATUS: PASS")
+		print("  FAIL - gate report")
+		# Optional check: do not fail overall suite
 	_report_lines.append("")
 
 

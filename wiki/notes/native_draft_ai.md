@@ -497,9 +497,10 @@ The suite generates `res://logs/draft_ai_validation_suite_report.md` (generated 
 ### Completed
 - ~~Partial comp scoring (2-4 unit combinations)~~ — **COMPLETED in Phase 29**
 
-### Quarantined (not promoted to default)
-- ~~Lookahead/Minimax~~ — Implemented in Phases 34–37 (`NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN`); all variants introduced unacceptable side bias (>20%, up to 42% for full lookahead). Kept as experimental strategies only.
-- ~~Ban Lookahead~~ — Same quarantine as above.
+### Quarantined (validation-only; not in gameplay)
+- ~~Lookahead/Minimax~~ — Phases 34–37 (`NATIVE_LOOKAHEAD`, `NATIVE_LOOKAHEAD_PICK`, `NATIVE_LOOKAHEAD_BAN`). Legacy harness name `native_lookahead` uses `opponent_model=top1` (`fixtures/draft_ai/draft_ai_config_legacy_lookahead.json`). Original quarantine reason: **>20pp** side bias with deterministic opponent + top-8 pool truncation.
+- **B.2 revival (2026-07-04):** `native_lookahead_softmax` — policy-aware opponent (softmax expectation) + `DraftPolicy.softmax_select`; passes `native_draft_lookahead_gate.gd` at **13.9pp** self-play bias (n=50). Remains validation-only until explicit promotion.
+- ~~Ban Lookahead~~ — Same quarantine/revival path as pick lookahead.
 
 ### Open
 - Dynamic comp building based on available champions

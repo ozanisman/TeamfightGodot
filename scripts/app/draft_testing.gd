@@ -480,7 +480,11 @@ func _format_pick_breakdown(rec: Dictionary) -> String:
 	
 	if parts.is_empty():
 		return ""
-	return "   " + " | ".join(parts)
+	var lines := ["   " + " | ".join(parts)]
+	var confidence_line := _format_pick_confidence_breakdown(rec)
+	if not confidence_line.is_empty():
+		lines.append(confidence_line)
+	return "\n".join(lines)
 
 
 func _format_ban_breakdown(rec: Dictionary) -> String:
@@ -512,7 +516,41 @@ func _format_ban_breakdown(rec: Dictionary) -> String:
 	
 	if parts.is_empty():
 		return ""
-	return "   " + " | ".join(parts)
+	var lines := ["   " + " | ".join(parts)]
+	var confidence_line := _format_ban_confidence_breakdown(rec)
+	if not confidence_line.is_empty():
+		lines.append(confidence_line)
+	return "\n".join(lines)
+
+
+func _format_pick_confidence_breakdown(rec: Dictionary) -> String:
+	var parts := []
+	if rec.has("base_power_confidence"):
+		parts.append("base %.2f" % float(rec.get("base_power_confidence", 0.0)))
+	if rec.has("ally_synergy_confidence"):
+		parts.append("syn %.2f" % float(rec.get("ally_synergy_confidence", 0.0)))
+	if rec.has("enemy_counter_value_confidence"):
+		parts.append("ctr %.2f" % float(rec.get("enemy_counter_value_confidence", 0.0)))
+	if rec.has("comp_confidence"):
+		parts.append("comp %.2f" % float(rec.get("comp_confidence", 0.0)))
+	if parts.is_empty():
+		return ""
+	return "   conf: " + " | ".join(parts)
+
+
+func _format_ban_confidence_breakdown(rec: Dictionary) -> String:
+	var parts := []
+	if rec.has("denial_value_confidence"):
+		parts.append("denial %.2f" % float(rec.get("denial_value_confidence", 0.0)))
+	if rec.has("enemy_synergy_confidence"):
+		parts.append("syn %.2f" % float(rec.get("enemy_synergy_confidence", 0.0)))
+	if rec.has("counters_my_team_confidence"):
+		parts.append("ctr %.2f" % float(rec.get("counters_my_team_confidence", 0.0)))
+	if rec.has("enemy_comp_fit_confidence"):
+		parts.append("comp %.2f" % float(rec.get("enemy_comp_fit_confidence", 0.0)))
+	if parts.is_empty():
+		return ""
+	return "   conf: " + " | ".join(parts)
 
 
 func _show_legacy_recommendations(allies: Array[StringName], enemies: Array[StringName], available: Array[StringName]) -> void:

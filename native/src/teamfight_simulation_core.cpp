@@ -1319,6 +1319,14 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["ally_synergy"] = rec.ally_synergy;
 		dict["enemy_counter_value"] = rec.enemy_counter_value;
 		dict["counter_risk"] = rec.counter_risk;
+		dict["base_power_samples"] = rec.base_power_samples;
+		dict["base_power_confidence"] = rec.base_power_confidence;
+		dict["ally_synergy_samples"] = rec.ally_synergy_samples;
+		dict["ally_synergy_confidence"] = rec.ally_synergy_confidence;
+		dict["enemy_counter_value_samples"] = rec.enemy_counter_value_samples;
+		dict["enemy_counter_value_confidence"] = rec.enemy_counter_value_confidence;
+		dict["counter_risk_samples"] = rec.counter_risk_samples;
+		dict["counter_risk_confidence"] = rec.counter_risk_confidence;
 		dict["base_power_weight"] = rec.base_power_weight;
 		dict["ally_synergy_weight"] = rec.ally_synergy_weight;
 		dict["enemy_counter_value_weight"] = rec.enemy_counter_value_weight;
@@ -1330,6 +1338,7 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["comp_fit_weight"] = rec.comp_fit_weight;
 		dict["comp_fingerprint"] = String(rec.comp_fingerprint);
 		dict["comp_samples"] = rec.comp_samples;
+		dict["comp_confidence"] = rec.comp_confidence;
 		dict["comp_match_count"] = rec.comp_match_count;
 		dict["synergy_pairs"] = rec.synergy_pairs;
 		dict["counter_pairs"] = rec.counter_pairs;
@@ -1433,6 +1442,13 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["denial_value"] = rec.denial_value;
 		dict["enemy_synergy"] = rec.enemy_synergy;
 		dict["counters_my_team"] = rec.counters_my_team;
+		dict["enemy_pick_value_confidence"] = rec.enemy_pick_value_confidence;
+		dict["own_pick_value_confidence"] = rec.own_pick_value_confidence;
+		dict["denial_value_confidence"] = rec.denial_value_confidence;
+		dict["enemy_synergy_samples"] = rec.enemy_synergy_samples;
+		dict["enemy_synergy_confidence"] = rec.enemy_synergy_confidence;
+		dict["counters_my_team_samples"] = rec.counters_my_team_samples;
+		dict["counters_my_team_confidence"] = rec.counters_my_team_confidence;
 		dict["denial_value_weight"] = rec.denial_value_weight;
 		dict["enemy_synergy_weight"] = rec.enemy_synergy_weight;
 		dict["counters_my_team_weight"] = rec.counters_my_team_weight;
@@ -1444,6 +1460,7 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["enemy_comp_fit_weight"] = rec.enemy_comp_fit_weight;
 		dict["enemy_comp_fingerprint"] = String(rec.enemy_comp_fingerprint);
 		dict["enemy_comp_samples"] = rec.enemy_comp_samples;
+		dict["enemy_comp_fit_confidence"] = rec.enemy_comp_fit_confidence;
 		dict["enemy_comp_match_count"] = rec.enemy_comp_match_count;
 		dict["enemy_synergy_pairs"] = rec.enemy_synergy_pairs;
 		dict["counter_pairs"] = rec.counter_pairs;

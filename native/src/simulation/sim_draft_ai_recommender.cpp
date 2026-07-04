@@ -145,6 +145,7 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 		breakdown.comp_fit = comp_value.centered_value;
 		breakdown.comp_fingerprint = _database ? DraftStatsDatabase::build_role_fingerprint(candidate_comp_roles) : String();
 		breakdown.comp_samples = comp_value.samples;
+		breakdown.comp_confidence = comp_value.confidence;
 		breakdown.comp_match_count = comp_match_count;
 		
 		// Apply phase-aware weights
@@ -390,6 +391,7 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 		breakdown.enemy_comp_fit = enemy_comp_value.centered_value;
 		breakdown.enemy_comp_fingerprint = _database ? DraftStatsDatabase::build_role_fingerprint(enemy_candidate_roles) : String();
 		breakdown.enemy_comp_samples = enemy_comp_value.samples;
+		breakdown.enemy_comp_fit_confidence = enemy_comp_value.confidence;
 		breakdown.enemy_comp_match_count = enemy_comp_match_count;
 		
 		// Apply phase-aware weights with differential denial

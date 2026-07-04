@@ -24,11 +24,20 @@ const PICK_REQUIRED_FIELDS := [
 	"candidate",
 	"total_score",
 	"base_power",
+	"base_power_samples",
+	"base_power_confidence",
 	"ally_synergy",
+	"ally_synergy_samples",
+	"ally_synergy_confidence",
 	"enemy_counter_value",
+	"enemy_counter_value_samples",
+	"enemy_counter_value_confidence",
 	"counter_risk",
+	"counter_risk_samples",
+	"counter_risk_confidence",
 	"role_fit",
 	"comp_fit",
+	"comp_confidence",
 	"candidate_role",
 	"phase_label",
 ]
@@ -38,12 +47,20 @@ const BAN_REQUIRED_FIELDS := [
 	"candidate",
 	"total_score",
 	"enemy_pick_value",
+	"enemy_pick_value_confidence",
 	"own_pick_value",
+	"own_pick_value_confidence",
 	"denial_value",
+	"denial_value_confidence",
 	"enemy_synergy",
+	"enemy_synergy_samples",
+	"enemy_synergy_confidence",
 	"counters_my_team",
+	"counters_my_team_samples",
+	"counters_my_team_confidence",
 	"fills_enemy_role_need",
 	"enemy_comp_fit",
+	"enemy_comp_fit_confidence",
 	"early_ban_fallback_component",
 	"phase_label",
 ]
@@ -236,6 +253,12 @@ func _audit_recommendation_fields(rec: Dictionary, action: String, state_name: S
 			if field == "candidate":
 				if value == null or String(value).is_empty():
 					_invalid_values.append("`%s` (%s): candidate is null or empty" % [state_name, action])
+			elif field.ends_with("_confidence"):
+				if not _is_valid_non_negative_float(value):
+					_invalid_values.append("`%s` (%s): confidence field '%s' is invalid or negative" % [state_name, action, field])
+			elif field.ends_with("_samples"):
+				if not _is_valid_non_negative_int(value):
+					_invalid_values.append("`%s` (%s): sample field '%s' is invalid or negative" % [state_name, action, field])
 
 			# Check for missing explanation inputs (all zero values in explanation fields)
 			if action == "PICK" and field in ["ally_synergy", "enemy_counter_value", "counter_risk", "role_fit", "comp_fit"]:
@@ -245,6 +268,20 @@ func _audit_recommendation_fields(rec: Dictionary, action: String, state_name: S
 			if action == "BAN" and field in ["enemy_pick_value", "own_pick_value", "denial_value", "enemy_synergy", "counters_my_team", "fills_enemy_role_need", "enemy_comp_fit"]:
 				if value is float and is_zero_approx(float(value)):
 					_missing_explanation_inputs.append("`%s` (%s): field '%s' is zero (may indicate missing explanation input)" % [state_name, action, field])
+
+
+func _is_valid_non_negative_float(value: Variant) -> bool:
+	if not (value is float or value is int):
+		return false
+	var number := float(value)
+	return is_finite(number) and number >= 0.0
+
+
+func _is_valid_non_negative_int(value: Variant) -> bool:
+	if not (value is int or value is float):
+		return false
+	var number := float(value)
+	return is_finite(number) and number >= 0.0 and is_equal_approx(number, roundf(number))
 
 
 func _write_report(lines: Array[String]) -> void:

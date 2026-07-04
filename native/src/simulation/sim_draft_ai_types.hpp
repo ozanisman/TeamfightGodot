@@ -52,6 +52,14 @@ struct DraftPickScoreBreakdown {
 	double ally_synergy = 0.0;
 	double enemy_counter_value = 0.0;
 	double counter_risk = 0.0;
+	int base_power_samples = 0;
+	double base_power_confidence = 0.0;
+	int ally_synergy_samples = 0;
+	double ally_synergy_confidence = 0.0;
+	int enemy_counter_value_samples = 0;
+	double enemy_counter_value_confidence = 0.0;
+	int counter_risk_samples = 0;
+	double counter_risk_confidence = 0.0;
 
 	double base_power_weight = 0.0;
 	double ally_synergy_weight = 0.0;
@@ -66,6 +74,7 @@ struct DraftPickScoreBreakdown {
 	double comp_fit_weight = 0.0;
 	String comp_fingerprint;
 	int comp_samples = 0;
+	double comp_confidence = 0.0;
 	int comp_match_count = 0;
 
 	int synergy_pairs = 0;
@@ -94,6 +103,13 @@ struct DraftBanScoreBreakdown {
 	double denial_value = 0.0;
 	double enemy_synergy = 0.0;
 	double counters_my_team = 0.0;
+	double enemy_pick_value_confidence = 0.0;
+	double own_pick_value_confidence = 0.0;
+	double denial_value_confidence = 0.0;
+	int enemy_synergy_samples = 0;
+	double enemy_synergy_confidence = 0.0;
+	int counters_my_team_samples = 0;
+	double counters_my_team_confidence = 0.0;
 
 	double denial_value_weight = 0.0;
 	double enemy_synergy_weight = 0.0;
@@ -108,6 +124,7 @@ struct DraftBanScoreBreakdown {
 	double enemy_comp_fit_weight = 0.0;
 	String enemy_comp_fingerprint;
 	int enemy_comp_samples = 0;
+	double enemy_comp_fit_confidence = 0.0;
 	int enemy_comp_match_count = 0;
 
 	int enemy_synergy_pairs = 0;

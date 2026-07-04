@@ -52,6 +52,8 @@ struct DraftPickScoreBreakdown {
 	double ally_synergy = 0.0;
 	double enemy_counter_value = 0.0;
 	double counter_risk = 0.0;
+	double confidence_score = 0.0;
+	double confidence_adjustment = 0.0;
 	int base_power_samples = 0;
 	double base_power_confidence = 0.0;
 	int ally_synergy_samples = 0;
@@ -103,6 +105,8 @@ struct DraftBanScoreBreakdown {
 	double denial_value = 0.0;
 	double enemy_synergy = 0.0;
 	double counters_my_team = 0.0;
+	double confidence_score = 0.0;
+	double confidence_adjustment = 0.0;
 	double enemy_pick_value_confidence = 0.0;
 	double own_pick_value_confidence = 0.0;
 	double denial_value_confidence = 0.0;

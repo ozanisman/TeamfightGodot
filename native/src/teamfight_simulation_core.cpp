@@ -1319,6 +1319,8 @@ Array TeamfightSimulationCore::get_draft_ai_pick_recommendations(
 		dict["ally_synergy"] = rec.ally_synergy;
 		dict["enemy_counter_value"] = rec.enemy_counter_value;
 		dict["counter_risk"] = rec.counter_risk;
+		dict["confidence_score"] = rec.confidence_score;
+		dict["confidence_adjustment"] = rec.confidence_adjustment;
 		dict["base_power_samples"] = rec.base_power_samples;
 		dict["base_power_confidence"] = rec.base_power_confidence;
 		dict["ally_synergy_samples"] = rec.ally_synergy_samples;
@@ -1442,6 +1444,8 @@ Array TeamfightSimulationCore::get_draft_ai_ban_recommendations(
 		dict["denial_value"] = rec.denial_value;
 		dict["enemy_synergy"] = rec.enemy_synergy;
 		dict["counters_my_team"] = rec.counters_my_team;
+		dict["confidence_score"] = rec.confidence_score;
+		dict["confidence_adjustment"] = rec.confidence_adjustment;
 		dict["enemy_pick_value_confidence"] = rec.enemy_pick_value_confidence;
 		dict["own_pick_value_confidence"] = rec.own_pick_value_confidence;
 		dict["denial_value_confidence"] = rec.denial_value_confidence;

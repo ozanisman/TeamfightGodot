@@ -10,6 +10,9 @@ extends RefCounted
 const DEFAULT_CONFIG_PATH: String = "res://model_stats/draft_ai_config.json"
 const LEGACY_LOOKAHEAD_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_legacy_lookahead.json"
 const LOOKAHEAD_SOFTMAX_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_lookahead_softmax.json"
+const RISK_SAFE_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_risk_safe.json"
+const RISK_CEILING_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_risk_ceiling.json"
+const COUNTER_HEAVY_CONFIG_PATH: String = "res://fixtures/draft_ai/draft_ai_config_counter_heavy.json"
 
 const DEFAULT_TEMPERATURE: float = 0.5
 const DEFAULT_SCALE: float = 100.0
@@ -29,7 +32,14 @@ const DEFAULT_TIER_PRESETS: Dictionary = {
 
 
 static func _load_config_root(config_path: String) -> Dictionary:
+	return _load_config_root_depth(config_path, 0)
+
+
+static func _load_config_root_depth(config_path: String, depth: int) -> Dictionary:
 	if config_path.is_empty():
+		return {}
+	if depth > 4:
+		push_warning("DraftAiConfig: base_config nesting too deep at %s, using defaults" % config_path)
 		return {}
 	if not FileAccess.file_exists(config_path):
 		return {}
@@ -42,7 +52,24 @@ static func _load_config_root(config_path: String) -> Dictionary:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		push_warning("DraftAiConfig: failed to parse override JSON at %s, using defaults" % config_path)
 		return {}
-	return parsed
+	var root: Dictionary = parsed
+	if root.has("base_config"):
+		var base: Dictionary = _load_config_root_depth(String(root["base_config"]), depth + 1)
+		return _merge_config_dicts(base, root)
+	return root
+
+
+static func _merge_config_dicts(base: Dictionary, override: Dictionary) -> Dictionary:
+	var merged: Dictionary = base.duplicate(true)
+	for key in override.keys():
+		if key == "base_config":
+			continue
+		var value: Variant = override[key]
+		if merged.has(key) and typeof(merged[key]) == TYPE_DICTIONARY and typeof(value) == TYPE_DICTIONARY:
+			merged[key] = _merge_config_dicts(merged[key], value)
+		else:
+			merged[key] = value
+	return merged
 
 
 static func _load_softmax_dict(config_path: String) -> Dictionary:

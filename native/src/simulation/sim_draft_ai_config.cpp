@@ -96,6 +96,12 @@ void apply_evaluator_weights(const Dictionary &d, EvaluatorWeights &w, const Str
 	w.own_pick_value_penalty_weight = dget(d, "own_pick_value_penalty_weight", w.own_pick_value_penalty_weight, override_path);
 }
 
+void apply_confidence_adjustment(const Dictionary &d, ConfidenceAdjustment &c, const String &override_path) {
+	c.baseline_confidence = dget(d, "baseline_confidence", c.baseline_confidence, override_path);
+	c.pick_weight = dget(d, "pick_weight", c.pick_weight, override_path);
+	c.ban_weight = dget(d, "ban_weight", c.ban_weight, override_path);
+}
+
 OpponentModel parse_opponent_model(const Dictionary &d, const String &key, OpponentModel fallback, const String &override_path) {
 	if (!d.has(key)) {
 		return fallback;
@@ -111,28 +117,7 @@ OpponentModel parse_opponent_model(const Dictionary &d, const String &key, Oppon
 	return fallback;
 }
 
-} // namespace
-
-Config Config::load_with_optional_override(const String &override_path) {
-	Config config;
-	if (override_path.is_empty()) {
-		return config;
-	}
-
-	Ref<FileAccess> file = FileAccess::open(override_path, FileAccess::ModeFlags::READ);
-	if (file.is_null()) {
-		// Override file is optional; silently keep defaults.
-		return config;
-	}
-
-	Variant parsed = JSON::parse_string(file->get_as_text());
-	if (parsed.get_type() != Variant::DICTIONARY) {
-		UtilityFunctions::push_warning(vformat("sim_draft_ai_config: failed to parse override JSON at %s, using defaults", override_path));
-		return config;
-	}
-
-	Dictionary root = parsed;
-
+Config apply_config_root(Config config, const Dictionary &root, const String &override_path) {
 	if (root.has("pick")) {
 		Dictionary pick = root["pick"];
 		if (pick.has("default")) {
@@ -200,6 +185,10 @@ Config Config::load_with_optional_override(const String &override_path) {
 		config.lookahead.opponent_scale = dget(lookahead, "opponent_scale", config.lookahead.opponent_scale, override_path);
 	}
 
+	if (root.has("confidence_adjustment")) {
+		apply_confidence_adjustment(root["confidence_adjustment"], config.confidence_adjustment, override_path);
+	}
+
 	if (root.has("certification")) {
 		Dictionary cert = root["certification"];
 		if (cert.has("stats_snapshot_id")) {
@@ -208,6 +197,40 @@ Config Config::load_with_optional_override(const String &override_path) {
 	}
 
 	return config;
+}
+
+Config load_with_optional_override_depth(const String &override_path, int depth) {
+	Config config;
+	if (override_path.is_empty()) {
+		return config;
+	}
+	if (depth > 4) {
+		UtilityFunctions::push_warning(vformat("sim_draft_ai_config: base_config nesting too deep at %s, using defaults", override_path));
+		return config;
+	}
+
+	Ref<FileAccess> file = FileAccess::open(override_path, FileAccess::ModeFlags::READ);
+	if (file.is_null()) {
+		return config;
+	}
+
+	Variant parsed = JSON::parse_string(file->get_as_text());
+	if (parsed.get_type() != Variant::DICTIONARY) {
+		UtilityFunctions::push_warning(vformat("sim_draft_ai_config: failed to parse override JSON at %s, using defaults", override_path));
+		return config;
+	}
+
+	Dictionary root = parsed;
+	if (root.has("base_config")) {
+		config = load_with_optional_override_depth(String(root["base_config"]), depth + 1);
+	}
+	return apply_config_root(config, root, override_path);
+}
+
+} // namespace
+
+Config Config::load_with_optional_override(const String &override_path) {
+	return load_with_optional_override_depth(override_path, 0);
 }
 
 } // namespace draft_ai

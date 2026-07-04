@@ -347,7 +347,9 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 ### Workstream C — Model & Feature Quality
 
-**C.1 Risk-aware selection.** Instrumentation implemented: native pick/ban recommendation breakdown dictionaries now expose per-component sample/confidence fields, the explanation audit requires and validates them, and the draft testing view shows compact native confidence lines. This did not change ordering, scores, weights, strategy behavior, or selection policy. Remaining work: add config-only risk modifiers for opt-in experiments such as "safe" tiers penalizing low-confidence signals and "ceiling" personas rewarding them.
+**C.1 Risk-aware selection.** Instrumentation implemented: native pick/ban recommendation breakdown dictionaries now expose per-component sample/confidence fields, aggregate `confidence_score`, and opt-in `confidence_adjustment`. The explanation audit requires and validates those fields, and the draft testing view shows compact native confidence lines. Defaults preserve ordering, scores, weights, strategy behavior, and selection policy; risk/persona behavior only activates through explicit experiment configs.
+
+**C.1b Config-only risk/persona experiments.** Scaffolding implemented. `confidence_adjustment` config supports "safe" (positive confidence bias) and "ceiling" (negative confidence bias) experiments, and fixture-backed validation strategies include `native_softmax_safe`, `native_softmax_ceiling`, and `native_softmax_counter_heavy`. These are validation-only candidates until they clear the `native_softmax` gate.
 
 **C.2 Learned scorer to replace/augment the linear sum.** Train a small model (gradient-boosted trees or a compact MLP, exported to a form the native layer can evaluate) on (draft-state → win) data from simulated matches. Must clear a strict wiring gate vs. the current linear model on a holdout (the project already uses a "+2pp" style gate; reuse it). Keep the linear model as the explainable fallback.
 
@@ -460,7 +462,7 @@ Track all of these per version; promotion requires no regression on the guarded 
 
 Completed foundation items are now recorded in Workstreams 0, A, D, and E. The active backlog should focus on promotable policy/model changes and the missing measurement surfaces.
 
-1. **[C/A] Add config-only risk/persona experiments.** Use the new confidence surface for opt-in "safe", "ceiling", or "counter-heavy" policies; gate against `native_softmax`.
+1. **[C/A/E] Gate risk/persona experiments.** Run `native_softmax_safe`, `native_softmax_ceiling`, and `native_softmax_counter_heavy` against `native_softmax`; keep them validation-only unless strength, side-bias, and realism gates clear.
 2. **[D] Emit draft-state training rows.** Extend self-play generation with state/action/outcome rows for learned scorer experiments.
 3. **[E] Add realism metrics.** Track entropy, diversity, repeated openers, top-pick concentration, and counter-pick rate across multi-seed harness runs.
 4. **[B] Decide lookahead fate.** Keep `native_lookahead_softmax` validation-only unless it matches or beats `native_softmax` on Elo/score rate, side-bias, and latency.

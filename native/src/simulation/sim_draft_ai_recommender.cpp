@@ -52,6 +52,19 @@ double opponent_pick_expectation(
 	return responses[0].total_score;
 }
 
+void add_confidence_component(double confidence, double weight, double &confidence_sum, double &weight_sum) {
+	const double abs_weight = std::abs(weight);
+	if (abs_weight <= 0.0) {
+		return;
+	}
+	confidence_sum += confidence * abs_weight;
+	weight_sum += abs_weight;
+}
+
+double confidence_adjustment_for(double confidence_score, double weight, const ConfidenceAdjustment &config) {
+	return weight * (confidence_score - config.baseline_confidence);
+}
+
 } // namespace
 
 DraftRecommender::DraftRecommender(const DraftEvaluator *evaluator, const DraftStatsDatabase *database, const Config *config)
@@ -156,6 +169,27 @@ std::vector<DraftPickScoreBreakdown> DraftRecommender::recommend_picks(
 			counter_risk_weight * breakdown.counter_risk +
 			role_fit_weight * role_fit +
 			comp_fit_weight * breakdown.comp_fit;
+
+		double confidence_sum = 0.0;
+		double confidence_weight_sum = 0.0;
+		add_confidence_component(breakdown.base_power_confidence, base_power_weight, confidence_sum, confidence_weight_sum);
+		if (breakdown.synergy_pairs > 0) {
+			add_confidence_component(breakdown.ally_synergy_confidence, ally_synergy_weight, confidence_sum, confidence_weight_sum);
+		}
+		if (breakdown.counter_pairs > 0) {
+			add_confidence_component(breakdown.enemy_counter_value_confidence, enemy_counter_value_weight, confidence_sum, confidence_weight_sum);
+			add_confidence_component(breakdown.counter_risk_confidence, counter_risk_weight, confidence_sum, confidence_weight_sum);
+		}
+		if (breakdown.comp_samples > 0) {
+			add_confidence_component(breakdown.comp_confidence, comp_fit_weight, confidence_sum, confidence_weight_sum);
+		}
+		breakdown.confidence_score = confidence_weight_sum > 0.0 ? confidence_sum / confidence_weight_sum : 0.0;
+		breakdown.confidence_adjustment = confidence_adjustment_for(
+			breakdown.confidence_score,
+			_config->confidence_adjustment.pick_weight,
+			_config->confidence_adjustment
+		);
+		breakdown.total_score += breakdown.confidence_adjustment;
 
 		// Set weight fields for debug output
 		breakdown.base_power_weight = base_power_weight;
@@ -417,6 +451,26 @@ std::vector<DraftBanScoreBreakdown> DraftRecommender::recommend_bans(
 			counters_my_team_weight * breakdown.counters_my_team +
 			fills_enemy_role_need_weight * fills_enemy_role_need +
 			enemy_comp_fit_weight * breakdown.enemy_comp_fit;
+
+		double confidence_sum = 0.0;
+		double confidence_weight_sum = 0.0;
+		add_confidence_component(breakdown.denial_value_confidence, denial_value_weight, confidence_sum, confidence_weight_sum);
+		if (breakdown.enemy_synergy_pairs > 0) {
+			add_confidence_component(breakdown.enemy_synergy_confidence, enemy_synergy_weight, confidence_sum, confidence_weight_sum);
+		}
+		if (breakdown.counter_pairs > 0) {
+			add_confidence_component(breakdown.counters_my_team_confidence, counters_my_team_weight, confidence_sum, confidence_weight_sum);
+		}
+		if (breakdown.enemy_comp_samples > 0) {
+			add_confidence_component(breakdown.enemy_comp_fit_confidence, enemy_comp_fit_weight, confidence_sum, confidence_weight_sum);
+		}
+		breakdown.confidence_score = confidence_weight_sum > 0.0 ? confidence_sum / confidence_weight_sum : 0.0;
+		breakdown.confidence_adjustment = confidence_adjustment_for(
+			breakdown.confidence_score,
+			_config->confidence_adjustment.ban_weight,
+			_config->confidence_adjustment
+		);
+		breakdown.total_score += breakdown.confidence_adjustment;
 
 		// Set weight fields for debug output
 		breakdown.denial_value_weight = denial_value_weight;

@@ -7,6 +7,7 @@ const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalo
 const MatchReplayInputScript := preload("res://scripts/simulation/match_replay_input.gd")
 const SpawnSpecScript := preload("res://scripts/simulation/spawn_spec.gd")
 const SimConstantsScript := preload("res://scripts/simulation/sim_constants.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 const DraftStrategyRandomPath := "res://scripts/tools/draft_strategy_random.gd"
 const DraftStrategyNativePath := "res://scripts/tools/draft_strategy_native.gd"
@@ -33,6 +34,12 @@ static func build_strategy(name: String, stats_dir: String):
 			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "easy")
 		"native_softmax_hard":
 			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "hard")
+		"native_softmax_safe":
+			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "normal", DraftAiConfigScript.RISK_SAFE_CONFIG_PATH, "native_softmax_safe")
+		"native_softmax_ceiling":
+			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "normal", DraftAiConfigScript.RISK_CEILING_CONFIG_PATH, "native_softmax_ceiling")
+		"native_softmax_counter_heavy":
+			return load(DraftStrategyNativeSoftmaxPath).new(stats_dir, "normal", DraftAiConfigScript.COUNTER_HEAVY_CONFIG_PATH, "native_softmax_counter_heavy")
 		"native_lookahead":
 			return load(DraftStrategyNativeLookaheadPath).new(stats_dir)
 		"native_lookahead_pick_only":

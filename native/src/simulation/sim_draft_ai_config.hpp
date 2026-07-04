@@ -97,6 +97,14 @@ struct LookaheadParams {
 	double opponent_scale = 100.0;
 };
 
+// Optional confidence-based score adjustment for risk/persona experiments.
+// Defaults are a no-op and preserve existing recommendation order.
+struct ConfidenceAdjustment {
+	double baseline_confidence = 0.60;
+	double pick_weight = 0.0;
+	double ban_weight = 0.0;
+};
+
 // Certification metadata: records which external artifacts the current build was certified
 // against. Empty values keep the current permissive behavior (warnings only).
 struct Certification {
@@ -121,6 +129,7 @@ struct Config {
 	FillsRoleSteps fills_role_steps;
 	EvaluatorWeights evaluator_weights;
 	LookaheadParams lookahead;
+	ConfidenceAdjustment confidence_adjustment;
 	Certification certification;
 
 	// Returns defaults if override_path is empty, the file does not exist, or parsing fails

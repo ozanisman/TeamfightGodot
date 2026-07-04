@@ -1,0 +1,8 @@
+{
+  "base_config": "res://model_stats/draft_ai_config.json",
+  "confidence_adjustment": {
+    "baseline_confidence": 0.60,
+    "pick_weight": 0.02,
+    "ban_weight": 0.02
+  }
+}

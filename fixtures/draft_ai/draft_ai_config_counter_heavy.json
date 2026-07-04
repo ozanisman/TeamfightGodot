@@ -1,0 +1,28 @@
+{
+  "base_config": "res://model_stats/draft_ai_config.json",
+  "pick": {
+    "default": {
+      "enemy_counter_value": 0.3125,
+      "counter_risk": -0.1875
+    },
+    "early": {
+      "enemy_counter_value": 0.3125,
+      "counter_risk": -0.1875
+    },
+    "late": {
+      "enemy_counter_value": 0.3125,
+      "counter_risk": -0.1875
+    }
+  },
+  "ban": {
+    "default": {
+      "counters_my_team": 0.3125
+    },
+    "phase1": {
+      "counters_my_team": 0.3125
+    },
+    "phase2": {
+      "counters_my_team": 0.3125
+    }
+  }
+}

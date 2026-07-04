@@ -33,6 +33,8 @@ const PICK_REQUIRED_FIELDS := [
 	"enemy_counter_value_samples",
 	"enemy_counter_value_confidence",
 	"counter_risk",
+	"confidence_score",
+	"confidence_adjustment",
 	"counter_risk_samples",
 	"counter_risk_confidence",
 	"role_fit",
@@ -53,6 +55,8 @@ const BAN_REQUIRED_FIELDS := [
 	"denial_value",
 	"denial_value_confidence",
 	"enemy_synergy",
+	"confidence_score",
+	"confidence_adjustment",
 	"enemy_synergy_samples",
 	"enemy_synergy_confidence",
 	"counters_my_team",
@@ -259,6 +263,12 @@ func _audit_recommendation_fields(rec: Dictionary, action: String, state_name: S
 			elif field.ends_with("_samples"):
 				if not _is_valid_non_negative_int(value):
 					_invalid_values.append("`%s` (%s): sample field '%s' is invalid or negative" % [state_name, action, field])
+			elif field == "confidence_score":
+				if not _is_valid_non_negative_float(value):
+					_invalid_values.append("`%s` (%s): confidence_score is invalid or negative" % [state_name, action])
+			elif field == "confidence_adjustment":
+				if not _is_valid_float(value):
+					_invalid_values.append("`%s` (%s): confidence_adjustment is invalid" % [state_name, action])
 
 			# Check for missing explanation inputs (all zero values in explanation fields)
 			if action == "PICK" and field in ["ally_synergy", "enemy_counter_value", "counter_risk", "role_fit", "comp_fit"]:
@@ -275,6 +285,12 @@ func _is_valid_non_negative_float(value: Variant) -> bool:
 		return false
 	var number := float(value)
 	return is_finite(number) and number >= 0.0
+
+
+func _is_valid_float(value: Variant) -> bool:
+	if not (value is float or value is int):
+		return false
+	return is_finite(float(value))
 
 
 func _is_valid_non_negative_int(value: Variant) -> bool:

@@ -57,6 +57,14 @@ static func apply_bottom_bar_layout(bar: HBoxContainer, toggle: CheckBox) -> voi
 	bar.alignment = BoxContainer.ALIGNMENT_END
 
 
+static func apply_ai_difficulty_label_layout(label: Label) -> void:
+	label.custom_minimum_size = Vector2(90, 28)
+
+
+static func apply_ai_difficulty_selector_layout(selector: OptionButton) -> void:
+	selector.custom_minimum_size = Vector2(120, 28)
+
+
 static func apply_disable_ai_delay_layout(toggle: CheckBox) -> void:
 	toggle.custom_minimum_size = Vector2(150, 28)
 

@@ -152,6 +152,25 @@ godot --headless --path . --script res://scripts/tools/native_draft_quantitative
      --ab-report=res://model_stats/native_draft_validation_ab_report.csv \
      --output=res://logs/native_draft_quantitative_gate_report.md
 
+# 3b. Difficulty tier calibration + monotonic separation gate
+godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd \
+  -- --trials=50 --sims-per-draft=25 \
+     --blue-strategies=native_softmax_easy,native_softmax,native_softmax_hard \
+     --red-strategies=random \
+     --output=res://model_stats/native_draft_tier_calibration.csv \
+     --draft-summary-output=res://model_stats/native_draft_tier_calibration_drafts.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd \
+  -- --input=res://model_stats/native_draft_tier_calibration.csv \
+     --draft-summary=res://model_stats/native_draft_tier_calibration_drafts.csv \
+     --output=res://model_stats/native_draft_tier_calibration_summary.csv \
+     --ab-output=res://model_stats/native_draft_tier_calibration_ab_report.csv \
+     --native-strategy-names=native_softmax,native_softmax_easy,native_softmax_hard
+
+godot --headless --path . --script res://scripts/tools/native_draft_tier_gate.gd \
+  -- --summary=res://model_stats/native_draft_tier_calibration_summary.csv \
+     --draft-summary=res://model_stats/native_draft_tier_calibration_drafts.csv
+
 # 4. Aggregate into the suite report (reads all PASS/FAIL files)
 godot --headless --path . --script res://scripts/tools/run_draft_ai_validation_suite.gd
 ```

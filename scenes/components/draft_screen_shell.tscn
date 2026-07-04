@@ -190,6 +190,13 @@ offset_bottom = 0.0
 grow_horizontal = 2
 alignment = 2
 
+[node name="AIDifficultyLabel" type="Label" parent="DraftPanel/BottomBar"]
+layout_mode = 2
+text = "AI Difficulty"
+
+[node name="AIDifficultySelector" type="OptionButton" parent="DraftPanel/BottomBar"]
+layout_mode = 2
+
 [node name="DisableAIDelayToggle" type="CheckBox" parent="DraftPanel/BottomBar"]
 layout_mode = 2
 text = "Disable AI Delay"

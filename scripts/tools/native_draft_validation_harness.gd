@@ -205,7 +205,11 @@ func _build_strategy(name: String):
 		"base_power_only":
 			return load(DraftStrategyBasePowerOnlyPath).new(_stats_dir)
 		"native_softmax":
-			return load(DraftStrategyNativeSoftmaxPath).new(_stats_dir)
+			return load(DraftStrategyNativeSoftmaxPath).new(_stats_dir, "normal")
+		"native_softmax_easy":
+			return load(DraftStrategyNativeSoftmaxPath).new(_stats_dir, "easy")
+		"native_softmax_hard":
+			return load(DraftStrategyNativeSoftmaxPath).new(_stats_dir, "hard")
 		_:
 			if name.begins_with("native_ablation_"):
 				var variant: String = name.substr("native_ablation_".length())

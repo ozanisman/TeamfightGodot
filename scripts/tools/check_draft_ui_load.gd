@@ -75,6 +75,17 @@ func _run() -> void:
 	if compare_toggle.button_pressed:
 		_fail(inst, "draft_ui: CompareBaselineToggle default is not off")
 		return
+	var difficulty_selector := shell.get_node_or_null("DraftPanel/BottomBar/AIDifficultySelector") as OptionButton
+	if difficulty_selector == null:
+		_fail(inst, "draft_ui: AIDifficultySelector missing")
+		return
+	if difficulty_selector.get_selected_id() < 0:
+		_fail(inst, "draft_ui: AIDifficultySelector has no selection")
+		return
+	var selected_tier: Variant = difficulty_selector.get_item_metadata(difficulty_selector.selected)
+	if typeof(selected_tier) != TYPE_STRING or String(selected_tier) != "normal":
+		_fail(inst, "draft_ui: AIDifficultySelector default is not normal")
+		return
 
 	var champion_grid := shell.get_node_or_null("DraftPanel/ChampionScroll/ChampionGrid") as GridContainer
 	if champion_grid == null:

@@ -1,19 +1,31 @@
 ## Native strategy that mirrors the exact stochastic policy shipped in gameplay
-## (top-5 candidates + softmax, temperature=0.5, scale=100) instead of deterministic top-1.
+## (top-k candidates + softmax) instead of deterministic top-1.
 ## Used to validate the policy players actually face (Section 3.5 mismatch fix).
 
 extends "res://scripts/tools/draft_strategy_native.gd"
 
 const DraftPolicyScript := preload("res://scripts/tools/draft_policy.gd")
 
-# Centralized in draft_ai_config.gd (Workstream 0.2); falls back to hardcoded defaults
-# (top_k=5, temperature=0.5, scale=100.0) reproducing prior behavior exactly.
-var TOP_K: int = DraftAiConfigScript.get_softmax_top_k()
-var TEMPERATURE: float = DraftAiConfigScript.get_softmax_temperature()
-var SCALE: float = DraftAiConfigScript.get_softmax_scale()
+var _tier_id: String = DraftAiConfigScript.TIER_NORMAL
+var TOP_K: int = 5
+var TEMPERATURE: float = 0.5
+var SCALE: float = 100.0
+
+
+func _init(stats_dir: String = "res://model_stats/stats_output_100k", tier_id: String = "normal") -> void:
+	super._init(stats_dir)
+	_tier_id = tier_id if DraftAiConfigScript.is_valid_tier_id(tier_id) else DraftAiConfigScript.TIER_NORMAL
+	var preset: Dictionary = DraftAiConfigScript.get_tier_preset(_tier_id)
+	TOP_K = int(preset["top_k"])
+	TEMPERATURE = float(preset["temperature"])
+	SCALE = DraftAiConfigScript.get_softmax_scale()
 
 
 func get_strategy_name() -> String:
+	if _tier_id == DraftAiConfigScript.TIER_EASY:
+		return "native_softmax_easy"
+	if _tier_id == DraftAiConfigScript.TIER_HARD:
+		return "native_softmax_hard"
 	return "native_softmax"
 
 

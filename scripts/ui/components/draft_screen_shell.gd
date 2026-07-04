@@ -4,11 +4,13 @@ extends Control
 signal back_pressed
 signal start_battle_pressed
 signal auto_fill_pressed
+signal ai_difficulty_changed(tier_id: String)
 
 const Tokens := preload("res://scripts/ui/ui_tokens.gd")
 const Styles := preload("res://scripts/ui/ui_styles.gd")
 const DraftLayoutScript := preload("res://scripts/ui/draft_layout.gd")
 const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
+const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 @onready var draft_panel: Panel = $DraftPanel
 @onready var top_bar: HBoxContainer = $DraftPanel/TopBar
@@ -42,13 +44,30 @@ const UiTokensScript := preload("res://scripts/ui/ui_tokens.gd")
 @onready var native_ai_strategy_selector: OptionButton = $RecommendationPanel/NativeAIStrategySelector
 @onready var compare_baseline_toggle: CheckBox = $RecommendationPanel/CompareBaselineToggle
 @onready var bottom_bar: HBoxContainer = $DraftPanel/BottomBar
+@onready var ai_difficulty_label: Label = $DraftPanel/BottomBar/AIDifficultyLabel
+@onready var ai_difficulty_selector: OptionButton = $DraftPanel/BottomBar/AIDifficultySelector
 @onready var disable_ai_delay_toggle: CheckBox = $DraftPanel/BottomBar/DisableAIDelayToggle
 
 
 func _ready() -> void:
+	_setup_ai_difficulty_selector()
 	_connect_signals()
 	_apply_static_styles()
 	apply_layout(get_viewport_rect().size)
+
+
+func _setup_ai_difficulty_selector() -> void:
+	if ai_difficulty_selector == null:
+		return
+	ai_difficulty_selector.clear()
+	for tier_id in DraftAiConfigScript.TIER_IDS:
+		var label: String = tier_id.capitalize()
+		ai_difficulty_selector.add_item(label, ai_difficulty_selector.item_count)
+		ai_difficulty_selector.set_item_metadata(ai_difficulty_selector.item_count - 1, tier_id)
+	for i in range(ai_difficulty_selector.item_count):
+		if ai_difficulty_selector.get_item_metadata(i) == DraftAiConfigScript.TIER_NORMAL:
+			ai_difficulty_selector.select(i)
+			break
 
 
 func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) -> void:
@@ -73,6 +92,8 @@ func apply_layout(screen_size: Vector2, has_recommendation_panel: bool = false) 
 	if has_recommendation_panel:
 		DraftLayoutScript.apply_recommendation_panel_layout(recommendation_panel, screen_size)
 	champion_grid.columns = DraftLayoutScript.calculate_grid_columns(screen_size.x, UiTokensScript.DRAFT_CHAMPION_TILE_PX)
+	DraftLayoutScript.apply_ai_difficulty_label_layout(ai_difficulty_label)
+	DraftLayoutScript.apply_ai_difficulty_selector_layout(ai_difficulty_selector)
 	DraftLayoutScript.apply_disable_ai_delay_layout(disable_ai_delay_toggle)
 	DraftLayoutScript.apply_bottom_bar_layout(bottom_bar, disable_ai_delay_toggle)
 
@@ -113,6 +134,8 @@ func _connect_signals() -> void:
 		auto_fill_button.pressed.connect(_on_auto_fill_pressed)
 	if not start_battle_button.pressed.is_connected(_on_start_battle_pressed):
 		start_battle_button.pressed.connect(_on_start_battle_pressed)
+	if ai_difficulty_selector != null and not ai_difficulty_selector.item_selected.is_connected(_on_ai_difficulty_selected):
+		ai_difficulty_selector.item_selected.connect(_on_ai_difficulty_selected)
 
 
 func _apply_static_styles() -> void:
@@ -124,6 +147,7 @@ func _apply_static_styles() -> void:
 	enemy_bans_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
 
 	draft_action_box.add_theme_constant_override("separation", Tokens.DRAFT_ACTION_GAP_PX)
+	bottom_bar.add_theme_constant_override("separation", Tokens.DRAFT_ACTION_GAP_PX)
 	auto_fill_button.custom_minimum_size = Vector2(Tokens.DRAFT_ACTION_W_PX, Tokens.DRAFT_ACTION_H_PX)
 	start_battle_button.custom_minimum_size = Vector2(Tokens.DRAFT_ACTION_W_PX, Tokens.DRAFT_ACTION_H_PX)
 	champion_grid.add_theme_constant_override("h_separation", Tokens.DRAFT_CHAMPION_GAP_PX)
@@ -139,7 +163,10 @@ func _apply_static_styles() -> void:
 		native_ai_strategy_selector.custom_minimum_size = Vector2(212, 28)
 	if compare_baseline_toggle != null:
 		compare_baseline_toggle.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
-	
+	if ai_difficulty_label != null:
+		ai_difficulty_label.add_theme_color_override("font_color", Tokens.COLOR_SUBTLE)
+	if ai_difficulty_selector != null:
+		ai_difficulty_selector.custom_minimum_size = Vector2(120, 28)
 
 
 
@@ -157,3 +184,24 @@ func _on_start_battle_pressed() -> void:
 
 func is_ai_delay_disabled() -> bool:
 	return disable_ai_delay_toggle.button_pressed
+
+
+func get_selected_ai_difficulty_tier() -> String:
+	if ai_difficulty_selector == null:
+		return DraftAiConfigScript.TIER_NORMAL
+	var index: int = ai_difficulty_selector.selected
+	if index < 0 or index >= ai_difficulty_selector.item_count:
+		return DraftAiConfigScript.TIER_NORMAL
+	var tier_id: Variant = ai_difficulty_selector.get_item_metadata(index)
+	if typeof(tier_id) != TYPE_STRING:
+		return DraftAiConfigScript.TIER_NORMAL
+	return String(tier_id)
+
+
+func _on_ai_difficulty_selected(index: int) -> void:
+	if index < 0 or index >= ai_difficulty_selector.item_count:
+		return
+	var tier_id: Variant = ai_difficulty_selector.get_item_metadata(index)
+	if typeof(tier_id) != TYPE_STRING:
+		return
+	ai_difficulty_changed.emit(String(tier_id))

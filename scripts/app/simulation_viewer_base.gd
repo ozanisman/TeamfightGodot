@@ -51,6 +51,8 @@ const MAX_TEAM_SIZE := 5
 # (temperature=0.5, scale=100.0) that reproduce prior behavior exactly.
 var AI_SELECTION_TEMPERATURE: float = DraftAiConfigScript.get_softmax_temperature()
 var AI_SCORE_SCALE: float = DraftAiConfigScript.get_softmax_scale()
+var AI_SELECTION_TOP_K: int = DraftAiConfigScript.get_tier_top_k(DraftAiConfigScript.TIER_NORMAL)
+var _ai_difficulty_tier: String = DraftAiConfigScript.TIER_NORMAL
 
 # Which side is human vs AI. Can be "blue" or "red".
 var _player_side: String = "blue"
@@ -297,6 +299,9 @@ func _create_draft_shell(screen_size: Vector2) -> void:
 	_draft_shell.back_pressed.connect(_on_back_to_menu)
 	_draft_shell.auto_fill_pressed.connect(_on_random_draft_clicked)
 	_draft_shell.start_battle_pressed.connect(_on_start_match_clicked)
+	if not _draft_shell.ai_difficulty_changed.is_connected(_on_ai_difficulty_changed):
+		_draft_shell.ai_difficulty_changed.connect(_on_ai_difficulty_changed)
+	set_ai_difficulty_tier(_draft_shell.get_selected_ai_difficulty_tier())
 
 	_header_panel = _draft_shell.draft_panel
 	_title_label = _draft_shell.title_label
@@ -1844,6 +1849,20 @@ func _softmax_select(recommendations: Array, temperature: float = 1.0) -> String
 	return DraftPolicyScript.softmax_select(recommendations, temperature, AI_SCORE_SCALE, _debug_mode)
 
 
+func set_ai_difficulty_tier(tier_id: String) -> void:
+	if not DraftAiConfigScript.is_valid_tier_id(tier_id):
+		push_warning("set_ai_difficulty_tier: invalid tier '%s', keeping %s" % [tier_id, _ai_difficulty_tier])
+		return
+	_ai_difficulty_tier = tier_id
+	var preset: Dictionary = DraftAiConfigScript.get_tier_preset(tier_id)
+	AI_SELECTION_TEMPERATURE = float(preset["temperature"])
+	AI_SELECTION_TOP_K = int(preset["top_k"])
+
+
+func get_ai_difficulty_tier() -> String:
+	return _ai_difficulty_tier
+
+
 ## Returns true if the given draft turn string (e.g. "B_PICK", "R_BAN") belongs to the player side.
 func _turn_belongs_to_player(current_turn: String) -> bool:
 	if _player_side == "blue":
@@ -1879,6 +1898,7 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 	# Get draft recommendations from backend
 	var is_ban: bool = current_turn.ends_with("_BAN")
 	var stats_dir: String = "res://model_stats/stats_output_100k"
+	var top_k: int = AI_SELECTION_TOP_K
 	
 	var recommendations: Array
 	if is_ban:
@@ -1887,7 +1907,7 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 			available,
 			_enemy_picks,
 			_player_picks,
-			5,  # max_results
+			top_k,
 			_draft_step_index,
 			_ai_side,  # acting_side
 			Dictionary(),  # weight_overrides
@@ -1900,7 +1920,7 @@ func _try_enemy_draft_ai(skip_delay: bool = false) -> void:
 			available,
 			_enemy_picks,
 			_player_picks,
-			5,  # max_results
+			top_k,
 			_draft_step_index,
 			0,  # strategy (NATIVE)
 			DraftAiConfigScript.DEFAULT_CONFIG_PATH
@@ -2001,6 +2021,10 @@ func _pick_p2_champion(available: Array[StringName]) -> StringName:
 			top_s = sc
 			top = h
 	return top
+
+
+func _on_ai_difficulty_changed(tier_id: String) -> void:
+	set_ai_difficulty_tier(tier_id)
 
 
 func _on_random_draft_clicked() -> void:

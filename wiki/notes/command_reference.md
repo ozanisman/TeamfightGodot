@@ -64,6 +64,7 @@ Unwired scripts (invoke Godot directly; see [README#draft-ai-validation-gate](..
 | `native_draft_elo_ladder.gd` | Elo ratings from draft-summary CSV (`--self-test` for unit checks) |
 | `native_draft_elo_gate.gd` | Relative Elo ordering gate (`--ordering=`, `--draft-summary=` freshness, `--min-gap=`) |
 | `native_draft_quantitative_gate.gd` | Win-rate and side-bias regression gate |
+| `native_draft_tier_gate.gd` | Difficulty tier monotonic separation gate (`--min-gap=`, `--self-test`) |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
 
 ## Interactive UI

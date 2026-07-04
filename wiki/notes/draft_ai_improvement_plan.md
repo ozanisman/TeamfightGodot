@@ -147,8 +147,7 @@ All weights, phase step ranges, role-fit steps, lookahead constants, priors, and
 Grouped by theme, roughly by impact.
 
 ### 5.1 Policy realism / dynamism
-- Scoring layer remains deterministic, but the shipped softmax policy is now exercised by the validation harness via `native_softmax`. Difficulty tiers and personas are still future work.
-- No difficulty tiers. A single policy serves all players; cannot present an "easy/normal/hard" opponent.
+- Scoring layer remains deterministic, but the shipped softmax policy is now exercised by the validation harness via `native_softmax`. Difficulty tiers (Easy/Normal/Hard) are exposed via temperature + top-k presets (Workstream A.1). Personas remain future work.
 - No player modeling: the AI never reacts to *this* opponent's tendencies, comfort picks, or ban patterns.
 - No bluffing, baiting, flex-pick ambiguity, or "save this pick" behaviors that make a human opponent feel alive.
 
@@ -200,7 +199,26 @@ Grouped by theme, roughly by impact.
 
 Command flags (see `wiki/notes/command_reference.md`): `--full-draft-ab-test`, `--full-draft-ablation-test`, `--ab-test-draft-strategies`, `--measure-draft-ceiling`, `--validate-full-draft`, etc.
 
-Known baseline numbers to preserve as regression anchors (re-derived 2026-07-01, n=100 trials × 25 sims/draft):
+Known baseline numbers to preserve as regression anchors.
+
+**Quantitative gate thresholds** (re-derived 2026-07-03, symmetric 4-strategy harness, n=50 trials × 25 sims/draft, `stats_output_100k`; verified on `base-seed` 100000 and 200000):
+
+| Threshold | Value |
+| --- | ---: |
+| `native_full_vs_random_blue_min` | 0.91 |
+| `native_full_vs_random_overall_min` | 0.91 |
+| `native_full_self_play_bias_max_pp` | 32.0 |
+| `native_softmax_vs_random_blue_min` | 0.88 |
+| `native_softmax_vs_random_overall_min` | 0.88 |
+| `native_softmax_self_play_bias_max_pp` | 12.0 |
+
+**Measured at n=50 symmetric round-robin** (`base-seed=100000` / `200000`):
+
+- **native_full vs random:** blue 93.2% / 91.5%; overall 91.9% / 92.9%.
+- **native_softmax vs random:** blue 89.2% / 88.4%; overall 89.9% / 88.7%.
+- **native self-play side bias:** `native_full` 28.8pp / 30.2pp decisive-blue deviation; `native_softmax` 9.4pp / 8.3pp.
+
+Historical reference (re-derived 2026-07-01, n=100 trials × 25 sims/draft, asymmetric harness — superseded for gate floors but retained for trend comparison):
 
 - **native_full vs random** (current order):
   - Blue-as-native = **94.1%** (95% Wilson CI: 93.1%–95.0%)
@@ -210,21 +228,21 @@ Known baseline numbers to preserve as regression anchors (re-derived 2026-07-01,
   - Blue-as-native = **90.0%** (95% Wilson CI: 88.8%–91.1%)
   - Red-as-native = **89.6%** (95% Wilson CI: 88.5%–90.6%)
   - Overall native vs random = **89.8%**.
-- **native self-play side bias** is policy-dependent and stats-sensitive:
+- **native self-play side bias** (historical asymmetric harness):
   - `native_full` (deterministic top-1): **28.3pp Red-favored** (Blue 35.8% / Red 64.2%) on current order.
   - `native_softmax` (actual shipped policy, temp=0.5/top-5): **9.5pp Blue-favored** (Blue 54.8% / Red 45.2%) on current order.
 - **certified holdout / Bayes ceiling:** retrained pairwise logistic on refreshed stats = **78.0%**
   test accuracy / MSE 0.0401; mirror Bayes ceiling = **78.6%** (95% CI ±0.4%). The predictor is
   within ~0.6pp of the ceiling; signal quality is not the bottleneck.
 
-**Elo ladder anchors** (re-derived 2026-07-03, symmetric round-robin, n=25 trials × 10 sims/draft, 4 strategies on both sides):
+**Elo ladder anchors** (re-derived 2026-07-03, symmetric round-robin, n=50 trials × 25 sims/draft, `base-seed=100000`):
 
 | Rank | Strategy | Elo | Score rate |
 | --- | --- | ---: | ---: |
-| 1 | base_power_only | 1626 | 71.3% |
-| 2 | native_softmax | 1589 | 64.0% |
-| 3 | native_full | 1518 | 53.5% |
-| 4 | random | 1267 | 11.3% |
+| 1 | base_power_only | 1632 | 72.1% |
+| 2 | native_softmax | 1588 | 63.8% |
+| 3 | native_full | 1518 | 53.3% |
+| 4 | random | 1262 | 10.7% |
 
 Score rate = (wins + 0.5·draws) / games across non-self-play pairings. Self-play diagonal pairings are excluded from Elo updates and aggregate stats. `native_full` > `random`, `native_softmax` > `random` (min gap 10 Elo). Note: `base_power_only` can outrank full native scorers in symmetric round-robin on current stats (strong when blue; see pairing matrix in ladder report) — it is a diagnostic baseline, not a guaranteed floor.
 
@@ -277,7 +295,26 @@ Verified: native rebuild clean; `--check-only`, `--check-native-load`, `--check-
 
 ### Workstream A — Selection Realism & Dynamism
 
-**A.1 Difficulty tiers via temperature schedule.** Expose Easy/Normal/Hard as temperature + top-k presets. Easy = high temperature (more mistakes/variety), Hard = low temperature (near-optimal). Validate each tier's win rate vs. baseline to calibrate perceived difficulty.
+**A.1 Difficulty tiers via temperature schedule.** ✅
+Implemented. `DraftAiConfig` (`scripts/tools/draft_ai_config.gd`) defines Easy/Normal/Hard presets (`temperature` + `top_k`); Normal matches the prior shipped policy (`0.5` / `5`). Gameplay enemy AI (`simulation_viewer_base.gd`) and the draft-screen bottom-bar selector read the same presets. Validation strategies: `native_softmax` (normal), `native_softmax_easy`, `native_softmax_hard` (`draft_strategy_native_softmax.gd`). Tier calibration gate: `native_draft_tier_gate.gd` (monotonic blue win rate vs random, default min gap 2pp).
+
+**Tier presets** (hardcoded defaults; overridable via `difficulty_tiers` in `draft_ai_config.json`):
+
+| Tier | temperature | top_k |
+| --- | ---: | ---: |
+| easy | 2.0 | 8 |
+| normal | 0.5 | 5 |
+| hard | 0.15 | 3 |
+
+**Calibrated vs random** (n=50 trials × 25 sims/draft, `stats_output_100k`, blue=tier red=random):
+
+| Tier | Blue win rate |
+| --- | ---: |
+| easy | 84.5% |
+| normal | 90.0% |
+| hard | 93.7% |
+
+Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 **A.2 Phase-varying temperature.** Lower temperature on high-stakes picks (last pick, counter windows), higher on low-stakes early picks — mirrors how humans commit hard only when it matters.
 
@@ -414,7 +451,7 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 3. **[E] Regression gate** ✅: quantitative thresholds wired into the validation gate; CI fails on regression.
 4. **[Foundations] Centralize tunables** ✅: `sim::draft_ai::Config` + `draft_ai_config.gd` with optional JSON override; native/GDScript weights and softmax params unified.
 5. **[E] Self-play Elo ladder** ✅: `draft_elo_rating.gd` + `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`; symmetric round-robin in harness; ordering gate wired into validation suite.
-6. **[A] Difficulty tiers** via temperature/top-k presets, validated per tier.
+6. **[A] Difficulty tiers** ✅: temperature/top-k presets + UI selector + tier calibration gate.
 7. **[D] Self-play data generation** job feeding stats regeneration.
 8. **[B] Diagnose + symmetrize lookahead** with a hard side-bias gate; attempt to un-quarantine.
 9. **[C] Risk-aware selection** (surface confidence to the policy).

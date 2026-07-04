@@ -10,11 +10,13 @@ extends SceneTree
 ##        --output=res://logs/native_draft_quantitative_gate_report.md
 
 const DEFAULT_THRESHOLDS: Dictionary = {
-	"native_full_vs_random_blue_min": 0.94,
-	"native_full_vs_random_overall_min": 0.89,
-	"native_full_self_play_bias_max_pp": 30.0,
-	"native_softmax_vs_random_blue_min": 0.85,
-	"native_softmax_vs_random_overall_min": 0.85,
+	# Re-derived 2026-07-03: symmetric 4-strategy harness, n=50 trials x 25 sims/draft,
+	# stats_output_100k. Floors set ~0.5-1pp below observed min across base-seed 100000 and 200000.
+	"native_full_vs_random_blue_min": 0.91,
+	"native_full_vs_random_overall_min": 0.91,
+	"native_full_self_play_bias_max_pp": 32.0,
+	"native_softmax_vs_random_blue_min": 0.88,
+	"native_softmax_vs_random_overall_min": 0.88,
 	"native_softmax_self_play_bias_max_pp": 12.0,
 }
 

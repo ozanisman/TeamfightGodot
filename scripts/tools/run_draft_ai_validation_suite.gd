@@ -38,6 +38,7 @@ func _run() -> void:
 	_run_check("Full Draft Validation (native)", "full_draft_validation.gd", "full_draft_validation_report_native.txt")
 	_run_check("Native Draft Quantitative Gate", "native_draft_quantitative_gate.gd", "native_draft_quantitative_gate_report.md")
 	_run_elo_checks()
+	_run_tier_checks()
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 
 	# Run optional checks if available
@@ -140,6 +141,44 @@ func _run_elo_checks() -> void:
 		elo_pass = false
 
 	if elo_pass:
+		_report_lines.append("Result: PASS")
+		print("  PASS")
+	else:
+		_overall_pass = false
+
+	_report_lines.append("")
+
+
+func _run_tier_checks() -> void:
+	print("\nChecking: Native Draft Tier Calibration + Gate")
+	_report_lines.append("## Native Draft Tier Calibration + Gate")
+	_report_lines.append("Tier summary: model_stats/native_draft_tier_calibration_summary.csv")
+	_report_lines.append("Gate report: logs/native_draft_tier_gate_report.md")
+
+	var tier_summary := "res://model_stats/native_draft_tier_calibration_summary.csv"
+	var tier_drafts := "res://model_stats/native_draft_tier_calibration_drafts.csv"
+	var gate_report := "res://logs/native_draft_tier_gate_report.md"
+
+	var tier_pass := true
+
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(tier_summary)):
+		_report_lines.append("Result: FAIL - Tier summary CSV not found (run tier calibration harness)")
+		print("  FAIL - Tier summary CSV not found")
+		tier_pass = false
+	elif FileAccess.file_exists(ProjectSettings.globalize_path(tier_drafts)):
+		var summary_mtime: int = FileAccess.get_modified_time(ProjectSettings.globalize_path(tier_summary))
+		var drafts_mtime: int = FileAccess.get_modified_time(ProjectSettings.globalize_path(tier_drafts))
+		if summary_mtime < drafts_mtime:
+			_report_lines.append("Result: FAIL - Tier summary older than draft summary (re-run analyzer)")
+			print("  FAIL - Stale tier summary CSV")
+			tier_pass = false
+
+	if not _check_report_status(gate_report, "PASS"):
+		_report_lines.append("Result: FAIL - Tier gate report missing or not STATUS: PASS")
+		print("  FAIL - Tier gate report")
+		tier_pass = false
+
+	if tier_pass:
 		_report_lines.append("Result: PASS")
 		print("  PASS")
 	else:

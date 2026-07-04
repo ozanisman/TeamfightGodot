@@ -375,6 +375,29 @@ harness can measure the policy players actually face. `simulation_viewer_base.gd
 now delegates to the shared `DraftPolicy.softmax_select()` used by both (behavior-preserving
 refactor, verified bit-identical via git-stash diff on `native_full`/`random` matchups).
 
+## Difficulty tiers (Workstream A.1)
+
+Enemy draft AI difficulty is controlled by softmax temperature + top-k presets in
+`scripts/tools/draft_ai_config.gd` (`easy` / `normal` / `hard`). Normal reproduces the
+prior shipped policy. The draft screen bottom bar exposes an **AI Difficulty** selector
+(wired through `DraftScreenShell.ai_difficulty_changed` → `simulation_viewer_base.gd`).
+
+Validation strategies `native_softmax_easy`, `native_softmax`, and `native_softmax_hard`
+mirror gameplay presets. `native_draft_tier_gate.gd` checks monotonic blue win rate vs
+random (default min gap 2pp between adjacent tiers).
+
+Optional JSON override (`model_stats/draft_ai_config.json`):
+
+```json
+{
+  "difficulty_tiers": {
+    "easy": { "temperature": 2.0, "top_k": 8 },
+    "normal": { "temperature": 0.5, "top_k": 5 },
+    "hard": { "temperature": 0.15, "top_k": 3 }
+  }
+}
+```
+
 ## Weight Override Behavior
 
 Weight overrides are applied as multipliers to phase-specific base weights:

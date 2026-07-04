@@ -14,12 +14,12 @@ The draft AI is a mature, well-instrumented **greedy linear scorer**. It scores 
 
 Its ceiling, however, is bounded by four structural facts:
 
-1. **It is greedy and one-step.** No robust search of the draft tree. The only lookahead variants are quarantined for causing >20% side bias.
+1. **The shipped policy is still effectively one-step.** Policy-aware lookahead exists and is validation-only, but it has not earned promotion over `native_softmax`.
 2. **It is fully deterministic at the scoring layer.** The gameplay softmax is now exercised by the validation harness via `native_softmax` (Workstream 0.1), so shipped and measured behavior match.
-3. **It cannot adapt.** Weights are hardcoded constants. There is no player modeling, no meta drift, no learning loop, and stats are loaded once from static CSVs.
+3. **It cannot adapt during play.** Tunables are centralized and stats snapshots are certified, but there is no player modeling, no live meta drift response, and no runtime learning loop.
 4. **It optimizes proxy signals, not outcomes.** Pairwise historical winrates are a strong proxy, but the recommender never closes the loop against ground-truth simulated match results during selection.
 
-The improvement plan is organized around five workstreams — **Selection Realism**, **Search Depth**, **Model/Feature Quality**, **Data & Learning Loop**, and **Validation Infrastructure** — feeding a continual-iteration flywheel. The single highest-leverage early investment is the **validation infrastructure** (statistical A/B gate + self-play Elo ladder), because without it every subsequent change is unmeasurable.
+The improvement plan is organized around five workstreams — **Selection Realism**, **Search Depth**, **Model/Feature Quality**, **Data & Learning Loop**, and **Validation Infrastructure** — feeding a continual-iteration flywheel. The foundation work is mostly in place now: shared shipped-policy validation, centralized tunables, stats provenance, quantitative gates, Elo ladder, difficulty tiers, self-play stats, stats certification, and validation-only lookahead. The next highest-leverage work is choosing a promotable policy/model target and adding the missing metrics that make "more realistic" measurable.
 
 ---
 
@@ -112,9 +112,11 @@ centered = (adjusted − 0.5) · confidence                                     
 
 Confidence shrinks low-sample signals toward neutral — good. But note: `confidence` is computed and then **only used to shrink the point estimate**; it is never surfaced to the selection layer for risk-aware decisions.
 
-### 3.4 Lookahead (quarantined)
+### 3.4 Lookahead (validation-only)
 
-`NATIVE_LOOKAHEAD*` strategies do 1-ply search over the top-8 candidates, adjusting scores by the opponent's best deterministic response (`response_weight=0.35` picks, `denied_enemy_pick_weight=0.50` bans). They are **quarantined** because they introduced >20% (up to 42%) side bias in self-play. Root cause is almost certainly that the search assumes a deterministic top-1 opponent and is applied asymmetrically across the fixed snake order, amplifying the structural Blue-side advantage.
+Legacy `NATIVE_LOOKAHEAD*` strategies did 1-ply search over the top-8 candidates, adjusting scores by the opponent's deterministic top-1 response. The original version was quarantined for large side-bias spikes and a top-8 truncation bug.
+
+The current validation-only path (`native_lookahead_softmax`) uses a policy-aware opponent expectation (`softmax_expected_score()` plus `LookaheadParams`) and keeps the full candidate pool while adjusting only the evaluated prefix. It passes its dedicated regression gate, but its calibrated Elo remains below `native_softmax`, so passing the lookahead gate is not by itself a promotion signal. Promotion requires a stricter gate: match or beat `native_softmax` on strength, keep side-bias within the accepted band, and stay under the interactive latency budget.
 
 ### 3.5 Determinism vs. gameplay stochasticity (RESOLVED)
 
@@ -125,9 +127,11 @@ Confidence shrinks low-sample signals toward neutral — good. But note: `confid
 
 Consequence: **the behavior that ships to players is now measured by the validation harness.** The `native_softmax` numbers describe the actual policy players face. `native_full` remains available as a deterministic baseline for comparison.
 
-### 3.6 Magic numbers
+### 3.6 Tunables and config
 
-All weights, phase step ranges, role-fit steps, lookahead constants, priors, and the softmax temperature/scale are hardcoded literals scattered across C++ and GDScript. Per project rules (`AGENTS.md`: "No magic numbers"), these should be centralized into a single tunable config surface before any systematic tuning begins.
+Most draft-AI tunables are now centralized. Native pick/ban weights, phase ranges, role-fit steps, evaluator weights, lookahead parameters, and certification metadata live in `sim::draft_ai::Config` (`native/src/simulation/sim_draft_ai_config.{hpp,cpp}`). GDScript softmax and difficulty-tier defaults live in `scripts/tools/draft_ai_config.gd` and read the same optional JSON override path.
+
+Remaining cleanup is narrower: keep new tunables out of ad-hoc call sites, document promotion-time defaults in `model_stats/draft_ai_config.json`, and avoid adding new literals to strategy wrappers except as tested defaults in the config layer.
 
 ---
 
@@ -152,7 +156,7 @@ Grouped by theme, roughly by impact.
 - No bluffing, baiting, flex-pick ambiguity, or "save this pick" behaviors that make a human opponent feel alive.
 
 ### 5.2 Strategic depth
-- Greedy one-step; robust lookahead quarantined.
+- Shipped policy remains greedy/one-step; policy-aware lookahead is validation-only and not yet stronger than `native_softmax`.
 - No counter-pick-chain reasoning (A>B>C), no "protect the carry" combo detection, no explicit win-condition modeling.
 - Role model is a coarse step function; no lane/position assignment, no flex/multi-role handling.
 - Picks evaluated independently — no pick-order optimization or trade-off between "take now vs. wheel back."
@@ -165,8 +169,9 @@ Grouped by theme, roughly by impact.
 
 ### 5.4 Data & adaptation
 - Static CSVs, generated offline, never updated from live/self-play results.
-- No mechanism to detect or respond to meta shifts after a balance change; stale stats silently mislead.
-- No provenance/versioning tying a recommender build to the exact stats snapshot it was certified on.
+- Stats provenance and snapshot certification exist, so stale promoted snapshots are detectable.
+- There is still no automatic response to meta shifts after a balance change; a new stats snapshot must be generated, gated, and explicitly promoted.
+- Self-play stats generation writes production-shaped CSVs, but draft-state training rows are still deferred, blocking learned policy/scorer work.
 
 ### 5.5 Validation gaps
 - ~~**Deterministic-vs-softmax mismatch**~~ (resolved by Workstream 0.1).
@@ -174,7 +179,8 @@ Grouped by theme, roughly by impact.
 - ~~No automated regression gate on draft quality~~ (resolved by E.2: `native_draft_quantitative_gate.gd` checks win-rate floors and side-bias ceilings).
 - ~~No self-play Elo/ladder to rank strategy *strength* transitively.~~ (resolved by E.3: `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`).
 - No calibration tracking over time; no longitudinal metric history across model versions.
-- Ban phase under-tested; several non-native strategies still ban randomly (explicit TODOs).
+- Ban phase remains under-modeled: prior experiments indicate P1 and P2 have materially different signal quality, so future ban models should be phase-specific by default.
+- Some random-ban behavior is intentional for baselines; only comparison strategies meant to model real play should be made ban-aware.
 - Audit test states are hand-crafted and few (7–9 states).
 
 ---
@@ -198,6 +204,8 @@ Grouped by theme, roughly by impact.
 | `draft_testing.gd` | Interactive UI for manual inspection | UI |
 
 Command flags (see `wiki/notes/command_reference.md`): `--full-draft-ab-test`, `--full-draft-ablation-test`, `--ab-test-draft-strategies`, `--measure-draft-ceiling`, `--validate-full-draft`, etc.
+
+Suite caveat: `run_draft_ai_validation_suite.gd` treats lookahead calibration and stats certification reports as optional if their report files are absent. Do not treat a suite PASS as evidence that optional lookahead promotion or stats certification was run unless those report sections are present and current.
 
 Known baseline numbers to preserve as regression anchors.
 
@@ -248,9 +256,8 @@ Score rate = (wins + 0.5·draws) / games across non-self-play pairings. Self-pla
 
 **Caveat:** these are measured against the 2026-07-01 refresh of `model_stats/stats_output_100k/`.
 Because the bias direction/magnitude has already flipped once across a stats regeneration, they should
-not be treated as immutable constants. Workstream 0.3 (stats provenance/versioning) and the
-regression gate (Workstream E) must re-derive them on every promoted stats snapshot, separately for
-`native_full` and `native_softmax`.
+not be treated as immutable constants. The stats certification pipeline and regression gate must
+re-derive them on every promoted stats snapshot, separately for `native_full` and `native_softmax`.
 
 ---
 
@@ -330,6 +337,8 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 **B.2 Symmetric, policy-aware lookahead.** **Done (validation-only).** C++ `softmax_expected_score()` + `LookaheadParams` (`opponent_model`, `opponent_top_k`, `opponent_temperature`, `opponent_scale`). Pick/ban lookahead uses softmax expectation and in-place prefix adjustment. New strategy `native_lookahead_softmax` + `native_draft_lookahead_gate.gd` (calibrated PASS: **13.9pp** bias, vs-random ≥0.87, Elo gap −26 vs `native_softmax` with floor −40). Config: `fixtures/draft_ai/draft_ai_config_lookahead_softmax.json` (`response_weight=0.20`). Legacy `native_lookahead` uses `fixtures/draft_ai/draft_ai_config_legacy_lookahead.json` (`opponent_model=top1`). **Not promoted to gameplay.**
 
+**B.2b Lookahead promotion decision.** Add a stricter promotion gate before any gameplay wiring: `native_lookahead_softmax` must meet or beat `native_softmax` Elo/score rate within confidence, keep self-play side-bias inside the `native_softmax` band, and report per-decision latency. Until then, keep it as a diagnostic/search experiment rather than a shipped policy.
+
 **B.3 Bounded search / flat-MC rollouts.** Where affordable, replace hand-tuned lookahead adjustment with short simulated rollouts to the end of draft using the current policy, scored by the certified winner predictor (fast) or by actual match simulation (slow, offline). This is the bridge toward MCTS.
 
 **B.4 (Stretch) MCTS over the draft tree.** Full search with the winner predictor as leaf evaluator and the stochastic policy as the tree policy. Gate on both strength (Elo) and latency budget (draft decisions must stay well within interactive time).
@@ -338,7 +347,7 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 ### Workstream C — Model & Feature Quality
 
-**C.1 Risk-aware selection.** Surface `confidence`/variance to the selection layer; allow tiers/personas to reward or penalize high-variance picks (ceiling-chasing vs. safe).
+**C.1 Risk-aware selection.** Surface per-component samples/confidence to the pick and ban breakdowns, then add config-only risk modifiers. The first implementation should not change ordering by default; it should expose enough data for audits and allow opt-in experiments such as "safe" tiers penalizing low-confidence signals and "ceiling" personas rewarding them.
 
 **C.2 Learned scorer to replace/augment the linear sum.** Train a small model (gradient-boosted trees or a compact MLP, exported to a form the native layer can evaluate) on (draft-state → win) data from simulated matches. Must clear a strict wiring gate vs. the current linear model on a holdout (the project already uses a "+2pp" style gate; reuse it). Keep the linear model as the explainable fallback.
 
@@ -355,13 +364,15 @@ Implemented. `draft_harness_core.gd` shares full-draft + sim helpers between the
 
 Output is a **new snapshot directory**; promoting to `stats_output_100k` uses the D.2 certification pipeline with explicit `--promote` (step 3e in [draft_ai_validation_gate.md](draft_ai_validation_gate.md)).
 
+**D.1b Draft-state training rows.** Add an optional self-play output that records each decision state, legal candidate pool, selected action, policy scores, side/phase, final draft, and simulated match outcome. This should be the input contract for C.2 learned scorer work; aggregate CSV regeneration alone is not enough training data for a stateful policy model.
+
 **D.2 Automated stats regeneration + certification.** **Done.** `native_draft_stats_certification.gd` runs generate → structural gate → harness on candidate stats → analyzer → quantitative + Elo gates → certification gate; `--promote` copies to baseline and writes `certification.stats_snapshot_id`. Smoke/full recipes in [draft_ai_validation_gate.md](draft_ai_validation_gate.md) step 3e.
 
 **D.3 Iterated-best-response training.** Periodically retrain the learned scorer (C.2) on self-play data, then re-enter the ladder (Workstream E). Track for convergence and for degenerate/exploitative equilibria.
 
 *Gate:* regenerated stats reproduce or beat prior certification; ladder shows monotone (non-regressing) strength across versions.
 
-### Workstream E — Validation Infrastructure (highest early leverage)
+### Workstream E — Validation Infrastructure
 
 **E.1 Statistical A/B harness.** Implemented in `native_draft_validation_analyzer.gd`. The analyzer now emits per-matchup Wilson confidence intervals and, when `--ab-control-blue/red` and `--ab-treatment-blue/red` are supplied, a two-proportion z-test with delta, 95% CI, p-value, and required-N per group for a target MDE. It prints and writes a report like "A beats B by X% (95% CI …, p=…), required n/group = N".
 
@@ -372,19 +383,19 @@ Implemented. `draft_elo_rating.gd` computes pooled-sim Elo from harness draft-su
 
 **E.4 Policy-faithful evaluation.** Partially done via Workstream 0.1 (`native_softmax` in harness). Remaining: explicit multi-seed stochastic evaluation with CIs.
 
-**E.5 Realism / human-likeness metrics.** Add pick/ban entropy, champion diversity across drafts, counter-pick rate, and (if a human draft dataset is captured) agreement/edit-distance vs. human drafts. These make "more realistic" a measurable objective, not a vibe.
+**E.5 Realism / human-likeness metrics.** Add pick entropy, ban entropy, unique champion count, repeated-opener rate, top-pick concentration, counter-pick rate, and tier separation across multiple seeds. If a human draft dataset is captured later, add agreement/edit-distance vs. human drafts. These make "more realistic" a measurable objective, not a vibe.
 
 **E.6 Calibration + longitudinal dashboard.** Track reliability diagrams and Brier/MSE over time; persist per-version metrics so trends (not just point-in-time) are visible. Extend the existing stats dashboard.
 
-**E.7 Broaden audit coverage.** Generate audit states programmatically (sampled real draft states) instead of only 7–9 hand-crafted ones; fix the random-ban TODOs in non-native strategies so ban comparisons are meaningful.
+**E.7 Broaden audit coverage.** Generate audit states programmatically (sampled real draft states) instead of only 7–9 hand-crafted ones. Treat random-ban strategies as baselines; only require ban-aware behavior from strategies that are meant to approximate real play.
 
-*Gate:* every other workstream's "gate" is implemented here; this workstream is a prerequisite for trusting all the rest.
+*Gate:* every other workstream's promotion decision should flow through these tools. The remaining validation work is mostly richer metrics and broader coverage, not basic infrastructure.
 
 ---
 
 ## 9. The Continual-Iteration Flywheel
 
-Once Workstreams 0, D, and E exist, improvement becomes a loop rather than a series of one-off experiments:
+With Workstreams 0, D, and E in place, improvement becomes a loop rather than a series of one-off experiments:
 
 ```
         ┌────────────────────────────────────────────────┐
@@ -447,18 +458,15 @@ Track all of these per version; promotion requires no regression on the guarded 
 
 ## 12. Prioritized Near-Term Backlog
 
-Ordered for maximum leverage with minimal risk. Each item is small and independently shippable.
+Completed foundation items are now recorded in Workstreams 0, A, D, and E. The active backlog should focus on promotable policy/model changes and the missing measurement surfaces.
 
-1. **[Foundations] Unify selection policy** ✅: `DraftPolicy` abstraction + `native_softmax` strategy run the shipped softmax policy in the harness; Section 3.5 mismatch resolved.
-2. **[E] Statistical A/B** ✅: Wilson CIs + two-proportion test in the analyzer; report required-N.
-3. **[E] Regression gate** ✅: quantitative thresholds wired into the validation gate; CI fails on regression.
-4. **[Foundations] Centralize tunables** ✅: `sim::draft_ai::Config` + `draft_ai_config.gd` with optional JSON override; native/GDScript weights and softmax params unified.
-5. **[E] Self-play Elo ladder** ✅: `draft_elo_rating.gd` + `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`; symmetric round-robin in harness; ordering gate wired into validation suite.
-6. **[A] Difficulty tiers** ✅: temperature/top-k presets + UI selector + tier calibration gate.
-7. **[D] Self-play data generation** ✅ (MVP): `native_draft_self_play_stats.gd` + structural gate; training rows deferred.
-8. **[B] Diagnose + symmetrize lookahead** with a hard side-bias gate; attempt to un-quarantine.
-9. **[C] Risk-aware selection** (surface confidence to the policy).
-10. **[C] Learned scorer** behind the wiring gate; keep linear model as explainable fallback.
+1. **[C] Expose confidence for risk-aware selection.** Add per-component sample/confidence fields to pick/ban breakdowns and reports without changing default ordering.
+2. **[C/A] Add config-only risk/persona experiments.** Use the new confidence surface for opt-in "safe", "ceiling", or "counter-heavy" policies; gate against `native_softmax`.
+3. **[D] Emit draft-state training rows.** Extend self-play generation with state/action/outcome rows for learned scorer experiments.
+4. **[E] Add realism metrics.** Track entropy, diversity, repeated openers, top-pick concentration, and counter-pick rate across multi-seed harness runs.
+5. **[B] Decide lookahead fate.** Keep `native_lookahead_softmax` validation-only unless it matches or beats `native_softmax` on Elo/score rate, side-bias, and latency.
+6. **[Ban] Split P1/P2 ban modeling.** Treat phase 1 and phase 2 as separate modeling targets; do not evaluate a single blended ban model as if both phases have the same signal.
+7. **[C] Learned scorer behind a wiring gate.** Train only after draft-state rows exist; keep the linear model as the explainable fallback and require a meaningful holdout/ladder improvement before runtime use.
 
 ---
 

@@ -38,6 +38,15 @@ const CheckStatsAggregatorRoundtripScript := preload("res://scripts/tools/check_
 const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulation_batch_worker.gd")
 const CheckMatchTelemetryScript := preload("res://scripts/tools/check_match_telemetry.gd")
 const CheckStatsCsvDeterminismScript := preload("res://scripts/tools/check_stats_csv_determinism.gd")
+const DraftSelfPlayStatsRunnerScript := preload("res://scripts/tools/draft_self_play_stats_runner.gd")
+const DraftStatsSnapshotChecksScript := preload("res://scripts/tools/draft_stats_snapshot_checks.gd")
+const DraftValidationRunnerScript := preload("res://scripts/tools/draft_validation_runner.gd")
+const DraftValidationAnalyzerCoreScript := preload("res://scripts/tools/draft_validation_analyzer_core.gd")
+const DraftQuantitativeGateCoreScript := preload("res://scripts/tools/draft_quantitative_gate_core.gd")
+const DraftEloGateCoreScript := preload("res://scripts/tools/draft_elo_gate_core.gd")
+const DraftStatsCertificationGateCoreScript := preload("res://scripts/tools/draft_stats_certification_gate_core.gd")
+const DraftStatsPromotionScript := preload("res://scripts/tools/draft_stats_promotion.gd")
+const ValidatePickRecommendationsCoreScript := preload("res://scripts/tools/validate_pick_recommendations_core.gd")
 
 
 func _init() -> void:

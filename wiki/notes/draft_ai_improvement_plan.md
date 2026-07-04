@@ -353,9 +353,9 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 **D.1 Self-play data generation.** ✅ (MVP)
 Implemented. `draft_harness_core.gd` shares full-draft + sim helpers between the validation harness and `native_draft_self_play_stats.gd`. The self-play generator runs policy-driven 5v5 drafts, simulates completed teams, and writes canonical stats CSVs + `stats_manifest.json` via `StatsCsvAggregator` (same pipeline as `--generate-stats`, but comps come from draft policies not random teams). `native_draft_self_play_stats_gate.gd` checks file presence, manifest validation, and `--min-matches=`. Draft-state training rows deferred. Commands: [draft_ai_validation_gate.md](draft_ai_validation_gate.md) (step 3c).
 
-Output is a **new snapshot directory**; promoting to `stats_output_100k` requires manual re-run of the full draft validation gate (D.2).
+Output is a **new snapshot directory**; promoting to `stats_output_100k` uses the D.2 certification pipeline with explicit `--promote` (step 3e in [draft_ai_validation_gate.md](draft_ai_validation_gate.md)).
 
-**D.2 Automated stats regeneration + certification.** On catalog/balance change, regenerate stats, re-certify against holdout, and block promotion if calibration regresses. Prevents stale-stats decay.
+**D.2 Automated stats regeneration + certification.** **Done.** `native_draft_stats_certification.gd` runs generate → structural gate → harness on candidate stats → analyzer → quantitative + Elo gates → certification gate; `--promote` copies to baseline and writes `certification.stats_snapshot_id`. Smoke/full recipes in [draft_ai_validation_gate.md](draft_ai_validation_gate.md) step 3e.
 
 **D.3 Iterated-best-response training.** Periodically retrain the learned scorer (C.2) on self-play data, then re-enter the ladder (Workstream E). Track for convergence and for degenerate/exploitative equilibria.
 

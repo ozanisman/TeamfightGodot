@@ -8,6 +8,27 @@ const REQUIRED_DRAFT_COLUMNS: Array[String] = [
 ]
 
 
+static func load_metric_rows(path: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
+	if f == null:
+		return out
+	var header: Array = split_csv_line(f.get_line())
+	var idx: Dictionary = header_index(header)
+	while not f.eof_reached():
+		var line: String = f.get_line()
+		if line.strip_edges().is_empty():
+			continue
+		var fields: Array = split_csv_line(line)
+		var row: Dictionary = {}
+		for key in idx.keys():
+			if idx[key] < fields.size():
+				row[key] = fields[idx[key]]
+		out.append(row)
+	f.close()
+	return out
+
+
 static func load_draft_summaries(path: String) -> Array[Dictionary]:
 	var drafts: Array[Dictionary] = []
 	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)

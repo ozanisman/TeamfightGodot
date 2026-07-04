@@ -41,6 +41,7 @@ func _run() -> void:
 	_run_tier_checks()
 	_run_self_play_stats_checks()
 	_run_lookahead_gate_checks()
+	_run_stats_certification_checks()
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 
 	# Run optional checks if available
@@ -238,6 +239,28 @@ func _run_lookahead_gate_checks() -> void:
 		_report_lines.append("Result: FAIL - gate report not STATUS: PASS")
 		print("  FAIL - gate report")
 		# Optional check: do not fail overall suite
+	_report_lines.append("")
+
+
+func _run_stats_certification_checks() -> void:
+	print("\nChecking (optional): Native Draft Stats Certification")
+	_report_lines.append("## Native Draft Stats Certification")
+	_report_lines.append("Script: native_draft_stats_certification.gd")
+	var cert_report := "res://logs/native_draft_stats_certification_report.md"
+	_report_lines.append("Report file: native_draft_stats_certification_report.md")
+
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(cert_report)):
+		_report_lines.append("Result: SKIPPED (report not found; run stats certification pipeline)")
+		print("  SKIPPED - report not found")
+		_report_lines.append("")
+		return
+
+	if _check_report_status(cert_report, "PASS"):
+		_report_lines.append("Result: PASS")
+		print("  PASS")
+	else:
+		_report_lines.append("Result: FAIL - certification report not STATUS: PASS")
+		print("  FAIL - certification report")
 	_report_lines.append("")
 
 

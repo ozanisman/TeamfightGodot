@@ -113,7 +113,28 @@ godot --headless --path . --script res://scripts/tools/native_draft_self_play_st
 
 Gate checks canonical CSVs, manifest hashes, min match count, non-empty `role_combinations` / matchup data, and `StatsDashboardLoader` load.
 
-**Promotion:** Swapping a self-play snapshot into `stats_output_100k` is manual — re-run steps 1–3 against the new snapshot before replacing production stats (D.2 automation deferred).
+**Promotion:** Use the stats certification pipeline (step 3e) with explicit `--promote` after all gates pass. Without `--promote`, the candidate snapshot is validated but production stats are not overwritten.
+
+## Step 3e — Stats certification pipeline (D.2)
+
+Single headless command: self-play generation → structural gate → harness on candidate `--stats-dir` → analyzer → quantitative + Elo gates → certification gate. Optional `--promote` copies canonical CSVs + manifest to `--baseline-stats-dir` and writes `certification.stats_snapshot_id` to `model_stats/draft_ai_config.json`.
+
+**Smoke:**
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_stats_certification.gd `
+  -- --drafts=50 --sims-per-draft=1 `
+     --blue-strategies=native_softmax --red-strategies=native_softmax `
+     --baseline-stats-dir=res://model_stats/stats_output_100k `
+     --output-dir=res://model_stats/stats_selfplay_candidate `
+     --trials=2 --harness-sims-per-draft=25 --min-matches=50
+```
+
+**Full (pre-promotion calibration):** `--drafts=1000 --trials=50 --harness-sims-per-draft=25`.
+
+**Promote (explicit only):** add `--promote` to the smoke/full command above after a PASS report.
+
+Report: `logs/native_draft_stats_certification_report.md` (`STATUS: PASS/FAIL`). Default harness with `--trials` ≤ 2 uses **smoke** calibration (relaxed quantitative floors, Elo min-gap 5.0); override with `--production` or force smoke with `--smoke`. Full pre-promotion calibration should use `--trials=50 --production`.
 
 ## Step 3d — Lookahead calibration + gate (optional)
 
@@ -183,6 +204,8 @@ When set, native pick/ban calls return empty on snapshot ID mismatch. Harness an
 | `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV + softmax self-test |
 | `native_draft_lookahead_baseline_report.gd` | Markdown baseline from analyzer summary |
 | `native_draft_lookahead_gate.gd` | `native_lookahead_softmax` bias/strength gate |
+| `native_draft_stats_certification.gd` | Full-chain stats regen + certification (D.2) |
+| `native_draft_stats_certification_gate.gd` | Final certification gate (snapshot id, pick smoke) |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
 | `draft_harness_core.gd` | Shared draft/sim helpers (library, not CLI) |
 

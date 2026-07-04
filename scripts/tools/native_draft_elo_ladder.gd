@@ -12,6 +12,7 @@ extends SceneTree
 
 const DraftValidationCsvScript := preload("res://scripts/tools/draft_validation_csv.gd")
 const DraftEloRatingScript := preload("res://scripts/tools/draft_elo_rating.gd")
+const DraftEloGateCoreScript := preload("res://scripts/tools/draft_elo_gate_core.gd")
 const HeadlessShutdownScript := preload("res://scripts/tools/headless_shutdown.gd")
 
 var _draft_summary_path: String = ""
@@ -81,7 +82,7 @@ func _run() -> void:
 	var ladder: Dictionary = DraftEloRatingScript.compute_ladder(
 		drafts, _strategy_names, _initial_rating, _k_factor, _iterations
 	)
-	if not _write_csv(ladder):
+	if not DraftEloGateCoreScript.write_ladder_csv(ladder, _strategy_names, _output_csv_path):
 		await HeadlessShutdownScript.teardown_extension_then_quit(self, 1)
 		return
 	if not _write_report(ladder, drafts.size()):
@@ -127,33 +128,6 @@ func _rank_strategies(ratings: Dictionary) -> Array[String]:
 		return a < b
 	)
 	return ranked
-
-
-func _write_csv(ladder: Dictionary) -> bool:
-	var ratings: Dictionary = ladder["ratings"]
-	var stats: Dictionary = ladder["stats"]
-	var ranked: Array[String] = _rank_strategies(ratings)
-
-	var rows: Array[String] = ["rank,strategy,elo,games,wins,losses,draws,score_rate"]
-	for i in range(ranked.size()):
-		var strategy: String = ranked[i]
-		var s: Dictionary = stats[strategy]
-		var games: int = int(s["games"])
-		var wins: int = int(s["wins"])
-		var losses: int = int(s["losses"])
-		var draws: int = int(s["draws"])
-		var score_rate: float = DraftEloRatingScript.stats_score_rate(s)
-		rows.append("%d,%s,%.2f,%d,%d,%d,%d,%.6f" % [
-			i + 1, strategy, ratings[strategy], games, wins, losses, draws, score_rate
-		])
-
-	var f := FileAccess.open(ProjectSettings.globalize_path(_output_csv_path), FileAccess.WRITE)
-	if f == null:
-		push_error("native_draft_elo_ladder: could not open output csv %s" % _output_csv_path)
-		return false
-	f.store_string("\n".join(rows) + "\n")
-	f.close()
-	return true
 
 
 func _write_report(ladder: Dictionary, draft_count: int) -> bool:

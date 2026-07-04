@@ -151,6 +151,31 @@ static func get_tier_top_k(tier_id: String, config_path: String = DEFAULT_CONFIG
 	return int(get_tier_preset(tier_id, config_path)["top_k"])
 
 
+static func write_certification_snapshot_id(config_path: String, snapshot_id: String) -> bool:
+	if snapshot_id.is_empty():
+		push_error("DraftAiConfig: snapshot_id required for certification write")
+		return false
+
+	var root: Dictionary = _load_config_root(config_path)
+	root["certification"] = {"stats_snapshot_id": snapshot_id}
+
+	var global_path: String = ProjectSettings.globalize_path(config_path)
+	var parent_dir: String = global_path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(parent_dir):
+		var dir_err: Error = DirAccess.make_dir_recursive_absolute(parent_dir)
+		if dir_err != OK:
+			push_error("DraftAiConfig: could not create config parent dir %s" % parent_dir)
+			return false
+
+	var f := FileAccess.open(global_path, FileAccess.WRITE)
+	if f == null:
+		push_error("DraftAiConfig: could not write certification config %s" % config_path)
+		return false
+	f.store_string(JSON.stringify(root, "\t") + "\n")
+	f.close()
+	return true
+
+
 static func run_tier_self_check() -> bool:
 	var easy: Dictionary = get_tier_preset(TIER_EASY)
 	var normal: Dictionary = get_tier_preset(TIER_NORMAL)

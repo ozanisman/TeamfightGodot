@@ -28,7 +28,7 @@ extends SceneTree
 const Z_95: float = 1.959963984540054
 const NORMAL_CDF_INV_ITERATIONS: int = 50
 
-const REQUIRED_DRAFT_COLUMNS: Array[String] = ["draft_seed", "blue_strategy", "red_strategy", "blue_wins", "red_wins", "draws", "blue_winrate", "red_winrate", "drawrate"]
+const DraftValidationCsvScript := preload("res://scripts/tools/draft_validation_csv.gd")
 
 var _native_strategy_names: Array[String] = ["native_full"]
 
@@ -83,9 +83,9 @@ func _run() -> void:
 
 	var drafts: Array[Dictionary]
 	if not _draft_summary_path.is_empty():
-		drafts = _load_draft_summaries(_draft_summary_path)
+		drafts = DraftValidationCsvScript.load_draft_summaries(_draft_summary_path)
 	elif not _input_path.is_empty():
-		drafts = _infer_drafts_from_steps(_input_path)
+		drafts = DraftValidationCsvScript.infer_drafts_from_steps(_input_path)
 	else:
 		push_error("native_draft_validation_analyzer: --input or --draft-summary required")
 		quit(1)
@@ -125,125 +125,6 @@ func _run() -> void:
 		print("native_draft_validation_analyzer: wrote A/B report %s (%d rows)" % [_ab_output_path, ab_rows.size() - 1])
 
 	quit(0)
-
-
-func _load_draft_summaries(path: String) -> Array[Dictionary]:
-	var drafts: Array[Dictionary] = []
-	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
-	if f == null:
-		push_error("native_draft_validation_analyzer: could not open draft summary %s" % path)
-		return drafts
-
-	var header: Array = _split_csv_line(f.get_line())
-	var idx: Dictionary = _header_index(header)
-	for col in REQUIRED_DRAFT_COLUMNS:
-		if not idx.has(col):
-			push_error("native_draft_validation_analyzer: draft summary missing required column %s" % col)
-			f.close()
-			return drafts
-
-	while not f.eof_reached():
-		var line: String = f.get_line()
-		if line.strip_edges().is_empty():
-			continue
-		var fields: Array = _split_csv_line(line)
-		var draft: Dictionary = _draft_from_fields(fields, idx)
-		if not draft.is_empty():
-			drafts.append(draft)
-	f.close()
-	return drafts
-
-
-func _infer_drafts_from_steps(path: String) -> Array[Dictionary]:
-	var drafts: Array[Dictionary] = []
-	var f := FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
-	if f == null:
-		push_error("native_draft_validation_analyzer: could not open input %s" % path)
-		return drafts
-
-	var header: Array = _split_csv_line(f.get_line())
-	var idx: Dictionary = _header_index(header)
-	for col in REQUIRED_DRAFT_COLUMNS:
-		if not idx.has(col):
-			push_error("native_draft_validation_analyzer: per-step input missing required column %s" % col)
-			f.close()
-			return drafts
-	if not idx.has("step_index"):
-		push_error("native_draft_validation_analyzer: per-step input missing required column step_index")
-		f.close()
-		return drafts
-
-	var best_by_key: Dictionary = {}
-	while not f.eof_reached():
-		var line: String = f.get_line()
-		if line.strip_edges().is_empty():
-			continue
-		var fields: Array = _split_csv_line(line)
-		var draft: Dictionary = _draft_from_fields(fields, idx)
-		if draft.is_empty():
-			continue
-		if idx["step_index"] >= fields.size():
-			push_warning("native_draft_validation_analyzer: malformed row, missing step_index")
-			continue
-		var step_index_str: String = fields[idx["step_index"]].strip_edges()
-		if not step_index_str.is_valid_int():
-			push_warning("native_draft_validation_analyzer: invalid step_index '%s', skipping row" % step_index_str)
-			continue
-		var step_index: int = int(step_index_str)
-		var key: String = "%s|%s|%s" % [draft["draft_seed"], draft["blue_strategy"], draft["red_strategy"]]
-		if not best_by_key.has(key) or step_index > best_by_key[key]["step_index"]:
-			best_by_key[key] = draft
-			best_by_key[key]["step_index"] = step_index
-	f.close()
-
-	for key in best_by_key.keys():
-		best_by_key[key].erase("step_index")
-		drafts.append(best_by_key[key])
-	return drafts
-
-
-func _header_index(header: Array) -> Dictionary:
-	var idx: Dictionary = {}
-	for i in range(header.size()):
-		idx[header[i].strip_edges()] = i
-	return idx
-
-
-func _draft_from_fields(fields: Array, idx: Dictionary) -> Dictionary:
-	for col in REQUIRED_DRAFT_COLUMNS:
-		if not idx.has(col) or idx[col] >= fields.size():
-			push_warning("native_draft_validation_analyzer: malformed row, missing column %s" % col)
-			return {}
-
-	var draft: Dictionary = {}
-	if not _read_int_field(fields, idx, "draft_seed", draft): return {}
-	draft["blue_strategy"] = String(fields[idx["blue_strategy"]])
-	draft["red_strategy"] = String(fields[idx["red_strategy"]])
-	if not _read_int_field(fields, idx, "blue_wins", draft): return {}
-	if not _read_int_field(fields, idx, "red_wins", draft): return {}
-	if not _read_int_field(fields, idx, "draws", draft): return {}
-	if not _read_float_field(fields, idx, "blue_winrate", draft): return {}
-	if not _read_float_field(fields, idx, "red_winrate", draft): return {}
-	if not _read_float_field(fields, idx, "drawrate", draft): return {}
-	return draft
-
-
-func _read_int_field(fields: Array, idx: Dictionary, col: String, out: Dictionary) -> bool:
-	var s: String = fields[idx[col]].strip_edges()
-	if not s.is_valid_int():
-		push_warning("native_draft_validation_analyzer: malformed row, invalid %s '%s'" % [col, s])
-		return false
-	out[col] = int(s)
-	return true
-
-
-func _read_float_field(fields: Array, idx: Dictionary, col: String, out: Dictionary) -> bool:
-	var s: String = fields[idx[col]].strip_edges()
-	if not s.is_valid_float():
-		push_warning("native_draft_validation_analyzer: malformed row, invalid %s '%s'" % [col, s])
-		return false
-	out[col] = float(s)
-	return true
 
 
 func _parse_float_arg(prefix: String, default_value: String, min_val: float, max_val: float) -> float:

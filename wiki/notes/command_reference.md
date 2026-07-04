@@ -55,6 +55,17 @@ Canonical validation gate: [README#validation-gate](../../README.md#validation-g
 | `--verify-draft-aware-signal` | `verify_draft_aware_signal.gd` | Draft-aware signal verification | 300 |
 | `--validate-rollout-convergence` | `validate_rollout_convergence.gd` | Rollout convergence validation | 600 |
 
+Unwired scripts (invoke Godot directly; see [README#draft-ai-validation-gate](../../README.md#draft-ai-validation-gate)):
+
+| Script | Purpose |
+|--------|---------|
+| `native_draft_validation_harness.gd` | Full-draft round-robin tournaments with simulated match outcomes |
+| `native_draft_validation_analyzer.gd` | Wilson CIs, A/B z-test, summary CSV |
+| `native_draft_elo_ladder.gd` | Elo ratings from draft-summary CSV (`--self-test` for unit checks) |
+| `native_draft_elo_gate.gd` | Relative Elo ordering gate (`--ordering=`, `--draft-summary=` freshness, `--min-gap=`) |
+| `native_draft_quantitative_gate.gd` | Win-rate and side-bias regression gate |
+| `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
+
 ## Interactive UI
 
 These flags omit `--headless` and maximize the window.

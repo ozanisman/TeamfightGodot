@@ -5,7 +5,6 @@
 extends "res://scripts/tools/draft_strategy_native.gd"
 
 const DraftPolicyScript := preload("res://scripts/tools/draft_policy.gd")
-const DraftAiConfigScript := preload("res://scripts/tools/draft_ai_config.gd")
 
 # Centralized in draft_ai_config.gd (Workstream 0.2); falls back to hardcoded defaults
 # (top_k=5, temperature=0.5, scale=100.0) reproducing prior behavior exactly.

@@ -121,8 +121,8 @@ Run after draft AI or stats changes to catch quantitative regressions (win rates
 # 1. Generate full-draft validation data (slowest step; adjust N as needed)
 godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd \
   -- --trials=50 --sims-per-draft=25 \
-     --blue-strategies=native_full,native_softmax \
-     --red-strategies=random,native_full,native_softmax \
+     --blue-strategies=native_full,native_softmax,random,base_power_only \
+     --red-strategies=native_full,native_softmax,random,base_power_only \
      --output=res://model_stats/native_draft_validation.csv \
      --draft-summary-output=res://model_stats/native_draft_validation_drafts.csv
 
@@ -133,6 +133,18 @@ godot --headless --path . --script res://scripts/tools/native_draft_validation_a
      --output=res://model_stats/native_draft_validation_summary.csv \
      --ab-output=res://model_stats/native_draft_validation_ab_report.csv \
      --native-strategy-names=native_full,native_softmax
+
+# 2b. Elo ladder + ordering gate
+godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.gd \
+  -- --draft-summary=res://model_stats/native_draft_validation_drafts.csv \
+     --strategies=native_full,native_softmax,random,base_power_only
+
+godot --headless --path . --script res://scripts/tools/native_draft_elo_gate.gd \
+  -- --input=res://model_stats/native_draft_elo_ladder.csv \
+     --draft-summary=res://model_stats/native_draft_validation_drafts.csv
+
+# Run steps 2b ladder then gate sequentially (gate reads the CSV ladder writes).
+# Do not invoke both in parallel. --draft-summary rejects stale ladder CSV.
 
 # 3. Check quantitative thresholds and emit PASS/FAIL report
 godot --headless --path . --script res://scripts/tools/native_draft_quantitative_gate.gd \

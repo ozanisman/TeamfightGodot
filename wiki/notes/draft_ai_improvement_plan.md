@@ -173,7 +173,7 @@ Grouped by theme, roughly by impact.
 - ~~**Deterministic-vs-softmax mismatch**~~ (resolved by Workstream 0.1).
 - ~~No statistical significance: winrates reported without confidence intervals or hypothesis tests.~~ (resolved by E.1: Wilson CIs + two-proportion z-test in `native_draft_validation_analyzer.gd`).
 - ~~No automated regression gate on draft quality~~ (resolved by E.2: `native_draft_quantitative_gate.gd` checks win-rate floors and side-bias ceilings).
-- No self-play Elo/ladder to rank strategy *strength* transitively.
+- ~~No self-play Elo/ladder to rank strategy *strength* transitively.~~ (resolved by E.3: `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`).
 - No calibration tracking over time; no longitudinal metric history across model versions.
 - Ban phase under-tested; several non-native strategies still ban randomly (explicit TODOs).
 - Audit test states are hand-crafted and few (7–9 states).
@@ -187,6 +187,10 @@ Grouped by theme, roughly by impact.
 | `native_draft_validation_harness.gd` | Round-robin full-draft tournaments; simulates drafted teams for ground-truth wins | per-step CSV + draft-summary CSV |
 | `native_draft_validation_analyzer.gd` | Aggregates harness CSV into matchup / by-opponent / by-side winrates; also emits per-matchup Wilson CIs and two-proportion A/B test | summary CSV + A/B report CSV |
 | `native_draft_quantitative_gate.gd` | Checks win-rate floors and side-bias ceilings against the Section 6 baselines; configurable thresholds | `logs/native_draft_quantitative_gate_report.md` |
+| `native_draft_elo_ladder.gd` | Elo ratings from harness draft-summary CSV; pairing matrix report | `model_stats/native_draft_elo_ladder.csv`, `logs/native_draft_elo_ladder_report.md` |
+| `native_draft_elo_gate.gd` | Relative Elo ordering regression (`native_*` > `random`) | `logs/native_draft_elo_gate_report.md` |
+| `draft_elo_rating.gd` | Elo engine + `run_self_test()` | via `--self-test` on ladder script |
+| `draft_validation_csv.gd` | Shared draft-summary CSV loader | used by analyzer + ladder |
 | `run_draft_ai_validation_suite.gd` | Aggregates report files into pass/fail | `logs/draft_ai_validation_suite_report.md` |
 | `audit_native_ban_quality.gd` | Flags suspicious ban patterns on hand-crafted states | `logs/native_ban_quality_audit_report.md` |
 | `audit_native_recommendation_explanations.gd` | Checks breakdown completeness/validity | `logs/native_recommendation_explanations_audit_report.md` |
@@ -212,6 +216,17 @@ Known baseline numbers to preserve as regression anchors (re-derived 2026-07-01,
 - **certified holdout / Bayes ceiling:** retrained pairwise logistic on refreshed stats = **78.0%**
   test accuracy / MSE 0.0401; mirror Bayes ceiling = **78.6%** (95% CI ±0.4%). The predictor is
   within ~0.6pp of the ceiling; signal quality is not the bottleneck.
+
+**Elo ladder anchors** (re-derived 2026-07-03, symmetric round-robin, n=25 trials × 10 sims/draft, 4 strategies on both sides):
+
+| Rank | Strategy | Elo | Score rate |
+| --- | --- | ---: | ---: |
+| 1 | base_power_only | 1626 | 71.3% |
+| 2 | native_softmax | 1589 | 64.0% |
+| 3 | native_full | 1518 | 53.5% |
+| 4 | random | 1267 | 11.3% |
+
+Score rate = (wins + 0.5·draws) / games across non-self-play pairings. Self-play diagonal pairings are excluded from Elo updates and aggregate stats. `native_full` > `random`, `native_softmax` > `random` (min gap 10 Elo). Note: `base_power_only` can outrank full native scorers in symmetric round-robin on current stats (strong when blue; see pairing matrix in ladder report) — it is a diagnostic baseline, not a guaranteed floor.
 
 **Caveat:** these are measured against the 2026-07-01 refresh of `model_stats/stats_output_100k/`.
 Because the bias direction/magnitude has already flipped once across a stats regeneration, they should
@@ -312,9 +327,10 @@ Verified: native rebuild clean; `--check-only`, `--check-native-load`, `--check-
 
 **E.2 Automated regression gate.** Implemented in `native_draft_quantitative_gate.gd` and wired into the validation suite / `README.md` draft-AI gate. The gate reads the analyzer summary and A/B report, checks win-rate floors and self-play side-bias ceilings against the Section 6 baselines, and emits a `STATUS: PASS/FAIL` report. Thresholds are configurable via command-line args (e.g., `--native_softmax_self_play_bias_max_pp=15.0`). CI now fails on quantitative regression, not just string parsing.
 
-**E.3 Self-play Elo/ladder.** Round-robin every registered strategy/version, compute Elo (or Bradley–Terry) ratings from simulated-match wins. Gives a single transitive strength number per version and a regression tripwire.
+**E.3 Self-play Elo/ladder.** ✅
+Implemented. `draft_elo_rating.gd` computes pooled-sim Elo from harness draft-summary rows (self-play diagonal pairings excluded from Elo updates and aggregate stats); `native_draft_elo_ladder.gd` emits ranked CSV + markdown pairing matrix (`score_rate` column, self-play matrix cells marked `*`); `native_draft_elo_gate.gd` checks `native_full`/`native_softmax` > `random` ordering (`--ordering=`, `--min-gap=`, `--draft-summary=` stale-input guard). Shared CSV loader extracted to `draft_validation_csv.gd` (analyzer refactored). Wired into `README.md` validation gate (step 2b), `run_draft_ai_validation_suite.gd`, and `command_reference.md`. Harness step 1 now uses symmetric 4-strategy round-robin. `draft_strategy_native_softmax.gd` duplicate `DraftAiConfigScript` const removed (blocked harness load). Verified: `--check-only`, `native_draft_elo_ladder.gd --self-test`, smoke + 25-trial symmetric harness, Elo gate PASS.
 
-**E.4 Policy-faithful evaluation.** All harnesses run the shared `DraftPolicy` (Workstream 0), including temperature, so measured numbers match shipped behavior. Add explicit stochastic-policy evaluation (average over seeds with CIs).
+**E.4 Policy-faithful evaluation.** Partially done via Workstream 0.1 (`native_softmax` in harness). Remaining: explicit multi-seed stochastic evaluation with CIs.
 
 **E.5 Realism / human-likeness metrics.** Add pick/ban entropy, champion diversity across drafts, counter-pick rate, and (if a human draft dataset is captured) agreement/edit-distance vs. human drafts. These make "more realistic" a measurable objective, not a vibe.
 
@@ -397,7 +413,7 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 2. **[E] Statistical A/B** ✅: Wilson CIs + two-proportion test in the analyzer; report required-N.
 3. **[E] Regression gate** ✅: quantitative thresholds wired into the validation gate; CI fails on regression.
 4. **[Foundations] Centralize tunables** ✅: `sim::draft_ai::Config` + `draft_ai_config.gd` with optional JSON override; native/GDScript weights and softmax params unified.
-5. **[E] Self-play Elo ladder**: single transitive strength number per version.
+5. **[E] Self-play Elo ladder** ✅: `draft_elo_rating.gd` + `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`; symmetric round-robin in harness; ordering gate wired into validation suite.
 6. **[A] Difficulty tiers** via temperature/top-k presets, validated per tier.
 7. **[D] Self-play data generation** job feeding stats regeneration.
 8. **[B] Diagnose + symmetrize lookahead** with a hard side-bias gate; attempt to un-quarantine.
@@ -424,6 +440,7 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 - Stats generator (manifest writer): `scripts/tools/stats_simulation_csv_generator.gd`
 - Pick recommendation validation / baseline oracle: `scripts/tools/validate_pick_recommendations.gd`
 - Validation harness/analyzer: `scripts/tools/native_draft_validation_{harness,analyzer}.gd`
+- Elo ladder/gate: `scripts/tools/{draft_elo_rating,native_draft_elo_ladder,native_draft_elo_gate,draft_validation_csv}.gd`
 - Audits: `scripts/tools/audit_native_ban_quality.gd`, `scripts/tools/audit_native_recommendation_explanations.gd`
 - Ceiling: `scripts/tools/measure_draft_ceiling.gd`
 - Existing docs: `wiki/notes/native_draft_ai.md`, `native_draft_ai_baseline.md`, `draft_prediction_context.md`, `draft_order_bias_audit.md`

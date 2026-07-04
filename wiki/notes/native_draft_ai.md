@@ -438,6 +438,8 @@ snapshot behavior: [draft_order_bias_audit.md](draft_order_bias_audit.md). Phase
 
 ## Validation Suite
 
+Quantitative harness, analyzer, Elo/quantitative/tier gates, self-play stats, and suite aggregation: [draft_ai_validation_gate.md](draft_ai_validation_gate.md).
+
 ### Validation Suite Script
 
 The standardized validation suite is `scripts/tools/run_draft_ai_validation_suite.gd`. It runs all available validation checks and generates a comprehensive report.

@@ -19,6 +19,7 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 | [native_agent_guide.md](notes/native_agent_guide.md) | **Agent entry** — routing, invariants, do-not-read list |
 | [simulation_module_map.md](notes/simulation_module_map.md) | Module ownership, coordinator split, where to add features |
 | [native_draft_ai.md](notes/native_draft_ai.md) | Draft AI architecture, scoring model, validation results |
+| [draft_ai_validation_gate.md](notes/draft_ai_validation_gate.md) | Quantitative draft validation pipeline (harness, gates, self-play stats) |
 | [native_draft_ai_baseline.md](notes/native_draft_ai_baseline.md) | Draft AI baseline metrics (Phase 29 partial comp scoring) |
 | [draft_order_bias_audit.md](notes/draft_order_bias_audit.md) | Draft order bias audit (Phase 38) — structural advantage analysis |
 | [performance_optimization_status.md](notes/performance_optimization_status.md) | Dated benchmark + validation gate |
@@ -49,6 +50,7 @@ Then [simulation_module_map.md](notes/simulation_module_map.md).
 
 | Doc | Purpose |
 |-----|---------|
+| [draft_ai_validation_gate.md](notes/draft_ai_validation_gate.md) | Harness, analyzer, Elo/quantitative/tier gates, self-play stats |
 | [draft_prediction_context.md](notes/draft_prediction_context.md) | Agent briefing on draft prediction signal and limitations |
 
 ## Concepts

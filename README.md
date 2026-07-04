@@ -113,81 +113,11 @@ cmake --build native/build --config Release
 
 Ensure no Godot processes remain when finished. Benchmark expectations and latest numbers: [`wiki/notes/performance_optimization_status.md`](wiki/notes/performance_optimization_status.md).
 
-### Draft AI validation gate
+### Draft AI validation
 
-Run after draft AI or stats changes to catch quantitative regressions (win rates, side bias):
+After draft AI or stats changes, run the quantitative harness → analyzer → gates pipeline. Optional self-play stats generation writes a new snapshot under `model_stats/` (promotion to production is manual).
 
-```powershell
-# 1. Generate full-draft validation data (slowest step; adjust N as needed)
-godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd \
-  -- --trials=50 --sims-per-draft=25 \
-     --blue-strategies=native_full,native_softmax,random,base_power_only \
-     --red-strategies=native_full,native_softmax,random,base_power_only \
-     --output=res://model_stats/native_draft_validation.csv \
-     --draft-summary-output=res://model_stats/native_draft_validation_drafts.csv
-
-# 2. Analyze with Wilson CIs / A/B report
-godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd \
-  -- --input=res://model_stats/native_draft_validation.csv \
-     --draft-summary=res://model_stats/native_draft_validation_drafts.csv \
-     --output=res://model_stats/native_draft_validation_summary.csv \
-     --ab-output=res://model_stats/native_draft_validation_ab_report.csv \
-     --native-strategy-names=native_full,native_softmax
-
-# 2b. Elo ladder + ordering gate
-godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.gd \
-  -- --draft-summary=res://model_stats/native_draft_validation_drafts.csv \
-     --strategies=native_full,native_softmax,random,base_power_only
-
-godot --headless --path . --script res://scripts/tools/native_draft_elo_gate.gd \
-  -- --input=res://model_stats/native_draft_elo_ladder.csv \
-     --draft-summary=res://model_stats/native_draft_validation_drafts.csv
-
-# Run steps 2b ladder then gate sequentially (gate reads the CSV ladder writes).
-# Do not invoke both in parallel. --draft-summary rejects stale ladder CSV.
-
-# 3. Check quantitative thresholds and emit PASS/FAIL report
-godot --headless --path . --script res://scripts/tools/native_draft_quantitative_gate.gd \
-  -- --summary=res://model_stats/native_draft_validation_summary.csv \
-     --ab-report=res://model_stats/native_draft_validation_ab_report.csv \
-     --output=res://logs/native_draft_quantitative_gate_report.md
-
-# 3b. Difficulty tier calibration + monotonic separation gate
-godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd \
-  -- --trials=50 --sims-per-draft=25 \
-     --blue-strategies=native_softmax_easy,native_softmax,native_softmax_hard \
-     --red-strategies=random \
-     --output=res://model_stats/native_draft_tier_calibration.csv \
-     --draft-summary-output=res://model_stats/native_draft_tier_calibration_drafts.csv
-
-godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd \
-  -- --input=res://model_stats/native_draft_tier_calibration.csv \
-     --draft-summary=res://model_stats/native_draft_tier_calibration_drafts.csv \
-     --output=res://model_stats/native_draft_tier_calibration_summary.csv \
-     --ab-output=res://model_stats/native_draft_tier_calibration_ab_report.csv \
-     --native-strategy-names=native_softmax,native_softmax_easy,native_softmax_hard
-
-godot --headless --path . --script res://scripts/tools/native_draft_tier_gate.gd \
-  -- --summary=res://model_stats/native_draft_tier_calibration_summary.csv \
-     --draft-summary=res://model_stats/native_draft_tier_calibration_drafts.csv
-
-# 4. Aggregate into the suite report (reads all PASS/FAIL files)
-godot --headless --path . --script res://scripts/tools/run_draft_ai_validation_suite.gd
-```
-
-Thresholds default to the refreshed baselines in [`wiki/notes/draft_ai_improvement_plan.md`](wiki/notes/draft_ai_improvement_plan.md). Override any threshold with `--<metric>=<value>` (e.g., `--native_softmax_self_play_bias_max_pp=15.0`).
-
-Stats snapshots now include a `stats_manifest.json` with `schema_version`, `snapshot_id`, `generated_at`, `catalog_version`, `generator_name`, `generator_args`, and file hashes. File hashes are `String.hash()` 32-bit values and the native loader validates every listed CSV file hash against the file on disk. The native `DraftStatsDatabase` warns when the manifest is missing, has an unsupported schema, contains invalid types, or has a hash mismatch. `generator_args` records the CLI arguments passed to the generator, so avoid passing secrets in stats-generation commands. To fail loudly on a mismatch, add a `certification` section to `model_stats/draft_ai_config.json`:
-
-```json
-{
-  "certification": {
-    "stats_snapshot_id": "<snapshot_id_from_manifest>"
-  }
-}
-```
-
-When `certification.stats_snapshot_id` is set, every native pick/ban recommendation call compares the loaded stats snapshot against the configured ID and returns an empty result with an error if they differ. The validation harness and quantitative gate inherit this check because they use the same native recommendation API.
+**Full commands, thresholds, certification, and smoke recipes:** [`wiki/notes/draft_ai_validation_gate.md`](wiki/notes/draft_ai_validation_gate.md)
 
 ## Common commands
 
@@ -219,11 +149,11 @@ All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeout
 
 ## Draft AI
 
-Native C++ pick/ban recommender (`sim::draft_ai`) runs off the match tick hot path. `sim_draft_recommender.*` handles winner prediction and analysis. GDScript wrappers live in `scripts/tools/draft_strategy_*.gd`.
+Native C++ pick/ban recommender off the match hot path. Default stats: `res://model_stats/stats_output_100k/` (generate via `--generate-stats`). Interactive testing: `.\run_godot.ps1 --main-menu` → Draft Testing.
 
-Default stats directory: `res://model_stats/stats_output_100k/` (requires `combat_stats.csv`, `matchup_with.csv`, `matchup_vs.csv`). Produce CSVs via `--generate-stats`. Headless validation: `--check-draft-ui`, `--validate-native-strategy`, `--validate-full-draft` (see [command reference](wiki/notes/command_reference.md)). Interactive testing: `.\run_godot.ps1 --main-menu` → Draft Testing.
-
-Deep dive: [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md)
+- [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md) — architecture and scoring
+- [`wiki/notes/draft_ai_validation_gate.md`](wiki/notes/draft_ai_validation_gate.md) — quantitative validation pipeline
+- [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md) — headless flags
 
 ## Troubleshooting
 
@@ -238,6 +168,7 @@ Headless or check failures: inspect `logs/godot.log` (created by `run_godot.ps1`
 - [`wiki/notes/command_reference.md`](wiki/notes/command_reference.md) — headless flags and launcher routing
 - [`wiki/notes/native_agent_guide.md`](wiki/notes/native_agent_guide.md) — native edit routing, invariants
 - [`wiki/notes/simulation_module_map.md`](wiki/notes/simulation_module_map.md) — module ownership
+- [`wiki/notes/draft_ai_validation_gate.md`](wiki/notes/draft_ai_validation_gate.md) — draft AI quantitative validation pipeline
 - [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md) — draft subsystem
 - [`fixtures/goldens/DATA_SOURCE.md`](fixtures/goldens/DATA_SOURCE.md) — champion data workflow
 - [`examples/balance_and_kit_example.gd`](examples/balance_and_kit_example.gd) — balance patches reference

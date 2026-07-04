@@ -125,7 +125,7 @@ func write_matchup_csv_files(output_dir: String) -> bool:
 				with_lines.append("%s,%s,%d,%d,%s" % [champion_id, ally, data.wins, data.losses, _fmt_f(data.winrate)])
 
 	# Write vs file
-	var vs_path = output_dir + "/matchup_vs.csv"
+	var vs_path := ProjectSettings.globalize_path(output_dir.path_join("matchup_vs.csv"))
 	var vs_file = FileAccess.open(vs_path, FileAccess.WRITE)
 	if vs_file == null:
 		push_error("Failed to open matchup_vs.csv for writing: %s" % vs_path)
@@ -135,7 +135,7 @@ func write_matchup_csv_files(output_dir: String) -> bool:
 	print("Matchup vs data exported successfully to: %s" % vs_path)
 
 	# Write with file
-	var with_path = output_dir + "/matchup_with.csv"
+	var with_path := ProjectSettings.globalize_path(output_dir.path_join("matchup_with.csv"))
 	var with_file = FileAccess.open(with_path, FileAccess.WRITE)
 	if with_file == null:
 		push_error("Failed to open matchup_with.csv for writing: %s" % with_path)

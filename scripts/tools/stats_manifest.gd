@@ -19,6 +19,10 @@ const _CANONICAL_CSV_FILES: Array[String] = [
 ]
 
 
+static func get_canonical_csv_files() -> Array[String]:
+	return _CANONICAL_CSV_FILES.duplicate()
+
+
 static func _manifest_path(stats_dir: String) -> String:
 	return stats_dir.path_join(MANIFEST_FILENAME)
 

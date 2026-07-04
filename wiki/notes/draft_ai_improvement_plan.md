@@ -350,7 +350,10 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 ### Workstream D — Data & Continual Learning Loop
 
-**D.1 Self-play data generation.** Nightly/CI job: current policy drafts against itself and prior versions, plays out simulated matches, and writes fresh `combat/matchup/role_combination` stats plus (draft-state → outcome) training rows. This is the engine of continual improvement.
+**D.1 Self-play data generation.** ✅ (MVP)
+Implemented. `draft_harness_core.gd` shares full-draft + sim helpers between the validation harness and `native_draft_self_play_stats.gd`. The self-play generator runs policy-driven 5v5 drafts, simulates completed teams, and writes canonical stats CSVs + `stats_manifest.json` via `StatsCsvAggregator` (same pipeline as `--generate-stats`, but comps come from draft policies not random teams). `native_draft_self_play_stats_gate.gd` checks file presence, manifest validation, and `--min-matches=`. Draft-state training rows deferred. Commands: [draft_ai_validation_gate.md](draft_ai_validation_gate.md) (step 3c).
+
+Output is a **new snapshot directory**; promoting to `stats_output_100k` requires manual re-run of the full draft validation gate (D.2).
 
 **D.2 Automated stats regeneration + certification.** On catalog/balance change, regenerate stats, re-certify against holdout, and block promotion if calibration regresses. Prevents stale-stats decay.
 
@@ -362,10 +365,10 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 **E.1 Statistical A/B harness.** Implemented in `native_draft_validation_analyzer.gd`. The analyzer now emits per-matchup Wilson confidence intervals and, when `--ab-control-blue/red` and `--ab-treatment-blue/red` are supplied, a two-proportion z-test with delta, 95% CI, p-value, and required-N per group for a target MDE. It prints and writes a report like "A beats B by X% (95% CI …, p=…), required n/group = N".
 
-**E.2 Automated regression gate.** Implemented in `native_draft_quantitative_gate.gd` and wired into the validation suite / `README.md` draft-AI gate. The gate reads the analyzer summary and A/B report, checks win-rate floors and self-play side-bias ceilings against the Section 6 baselines, and emits a `STATUS: PASS/FAIL` report. Thresholds are configurable via command-line args (e.g., `--native_softmax_self_play_bias_max_pp=15.0`). CI now fails on quantitative regression, not just string parsing.
+**E.2 Automated regression gate.** Implemented in `native_draft_quantitative_gate.gd` and wired into the validation suite / [draft AI validation gate](draft_ai_validation_gate.md). The gate reads the analyzer summary and A/B report, checks win-rate floors and self-play side-bias ceilings against the Section 6 baselines, and emits a `STATUS: PASS/FAIL` report. Thresholds are configurable via command-line args (e.g., `--native_softmax_self_play_bias_max_pp=15.0`). CI now fails on quantitative regression, not just string parsing.
 
 **E.3 Self-play Elo/ladder.** ✅
-Implemented. `draft_elo_rating.gd` computes pooled-sim Elo from harness draft-summary rows (self-play diagonal pairings excluded from Elo updates and aggregate stats); `native_draft_elo_ladder.gd` emits ranked CSV + markdown pairing matrix (`score_rate` column, self-play matrix cells marked `*`); `native_draft_elo_gate.gd` checks `native_full`/`native_softmax` > `random` ordering (`--ordering=`, `--min-gap=`, `--draft-summary=` stale-input guard). Shared CSV loader extracted to `draft_validation_csv.gd` (analyzer refactored). Wired into `README.md` validation gate (step 2b), `run_draft_ai_validation_suite.gd`, and `command_reference.md`. Harness step 1 now uses symmetric 4-strategy round-robin. `draft_strategy_native_softmax.gd` duplicate `DraftAiConfigScript` const removed (blocked harness load). Verified: `--check-only`, `native_draft_elo_ladder.gd --self-test`, smoke + 25-trial symmetric harness, Elo gate PASS.
+Implemented. `draft_elo_rating.gd` computes pooled-sim Elo from harness draft-summary rows (self-play diagonal pairings excluded from Elo updates and aggregate stats); `native_draft_elo_ladder.gd` emits ranked CSV + markdown pairing matrix (`score_rate` column, self-play matrix cells marked `*`); `native_draft_elo_gate.gd` checks `native_full`/`native_softmax` > `random` ordering (`--ordering=`, `--min-gap=`, `--draft-summary=` stale-input guard). Shared CSV loader extracted to `draft_validation_csv.gd` (analyzer refactored). Wired into [draft AI validation gate](draft_ai_validation_gate.md) (step 2b), `run_draft_ai_validation_suite.gd`, and `command_reference.md`. Harness step 1 now uses symmetric 4-strategy round-robin. `draft_strategy_native_softmax.gd` duplicate `DraftAiConfigScript` const removed (blocked harness load). Verified: `--check-only`, `native_draft_elo_ladder.gd --self-test`, smoke + 25-trial symmetric harness, Elo gate PASS.
 
 **E.4 Policy-faithful evaluation.** Partially done via Workstream 0.1 (`native_softmax` in harness). Remaining: explicit multi-seed stochastic evaluation with CIs.
 
@@ -452,7 +455,7 @@ Ordered for maximum leverage with minimal risk. Each item is small and independe
 4. **[Foundations] Centralize tunables** ✅: `sim::draft_ai::Config` + `draft_ai_config.gd` with optional JSON override; native/GDScript weights and softmax params unified.
 5. **[E] Self-play Elo ladder** ✅: `draft_elo_rating.gd` + `native_draft_elo_ladder.gd` + `native_draft_elo_gate.gd`; symmetric round-robin in harness; ordering gate wired into validation suite.
 6. **[A] Difficulty tiers** ✅: temperature/top-k presets + UI selector + tier calibration gate.
-7. **[D] Self-play data generation** job feeding stats regeneration.
+7. **[D] Self-play data generation** ✅ (MVP): `native_draft_self_play_stats.gd` + structural gate; training rows deferred.
 8. **[B] Diagnose + symmetrize lookahead** with a hard side-bias gate; attempt to un-quarantine.
 9. **[C] Risk-aware selection** (surface confidence to the policy).
 10. **[C] Learned scorer** behind the wiring gate; keep linear model as explainable fallback.

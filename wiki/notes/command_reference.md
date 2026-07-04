@@ -55,7 +55,7 @@ Canonical validation gate: [README#validation-gate](../../README.md#validation-g
 | `--verify-draft-aware-signal` | `verify_draft_aware_signal.gd` | Draft-aware signal verification | 300 |
 | `--validate-rollout-convergence` | `validate_rollout_convergence.gd` | Rollout convergence validation | 600 |
 
-Unwired scripts (invoke Godot directly; see [README#draft-ai-validation-gate](../../README.md#draft-ai-validation-gate)):
+Unwired scripts (invoke Godot directly; see [draft_ai_validation_gate.md](draft_ai_validation_gate.md)):
 
 | Script | Purpose |
 |--------|---------|
@@ -65,6 +65,8 @@ Unwired scripts (invoke Godot directly; see [README#draft-ai-validation-gate](..
 | `native_draft_elo_gate.gd` | Relative Elo ordering gate (`--ordering=`, `--draft-summary=` freshness, `--min-gap=`) |
 | `native_draft_quantitative_gate.gd` | Win-rate and side-bias regression gate |
 | `native_draft_tier_gate.gd` | Difficulty tier monotonic separation gate (`--min-gap=`, `--self-test`) |
+| `native_draft_self_play_stats.gd` | Policy-draft matches → production stats CSVs + manifest |
+| `native_draft_self_play_stats_gate.gd` | Structural gate for self-play stats snapshots (`--min-matches=`) |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |
 
 ## Interactive UI

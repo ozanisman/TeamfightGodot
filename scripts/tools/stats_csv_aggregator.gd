@@ -5,6 +5,7 @@ extends RefCounted
 
 const ChampionCatalogScript := preload("res://scripts/simulation/champion_catalog.gd")
 const MatchupAggregatorScript := preload("res://scripts/tools/matchup_aggregator.gd")
+const MatchupTrackerScript := preload("res://scripts/simulation/matchup_tracker.gd")
 
 var _by_size: Dictionary = {}
 var _role_by_hero: Dictionary = {}
@@ -210,6 +211,14 @@ func _consume_individual_summary_common(
 
 	if team_size > 1:
 		_acc_combo(bucket, player_comp, enemy_comp, wt)
+
+
+func ingest_matchup_tracker(tracker: MatchupTrackerScript) -> void:
+	if tracker == null:
+		return
+	if _matchup_aggregator == null:
+		_matchup_aggregator = MatchupAggregatorScript.new()
+	_matchup_aggregator.consume_chunk_result({"matchup_data": tracker.get_matchup_data()})
 
 
 func write_to_dir(dir_path: String) -> Error:

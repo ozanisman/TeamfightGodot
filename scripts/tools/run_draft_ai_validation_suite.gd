@@ -39,6 +39,7 @@ func _run() -> void:
 	_run_check("Native Draft Quantitative Gate", "native_draft_quantitative_gate.gd", "native_draft_quantitative_gate_report.md")
 	_run_elo_checks()
 	_run_tier_checks()
+	_run_self_play_stats_checks()
 	_run_check("Native Recommendation Explanations Audit", "audit_native_recommendation_explanations.gd", "native_recommendation_explanations_audit_report.md")
 
 	# Run optional checks if available
@@ -179,6 +180,35 @@ func _run_tier_checks() -> void:
 		tier_pass = false
 
 	if tier_pass:
+		_report_lines.append("Result: PASS")
+		print("  PASS")
+	else:
+		_overall_pass = false
+
+	_report_lines.append("")
+
+
+func _run_self_play_stats_checks() -> void:
+	print("\nChecking: Native Draft Self-Play Stats Gate")
+	_report_lines.append("## Native Draft Self-Play Stats Gate")
+	_report_lines.append("Smoke output: model_stats/stats_selfplay_smoke")
+	_report_lines.append("Gate report: logs/native_draft_self_play_stats_gate_report.md")
+
+	var gate_report := "res://logs/native_draft_self_play_stats_gate_report.md"
+	var smoke_dir := "res://model_stats/stats_selfplay_smoke"
+
+	var self_play_pass := true
+
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(smoke_dir)):
+		_report_lines.append("Result: FAIL - Self-play smoke output not found (run native_draft_self_play_stats.gd)")
+		print("  FAIL - Self-play smoke output not found")
+		self_play_pass = false
+	elif not _check_report_status(gate_report, "PASS"):
+		_report_lines.append("Result: FAIL - Self-play stats gate report missing or not STATUS: PASS")
+		print("  FAIL - Self-play stats gate report")
+		self_play_pass = false
+
+	if self_play_pass:
 		_report_lines.append("Result: PASS")
 		print("  PASS")
 	else:

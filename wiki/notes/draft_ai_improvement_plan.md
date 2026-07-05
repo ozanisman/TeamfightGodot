@@ -385,7 +385,7 @@ Implemented. `draft_elo_rating.gd` computes pooled-sim Elo from harness draft-su
 
 **E.4 Policy-faithful evaluation.** Partially done via Workstream 0.1 (`native_softmax` in harness). Remaining: explicit multi-seed stochastic evaluation with CIs.
 
-**E.5 Realism / human-likeness metrics.** Add pick entropy, ban entropy, unique champion count, repeated-opener rate, top-pick concentration, counter-pick rate, and tier separation across multiple seeds. If a human draft dataset is captured later, add agreement/edit-distance vs. human drafts. These make "more realistic" a measurable objective, not a vibe.
+**E.5 Realism / human-likeness metrics.** Persona metrics implemented. `native_draft_persona_realism_metrics.gd` reads harness draft-summary CSVs and emits pick/ban entropy, observed-pool-normalized unique pick/ban rates, top pick/ban concentration, side/opponent-context repeated-opener rate, and `counter_pick_rate=NOT_EVALUATED` for summary-only input. `native_draft_persona_gate.gd` accepts `--realism-metrics` and keeps personas non-promotable unless required realism metrics stay within 3pp of `native_softmax`. Broader multi-seed coverage and human-draft agreement remain future work.
 
 **E.6 Calibration + longitudinal dashboard.** Track reliability diagrams and Brier/MSE over time; persist per-version metrics so trends (not just point-in-time) are visible. Extend the existing stats dashboard.
 
@@ -462,9 +462,9 @@ Track all of these per version; promotion requires no regression on the guarded 
 
 Completed foundation items are now recorded in Workstreams 0, A, D, and E. The active backlog should focus on promotable policy/model changes and the missing measurement surfaces.
 
-1. **[E/A] Add persona realism metrics.** Track entropy, diversity, repeated openers, top-pick concentration, and counter-pick rate across multi-seed harness runs so the risk/persona gate can decide whether any candidate is promotable rather than `VALIDATION_ONLY`.
+1. **[E] Broaden validation coverage.** Run persona and lookahead candidates across larger multi-seed harnesses with strength, side-bias, A/B, and realism reports.
 2. **[D] Emit draft-state training rows.** Extend self-play generation with state/action/outcome rows for learned scorer experiments.
-3. **[E] Broaden validation coverage.** Run persona and lookahead candidates across larger multi-seed harnesses once realism metrics exist.
+3. **[E/A] Add richer realism sources.** Add true counter-pick reconstruction, tier separation, and human-draft agreement/edit-distance once data exists.
 4. **[B] Decide lookahead fate.** Keep `native_lookahead_softmax` validation-only unless it matches or beats `native_softmax` on Elo/score rate, side-bias, and latency.
 5. **[Ban] Split P1/P2 ban modeling.** Treat phase 1 and phase 2 as separate modeling targets; do not evaluate a single blended ban model as if both phases have the same signal.
 6. **[C] Learned scorer behind a wiring gate.** Train only after draft-state rows exist; keep the linear model as the explainable fallback and require a meaningful holdout/ladder improvement before runtime use.

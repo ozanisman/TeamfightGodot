@@ -13,7 +13,9 @@ const DEFAULT_PERSONAS: Array[String] = [
 const DEFAULT_ELO_MIN_GAP: float = 0.0
 const DEFAULT_SIDE_BIAS_MARGIN_PP: float = 3.0
 const DEFAULT_P_VALUE_THRESHOLD: float = 0.05
+const DEFAULT_REALISM_MARGIN: float = 0.03
 const SQRT_2: float = 1.4142135623730951
+const DraftPersonaRealismCoreScript := preload("res://scripts/tools/draft_persona_realism_core.gd")
 
 
 static func evaluate_from_paths(params: Dictionary) -> Dictionary:
@@ -21,6 +23,7 @@ static func evaluate_from_paths(params: Dictionary) -> Dictionary:
 	var ab_report_path: String = String(params.get("ab_report_path", ""))
 	var elo_ladder_path: String = String(params.get("elo_ladder_path", ""))
 	var draft_summary_path: String = String(params.get("draft_summary_path", ""))
+	var realism_metrics_path: String = String(params.get("realism_metrics_path", ""))
 
 	var errors: Array[String] = []
 	if summary_path.is_empty():
@@ -46,12 +49,16 @@ static func evaluate_from_paths(params: Dictionary) -> Dictionary:
 	if ratings.is_empty():
 		errors.append("Elo ladder empty or missing: %s" % elo_ladder_path)
 
+	var realism_metrics: Dictionary = {}
+	if not realism_metrics_path.is_empty():
+		realism_metrics = DraftPersonaRealismCoreScript.load_metrics_csv(realism_metrics_path)
+
 	errors.append_array(DraftEloGateCoreScript.check_input_freshness(elo_ladder_path, draft_summary_path))
 	if not errors.is_empty():
 		return _error_result(errors)
 
 	var eval_params: Dictionary = params.duplicate()
-	eval_params["realism_evaluated"] = bool(params.get("realism_evaluated", false))
+	eval_params["realism_metrics"] = realism_metrics
 	return evaluate_rows(summary_rows, ab_rows, ratings, [], eval_params)
 
 
@@ -67,7 +74,8 @@ static func evaluate_rows(
 	var elo_min_gap: float = float(params.get("elo_min_gap", DEFAULT_ELO_MIN_GAP))
 	var side_bias_margin_pp: float = float(params.get("side_bias_margin_pp", DEFAULT_SIDE_BIAS_MARGIN_PP))
 	var p_value_threshold: float = float(params.get("p_value_threshold", DEFAULT_P_VALUE_THRESHOLD))
-	var realism_evaluated: bool = bool(params.get("realism_evaluated", false))
+	var realism_margin: float = float(params.get("realism_margin", DEFAULT_REALISM_MARGIN))
+	var realism_metrics: Dictionary = params.get("realism_metrics", {})
 
 	var errors: Array[String] = freshness_errors.duplicate()
 	if personas.is_empty():
@@ -95,7 +103,8 @@ static func evaluate_rows(
 			elo_min_gap,
 			side_bias_margin_pp,
 			p_value_threshold,
-			realism_evaluated
+			realism_metrics,
+			realism_margin
 		)
 		if String(decision.get("status", "")) == "REJECT":
 			overall_pass = false
@@ -107,7 +116,7 @@ static func evaluate_rows(
 		"decisions": decisions,
 		"control": control,
 		"control_self_play_bias_pp": control_bias,
-		"realism_evaluated": realism_evaluated,
+		"realism_evaluated": not realism_metrics.is_empty(),
 	}
 
 
@@ -118,7 +127,7 @@ static func self_test() -> Dictionary:
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.53),
 		_ab_rows(0.52),
-		{"realism_evaluated": true},
+		{"realism_metrics": _realism_metrics(false)},
 		true,
 		"PROMOTE"
 	))
@@ -127,7 +136,7 @@ static func self_test() -> Dictionary:
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.53),
 		_ab_rows(0.52),
-		{"realism_evaluated": false},
+		{},
 		true,
 		"VALIDATION_ONLY"
 	))
@@ -136,16 +145,43 @@ static func self_test() -> Dictionary:
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.53),
 		[],
-		{"realism_evaluated": true},
+		{"realism_metrics": _realism_metrics(false)},
 		true,
 		"VALIDATION_ONLY"
+	))
+	cases.append(_self_test_case(
+		"reject on realism regression",
+		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
+		_self_play_rows(0.52, 0.53),
+		_ab_rows(0.52),
+		{"realism_metrics": _realism_metrics(true)},
+		false,
+		"REJECT"
+	))
+	cases.append(_self_test_case(
+		"promote at realism threshold boundary",
+		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
+		_self_play_rows(0.52, 0.53),
+		_ab_rows(0.52),
+		{"realism_metrics": _realism_metrics_boundary()},
+		true,
+		"PROMOTE"
+	))
+	cases.append(_self_test_case(
+		"reject on invalid realism metrics",
+		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
+		_self_play_rows(0.52, 0.53),
+		_ab_rows(0.52),
+		{"realism_metrics": _invalid_realism_metrics()},
+		false,
+		"REJECT"
 	))
 	cases.append(_self_test_case(
 		"reject on Elo regression",
 		{"native_softmax": 1500.0, "native_softmax_safe": 1499.0},
 		_self_play_rows(0.52, 0.53),
 		_ab_rows(0.52),
-		{"realism_evaluated": true},
+		{"realism_metrics": _realism_metrics(false)},
 		false,
 		"REJECT"
 	))
@@ -154,7 +190,7 @@ static func self_test() -> Dictionary:
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.62),
 		_ab_rows(0.52),
-		{"realism_evaluated": true},
+		{"realism_metrics": _realism_metrics(false)},
 		false,
 		"REJECT"
 	))
@@ -163,7 +199,7 @@ static func self_test() -> Dictionary:
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.53),
 		_ab_rows(0.40),
-		{"realism_evaluated": true},
+		{"realism_metrics": _realism_metrics(false)},
 		false,
 		"REJECT"
 	))
@@ -252,7 +288,8 @@ static func _evaluate_persona(
 	elo_min_gap: float,
 	side_bias_margin_pp: float,
 	p_value_threshold: float,
-	realism_evaluated: bool
+	realism_metrics: Dictionary,
+	realism_margin: float
 ) -> Dictionary:
 	var reasons: Array[String] = []
 	var persona_elo: float = float(ratings.get(persona, NAN))
@@ -274,11 +311,15 @@ static func _evaluate_persona(
 	if bool(ab.get("significant_regression", false)):
 		reasons.append("significant A/B regression")
 
-	var realism_status: String = "PASS" if realism_evaluated else "NOT_EVALUATED"
+	var realism: Dictionary = _realism_check(realism_metrics, control, persona, realism_margin)
+	var realism_status: String = String(realism.get("status", "NOT_EVALUATED"))
+	for reason in Array(realism.get("reasons", [])):
+		reasons.append(String(reason))
+
 	var blockers: Array[String] = []
 	if String(ab.get("status", "NOT_EVALUATED")) == "NOT_EVALUATED":
 		blockers.append("A/B not evaluated")
-	if not realism_evaluated:
+	if realism_status == "NOT_EVALUATED":
 		blockers.append("realism not evaluated")
 	var status: String = "PROMOTE"
 	if not reasons.is_empty():
@@ -303,6 +344,56 @@ static func _evaluate_persona(
 		"ab_status": String(ab.get("status", "NOT_EVALUATED")),
 		"realism_status": realism_status,
 	}
+
+
+static func _realism_check(metrics: Dictionary, control: String, persona: String, margin: float) -> Dictionary:
+	if metrics.is_empty():
+		return {"status": "NOT_EVALUATED", "reasons": []}
+	if not metrics.has(control) or not metrics.has(persona):
+		return {"status": "NOT_EVALUATED", "reasons": []}
+
+	var control_row: Dictionary = metrics[control]
+	var persona_row: Dictionary = metrics[persona]
+	var reasons: Array[String] = []
+	for key in ["pick_entropy_norm", "ban_entropy_norm", "unique_pick_rate", "unique_ban_rate"]:
+		var control_metric: Dictionary = _metric_float(control_row, key)
+		var persona_metric: Dictionary = _metric_float(persona_row, key)
+		if not bool(control_metric.get("ok", false)) or not bool(persona_metric.get("ok", false)):
+			reasons.append("%s missing or invalid" % key)
+			continue
+		var control_value: float = float(control_metric.get("value", 0.0))
+		var persona_value: float = float(persona_metric.get("value", 0.0))
+		if persona_value < control_value - margin:
+			reasons.append("%s regressed by more than %.2fpp" % [key, margin * 100.0])
+	for key in ["top_pick_concentration", "top_ban_concentration", "repeated_opener_rate"]:
+		var control_metric: Dictionary = _metric_float(control_row, key)
+		var persona_metric: Dictionary = _metric_float(persona_row, key)
+		if not bool(control_metric.get("ok", false)) or not bool(persona_metric.get("ok", false)):
+			reasons.append("%s missing or invalid" % key)
+			continue
+		var control_value: float = float(control_metric.get("value", 0.0))
+		var persona_value: float = float(persona_metric.get("value", 0.0))
+		if persona_value > control_value + margin:
+			reasons.append("%s increased by more than %.2fpp" % [key, margin * 100.0])
+
+	return {
+		"status": "PASS" if reasons.is_empty() else "FAIL",
+		"reasons": reasons,
+	}
+
+
+static func _metric_float(row: Dictionary, key: String) -> Dictionary:
+	if not row.has(key):
+		return {"ok": false, "value": 0.0}
+	var raw: Variant = row.get(key, 0.0)
+	if raw is float or raw is int:
+		var value: float = float(raw)
+		return {"ok": is_finite(value) and value >= 0.0, "value": value}
+	var text: String = str(raw).strip_edges()
+	if text.is_valid_float():
+		var value: float = float(text)
+		return {"ok": is_finite(value) and value >= 0.0, "value": value}
+	return {"ok": false, "value": 0.0}
 
 
 static func _self_play_bias_pp(summary_rows: Array[Dictionary], strategy: String) -> float:
@@ -466,3 +557,61 @@ static func _ab_rows(persona_rate: float) -> Array[Dictionary]:
 			"losses": persona_red_wins,
 		},
 	]
+
+
+static func _realism_metrics(regressed: bool) -> Dictionary:
+	var persona_pick_entropy: float = 0.70 if regressed else 0.80
+	var persona_top_pick: float = 0.24 if regressed else 0.18
+	return {
+		"native_softmax": {
+			"pick_entropy_norm": 0.80,
+			"ban_entropy_norm": 0.80,
+			"unique_pick_rate": 0.70,
+			"unique_ban_rate": 0.70,
+			"top_pick_concentration": 0.18,
+			"top_ban_concentration": 0.18,
+			"repeated_opener_rate": 0.10,
+			"counter_pick_rate": "NOT_EVALUATED",
+		},
+		"native_softmax_safe": {
+			"pick_entropy_norm": persona_pick_entropy,
+			"ban_entropy_norm": 0.80,
+			"unique_pick_rate": 0.70,
+			"unique_ban_rate": 0.70,
+			"top_pick_concentration": persona_top_pick,
+			"top_ban_concentration": 0.18,
+			"repeated_opener_rate": 0.10,
+			"counter_pick_rate": "NOT_EVALUATED",
+		},
+	}
+
+
+static func _realism_metrics_boundary() -> Dictionary:
+	return {
+		"native_softmax": {
+			"pick_entropy_norm": 0.80,
+			"ban_entropy_norm": 0.80,
+			"unique_pick_rate": 0.70,
+			"unique_ban_rate": 0.70,
+			"top_pick_concentration": 0.18,
+			"top_ban_concentration": 0.18,
+			"repeated_opener_rate": 0.10,
+			"counter_pick_rate": "NOT_EVALUATED",
+		},
+		"native_softmax_safe": {
+			"pick_entropy_norm": 0.77,
+			"ban_entropy_norm": 0.77,
+			"unique_pick_rate": 0.67,
+			"unique_ban_rate": 0.67,
+			"top_pick_concentration": 0.21,
+			"top_ban_concentration": 0.21,
+			"repeated_opener_rate": 0.13,
+			"counter_pick_rate": "NOT_EVALUATED",
+		},
+	}
+
+
+static func _invalid_realism_metrics() -> Dictionary:
+	var metrics: Dictionary = _realism_metrics(false)
+	metrics["native_softmax_safe"].erase("unique_pick_rate")
+	return metrics

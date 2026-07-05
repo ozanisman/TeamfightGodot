@@ -195,17 +195,25 @@ godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.g
      --strategies=native_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy `
      --output-csv=res://model_stats/native_draft_persona_elo_ladder.csv
 
+godot --headless --path . --script res://scripts/tools/native_draft_persona_realism_metrics.gd `
+  -- --draft-summary=res://model_stats/native_draft_persona_validation_drafts.csv `
+     --output=res://model_stats/native_draft_persona_realism_metrics.csv `
+     --report=res://logs/native_draft_persona_realism_metrics_report.md
+
 godot --headless --path . --script res://scripts/tools/native_draft_persona_gate.gd `
   -- --summary=res://model_stats/native_draft_persona_validation_summary.csv `
      --ab-report=res://model_stats/native_draft_persona_validation_ab_report.csv `
      --elo-ladder=res://model_stats/native_draft_persona_elo_ladder.csv `
      --draft-summary=res://model_stats/native_draft_persona_validation_drafts.csv `
+     --realism-metrics=res://model_stats/native_draft_persona_realism_metrics.csv `
      --output=res://logs/native_draft_persona_gate_report.md
 ```
 
-Gate defaults: persona Elo gap vs `native_softmax` must be ≥0; persona self-play side-bias must be at most `native_softmax` bias + 3pp; side-balanced direct A/B vs `native_softmax` must not show a significant regression at p ≤0.05. Missing A/B or realism metrics produce `VALIDATION_ONLY`.
+Gate defaults: persona Elo gap vs `native_softmax` must be ≥0; persona self-play side-bias must be at most `native_softmax` bias + 3pp; side-balanced direct A/B vs `native_softmax` must not show a significant regression at p ≤0.05; required realism metrics must stay within 3pp of `native_softmax`. Missing A/B or realism metrics produce `VALIDATION_ONLY`.
 
 The analyzer emits per-matchup CI rows for every pairing; the persona gate derives each A/B check from the two direct cross-matchups (`persona` blue vs `native_softmax` red, plus `native_softmax` blue vs `persona` red).
+
+Realism metrics are computed from the draft-summary CSV by aggregating each strategy's blue and red appearances. Unique pick/ban rates are normalized against the observed champion pool in that metrics run, and repeated openers are counted only within the same side/opponent context. Counter-pick rate is reported as `NOT_EVALUATED` for summary-only input and does not block the realism result.
 
 Report `STATUS: FAIL` means at least one persona was rejected or the inputs were invalid. `VALIDATION_ONLY` rows are non-promotable but do not fail the gate by themselves.
 
@@ -243,6 +251,7 @@ When set, native pick/ban calls return empty on snapshot ID mismatch. Harness an
 | `native_draft_lookahead_baseline_report.gd` | Markdown baseline from analyzer summary |
 | `native_draft_lookahead_gate.gd` | `native_lookahead_softmax` bias/strength gate |
 | `native_draft_persona_gate.gd` | Risk/persona Elo, side-bias, A/B promotion gate |
+| `native_draft_persona_realism_metrics.gd` | Persona entropy, diversity, concentration, opener metrics |
 | `native_draft_stats_certification.gd` | Full-chain stats regen + certification (D.2) |
 | `native_draft_stats_certification_gate.gd` | Final certification gate (snapshot id, pick smoke) |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |

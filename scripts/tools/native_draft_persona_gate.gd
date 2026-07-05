@@ -25,11 +25,13 @@ func _run() -> void:
 		"ab_report_path": _extract_argument("--ab-report=", ""),
 		"elo_ladder_path": _extract_argument("--elo-ladder=", ""),
 		"draft_summary_path": _extract_argument("--draft-summary=", ""),
+		"realism_metrics_path": _extract_argument("--realism-metrics=", ""),
 		"control": _extract_argument("--control=", DraftPersonaGateCoreScript.CONTROL_STRATEGY),
 		"personas": _extract_argument("--personas=", ",".join(DraftPersonaGateCoreScript.DEFAULT_PERSONAS)),
 		"elo_min_gap": _extract_float("--elo-min-gap=", DraftPersonaGateCoreScript.DEFAULT_ELO_MIN_GAP),
 		"side_bias_margin_pp": _extract_float("--side-bias-margin-pp=", DraftPersonaGateCoreScript.DEFAULT_SIDE_BIAS_MARGIN_PP),
 		"p_value_threshold": _extract_float("--p-threshold=", DraftPersonaGateCoreScript.DEFAULT_P_VALUE_THRESHOLD),
+		"realism_margin": _extract_float("--realism-margin=", DraftPersonaGateCoreScript.DEFAULT_REALISM_MARGIN),
 	}
 	var output_path: String = _extract_argument("--output=", DEFAULT_OUTPUT_PATH)
 	var result: Dictionary = DraftPersonaGateCoreScript.evaluate_from_paths(params)
@@ -70,6 +72,7 @@ func _write_report(result: Dictionary, params: Dictionary, output_path: String) 
 	lines.append("A/B report: `%s`" % String(params.get("ab_report_path", "")))
 	lines.append("Elo ladder: `%s`" % String(params.get("elo_ladder_path", "")))
 	lines.append("Draft summary: `%s`" % String(params.get("draft_summary_path", "")))
+	lines.append("Realism metrics: `%s`" % String(params.get("realism_metrics_path", "")))
 	lines.append("")
 
 	var errors: Array = result.get("errors", [])
@@ -107,10 +110,11 @@ func _write_report(result: Dictionary, params: Dictionary, output_path: String) 
 	lines.append("")
 	lines.append("Control: `%s`" % String(result.get("control", "")))
 	lines.append("Control self-play side-bias: %spp" % _format_float(float(result.get("control_self_play_bias_pp", NAN))))
-	lines.append("Promotion rules: Elo gap >= %.2f; side-bias <= control + %.2fpp; no significant side-balanced direct A/B regression at p <= %.3f; realism must be evaluated." % [
+	lines.append("Promotion rules: Elo gap >= %.2f; side-bias <= control + %.2fpp; no significant side-balanced direct A/B regression at p <= %.3f; realism metrics within %.2fpp of control." % [
 		float(params.get("elo_min_gap", DraftPersonaGateCoreScript.DEFAULT_ELO_MIN_GAP)),
 		float(params.get("side_bias_margin_pp", DraftPersonaGateCoreScript.DEFAULT_SIDE_BIAS_MARGIN_PP)),
 		float(params.get("p_value_threshold", DraftPersonaGateCoreScript.DEFAULT_P_VALUE_THRESHOLD)),
+		float(params.get("realism_margin", DraftPersonaGateCoreScript.DEFAULT_REALISM_MARGIN)) * 100.0,
 	])
 
 	_write_lines(output_path, lines)

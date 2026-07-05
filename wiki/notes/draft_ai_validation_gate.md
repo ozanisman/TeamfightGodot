@@ -171,6 +171,44 @@ godot --headless --path . --script res://scripts/tools/native_draft_lookahead_ga
 
 **Calibrated thresholds (2026-07-04, n=50):** self-play bias ≤15pp (observed 13.9pp); vs-random blue/overall ≥0.87 (observed 0.90/0.89); Elo gap vs `native_softmax` ≥−40 (observed −26; strength still below greedy softmax).
 
+## Step 3f — Risk/persona promotion gate (validation-only)
+
+Symmetric harness for the config-only persona experiments. The gate compares each persona against `native_softmax` on Elo, self-play side-bias, and A/B regression. Until realism metrics are available, otherwise passing personas are reported as `VALIDATION_ONLY`, not `PROMOTE`.
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd `
+  -- --trials=50 --sims-per-draft=25 `
+     --blue-strategies=native_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy `
+     --red-strategies=native_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy `
+     --output=res://model_stats/native_draft_persona_validation.csv `
+     --draft-summary-output=res://model_stats/native_draft_persona_validation_drafts.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd `
+  -- --input=res://model_stats/native_draft_persona_validation.csv `
+     --draft-summary=res://model_stats/native_draft_persona_validation_drafts.csv `
+     --output=res://model_stats/native_draft_persona_validation_summary.csv `
+     --ab-output=res://model_stats/native_draft_persona_validation_ab_report.csv `
+     --native-strategy-names=native_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy
+
+godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.gd `
+  -- --draft-summary=res://model_stats/native_draft_persona_validation_drafts.csv `
+     --strategies=native_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy `
+     --output-csv=res://model_stats/native_draft_persona_elo_ladder.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_persona_gate.gd `
+  -- --summary=res://model_stats/native_draft_persona_validation_summary.csv `
+     --ab-report=res://model_stats/native_draft_persona_validation_ab_report.csv `
+     --elo-ladder=res://model_stats/native_draft_persona_elo_ladder.csv `
+     --draft-summary=res://model_stats/native_draft_persona_validation_drafts.csv `
+     --output=res://logs/native_draft_persona_gate_report.md
+```
+
+Gate defaults: persona Elo gap vs `native_softmax` must be ≥0; persona self-play side-bias must be at most `native_softmax` bias + 3pp; side-balanced direct A/B vs `native_softmax` must not show a significant regression at p ≤0.05. Missing A/B or realism metrics produce `VALIDATION_ONLY`.
+
+The analyzer emits per-matchup CI rows for every pairing; the persona gate derives each A/B check from the two direct cross-matchups (`persona` blue vs `native_softmax` red, plus `native_softmax` blue vs `persona` red).
+
+Report `STATUS: FAIL` means at least one persona was rejected or the inputs were invalid. `VALIDATION_ONLY` rows are non-promotable but do not fail the gate by themselves.
+
 ## Stats manifest and certification
 
 Stats snapshots include `stats_manifest.json` (schema v1): `snapshot_id`, `generated_at`, `catalog_version`, `generator_name`, `generator_args`, and per-file hashes (`String.hash()` 32-bit). Native `DraftStatsDatabase` warns on missing manifest, unsupported schema, invalid types, or hash mismatch.
@@ -204,6 +242,7 @@ When set, native pick/ban calls return empty on snapshot ID mismatch. Harness an
 | `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV + softmax self-test |
 | `native_draft_lookahead_baseline_report.gd` | Markdown baseline from analyzer summary |
 | `native_draft_lookahead_gate.gd` | `native_lookahead_softmax` bias/strength gate |
+| `native_draft_persona_gate.gd` | Risk/persona Elo, side-bias, A/B promotion gate |
 | `native_draft_stats_certification.gd` | Full-chain stats regen + certification (D.2) |
 | `native_draft_stats_certification_gate.gd` | Final certification gate (snapshot id, pick smoke) |
 | `run_draft_ai_validation_suite.gd` | Aggregate PASS/FAIL reports |

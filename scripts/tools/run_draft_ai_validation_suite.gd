@@ -201,7 +201,7 @@ func _run_self_play_stats_checks() -> void:
 
 	var self_play_pass := true
 
-	if not FileAccess.file_exists(ProjectSettings.globalize_path(smoke_dir)):
+	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(smoke_dir)):
 		_report_lines.append("Result: FAIL - Self-play smoke output not found (run native_draft_self_play_stats.gd)")
 		print("  FAIL - Self-play smoke output not found")
 		self_play_pass = false

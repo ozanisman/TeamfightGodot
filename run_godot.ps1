@@ -449,7 +449,7 @@ if ($Arguments.Count -gt 0) {
 	$godotArgs += $Arguments
 }
 # Avoid false failures: check-only tails this file and aborts on any "Parse Error" line from a prior run.
-if (($checkOnly -or $checkNativeSimulationTests -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) -and (Test-Path $logFile)) {
+if (($checkOnly -or $explicitScript -or $checkNativeSimulationTests -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsAggregator -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) -and (Test-Path $logFile)) {
 	Clear-Content -Path $logFile
 }
 $process = Start-Process -FilePath $godotExe -ArgumentList $godotArgs -PassThru -NoNewWindow
@@ -498,7 +498,7 @@ try {
 	}
 
 	$process.Refresh()
-	if ($checkNativeLoad -or $checkNativeSimulationTests -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) {
+	if ($explicitScript -or $checkNativeLoad -or $checkNativeSimulationTests -or $checkMatchTelemetry -or $checkLargeProjectileDamage -or $checkProjectilePayloads -or $checkDeterminism -or $checkBenchmark -or $checkBalancePatches -or $checkFixtureFile -or $checkStatsDashboard -or $checkMainMenu -or $checkDraftUi -or $checkStatsCsvDeterminism -or $generateDraftAwareTrainingData -or $verifyDraftAwareSignal) {
 		if (Test-Path $logFile) {
 			$tail = Get-Content -Path $logFile -Tail 200 -ErrorAction SilentlyContinue
 			$failurePattern = "SCRIPT ERROR:|Parse Error:|Compilation failed|Failed to load script|CrashHandlerException|Program crashed with signal|GDExtension load failed|Native simulation backend unavailable|Failed to open fixture file|Failed to open JSON file|Fixture .*mismatch|Fixture parity failed|Replay determinism failed|balance_patch_suite: FAILED|native_simulation_tests: (?!OK)|check_match_telemetry: .*invalid|check_match_telemetry: missing|check_match_telemetry: bad|check_large_projectile_damage: (?!OK)|check_projectile_payloads: (?!OK)|check_stats_csv_determinism: (?!OK)|StatsDashboardLoader: (cannot open|missing CSV header|column count mismatch|no data rows)|StatsDashboardLoader fixture load failed|stats_dashboard: .*failed|main_menu: .*missing|draft_ui: .*missing|check_main_menu_load: FAILED|check_draft_ui_load: FAILED"

@@ -121,10 +121,36 @@ Validation-only learned scorer experiment over those rows:
 godot --headless --path . --script res://scripts/tools/native_draft_state_scorer_experiment.gd `
   -- --input=res://model_stats/draft_state_training_rows_smoke.csv `
      --output-dir=res://model_stats/draft_state_scorer_experiments/smoke `
-     --min-rows=200
+     --min-rows=200 `
+     --calibration-bins=10 `
+     --split-repeats=3
 ```
 
-The scorer experiment writes `draft_state_scorer_report.md`, metrics JSON, model JSON, and per-row predictions. `STATUS: PASS` only means the offline learned scorer cleared the validation gate against the native `total_score` baseline; it does not promote or wire runtime policy.
+The scorer experiment writes `draft_state_scorer_report.md`, metrics JSON, model JSON, per-row predictions, calibration bins, and repeated-split summaries. `STATUS: PASS` only means the offline learned scorer cleared the validation gate against the native `total_score` baseline; it does not promote or wire runtime policy.
+
+Larger scorer validation:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_self_play_stats.gd `
+  -- --drafts=200 --sims-per-draft=3 `
+     --blue-strategies=native_softmax --red-strategies=native_softmax `
+     --output-dir=res://model_stats/stats_selfplay_scorer_validation `
+     --decision-output=res://model_stats/draft_state_scorer_validation.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_decision_rows_gate.gd `
+  -- --input=res://model_stats/draft_state_scorer_validation.csv `
+     --drafts=200 `
+     --blue-strategies=native_softmax `
+     --red-strategies=native_softmax `
+     --output=res://logs/native_draft_decision_rows_gate_scorer_validation.md
+
+godot --headless --path . --script res://scripts/tools/native_draft_state_scorer_experiment.gd `
+  -- --input=res://model_stats/draft_state_scorer_validation.csv `
+     --output-dir=res://model_stats/draft_state_scorer_experiments/validation_native_softmax_200x3 `
+     --min-rows=4000 `
+     --calibration-bins=10 `
+     --split-repeats=5
+```
 
 **Smoke:**
 

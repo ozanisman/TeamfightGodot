@@ -9,6 +9,9 @@ const DEFAULT_OUTPUT_DIR: String = "res://model_stats/draft_state_scorer_experim
 const DEFAULT_TRAIN_FRACTION: float = 0.8
 const DEFAULT_SPLIT_SEED: int = 1337
 const DEFAULT_MIN_ROWS: int = 200
+const DEFAULT_CALIBRATION_BINS: int = 10
+const DEFAULT_SPLIT_REPEATS: int = 0
+const REPEATED_SPLIT_SEED_STRIDE: int = 7919
 const LEARNING_RATE: float = 0.05
 const MAX_ITERATIONS: int = 5000
 const CONVERGENCE_TOLERANCE: float = 0.000001
@@ -86,6 +89,8 @@ func _run() -> void:
 	var train_fraction: float = clampf(float(_extract_argument("--train-fraction=", str(DEFAULT_TRAIN_FRACTION))), 0.1, 0.95)
 	var split_seed: int = int(_extract_argument("--seed=", str(DEFAULT_SPLIT_SEED)))
 	var min_rows: int = maxi(1, int(_extract_argument("--min-rows=", str(DEFAULT_MIN_ROWS))))
+	var calibration_bins: int = maxi(1, int(_extract_argument("--calibration-bins=", str(DEFAULT_CALIBRATION_BINS))))
+	var split_repeats: int = maxi(0, int(_extract_argument("--split-repeats=", str(DEFAULT_SPLIT_REPEATS))))
 	var require_pass: bool = _extract_argument("--require-pass=", "false") == "true"
 
 	var rows: Array[Dictionary] = _load_rows(input_path)
@@ -94,7 +99,7 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var result: Dictionary = _run_experiment(rows, input_path, output_dir, train_fraction, split_seed)
+	var result: Dictionary = _run_experiment(rows, input_path, output_dir, train_fraction, split_seed, calibration_bins, split_repeats)
 	if not bool(result.get("ok", false)):
 		push_error("native_draft_state_scorer_experiment: %s" % String(result.get("error", "")))
 		quit(1)
@@ -161,7 +166,9 @@ func _run_experiment(
 	input_path: String,
 	output_dir: String,
 	train_fraction: float,
-	split_seed: int
+	split_seed: int,
+	calibration_bins: int,
+	split_repeats: int
 ) -> Dictionary:
 	var categories: Dictionary = _collect_categories(rows)
 	var feature_names: Array[String] = _feature_names(categories)
@@ -185,12 +192,18 @@ func _run_experiment(
 	var accuracy_delta_pp: float = (float(model_eval["test"]["accuracy"]) - float(native_eval["test"]["accuracy"])) * 100.0
 	var mse_delta: float = float(model_eval["test"]["mse"]) - float(native_eval["test"]["mse"])
 	var status: String = "PASS" if accuracy_delta_pp >= GATE_ACCURACY_DELTA_PP and mse_delta <= 0.0 else "VALIDATION_ONLY"
+	var test_predictions: Array[Dictionary] = _prediction_rows(feature_data, split["test"], train_mean, native_model, native_scaler, model, model_scaler)
+	var calibration: Dictionary = _calibration_report(test_predictions, calibration_bins)
+	var grouped_metrics: Dictionary = _grouped_metrics(test_predictions)
+	var repeated_splits: Array[Dictionary] = _run_repeated_splits(feature_data, train_fraction, split_seed, split_repeats)
+	var repeated_summary: Dictionary = _summarize_repeated_splits(repeated_splits)
 
 	var output_ok: bool = _write_outputs(
 		output_dir, input_path, rows, feature_data, split, train_fraction, split_seed,
 		feature_names, categories, constant_eval, native_eval, model_eval,
 		native_model, native_scaler, model, model_scaler, train_mean,
-		accuracy_delta_pp, mse_delta, status
+		accuracy_delta_pp, mse_delta, status, calibration_bins,
+		calibration, grouped_metrics, repeated_splits, repeated_summary
 	)
 	if not output_ok:
 		return {"ok": false, "error": "failed to write outputs"}
@@ -243,12 +256,15 @@ func _extract_feature_data(rows: Array[Dictionary], categories: Dictionary) -> A
 	var data: Array[Dictionary] = []
 	for i in range(rows.size()):
 		var row: Dictionary = rows[i]
+		var step_index: int = int(row["step_index"])
 		var target: float = float(row["blue_winrate"]) if String(row["acting_side"]) == "blue" else float(row["red_winrate"])
 		var features: PackedFloat32Array = _features_for_row(row, categories)
 		var native_features := PackedFloat32Array()
 		native_features.append(float(row["total_score"]))
 		data.append({
 			"row_index": i,
+			"step_index": step_index,
+			"step_band": _step_band(step_index),
 			"target": target,
 			"features": features,
 			"native_features": native_features,
@@ -258,6 +274,11 @@ func _extract_feature_data(rows: Array[Dictionary], categories: Dictionary) -> A
 			"total_score": float(row.get("total_score", "0.0")),
 		})
 	return data
+
+
+func _step_band(step_index: int) -> String:
+	var start: int = floori(float(clampi(step_index, 0, 19)) / 5.0) * 5
+	return "%d-%d" % [start, start + 4]
 
 
 func _features_for_row(row: Dictionary, categories: Dictionary) -> PackedFloat32Array:
@@ -438,6 +459,186 @@ func _evaluate_constant_indices(feature_data: Array[Dictionary], indices: Array,
 	return _metric_summary(indices.size(), correct, mse, preds)
 
 
+func _prediction_rows(
+	feature_data: Array[Dictionary],
+	indices: Array,
+	constant_pred: float,
+	native_model: Dictionary,
+	native_scaler: Dictionary,
+	model: Dictionary,
+	model_scaler: Dictionary
+) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for idx_var in indices:
+		var idx: int = int(idx_var)
+		var item: Dictionary = feature_data[idx]
+		var native_pred: float = _predict_logistic(native_model["weights"], float(native_model["bias"]), _standardized_features(item["native_features"], native_scaler))
+		var learned_pred: float = _predict_logistic(model["weights"], float(model["bias"]), _standardized_features(item["features"], model_scaler))
+		rows.append({
+			"row_index": int(item["row_index"]),
+			"target": float(item["target"]),
+			"constant_pred": constant_pred,
+			"native_pred": native_pred,
+			"learned_pred": learned_pred,
+			"acting_side": String(item["acting_side"]),
+			"step_action": String(item["step_action"]),
+			"step_band": String(item["step_band"]),
+		})
+	return rows
+
+
+func _calibration_report(prediction_rows: Array[Dictionary], bins: int) -> Dictionary:
+	return {
+		"constant_baseline": _calibration_for_model(prediction_rows, "constant_pred", bins),
+		"native_total_score_baseline": _calibration_for_model(prediction_rows, "native_pred", bins),
+		"learned_model": _calibration_for_model(prediction_rows, "learned_pred", bins),
+	}
+
+
+func _calibration_for_model(prediction_rows: Array[Dictionary], pred_key: String, bins: int) -> Dictionary:
+	var bucket_rows: Array[Array] = []
+	for _i in range(bins):
+		bucket_rows.append([])
+	for row in prediction_rows:
+		var pred: float = clampf(float(row[pred_key]), 0.0, 1.0)
+		var bin_index: int = clampi(int(floor(pred * float(bins))), 0, bins - 1)
+		bucket_rows[bin_index].append(row)
+
+	var out_bins: Array[Dictionary] = []
+	var weighted_abs_error: float = 0.0
+	var total_rows: int = 0
+	for bin_index in range(bins):
+		var rows: Array = bucket_rows[bin_index]
+		var metrics: Dictionary = _metrics_for_prediction_key(rows, pred_key)
+		var mean_pred: float = float(metrics["pred_mean"])
+		var mean_target: float = _mean_target_for_rows(rows)
+		var abs_calibration_error: float = absf(mean_pred - mean_target)
+		var count: int = rows.size()
+		weighted_abs_error += abs_calibration_error * float(count)
+		total_rows += count
+		out_bins.append({
+			"bin": bin_index,
+			"pred_min": float(bin_index) / float(bins),
+			"pred_max": float(bin_index + 1) / float(bins),
+			"n": count,
+			"mean_prediction": mean_pred,
+			"mean_target": mean_target,
+			"accuracy": metrics["accuracy"],
+			"mse": metrics["mse"],
+			"mean_abs_calibration_error": abs_calibration_error,
+		})
+	return {
+		"summary": {
+			"n": total_rows,
+			"mse": _metrics_for_prediction_key(prediction_rows, pred_key)["mse"],
+			"mean_abs_calibration_error": weighted_abs_error / float(total_rows) if total_rows > 0 else 0.0,
+		},
+		"bins": out_bins,
+	}
+
+
+func _grouped_metrics(prediction_rows: Array[Dictionary]) -> Dictionary:
+	return {
+		"acting_side": _group_metrics_by_field(prediction_rows, "acting_side"),
+		"step_action": _group_metrics_by_field(prediction_rows, "step_action"),
+		"step_band": _group_metrics_by_field(prediction_rows, "step_band"),
+	}
+
+
+func _group_metrics_by_field(prediction_rows: Array[Dictionary], field_name: String) -> Dictionary:
+	var grouped_rows: Dictionary = {}
+	for row in prediction_rows:
+		var key: String = String(row.get(field_name, "unknown"))
+		if not grouped_rows.has(key):
+			grouped_rows[key] = []
+		grouped_rows[key].append(row)
+	var out: Dictionary = {}
+	for key in grouped_rows.keys():
+		var rows: Array = grouped_rows[key]
+		out[key] = {
+			"constant_baseline": _metrics_for_prediction_key(rows, "constant_pred"),
+			"native_total_score_baseline": _metrics_for_prediction_key(rows, "native_pred"),
+			"learned_model": _metrics_for_prediction_key(rows, "learned_pred"),
+		}
+	return out
+
+
+func _metrics_for_prediction_key(rows: Array, pred_key: String) -> Dictionary:
+	var preds: Array[float] = []
+	var correct: int = 0
+	var mse: float = 0.0
+	for row_var in rows:
+		var row: Dictionary = row_var
+		var pred: float = float(row.get(pred_key, 0.5))
+		var target: float = float(row.get("target", 0.5))
+		preds.append(pred)
+		if (pred > 0.5) == (target > 0.5):
+			correct += 1
+		mse += (pred - target) * (pred - target)
+	return _metric_summary(rows.size(), correct, mse, preds)
+
+
+func _mean_target_for_rows(rows: Array) -> float:
+	var values: Array[float] = []
+	for row_var in rows:
+		var row: Dictionary = row_var
+		values.append(float(row.get("target", 0.5)))
+	return _mean_float(values)
+
+
+func _run_repeated_splits(
+	feature_data: Array[Dictionary],
+	train_fraction: float,
+	split_seed: int,
+	split_repeats: int
+) -> Array[Dictionary]:
+	var reports: Array[Dictionary] = []
+	for repeat_index in range(1, split_repeats + 1):
+		var repeat_seed: int = split_seed + repeat_index * REPEATED_SPLIT_SEED_STRIDE
+		var split: Dictionary = _split_indices(feature_data.size(), train_fraction, repeat_seed)
+		var train_mean: float = _mean_target(feature_data, split["train"])
+		var native_scaler: Dictionary = _fit_scaler(feature_data, split["train"], "native_features")
+		var native_model: Dictionary = _train_logistic_regression(feature_data, split["train"], "native_features", native_scaler)
+		var model_scaler: Dictionary = _fit_scaler(feature_data, split["train"], "features")
+		var model: Dictionary = _train_logistic_regression(feature_data, split["train"], "features", model_scaler)
+		var constant_eval: Dictionary = _evaluate_constant(feature_data, split, train_mean)
+		var native_eval: Dictionary = _evaluate_model(native_model, feature_data, split, "native_features", native_scaler)
+		var model_eval: Dictionary = _evaluate_model(model, feature_data, split, "features", model_scaler)
+		var accuracy_delta_pp: float = (float(model_eval["test"]["accuracy"]) - float(native_eval["test"]["accuracy"])) * 100.0
+		var mse_delta: float = float(model_eval["test"]["mse"]) - float(native_eval["test"]["mse"])
+		reports.append({
+			"repeat": repeat_index,
+			"seed": repeat_seed,
+			"constant_test_accuracy": constant_eval["test"]["accuracy"],
+			"constant_test_mse": constant_eval["test"]["mse"],
+			"native_test_accuracy": native_eval["test"]["accuracy"],
+			"native_test_mse": native_eval["test"]["mse"],
+			"learned_test_accuracy": model_eval["test"]["accuracy"],
+			"learned_test_mse": model_eval["test"]["mse"],
+			"accuracy_delta_pp": accuracy_delta_pp,
+			"mse_delta": mse_delta,
+			"status": "PASS" if accuracy_delta_pp >= GATE_ACCURACY_DELTA_PP and mse_delta <= 0.0 else "VALIDATION_ONLY",
+		})
+	return reports
+
+
+func _summarize_repeated_splits(reports: Array[Dictionary]) -> Dictionary:
+	var accuracy_deltas: Array[float] = []
+	var mse_deltas: Array[float] = []
+	var pass_count: int = 0
+	for report in reports:
+		accuracy_deltas.append(float(report["accuracy_delta_pp"]))
+		mse_deltas.append(float(report["mse_delta"]))
+		if String(report["status"]) == "PASS":
+			pass_count += 1
+	return {
+		"n": reports.size(),
+		"pass_count": pass_count,
+		"accuracy_delta_pp": _summary_stats(accuracy_deltas),
+		"mse_delta": _summary_stats(mse_deltas),
+	}
+
+
 func _metric_summary(n: int, correct: int, mse_sum: float, preds: Array[float]) -> Dictionary:
 	return {
 		"n": n,
@@ -483,7 +684,12 @@ func _write_outputs(
 	train_mean: float,
 	accuracy_delta_pp: float,
 	mse_delta: float,
-	status: String
+	status: String,
+	calibration_bins: int,
+	calibration: Dictionary,
+	grouped_metrics: Dictionary,
+	repeated_splits: Array[Dictionary],
+	repeated_summary: Dictionary
 ) -> bool:
 	var global_output_dir: String = ProjectSettings.globalize_path(output_dir)
 	if not DirAccess.dir_exists_absolute(global_output_dir):
@@ -498,12 +704,16 @@ func _write_outputs(
 		"row_count": rows.size(),
 		"train_fraction": train_fraction,
 		"split_seed": split_seed,
+		"calibration_bins": calibration_bins,
 		"gate_accuracy_delta_pp": GATE_ACCURACY_DELTA_PP,
 		"accuracy_delta_pp": accuracy_delta_pp,
 		"mse_delta": mse_delta,
 		"constant_baseline": constant_eval,
 		"native_total_score_baseline": native_eval,
 		"learned_model": model_eval,
+		"calibration": calibration,
+		"grouped_holdout_metrics": grouped_metrics,
+		"repeated_split_summary": repeated_summary,
 	}
 	var model_json: Dictionary = {
 		"model_type": "standardized_logistic_regression",
@@ -522,7 +732,11 @@ func _write_outputs(
 		return false
 	if not _write_text(output_dir.path_join("draft_state_scorer_predictions.csv"), _predictions_csv(feature_data, split, train_mean, native_model, native_scaler, model, model_scaler)):
 		return false
-	if not _write_text(output_dir.path_join("draft_state_scorer_report.md"), _report_markdown(input_path, rows.size(), train_fraction, split_seed, constant_eval, native_eval, model_eval, accuracy_delta_pp, mse_delta, status)):
+	if not _write_text(output_dir.path_join("draft_state_scorer_calibration.csv"), _calibration_csv(calibration)):
+		return false
+	if not _write_text(output_dir.path_join("draft_state_scorer_repeated_splits.csv"), _repeated_splits_csv(repeated_splits)):
+		return false
+	if not _write_text(output_dir.path_join("draft_state_scorer_report.md"), _report_markdown(input_path, rows.size(), train_fraction, split_seed, calibration_bins, constant_eval, native_eval, model_eval, accuracy_delta_pp, mse_delta, status, calibration, grouped_metrics, repeated_summary)):
 		return false
 	return true
 
@@ -573,17 +787,65 @@ func _predictions_csv(
 	return "\n".join(lines) + "\n"
 
 
+func _calibration_csv(calibration: Dictionary) -> String:
+	var lines: Array[String] = [
+		"model,bin,pred_min,pred_max,n,mean_prediction,mean_target,accuracy,mse,mean_abs_calibration_error"
+	]
+	for model_key in ["constant_baseline", "native_total_score_baseline", "learned_model"]:
+		var model_calibration: Dictionary = calibration.get(model_key, {})
+		for bin_var in Array(model_calibration.get("bins", [])):
+			var bin_row: Dictionary = bin_var
+			lines.append("%s,%d,%.6f,%.6f,%d,%.6f,%.6f,%.6f,%.6f,%.6f" % [
+				model_key,
+				int(bin_row.get("bin", 0)),
+				float(bin_row.get("pred_min", 0.0)),
+				float(bin_row.get("pred_max", 0.0)),
+				int(bin_row.get("n", 0)),
+				float(bin_row.get("mean_prediction", 0.0)),
+				float(bin_row.get("mean_target", 0.0)),
+				float(bin_row.get("accuracy", 0.0)),
+				float(bin_row.get("mse", 0.0)),
+				float(bin_row.get("mean_abs_calibration_error", 0.0)),
+			])
+	return "\n".join(lines) + "\n"
+
+
+func _repeated_splits_csv(reports: Array[Dictionary]) -> String:
+	var lines: Array[String] = [
+		"repeat,seed,constant_test_accuracy,constant_test_mse,native_test_accuracy,native_test_mse,learned_test_accuracy,learned_test_mse,accuracy_delta_pp,mse_delta,status"
+	]
+	for report in reports:
+		lines.append("%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%+.6f,%+.6f,%s" % [
+			int(report.get("repeat", 0)),
+			int(report.get("seed", 0)),
+			float(report.get("constant_test_accuracy", 0.0)),
+			float(report.get("constant_test_mse", 0.0)),
+			float(report.get("native_test_accuracy", 0.0)),
+			float(report.get("native_test_mse", 0.0)),
+			float(report.get("learned_test_accuracy", 0.0)),
+			float(report.get("learned_test_mse", 0.0)),
+			float(report.get("accuracy_delta_pp", 0.0)),
+			float(report.get("mse_delta", 0.0)),
+			String(report.get("status", "")),
+		])
+	return "\n".join(lines) + "\n"
+
+
 func _report_markdown(
 	input_path: String,
 	row_count: int,
 	train_fraction: float,
 	split_seed: int,
+	calibration_bins: int,
 	constant_eval: Dictionary,
 	native_eval: Dictionary,
 	model_eval: Dictionary,
 	accuracy_delta_pp: float,
 	mse_delta: float,
-	status: String
+	status: String,
+	calibration: Dictionary,
+	grouped_metrics: Dictionary,
+	repeated_summary: Dictionary
 ) -> String:
 	var lines: Array[String] = []
 	lines.append("# Draft-State Scorer Experiment")
@@ -592,11 +854,39 @@ func _report_markdown(
 	lines.append("Rows: %d" % row_count)
 	lines.append("Train fraction: %.3f" % train_fraction)
 	lines.append("Split seed: %d" % split_seed)
+	lines.append("Calibration bins: %d" % calibration_bins)
 	lines.append("")
 	lines.append("## Metrics")
 	lines.append("- constant baseline: %s" % _format_eval(constant_eval))
 	lines.append("- native total_score baseline: %s" % _format_eval(native_eval))
 	lines.append("- learned scorer: %s" % _format_eval(model_eval))
+	lines.append("")
+	lines.append("## Calibration")
+	lines.append("- constant baseline: %s" % _format_calibration(calibration.get("constant_baseline", {})))
+	lines.append("- native total_score baseline: %s" % _format_calibration(calibration.get("native_total_score_baseline", {})))
+	lines.append("- learned scorer: %s" % _format_calibration(calibration.get("learned_model", {})))
+	lines.append("")
+	lines.append("## Held-Out Groups")
+	for group_name in ["acting_side", "step_action", "step_band"]:
+		lines.append("- %s:" % group_name)
+		var group: Dictionary = grouped_metrics.get(group_name, {})
+		var keys: Array = _ordered_group_keys(group, group_name)
+		for key in keys:
+			var row: Dictionary = group[key]
+			lines.append("  - %s: native %s; learned %s" % [
+				String(key),
+				_format_short_eval(row["native_total_score_baseline"]),
+				_format_short_eval(row["learned_model"]),
+			])
+	if int(repeated_summary.get("n", 0)) > 0:
+		lines.append("")
+		lines.append("## Repeated Splits")
+		lines.append("- repeats: %d, pass_count: %d" % [
+			int(repeated_summary.get("n", 0)),
+			int(repeated_summary.get("pass_count", 0)),
+		])
+		lines.append("- accuracy delta pp: %s" % _format_summary(repeated_summary["accuracy_delta_pp"]))
+		lines.append("- MSE delta: %s" % _format_summary(repeated_summary["mse_delta"]))
 	lines.append("")
 	lines.append("## Gate")
 	lines.append("- learned vs native accuracy delta: %+.2f pp" % accuracy_delta_pp)
@@ -609,6 +899,27 @@ func _report_markdown(
 	return "\n".join(lines) + "\n"
 
 
+func _format_calibration(model_calibration: Dictionary) -> String:
+	var summary: Dictionary = model_calibration.get("summary", {})
+	return "n=%d mse=%.6f mean_abs_calibration_error=%.6f" % [
+		int(summary.get("n", 0)),
+		float(summary.get("mse", 0.0)),
+		float(summary.get("mean_abs_calibration_error", 0.0)),
+	]
+
+
+func _ordered_group_keys(group: Dictionary, group_name: String) -> Array:
+	if group_name == "step_band":
+		var ordered: Array[String] = []
+		for key in ["0-4", "5-9", "10-14", "15-19"]:
+			if group.has(key):
+				ordered.append(key)
+		return ordered
+	var keys: Array = group.keys()
+	keys.sort()
+	return keys
+
+
 func _format_eval(evals: Dictionary) -> String:
 	return "train=%.2f%% test=%.2f%% all=%.2f%% test_mse=%.6f pred_test=%.4f..%.4f mean=%.4f" % [
 		float(evals["train"]["accuracy"]) * 100.0,
@@ -618,6 +929,22 @@ func _format_eval(evals: Dictionary) -> String:
 		float(evals["test"]["pred_min"]),
 		float(evals["test"]["pred_max"]),
 		float(evals["test"]["pred_mean"]),
+	]
+
+
+func _format_short_eval(evals: Dictionary) -> String:
+	return "n=%d acc=%.2f%% mse=%.6f" % [
+		int(evals.get("n", 0)),
+		float(evals.get("accuracy", 0.0)) * 100.0,
+		float(evals.get("mse", 0.0)),
+	]
+
+
+func _format_summary(summary: Dictionary) -> String:
+	return "mean=%+.6f min=%+.6f max=%+.6f" % [
+		float(summary.get("mean", 0.0)),
+		float(summary.get("min", 0.0)),
+		float(summary.get("max", 0.0)),
 	]
 
 
@@ -673,7 +1000,9 @@ func _run_self_test() -> Dictionary:
 		"self-test",
 		"res://logs/native_draft_state_scorer_self_test",
 		0.8,
-		1337
+		1337,
+		10,
+		2
 	)
 	if not bool(result.get("ok", false)):
 		return result
@@ -697,6 +1026,16 @@ func _mean_float(values: Array[float]) -> float:
 	for value in values:
 		sum += value
 	return sum / float(values.size())
+
+
+func _summary_stats(values: Array[float]) -> Dictionary:
+	if values.is_empty():
+		return {"mean": 0.0, "min": 0.0, "max": 0.0}
+	return {
+		"mean": _mean_float(values),
+		"min": _min_float(values),
+		"max": _max_float(values),
+	}
 
 
 func _min_float(values: Array[float]) -> float:

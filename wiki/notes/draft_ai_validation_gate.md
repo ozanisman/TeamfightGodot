@@ -115,6 +115,17 @@ godot --headless --path . --script res://scripts/tools/native_draft_decision_row
      --red-strategies=native_softmax
 ```
 
+Validation-only learned scorer experiment over those rows:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_state_scorer_experiment.gd `
+  -- --input=res://model_stats/draft_state_training_rows_smoke.csv `
+     --output-dir=res://model_stats/draft_state_scorer_experiments/smoke `
+     --min-rows=200
+```
+
+The scorer experiment writes `draft_state_scorer_report.md`, metrics JSON, model JSON, and per-row predictions. `STATUS: PASS` only means the offline learned scorer cleared the validation gate against the native `total_score` baseline; it does not promote or wire runtime policy.
+
 **Smoke:**
 
 ```powershell

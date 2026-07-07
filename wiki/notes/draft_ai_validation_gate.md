@@ -152,6 +152,30 @@ godot --headless --path . --script res://scripts/tools/native_draft_state_scorer
      --split-repeats=5
 ```
 
+Validation-only learned-scorer policy evaluation:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_validation_harness.gd `
+  -- --trials=2 --sims-per-draft=1 `
+     --blue-strategies='native_learned_scorer,native_full,native_softmax' `
+     --red-strategies='native_learned_scorer,native_full,native_softmax' `
+     --output=res://model_stats/native_draft_learned_scorer_smoke.csv `
+     --draft-summary-output=res://model_stats/native_draft_learned_scorer_smoke_drafts.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_validation_analyzer.gd `
+  -- --input=res://model_stats/native_draft_learned_scorer_smoke.csv `
+     --draft-summary=res://model_stats/native_draft_learned_scorer_smoke_drafts.csv `
+     --output=res://model_stats/native_draft_learned_scorer_smoke_summary.csv `
+     --ab-output=res://model_stats/native_draft_learned_scorer_smoke_ab_report.csv `
+     --native-strategy-names='native_learned_scorer,native_full,native_softmax'
+
+godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.gd `
+  -- --draft-summary=res://model_stats/native_draft_learned_scorer_smoke_drafts.csv `
+     --strategies='native_learned_scorer,native_full,native_softmax'
+```
+
+Larger learned-scorer policy validation can expand to `--trials=20 --sims-per-draft=10` and include `random` in both quoted strategy lists. `native_learned_scorer` is validation-only and non-promotable until strength, calibration, side-bias, and realism gates clear; it must not be wired into gameplay, UI, native C++, or production policy selection from this gate.
+
 **Smoke:**
 
 ```powershell

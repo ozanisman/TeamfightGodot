@@ -3,6 +3,7 @@ extends SceneTree
 ## Validation-only learned scorer experiment for draft-state decision rows.
 
 const DraftValidationCsvScript := preload("res://scripts/tools/draft_validation_csv.gd")
+const DraftStateScorerModelScript := preload("res://scripts/tools/draft_state_scorer_model.gd")
 
 const DEFAULT_INPUT_PATH: String = "res://model_stats/draft_state_training_rows.csv"
 const DEFAULT_OUTPUT_DIR: String = "res://model_stats/draft_state_scorer_experiments/smoke"
@@ -234,22 +235,7 @@ func _collect_categories(rows: Array[Dictionary]) -> Dictionary:
 
 
 func _feature_names(categories: Dictionary) -> Array[String]:
-	var names: Array[String] = []
-	names.append_array(NUMERIC_FEATURE_COLUMNS)
-	names.append_array([
-		"step_index_norm",
-		"is_pick",
-		"is_blue",
-		"blue_picks_before_count",
-		"red_picks_before_count",
-		"blue_bans_before_count",
-		"red_bans_before_count",
-		"legal_pool_count",
-	])
-	for key in ["candidate_role", "phase_label", "step_action", "acting_side"]:
-		for value in Array(categories[key]):
-			names.append("%s=%s" % [key, String(value)])
-	return names
+	return DraftStateScorerModelScript.feature_names_for_categories(categories)
 
 
 func _extract_feature_data(rows: Array[Dictionary], categories: Dictionary) -> Array[Dictionary]:
@@ -282,34 +268,7 @@ func _step_band(step_index: int) -> String:
 
 
 func _features_for_row(row: Dictionary, categories: Dictionary) -> PackedFloat32Array:
-	var features := PackedFloat32Array()
-	for column in NUMERIC_FEATURE_COLUMNS:
-		features.append(float(row[column]))
-	var step_index: float = float(row["step_index"])
-	features.append(step_index / 19.0)
-	features.append(1.0 if String(row["step_action"]) == "PICK" else 0.0)
-	features.append(1.0 if String(row["acting_side"]) == "blue" else 0.0)
-	features.append(float(_split_list(String(row["blue_picks_before"])).size()))
-	features.append(float(_split_list(String(row["red_picks_before"])).size()))
-	features.append(float(_split_list(String(row["blue_bans_before"])).size()))
-	features.append(float(_split_list(String(row["red_bans_before"])).size()))
-	features.append(float(_split_list(String(row["legal_pool"])).size()))
-	for key in ["candidate_role", "phase_label", "step_action", "acting_side"]:
-		var value: String = String(row.get(key, "")).strip_edges()
-		if value.is_empty():
-			value = "unknown"
-		for category in Array(categories[key]):
-			features.append(1.0 if value == String(category) else 0.0)
-	return features
-
-
-func _split_list(raw: String) -> Array[String]:
-	var out: Array[String] = []
-	for part in raw.split("|", false):
-		var trimmed: String = part.strip_edges()
-		if not trimmed.is_empty():
-			out.append(trimmed)
-	return out
+	return DraftStateScorerModelScript.features_for_row(row, categories)
 
 
 func _split_indices(size: int, train_fraction: float, split_seed: int) -> Dictionary:
@@ -1009,6 +968,12 @@ func _run_self_test() -> Dictionary:
 	var report_path: String = ProjectSettings.globalize_path("res://logs/native_draft_state_scorer_self_test/draft_state_scorer_report.md")
 	if not FileAccess.file_exists(report_path):
 		return {"ok": false, "error": "self-test report was not written"}
+	var model := DraftStateScorerModelScript.new()
+	if not model.load_from_path("res://logs/native_draft_state_scorer_self_test/draft_state_scorer_model.json"):
+		return {"ok": false, "error": "self-test shared scorer failed to load: %s" % model.last_error()}
+	var model_score: float = model.score_row(rows[0])
+	if model_score < 0.0 or model_score > 1.0:
+		return {"ok": false, "error": "self-test shared scorer produced invalid probability"}
 	return {"ok": true}
 
 

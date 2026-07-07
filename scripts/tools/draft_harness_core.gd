@@ -18,6 +18,7 @@ const DraftStrategyNativeLookaheadPath := "res://scripts/tools/draft_strategy_na
 const DraftStrategyNativeLookaheadPickPath := "res://scripts/tools/draft_strategy_native_lookahead_pick.gd"
 const DraftStrategyNativeLookaheadBanPath := "res://scripts/tools/draft_strategy_native_lookahead_ban.gd"
 const DraftStrategyNativeLookaheadSoftmaxPath := "res://scripts/tools/draft_strategy_native_lookahead_softmax.gd"
+const DraftStrategyNativeLearnedScorerPath := "res://scripts/tools/draft_strategy_native_learned_scorer.gd"
 
 
 static func build_strategy(name: String, stats_dir: String):
@@ -48,6 +49,12 @@ static func build_strategy(name: String, stats_dir: String):
 			return load(DraftStrategyNativeLookaheadBanPath).new(stats_dir)
 		"native_lookahead_softmax":
 			return load(DraftStrategyNativeLookaheadSoftmaxPath).new(stats_dir)
+		"native_learned_scorer":
+			var learned_scorer = load(DraftStrategyNativeLearnedScorerPath).new(stats_dir)
+			if learned_scorer.has_method("is_ready") and not bool(learned_scorer.call("is_ready")):
+				push_error("DraftHarnessCore: native_learned_scorer unavailable: %s" % String(learned_scorer.call("last_error")))
+				return null
+			return learned_scorer
 		_:
 			if name.begins_with("native_ablation_"):
 				var variant: String = name.substr("native_ablation_".length())
@@ -262,6 +269,15 @@ static func run_full_draft(
 		var blue_bans_before: Array[StringName] = blue_bans.duplicate()
 		var red_bans_before: Array[StringName] = red_bans.duplicate()
 		var legal_pool_before: Array[StringName] = available.duplicate()
+		if strategy.has_method("set_draft_context"):
+			strategy.call(
+				"set_draft_context",
+				blue_picks_before,
+				red_picks_before,
+				blue_bans_before,
+				red_bans_before,
+				acting_side
+			)
 
 		var chosen: StringName
 		if action == "PICK":

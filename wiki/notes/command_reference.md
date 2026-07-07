@@ -67,6 +67,7 @@ Unwired scripts (invoke Godot directly; see [draft_ai_validation_gate.md](draft_
 | `native_draft_tier_gate.gd` | Difficulty tier monotonic separation gate (`--min-gap=`, `--self-test`) |
 | `native_draft_self_play_stats.gd` | Policy-draft matches → production stats CSVs + manifest |
 | `native_draft_self_play_stats_gate.gd` | Structural gate for self-play stats snapshots (`--min-matches=`) |
+| `native_draft_decision_rows_gate.gd` | Structural gate for optional draft-state training rows |
 | `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV; `--self-test` for C++ softmax expectation |
 | `native_draft_lookahead_baseline_report.gd` | Markdown report from lookahead baseline analyzer CSV |
 | `native_draft_lookahead_gate.gd` | Regression gate for `native_lookahead_softmax` |
@@ -93,8 +94,8 @@ Run from repo root; not routed through Godot directly.
 
 ## Unwired scripts
 
-Some tools (e.g. `run_draft_ai_validation_suite.gd`) are not routed in `run_godot.ps1`. Invoke Godot directly:
+For one-off scripts, use the generic wrapper form:
 
 ```powershell
-godot --headless --path . --script res://scripts/tools/run_draft_ai_validation_suite.gd
+.\run_godot.ps1 -- --script res://scripts/tools/run_draft_ai_validation_suite.gd -- <args>
 ```

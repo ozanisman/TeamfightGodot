@@ -349,7 +349,7 @@ Gaps: easy→normal 5.5pp, normal→hard 3.7pp (gate min 2pp).
 
 **C.1 Risk-aware selection.** Instrumentation implemented: native pick/ban recommendation breakdown dictionaries now expose per-component sample/confidence fields, aggregate `confidence_score`, and opt-in `confidence_adjustment`. The explanation audit requires and validates those fields, and the draft testing view shows compact native confidence lines. Defaults preserve ordering, scores, weights, strategy behavior, and selection policy; risk/persona behavior only activates through explicit experiment configs.
 
-**C.1b Config-only risk/persona experiments.** Scaffolding implemented. `confidence_adjustment` config supports "safe" (positive confidence bias) and "ceiling" (negative confidence bias) experiments, and fixture-backed validation strategies include `native_softmax_safe`, `native_softmax_ceiling`, and `native_softmax_counter_heavy`. `native_draft_persona_gate.gd` now compares those candidates against `native_softmax` on Elo, self-play side-bias, and A/B regression. Because realism metrics are not implemented yet, otherwise passing personas remain `VALIDATION_ONLY` rather than promotable.
+**C.1b Config-only risk/persona experiments.** Scaffolding implemented. `confidence_adjustment` config supports "safe" (positive confidence bias) and "ceiling" (negative confidence bias) experiments, and fixture-backed validation strategies include `native_softmax_safe`, `native_softmax_ceiling`, and `native_softmax_counter_heavy`. `native_draft_persona_gate.gd` now compares those candidates against `native_softmax` on Elo, self-play side-bias, A/B regression, and optional realism metrics. Personas remain `VALIDATION_ONLY` unless the realism metrics input is present and passes the configured margin.
 
 **C.2 Learned scorer to replace/augment the linear sum.** Train a small model (gradient-boosted trees or a compact MLP, exported to a form the native layer can evaluate) on (draft-state → win) data from simulated matches. Must clear a strict wiring gate vs. the current linear model on a holdout (the project already uses a "+2pp" style gate; reuse it). Keep the linear model as the explainable fallback.
 
@@ -366,7 +366,8 @@ Implemented. `draft_harness_core.gd` shares full-draft + sim helpers between the
 
 Output is a **new snapshot directory**; promoting to `stats_output_100k` uses the D.2 certification pipeline with explicit `--promote` (step 3e in [draft_ai_validation_gate.md](draft_ai_validation_gate.md)).
 
-**D.1b Draft-state training rows.** Add an optional self-play output that records each decision state, legal candidate pool, selected action, policy scores, side/phase, final draft, and simulated match outcome. This should be the input contract for C.2 learned scorer work; aggregate CSV regeneration alone is not enough training data for a stateful policy model.
+**D.1b Draft-state training rows.** Done (MVP)
+Implemented. `native_draft_self_play_stats.gd` accepts optional `--decision-output=...` and writes one CSV row per draft decision with pre-action picks/bans, legal candidate pool, selected action, chosen-candidate diagnostic scores, final draft, and simulated match outcome. `native_draft_decision_rows_gate.gd` validates the structural row contract. This is the input contract for C.2 learned scorer work; candidate-wide ranking rows remain deferred until a learned-scorer experiment proves they are needed.
 
 **D.2 Automated stats regeneration + certification.** **Done.** `native_draft_stats_certification.gd` runs generate → structural gate → harness on candidate stats → analyzer → quantitative + Elo gates → certification gate; `--promote` copies to baseline and writes `certification.stats_snapshot_id`. Smoke/full recipes in [draft_ai_validation_gate.md](draft_ai_validation_gate.md) step 3e.
 
@@ -463,11 +464,11 @@ Track all of these per version; promotion requires no regression on the guarded 
 Completed foundation items are now recorded in Workstreams 0, A, D, and E. The active backlog should focus on promotable policy/model changes and the missing measurement surfaces.
 
 1. **[E] Broaden validation coverage.** Run persona and lookahead candidates across larger multi-seed harnesses with strength, side-bias, A/B, and realism reports.
-2. **[D] Emit draft-state training rows.** Extend self-play generation with state/action/outcome rows for learned scorer experiments.
+2. **[C] Learned scorer behind a wiring gate.** Use draft-state rows as the input contract; keep the linear model as the explainable fallback and require a meaningful holdout/ladder improvement before runtime use.
 3. **[E/A] Add richer realism sources.** Add true counter-pick reconstruction, tier separation, and human-draft agreement/edit-distance once data exists.
 4. **[B] Decide lookahead fate.** Keep `native_lookahead_softmax` validation-only unless it matches or beats `native_softmax` on Elo/score rate, side-bias, and latency.
 5. **[Ban] Split P1/P2 ban modeling.** Treat phase 1 and phase 2 as separate modeling targets; do not evaluate a single blended ban model as if both phases have the same signal.
-6. **[C] Learned scorer behind a wiring gate.** Train only after draft-state rows exist; keep the linear model as the explainable fallback and require a meaningful holdout/ladder improvement before runtime use.
+6. **[D] Expand draft-state rows if needed.** Add candidate-wide ranking rows only if the first learned-scorer experiment needs them.
 
 ---
 

@@ -39,6 +39,7 @@ const SimulationBatchWorkerScript := preload("res://scripts/simulation/simulatio
 const CheckMatchTelemetryScript := preload("res://scripts/tools/check_match_telemetry.gd")
 const CheckStatsCsvDeterminismScript := preload("res://scripts/tools/check_stats_csv_determinism.gd")
 const DraftSelfPlayStatsRunnerScript := preload("res://scripts/tools/draft_self_play_stats_runner.gd")
+const NativeDraftDecisionRowsGateScript := preload("res://scripts/tools/native_draft_decision_rows_gate.gd")
 const DraftStatsSnapshotChecksScript := preload("res://scripts/tools/draft_stats_snapshot_checks.gd")
 const DraftValidationRunnerScript := preload("res://scripts/tools/draft_validation_runner.gd")
 const DraftValidationAnalyzerCoreScript := preload("res://scripts/tools/draft_validation_analyzer_core.gd")

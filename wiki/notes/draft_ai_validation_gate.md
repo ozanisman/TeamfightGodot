@@ -2,7 +2,7 @@
 
 Quantitative regression pipeline for native draft AI and stats snapshots. Run after draft AI, strategy, or stats changes.
 
-**Prerequisites:** Native build, `--check-only`, and core [validation gate](../../README.md#validation-gate) passing. Godot at `C:\Godot\godot.exe` (or on `PATH`). Most scripts below are **unwired** — invoke `godot` directly, not `run_godot.ps1`. Outputs under `model_stats/` and `logs/` are gitignored unless noted.
+**Prerequisites:** Native build, `--check-only`, and core [validation gate](../../README.md#validation-gate) passing. Godot at `C:\Godot\godot.exe` (or on `PATH`). Script examples below use direct `godot`; equivalent wrapper form is `.\run_godot.ps1 -- --script <script> -- <args>`. Outputs under `model_stats/` and `logs/` are gitignored unless noted.
 
 **Threshold baselines:** Section 6 of [draft_ai_improvement_plan.md](draft_ai_improvement_plan.md). Override any quantitative threshold via CLI (e.g. `--native_softmax_self_play_bias_max_pp=15.0`).
 
@@ -97,6 +97,22 @@ godot --headless --path . --script res://scripts/tools/native_draft_self_play_st
      --blue-strategies=native_softmax --red-strategies=native_softmax `
      --stats-dir=res://model_stats/stats_output_100k `
      --output-dir=res://model_stats/stats_selfplay_native_softmax
+```
+
+Optional draft-state training rows:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_self_play_stats.gd `
+  -- --drafts=50 --sims-per-draft=1 `
+     --blue-strategies=native_softmax --red-strategies=native_softmax `
+     --output-dir=res://model_stats/stats_selfplay_decision_rows_smoke `
+     --decision-output=res://model_stats/draft_state_training_rows_smoke.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_decision_rows_gate.gd `
+  -- --input=res://model_stats/draft_state_training_rows_smoke.csv `
+     --drafts=50 `
+     --blue-strategies=native_softmax `
+     --red-strategies=native_softmax
 ```
 
 **Smoke:**
@@ -247,6 +263,7 @@ When set, native pick/ban calls return empty on snapshot ID mismatch. Harness an
 | `native_draft_tier_gate.gd` | Tier monotonic separation |
 | `native_draft_self_play_stats.gd` | Policy drafts → stats CSVs + manifest |
 | `native_draft_self_play_stats_gate.gd` | Structural self-play snapshot gate |
+| `native_draft_decision_rows_gate.gd` | Structural gate for optional draft-state training rows |
 | `native_draft_lookahead_diagnostic.gd` | Per-step lookahead CSV + softmax self-test |
 | `native_draft_lookahead_baseline_report.gd` | Markdown baseline from analyzer summary |
 | `native_draft_lookahead_gate.gd` | `native_lookahead_softmax` bias/strength gate |

@@ -9,6 +9,19 @@ $logsDir = Join-Path $projectRoot "logs"
 $logFile = Join-Path $logsDir "godot.log"
 $null = New-Item -ItemType Directory -Force -Path $logsDir
 $timeoutSeconds = 120
+$hasPathKey = $false
+$hasUpperPathKey = $false
+foreach ($key in [Environment]::GetEnvironmentVariables("Process").Keys) {
+	if ([string]$key -ceq "Path") {
+		$hasPathKey = $true
+	}
+	elseif ([string]$key -ceq "PATH") {
+		$hasUpperPathKey = $true
+	}
+}
+if ($hasPathKey -and $hasUpperPathKey) {
+	[Environment]::SetEnvironmentVariable("PATH", $null, "Process")
+}
 $checkOnly = $Arguments -contains "--check-only"
 $exportChampionSchema = $Arguments -contains "--export-champion-schema"
 $checkNativeLoad = $Arguments -contains "--check-native-load"
@@ -22,6 +35,26 @@ $checkMainMenu = $Arguments -contains "--check-main-menu"
 $checkDraftUi = $Arguments -contains "--check-draft-ui"
 $checkStatsAggregator = $Arguments -contains "--check-stats-aggregator"
 $checkStatsCsvDeterminism = $Arguments -contains "--check-stats-csv-determinism"
+$scriptIndex = [Array]::IndexOf($Arguments, "--script")
+$explicitScript = ""
+if ($scriptIndex -ge 0) {
+	if ($scriptIndex + 1 -ge $Arguments.Count) {
+		Write-Error "--script requires a script path"
+		exit 1
+	}
+	$explicitScript = $Arguments[$scriptIndex + 1]
+	$remainingArguments = @()
+	for ($i = 0; $i -lt $Arguments.Count; $i++) {
+		if ($i -eq $scriptIndex -or $i -eq ($scriptIndex + 1)) {
+			continue
+		}
+		if ($Arguments[$i] -eq "--") {
+			continue
+		}
+		$remainingArguments += $Arguments[$i]
+	}
+	$Arguments = $remainingArguments
+}
 $generateStats = $Arguments -contains "--generate-stats"
 $measureDraftCeiling = $Arguments -contains "--measure-draft-ceiling"
 $verifyPairwiseSignal = $Arguments -contains "--verify-pairwise-signal"
@@ -113,6 +146,9 @@ function Assert-DurableOutput([string]$OutputPath, [int]$MinBytes, [int]$MinLine
 }
 if ($checkOnly) {
 	$timeoutSeconds = 15
+}
+elseif ($explicitScript) {
+	$timeoutSeconds = 120
 }
 elseif ($checkStatsDashboard) {
 	$timeoutSeconds = 30
@@ -278,6 +314,9 @@ if ($checkOnly) {
 	}
 	$godotArgs += @("--script", "res://scripts/tools/check_gdscript_preload.gd")
 }
+elseif ($explicitScript) {
+	$godotArgs += @("--script", $explicitScript)
+}
 elseif ($exportChampionSchema) {
 	$godotArgs += @("--script", "res://scripts/tools/export_champion_schema.gd")
 }
@@ -402,7 +441,7 @@ elseif ($testPartialCompScoring) {
 elseif ($abTestDraftStrategies) {
 	$godotArgs += @("--script", "res://scripts/tools/ab_test_draft_strategies.gd")
 }
-elseif (-not $checkOnly -and -not $exportChampionSchema -and -not $checkNativeLoad -and -not $checkNativeSimulationTests -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isInteractiveGui) {
+elseif (-not $checkOnly -and -not $explicitScript -and -not $exportChampionSchema -and -not $checkNativeLoad -and -not $checkNativeSimulationTests -and -not $checkMatchTelemetry -and -not $checkMainMenu -and -not $checkDraftUi -and -not $isInteractiveGui) {
 	$godotArgs += @("--script", "res://scripts/tools/headless_bootstrap.gd")
 }
 if ($Arguments.Count -gt 0) {

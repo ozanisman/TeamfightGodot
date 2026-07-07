@@ -239,7 +239,8 @@ static func run_full_draft(
 	stats_dir: String,
 	sims_per_draft: int,
 	draft_seed: int,
-	include_diagnostics: bool = false
+	include_diagnostics: bool = false,
+	include_decision_state: bool = false
 ) -> Dictionary:
 	var blue_picks: Array[StringName] = []
 	var red_picks: Array[StringName] = []
@@ -256,6 +257,11 @@ static func run_full_draft(
 		var enemies: Array[StringName] = red_picks if side == "B" else blue_picks
 		var strategy = blue_strat if side == "B" else red_strat
 		var acting_side: String = "blue" if side == "B" else "red"
+		var blue_picks_before: Array[StringName] = blue_picks.duplicate()
+		var red_picks_before: Array[StringName] = red_picks.duplicate()
+		var blue_bans_before: Array[StringName] = blue_bans.duplicate()
+		var red_bans_before: Array[StringName] = red_bans.duplicate()
+		var legal_pool_before: Array[StringName] = available.duplicate()
 
 		var chosen: StringName
 		if action == "PICK":
@@ -273,13 +279,21 @@ static func run_full_draft(
 				backend, stats_dir, action, allies, enemies, available, step_index, acting_side, chosen
 			)
 
-		step_records.append({
+		var step_record: Dictionary = {
 			"step_index": step_index,
 			"side": side,
 			"action": action,
 			"chosen": chosen,
 			"diagnostic": diag,
-		})
+		}
+		if include_decision_state:
+			step_record["acting_side"] = acting_side
+			step_record["blue_picks_before"] = blue_picks_before
+			step_record["red_picks_before"] = red_picks_before
+			step_record["blue_bans_before"] = blue_bans_before
+			step_record["red_bans_before"] = red_bans_before
+			step_record["legal_pool"] = legal_pool_before
+		step_records.append(step_record)
 
 		available.erase(chosen)
 		if action == "PICK":

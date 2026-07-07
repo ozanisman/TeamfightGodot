@@ -247,7 +247,8 @@ static func run_full_draft(
 	sims_per_draft: int,
 	draft_seed: int,
 	include_diagnostics: bool = false,
-	include_decision_state: bool = false
+	include_decision_state: bool = false,
+	include_candidate_state: bool = false
 ) -> Dictionary:
 	var blue_picks: Array[StringName] = []
 	var red_picks: Array[StringName] = []
@@ -289,11 +290,15 @@ static func run_full_draft(
 			push_error("DraftHarnessCore: invalid selection at step %d side %s" % [step_index, side])
 			chosen = available[0]
 
+		var recommendations: Array = []
+		if include_diagnostics or include_candidate_state:
+			recommendations = recommendations_for_step(
+				backend, stats_dir, action, allies, enemies, available, step_index, acting_side
+			)
+
 		var diag: Dictionary = {}
 		if include_diagnostics:
-			diag = diagnostic_for_chosen(
-				backend, stats_dir, action, allies, enemies, available, step_index, acting_side, chosen
-			)
+			diag = diagnostic_for_chosen_from_recommendations(action, recommendations, chosen)
 
 		var step_record: Dictionary = {
 			"step_index": step_index,
@@ -309,6 +314,8 @@ static func run_full_draft(
 			step_record["blue_bans_before"] = blue_bans_before
 			step_record["red_bans_before"] = red_bans_before
 			step_record["legal_pool"] = legal_pool_before
+		if include_candidate_state:
+			step_record["candidate_diagnostics"] = candidate_diagnostics_from_recommendations(action, recommendations)
 		step_records.append(step_record)
 
 		available.erase(chosen)
@@ -348,7 +355,37 @@ static func diagnostic_for_chosen(
 	acting_side: String,
 	chosen: StringName
 ) -> Dictionary:
-	var diag: Dictionary = {
+	return diagnostic_for_chosen_from_recommendations(
+		action,
+		recommendations_for_step(backend, stats_dir, action, allies, enemies, available, step_index, acting_side),
+		chosen
+	)
+
+
+static func recommendations_for_step(
+	backend: RefCounted,
+	stats_dir: String,
+	action: String,
+	allies: Array[StringName],
+	enemies: Array[StringName],
+	available: Array[StringName],
+	step_index: int,
+	acting_side: String
+) -> Array:
+	if backend == null or not backend.is_available():
+		return []
+	if action == "PICK":
+		return backend.get_draft_ai_pick_recommendations(
+			stats_dir, available, allies, enemies, available.size(), step_index, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH
+		)
+	return backend.get_draft_ai_ban_recommendations(
+		stats_dir, available, allies, enemies, available.size(), step_index, acting_side, {}, 0, DraftAiConfigScript.DEFAULT_CONFIG_PATH
+	)
+
+
+static func empty_candidate_diagnostic() -> Dictionary:
+	return {
+		"candidate": "",
 		"base_power": 0.0,
 		"ally_synergy": 0.0,
 		"enemy_counter_value": 0.0,
@@ -360,39 +397,46 @@ static func diagnostic_for_chosen(
 		"candidate_role": "",
 		"comp_fingerprint": "",
 	}
-	if backend == null or not backend.is_available():
-		return diag
 
-	var recommendations: Array
-	if action == "PICK":
-		recommendations = backend.get_draft_ai_pick_recommendations(
-			stats_dir, available, allies, enemies, available.size(), step_index
-		)
-	else:
-		recommendations = backend.get_draft_ai_ban_recommendations(
-			stats_dir, available, allies, enemies, available.size(), step_index, acting_side, {}
-		)
 
-	for rec in recommendations:
+static func diagnostic_for_chosen_from_recommendations(action: String, recommendations: Array, chosen: StringName) -> Dictionary:
+	for rec_var in recommendations:
+		var rec: Dictionary = rec_var
 		if StringName(rec.get("candidate", "")) == chosen:
-			if action == "PICK":
-				diag["base_power"] = float(rec.get("base_power", 0.0))
-				diag["ally_synergy"] = float(rec.get("ally_synergy", 0.0))
-				diag["enemy_counter_value"] = float(rec.get("enemy_counter_value", 0.0))
-				diag["counter_risk"] = float(rec.get("counter_risk", 0.0))
-				diag["role_fit"] = float(rec.get("role_fit", 0.0))
-				diag["comp_fit"] = float(rec.get("comp_fit", 0.0))
-				diag["comp_fingerprint"] = String(rec.get("comp_fingerprint", ""))
-			else:
-				diag["base_power"] = float(rec.get("enemy_pick_value", 0.0))
-				diag["ally_synergy"] = float(rec.get("enemy_synergy", 0.0))
-				diag["enemy_counter_value"] = float(rec.get("counters_my_team", 0.0))
-				diag["counter_risk"] = 0.0
-				diag["role_fit"] = float(rec.get("fills_enemy_role_need", 0.0))
-				diag["comp_fit"] = float(rec.get("enemy_comp_fit", 0.0))
-				diag["comp_fingerprint"] = String(rec.get("enemy_comp_fingerprint", ""))
-			diag["total_score"] = float(rec.get("total_score", 0.0))
-			diag["phase_label"] = String(rec.get("phase_label", ""))
-			diag["candidate_role"] = String(rec.get("candidate_role", ""))
-			break
+			return diagnostic_from_recommendation(action, rec)
+	return empty_candidate_diagnostic()
+
+
+static func candidate_diagnostics_from_recommendations(action: String, recommendations: Array) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in range(recommendations.size()):
+		var rec: Dictionary = recommendations[i]
+		var diag: Dictionary = diagnostic_from_recommendation(action, rec)
+		diag["candidate_rank_native"] = i + 1
+		out.append(diag)
+	return out
+
+
+static func diagnostic_from_recommendation(action: String, rec: Dictionary) -> Dictionary:
+	var diag: Dictionary = empty_candidate_diagnostic()
+	diag["candidate"] = String(rec.get("candidate", ""))
+	if action == "PICK":
+		diag["base_power"] = float(rec.get("base_power", 0.0))
+		diag["ally_synergy"] = float(rec.get("ally_synergy", 0.0))
+		diag["enemy_counter_value"] = float(rec.get("enemy_counter_value", 0.0))
+		diag["counter_risk"] = float(rec.get("counter_risk", 0.0))
+		diag["role_fit"] = float(rec.get("role_fit", 0.0))
+		diag["comp_fit"] = float(rec.get("comp_fit", 0.0))
+		diag["comp_fingerprint"] = String(rec.get("comp_fingerprint", ""))
+	else:
+		diag["base_power"] = float(rec.get("enemy_pick_value", 0.0))
+		diag["ally_synergy"] = float(rec.get("enemy_synergy", 0.0))
+		diag["enemy_counter_value"] = float(rec.get("counters_my_team", 0.0))
+		diag["counter_risk"] = 0.0
+		diag["role_fit"] = float(rec.get("fills_enemy_role_need", 0.0))
+		diag["comp_fit"] = float(rec.get("enemy_comp_fit", 0.0))
+		diag["comp_fingerprint"] = String(rec.get("enemy_comp_fingerprint", ""))
+	diag["total_score"] = float(rec.get("total_score", 0.0))
+	diag["phase_label"] = String(rec.get("phase_label", ""))
+	diag["candidate_role"] = String(rec.get("candidate_role", ""))
 	return diag

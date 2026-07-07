@@ -8,7 +8,8 @@ extends SceneTree
 ##        --blue-strategies=native_softmax --red-strategies=native_softmax \
 ##        --stats-dir=res://model_stats/stats_output_100k \
 ##        --output-dir=res://model_stats/stats_selfplay_native_softmax \
-##        --decision-output=res://model_stats/draft_state_training_rows.csv
+##        --decision-output=res://model_stats/draft_state_training_rows.csv \
+##        --candidate-decision-output=res://model_stats/draft_state_candidate_rows.csv
 
 const DraftHarnessCoreScript := preload("res://scripts/tools/draft_harness_core.gd")
 const DraftSelfPlayStatsRunnerScript := preload("res://scripts/tools/draft_self_play_stats_runner.gd")
@@ -62,6 +63,7 @@ func _run() -> void:
 	var stats_dir: String = _extract_argument("--stats-dir=", "res://model_stats/stats_output_100k")
 	var output_dir: String = _extract_argument("--output-dir=", _default_output_dir())
 	var decision_output_path: String = _extract_argument("--decision-output=", "")
+	var candidate_decision_output_path: String = _extract_argument("--candidate-decision-output=", "")
 	var drafts: int = maxi(1, int(_extract_argument("--drafts=", "1000")))
 	var sims_per_draft: int = maxi(1, int(_extract_argument("--sims-per-draft=", "1")))
 	var base_seed: int = int(_extract_argument("--base-seed=", "500000"))
@@ -81,6 +83,7 @@ func _run() -> void:
 		"stats_dir": stats_dir,
 		"output_dir": output_dir,
 		"decision_output_path": decision_output_path,
+		"candidate_decision_output_path": candidate_decision_output_path,
 		"drafts": drafts,
 		"sims_per_draft": sims_per_draft,
 		"base_seed": base_seed,
@@ -102,6 +105,10 @@ func _run() -> void:
 	if not String(result.get("decision_output_path", "")).is_empty():
 		print("native_draft_self_play_stats: wrote decision rows %s (%d rows)" % [
 			result["decision_output_path"], result["decision_row_count"]
+		])
+	if not String(result.get("candidate_decision_output_path", "")).is_empty():
+		print("native_draft_self_play_stats: wrote candidate decision rows %s (%d rows)" % [
+			result["candidate_decision_output_path"], result["candidate_decision_row_count"]
 		])
 	print("STATUS: OK")
 	await HeadlessShutdownScript.teardown_extension_then_quit(self, 0)

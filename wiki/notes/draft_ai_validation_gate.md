@@ -176,6 +176,30 @@ godot --headless --path . --script res://scripts/tools/native_draft_elo_ladder.g
 
 Larger learned-scorer policy validation can expand to `--trials=20 --sims-per-draft=10` and include `random` in both quoted strategy lists. `native_learned_scorer` is validation-only and non-promotable until strength, calibration, side-bias, and realism gates clear; it must not be wired into gameplay, UI, native C++, or production policy selection from this gate.
 
+Candidate-wide ranking rows and validation-only ranker:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_self_play_stats.gd `
+  -- --drafts=200 --sims-per-draft=3 `
+     --blue-strategies=native_softmax --red-strategies=native_softmax `
+     --output-dir=res://model_stats/stats_selfplay_candidate_rows_validation `
+     --candidate-decision-output=res://model_stats/draft_state_candidate_rows_validation.csv
+
+godot --headless --path . --script res://scripts/tools/native_draft_candidate_rows_gate.gd `
+  -- --input=res://model_stats/draft_state_candidate_rows_validation.csv `
+     --drafts=200 `
+     --blue-strategies=native_softmax `
+     --red-strategies=native_softmax `
+     --output=res://logs/native_draft_candidate_rows_gate_validation.md
+
+godot --headless --path . --script res://scripts/tools/native_draft_state_ranker_experiment.gd `
+  -- --input=res://model_stats/draft_state_candidate_rows_validation.csv `
+     --output-dir=res://model_stats/draft_state_ranker_experiments/validation_native_softmax_200x3 `
+     --min-groups=4000
+```
+
+Candidate-wide rows are separate training artifacts and are not included in `stats_manifest.json`. The ranker reports `PASS` only when learned top-1 selected-candidate agreement improves over native `total_score` ranking without MRR or mean selected-rank regression. Even then it is validation-only; policy ladder, side-bias, calibration, and realism gates must clear before any runtime integration.
+
 **Smoke:**
 
 ```powershell

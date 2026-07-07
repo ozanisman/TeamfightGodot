@@ -52,11 +52,55 @@ const DECISION_ROW_COLUMNS: Array[String] = [
 	"comp_fingerprint",
 ]
 
+const CANDIDATE_ROW_COLUMNS: Array[String] = [
+	"draft_seed",
+	"pairing_index",
+	"pairing_seed",
+	"blue_strategy",
+	"red_strategy",
+	"step_index",
+	"step_side",
+	"step_action",
+	"acting_side",
+	"blue_picks_before",
+	"red_picks_before",
+	"blue_bans_before",
+	"red_bans_before",
+	"legal_pool",
+	"legal_pool_count",
+	"selected",
+	"candidate",
+	"is_selected",
+	"candidate_rank_native",
+	"blue_picks_final",
+	"red_picks_final",
+	"blue_bans_final",
+	"red_bans_final",
+	"blue_wins",
+	"red_wins",
+	"draws",
+	"blue_winrate",
+	"red_winrate",
+	"drawrate",
+	"total_matches",
+	"base_power",
+	"ally_synergy",
+	"enemy_counter_value",
+	"counter_risk",
+	"role_fit",
+	"comp_fit",
+	"total_score",
+	"phase_label",
+	"candidate_role",
+	"comp_fingerprint",
+]
+
 
 static func run(params: Dictionary) -> Dictionary:
 	var stats_dir: String = String(params.get("stats_dir", "res://model_stats/stats_output_100k"))
 	var output_dir: String = String(params.get("output_dir", ""))
 	var decision_output_path: String = String(params.get("decision_output_path", ""))
+	var candidate_decision_output_path: String = String(params.get("candidate_decision_output_path", ""))
 	var drafts: int = maxi(1, int(params.get("drafts", 1000)))
 	var sims_per_draft: int = maxi(1, int(params.get("sims_per_draft", 1)))
 	var base_seed: int = int(params.get("base_seed", 500000))
@@ -112,6 +156,10 @@ static func run(params: Dictionary) -> Dictionary:
 	var decision_output_enabled: bool = not decision_output_path.is_empty()
 	if decision_output_enabled:
 		decision_rows.append(",".join(DECISION_ROW_COLUMNS))
+	var candidate_rows: Array[String] = []
+	var candidate_output_enabled: bool = not candidate_decision_output_path.is_empty()
+	if candidate_output_enabled:
+		candidate_rows.append(",".join(CANDIDATE_ROW_COLUMNS))
 	var start_msec: int = Time.get_ticks_msec()
 	var pairings_per_trial: int = blue_strategy_names.size() * red_strategy_names.size()
 	var total_drafts: int = drafts * pairings_per_trial
@@ -135,10 +183,16 @@ static func run(params: Dictionary) -> Dictionary:
 				var draft_result: Dictionary = DraftHarnessCoreScript.run_full_draft(
 					pool.duplicate(), blue_strat, red_strat,
 					backend, stats_dir, sims_per_draft, pairing_seed,
-					decision_output_enabled, decision_output_enabled
+					decision_output_enabled,
+					decision_output_enabled or candidate_output_enabled,
+					candidate_output_enabled
 				)
 				if decision_output_enabled:
 					decision_rows.append_array(_format_decision_rows(
+						draft_seed, current_pairing_index, pairing_seed, blue_name, red_name, draft_result
+					))
+				if candidate_output_enabled:
+					candidate_rows.append_array(_format_candidate_rows(
 						draft_seed, current_pairing_index, pairing_seed, blue_name, red_name, draft_result
 					))
 				for summary in draft_result["summaries"]:
@@ -177,6 +231,11 @@ static func run(params: Dictionary) -> Dictionary:
 			backend.call("clear")
 		return {"ok": false, "error": "failed to write decision rows"}
 
+	if candidate_output_enabled and not _write_lines(candidate_decision_output_path, candidate_rows):
+		if backend.has_method("clear"):
+			backend.call("clear")
+		return {"ok": false, "error": "failed to write candidate decision rows"}
+
 	var manifest: Dictionary = StatsManifestScript.build_manifest(
 		output_dir,
 		"native_draft_self_play_stats",
@@ -198,6 +257,8 @@ static func run(params: Dictionary) -> Dictionary:
 		"consumed_matches": consumed_matches,
 		"decision_output_path": decision_output_path,
 		"decision_row_count": decision_rows.size() - 1 if decision_output_enabled else 0,
+		"candidate_decision_output_path": candidate_decision_output_path,
+		"candidate_decision_row_count": candidate_rows.size() - 1 if candidate_output_enabled else 0,
 	}
 
 
@@ -272,6 +333,73 @@ static func _format_decision_rows(
 		for field in fields:
 			escaped.append(_csv_field(field))
 		rows.append(",".join(escaped))
+	return rows
+
+
+static func _format_candidate_rows(
+	draft_seed: int,
+	pairing_index: int,
+	pairing_seed: int,
+	blue_name: String,
+	red_name: String,
+	draft_result: Dictionary
+) -> Array[String]:
+	var rows: Array[String] = []
+	var sim: Dictionary = draft_result["sim"]
+	var total_matches: int = int(sim["blue_wins"]) + int(sim["red_wins"]) + int(sim["draws"])
+	for rec_var in Array(draft_result["step_records"]):
+		var rec: Dictionary = rec_var
+		var legal_pool: Array = rec.get("legal_pool", [])
+		var selected: String = String(rec.get("chosen", ""))
+		for diag_var in Array(rec.get("candidate_diagnostics", [])):
+			var diag: Dictionary = diag_var
+			var candidate: String = String(diag.get("candidate", ""))
+			var fields: Array[String] = [
+				str(draft_seed),
+				str(pairing_index),
+				str(pairing_seed),
+				blue_name,
+				red_name,
+				str(int(rec.get("step_index", -1))),
+				String(rec.get("side", "")),
+				String(rec.get("action", "")),
+				String(rec.get("acting_side", "")),
+				_join_values(rec.get("blue_picks_before", [])),
+				_join_values(rec.get("red_picks_before", [])),
+				_join_values(rec.get("blue_bans_before", [])),
+				_join_values(rec.get("red_bans_before", [])),
+				_join_values(legal_pool),
+				str(legal_pool.size()),
+				selected,
+				candidate,
+				"1" if candidate == selected else "0",
+				str(int(diag.get("candidate_rank_native", 0))),
+				_join_values(draft_result.get("blue_picks", [])),
+				_join_values(draft_result.get("red_picks", [])),
+				_join_values(draft_result.get("blue_bans", [])),
+				_join_values(draft_result.get("red_bans", [])),
+				str(int(sim["blue_wins"])),
+				str(int(sim["red_wins"])),
+				str(int(sim["draws"])),
+				"%.6f" % float(sim["blue_winrate"]),
+				"%.6f" % float(sim["red_winrate"]),
+				"%.6f" % float(sim["drawrate"]),
+				str(total_matches),
+				"%.6f" % float(diag.get("base_power", 0.0)),
+				"%.6f" % float(diag.get("ally_synergy", 0.0)),
+				"%.6f" % float(diag.get("enemy_counter_value", 0.0)),
+				"%.6f" % float(diag.get("counter_risk", 0.0)),
+				"%.6f" % float(diag.get("role_fit", 0.0)),
+				"%.6f" % float(diag.get("comp_fit", 0.0)),
+				"%.6f" % float(diag.get("total_score", 0.0)),
+				String(diag.get("phase_label", "")),
+				String(diag.get("candidate_role", "")),
+				String(diag.get("comp_fingerprint", "")),
+			]
+			var escaped: Array[String] = []
+			for field in fields:
+				escaped.append(_csv_field(field))
+			rows.append(",".join(escaped))
 	return rows
 
 

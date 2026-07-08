@@ -196,9 +196,15 @@ godot --headless --path . --script res://scripts/tools/native_draft_state_ranker
   -- --input=res://model_stats/draft_state_candidate_rows_validation.csv `
      --output-dir=res://model_stats/draft_state_ranker_experiments/validation_native_softmax_200x3 `
      --min-groups=4000
+
+godot --headless --path . --script res://scripts/tools/native_draft_state_ranker_experiment.gd `
+  -- --input=res://model_stats/draft_state_candidate_rows_validation.csv `
+     --output-dir=res://model_stats/draft_state_ranker_experiments/validation_native_softmax_200x3_diagnostics `
+     --min-groups=4000 `
+     --segment-probes=true
 ```
 
-Candidate-wide rows are separate training artifacts and are not included in `stats_manifest.json`. The ranker reports `PASS` only when learned top-1 selected-candidate agreement improves over native `total_score` ranking without MRR or mean selected-rank regression. Even then it is validation-only; policy ladder, side-bias, calibration, and realism gates must clear before any runtime integration.
+Candidate-wide rows are separate training artifacts and are not included in `stats_manifest.json`. The ranker reports `PASS` only when learned top-1 selected-candidate agreement improves over native `total_score` ranking without MRR or mean selected-rank regression. `--segment-probes=true` adds grouped diagnostics and validation-only per-segment probes for pick/ban and phase labels. Even a segment `PASS` is not runtime-ready; policy ladder, side-bias, calibration, and realism gates must clear before any runtime integration.
 
 **Smoke:**
 

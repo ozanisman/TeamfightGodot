@@ -11,6 +11,9 @@ const DEFAULT_TRAIN_FRACTION: float = 0.8
 const DEFAULT_SPLIT_SEED: int = 1337
 const DEFAULT_MIN_GROUPS: int = 20
 const DEFAULT_CALIBRATION_BINS: int = 10
+const MIN_SEGMENT_GROUPS: int = 20
+const MIN_SEGMENT_TEST_GROUPS: int = 4
+const SEGMENT_PROBE_MAX_ITERATIONS: int = 80
 const LEARNING_RATE: float = 0.05
 const MAX_ITERATIONS: int = 300
 const CONVERGENCE_TOLERANCE: float = 0.000001
@@ -84,6 +87,7 @@ func _run() -> void:
 	var split_seed: int = int(_extract_argument("--seed=", str(DEFAULT_SPLIT_SEED)))
 	var min_groups: int = maxi(1, int(_extract_argument("--min-groups=", str(DEFAULT_MIN_GROUPS))))
 	var calibration_bins: int = maxi(1, int(_extract_argument("--calibration-bins=", str(DEFAULT_CALIBRATION_BINS))))
+	var segment_probes_enabled: bool = _extract_argument("--segment-probes=", "false") == "true"
 
 	var rows: Array[Dictionary] = _load_rows(input_path)
 	var grouped: Dictionary = _group_rows(rows)
@@ -92,7 +96,7 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var result: Dictionary = _run_experiment(rows, grouped, input_path, output_dir, train_fraction, split_seed, calibration_bins)
+	var result: Dictionary = _run_experiment(rows, grouped, input_path, output_dir, train_fraction, split_seed, calibration_bins, segment_probes_enabled)
 	if not bool(result.get("ok", false)):
 		push_error("native_draft_state_ranker_experiment: %s" % String(result.get("error", "")))
 		quit(1)
@@ -154,7 +158,8 @@ func _run_experiment(
 	output_dir: String,
 	train_fraction: float,
 	split_seed: int,
-	calibration_bins: int
+	calibration_bins: int,
+	segment_probes_enabled: bool
 ) -> Dictionary:
 	var categories: Dictionary = _collect_categories(rows)
 	var feature_names: Array[String] = DraftStateScorerModelScript.feature_names_for_categories(categories)
@@ -183,6 +188,7 @@ func _run_experiment(
 		"test": _ranking_metrics_for_groups(feature_data, split["test"], choice_model, choice_scaler),
 		"all": _ranking_metrics_for_groups(feature_data, split["all"], choice_model, choice_scaler),
 	}
+	var grouped_ranking_diagnostics: Dictionary = _grouped_ranking_diagnostics(feature_data, split["test"], choice_model, choice_scaler)
 	var selected_outcome_metrics: Dictionary = {
 		"train": _selected_outcome_metrics(feature_data, selected_train, outcome_model, outcome_scaler, native_outcome_model, native_outcome_scaler),
 		"test": _selected_outcome_metrics(feature_data, selected_test, outcome_model, outcome_scaler, native_outcome_model, native_outcome_scaler),
@@ -198,13 +204,17 @@ func _run_experiment(
 	var top1_delta: float = float(learned_metrics["top1_selected_agreement"]) - float(native_metrics["top1_selected_agreement"])
 	var mrr_delta: float = float(learned_metrics["mrr"]) - float(native_metrics["mrr"])
 	var mean_rank_delta: float = float(learned_metrics["mean_selected_rank"]) - float(native_metrics["mean_selected_rank"])
-	var status: String = "PASS" if top1_delta > 0.0 and mrr_delta >= 0.0 and mean_rank_delta <= 0.0 else "VALIDATION_ONLY"
+	var status: String = _ranker_status(top1_delta, mrr_delta, mean_rank_delta)
+	var segment_probes: Array[Dictionary] = []
+	if segment_probes_enabled:
+		segment_probes = _run_segment_probes(feature_data, train_fraction, split_seed)
 
 	var output_ok: bool = _write_outputs(
 		output_dir, input_path, rows.size(), grouped.size(), train_fraction, split_seed, calibration_bins,
 		status, top1_delta, mrr_delta, mean_rank_delta, feature_names, categories, choice_model, choice_scaler,
 		outcome_model, outcome_scaler, native_outcome_model, native_outcome_scaler,
-		ranking_metrics, selected_outcome_metrics, selected_calibration, feature_data, split
+		ranking_metrics, grouped_ranking_diagnostics, selected_outcome_metrics, selected_calibration,
+		segment_probes, segment_probes_enabled, feature_data, split
 	)
 	if not output_ok:
 		return {"ok": false, "error": "failed to write outputs"}
@@ -243,6 +253,10 @@ func _extract_feature_data(rows: Array[Dictionary], categories: Dictionary) -> A
 		data.append({
 			"row_index": i,
 			"group_key": _group_key(row),
+			"step_action": String(row.get("step_action", "")),
+			"acting_side": String(row.get("acting_side", "")),
+			"phase_label": String(row.get("phase_label", "")),
+			"step_band": _step_band(int(row.get("step_index", "0"))),
 			"candidate": String(row.get("candidate", "")),
 			"selected": String(row.get("selected", "")),
 			"is_selected": int(row.get("is_selected", "0")) == 1,
@@ -272,6 +286,11 @@ func _group_key(row: Dictionary) -> String:
 		String(row.get("pairing_index", "")),
 		String(row.get("step_index", "")),
 	]
+
+
+func _step_band(step_index: int) -> String:
+	var start: int = floori(float(clampi(step_index, 0, 19)) / 5.0) * 5
+	return "%d-%d" % [start, start + 4]
 
 
 func _split_group_keys(raw_keys: Array, train_fraction: float, split_seed: int) -> Dictionary:
@@ -356,12 +375,12 @@ func _standardized_features(raw: PackedFloat32Array, scaler: Dictionary) -> Pack
 	return out
 
 
-func _train_logistic(feature_data: Array[Dictionary], train_indices: Array, feature_key: String, scaler: Dictionary, target_key: String) -> Dictionary:
+func _train_logistic(feature_data: Array[Dictionary], train_indices: Array, feature_key: String, scaler: Dictionary, target_key: String, max_iterations: int = MAX_ITERATIONS) -> Dictionary:
 	var num_features: int = PackedFloat32Array(feature_data[int(train_indices[0])][feature_key]).size()
 	var weights := PackedFloat32Array()
 	weights.resize(num_features)
 	var bias: float = 0.0
-	for _iteration in range(MAX_ITERATIONS):
+	for _iteration in range(max_iterations):
 		var grad_w := PackedFloat32Array()
 		grad_w.resize(num_features)
 		var grad_b: float = 0.0
@@ -412,6 +431,140 @@ func _ranking_metrics_for_groups(feature_data: Array[Dictionary], group_keys: Ar
 			"mrr": _mean_float(random_mrr_values),
 		},
 	}
+
+
+func _grouped_ranking_diagnostics(feature_data: Array[Dictionary], group_keys: Array, choice_model: Dictionary, choice_scaler: Dictionary) -> Dictionary:
+	return {
+		"step_action": _grouped_ranking_diagnostics_for_field(feature_data, group_keys, choice_model, choice_scaler, "step_action"),
+		"acting_side": _grouped_ranking_diagnostics_for_field(feature_data, group_keys, choice_model, choice_scaler, "acting_side"),
+		"phase_label": _grouped_ranking_diagnostics_for_field(feature_data, group_keys, choice_model, choice_scaler, "phase_label"),
+		"step_band": _grouped_ranking_diagnostics_for_field(feature_data, group_keys, choice_model, choice_scaler, "step_band"),
+	}
+
+
+func _grouped_ranking_diagnostics_for_field(
+	feature_data: Array[Dictionary],
+	group_keys: Array,
+	choice_model: Dictionary,
+	choice_scaler: Dictionary,
+	field_name: String
+) -> Dictionary:
+	var keys_by_value: Dictionary = {}
+	var seen_groups: Dictionary = {}
+	var allowed: Dictionary = _set_from_array(group_keys)
+	for item in feature_data:
+		var group_key: String = String(item["group_key"])
+		if not allowed.has(group_key) or seen_groups.has(group_key):
+			continue
+		seen_groups[group_key] = true
+		var value: String = String(item.get(field_name, "unknown"))
+		if value.is_empty():
+			value = "unknown"
+		if not keys_by_value.has(value):
+			keys_by_value[value] = []
+		keys_by_value[value].append(group_key)
+	var out: Dictionary = {}
+	for value in _sorted_keys(keys_by_value):
+		var metrics: Dictionary = _ranking_metrics_for_groups(feature_data, keys_by_value[value], choice_model, choice_scaler)
+		out[value] = _metrics_with_deltas(metrics)
+	return out
+
+
+func _metrics_with_deltas(metrics: Dictionary) -> Dictionary:
+	var native_metrics: Dictionary = metrics["native_total_score_baseline"]
+	var learned_metrics: Dictionary = metrics["learned_model"]
+	return {
+		"random_baseline": metrics["random_baseline"],
+		"native_total_score_baseline": native_metrics,
+		"learned_model": learned_metrics,
+		"top1_delta_vs_native": float(learned_metrics["top1_selected_agreement"]) - float(native_metrics["top1_selected_agreement"]),
+		"mrr_delta_vs_native": float(learned_metrics["mrr"]) - float(native_metrics["mrr"]),
+		"mean_selected_rank_delta_vs_native": float(learned_metrics["mean_selected_rank"]) - float(native_metrics["mean_selected_rank"]),
+	}
+
+
+func _run_segment_probes(feature_data: Array[Dictionary], train_fraction: float, split_seed: int) -> Array[Dictionary]:
+	var probes: Array[Dictionary] = []
+	var segments: Array[Dictionary] = []
+	segments.append({"field": "step_action", "value": "PICK"})
+	segments.append({"field": "step_action", "value": "BAN"})
+	for phase_label in _unique_group_values(feature_data, "phase_label"):
+		segments.append({"field": "phase_label", "value": phase_label})
+	for segment in segments:
+		var field_name: String = String(segment["field"])
+		var field_value: String = String(segment["value"])
+		var group_keys: Array[String] = _group_keys_for_value(feature_data, field_name, field_value)
+		if group_keys.size() < MIN_SEGMENT_GROUPS:
+			probes.append(_skipped_segment_probe(field_name, field_value, group_keys.size(), "group_count<%d" % MIN_SEGMENT_GROUPS))
+			continue
+		var split: Dictionary = _split_group_keys(group_keys, train_fraction, split_seed + absi(field_value.hash()) % 100000)
+		if Array(split["test"]).size() < MIN_SEGMENT_TEST_GROUPS:
+			probes.append(_skipped_segment_probe(field_name, field_value, group_keys.size(), "test_group_count<%d" % MIN_SEGMENT_TEST_GROUPS))
+			continue
+		var row_split: Dictionary = _row_indices_for_group_split(feature_data, split)
+		if Array(row_split["train"]).is_empty() or Array(row_split["test"]).is_empty():
+			probes.append(_skipped_segment_probe(field_name, field_value, group_keys.size(), "empty_train_or_test_rows"))
+			continue
+		var choice_scaler: Dictionary = _fit_scaler(feature_data, row_split["train"], "features")
+		var choice_model: Dictionary = _train_logistic(feature_data, row_split["train"], "features", choice_scaler, "choice_target", SEGMENT_PROBE_MAX_ITERATIONS)
+		var metrics: Dictionary = _ranking_metrics_for_groups(feature_data, split["test"], choice_model, choice_scaler)
+		var with_deltas: Dictionary = _metrics_with_deltas(metrics)
+		var top1_delta: float = float(with_deltas["top1_delta_vs_native"])
+		var mrr_delta: float = float(with_deltas["mrr_delta_vs_native"])
+		var mean_rank_delta: float = float(with_deltas["mean_selected_rank_delta_vs_native"])
+		probes.append({
+			"segment_field": field_name,
+			"segment_value": field_value,
+			"group_count": group_keys.size(),
+			"train_groups": Array(split["train"]).size(),
+			"test_groups": Array(split["test"]).size(),
+			"status": _ranker_status(top1_delta, mrr_delta, mean_rank_delta),
+			"metrics": with_deltas,
+		})
+	return probes
+
+
+func _skipped_segment_probe(field_name: String, field_value: String, group_count: int, reason: String) -> Dictionary:
+	return {
+		"segment_field": field_name,
+		"segment_value": field_value,
+		"group_count": group_count,
+		"train_groups": 0,
+		"test_groups": 0,
+		"status": "SKIPPED_INSUFFICIENT_GROUPS",
+		"skip_reason": reason,
+		"metrics": {},
+	}
+
+
+func _ranker_status(top1_delta: float, mrr_delta: float, mean_rank_delta: float) -> String:
+	return "PASS" if top1_delta > 0.0 and mrr_delta >= 0.0 and mean_rank_delta <= 0.0 else "VALIDATION_ONLY"
+
+
+func _unique_group_values(feature_data: Array[Dictionary], field_name: String) -> Array[String]:
+	var seen: Dictionary = {}
+	for item in feature_data:
+		var value: String = String(item.get(field_name, "unknown"))
+		if value.is_empty():
+			value = "unknown"
+		seen[value] = true
+	return _sorted_keys(seen)
+
+
+func _group_keys_for_value(feature_data: Array[Dictionary], field_name: String, field_value: String) -> Array[String]:
+	var seen: Dictionary = {}
+	for item in feature_data:
+		if String(item.get(field_name, "unknown")) == field_value:
+			seen[String(item["group_key"])] = true
+	return _sorted_keys(seen)
+
+
+func _sorted_keys(dict: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	for key in dict.keys():
+		out.append(String(key))
+	out.sort()
+	return out
 
 
 func _feature_rows_by_group(feature_data: Array[Dictionary], group_keys: Array) -> Dictionary:
@@ -580,8 +733,11 @@ func _write_outputs(
 	native_outcome_model: Dictionary,
 	native_outcome_scaler: Dictionary,
 	ranking_metrics: Dictionary,
+	grouped_ranking_diagnostics: Dictionary,
 	selected_outcome_metrics: Dictionary,
 	selected_calibration: Dictionary,
+	segment_probes: Array[Dictionary],
+	segment_probes_enabled: bool,
 	feature_data: Array[Dictionary],
 	split: Dictionary
 ) -> bool:
@@ -602,8 +758,10 @@ func _write_outputs(
 		"mrr_delta_vs_native": mrr_delta,
 		"mean_selected_rank_delta_vs_native": mean_rank_delta,
 		"ranking": ranking_metrics,
+		"grouped_ranking_diagnostics": grouped_ranking_diagnostics,
 		"selected_outcome": selected_outcome_metrics,
 		"selected_outcome_calibration": selected_calibration,
+		"segment_probes": segment_probes,
 	}
 	var model_json: Dictionary = {
 		"model_type": "standardized_logistic_regression",
@@ -621,7 +779,9 @@ func _write_outputs(
 		return false
 	if not _write_text(output_dir.path_join("draft_state_ranker_predictions.csv"), _rankings_csv(feature_data, split, choice_model, choice_scaler)):
 		return false
-	if not _write_text(output_dir.path_join("draft_state_ranker_report.md"), _report_markdown(input_path, row_count, group_count, status, ranking_metrics, selected_outcome_metrics, top1_delta, mrr_delta, mean_rank_delta)):
+	if segment_probes_enabled and not _write_text(output_dir.path_join("draft_state_ranker_segment_probes.csv"), _segment_probes_csv(segment_probes)):
+		return false
+	if not _write_text(output_dir.path_join("draft_state_ranker_report.md"), _report_markdown(input_path, row_count, group_count, status, ranking_metrics, grouped_ranking_diagnostics, selected_outcome_metrics, segment_probes, segment_probes_enabled, top1_delta, mrr_delta, mean_rank_delta)):
 		return false
 	return true
 
@@ -662,7 +822,10 @@ func _report_markdown(
 	group_count: int,
 	status: String,
 	ranking_metrics: Dictionary,
+	grouped_ranking_diagnostics: Dictionary,
 	selected_outcome_metrics: Dictionary,
+	segment_probes: Array[Dictionary],
+	segment_probes_enabled: bool,
 	top1_delta: float,
 	mrr_delta: float,
 	mean_rank_delta: float
@@ -690,11 +853,80 @@ func _report_markdown(
 	lines.append("MRR delta vs native: %.4f" % mrr_delta)
 	lines.append("Mean-rank delta vs native: %.4f" % mean_rank_delta)
 	lines.append("")
+	lines.append("## Held-out Group Diagnostics")
+	for field_name in ["step_action", "acting_side", "phase_label", "step_band"]:
+		lines.append("")
+		lines.append("### %s" % field_name)
+		lines.append("| Value | Groups | Native top-1 | Learned top-1 | Top-1 delta | Native MRR | Learned MRR | MRR delta | Mean-rank delta |")
+		lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+		var field_metrics: Dictionary = grouped_ranking_diagnostics.get(field_name, {})
+		for value in _sorted_keys(field_metrics):
+			var item: Dictionary = field_metrics[value]
+			var native_row: Dictionary = item["native_total_score_baseline"]
+			var learned_row: Dictionary = item["learned_model"]
+			lines.append("| %s | %d | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f |" % [
+				value,
+				int(native_row["groups"]),
+				float(native_row["top1_selected_agreement"]),
+				float(learned_row["top1_selected_agreement"]),
+				float(item["top1_delta_vs_native"]),
+				float(native_row["mrr"]),
+				float(learned_row["mrr"]),
+				float(item["mrr_delta_vs_native"]),
+				float(item["mean_selected_rank_delta_vs_native"]),
+			])
+	lines.append("")
+	if segment_probes_enabled:
+		lines.append("## Segment Probes")
+		lines.append("| Segment | Groups | Test groups | Status | Top-1 delta | MRR delta | Mean-rank delta |")
+		lines.append("| --- | ---: | ---: | --- | ---: | ---: | ---: |")
+		for probe in segment_probes:
+			var metrics: Dictionary = probe.get("metrics", {})
+			lines.append("| %s=%s | %d | %d | %s | %.4f | %.4f | %.4f |" % [
+				String(probe.get("segment_field", "")),
+				String(probe.get("segment_value", "")),
+				int(probe.get("group_count", 0)),
+				int(probe.get("test_groups", 0)),
+				String(probe.get("status", "")),
+				float(metrics.get("top1_delta_vs_native", 0.0)),
+				float(metrics.get("mrr_delta_vs_native", 0.0)),
+				float(metrics.get("mean_selected_rank_delta_vs_native", 0.0)),
+			])
+		lines.append("")
 	lines.append("## Selected-Row Outcome Diagnostic")
 	lines.append("- native total_score MSE: %.6f" % float(outcome_native["mse"]))
 	lines.append("- learned selected-outcome MSE: %.6f" % float(outcome_learned["mse"]))
 	lines.append("")
 	lines.append("STATUS: %s" % status)
+	return "\n".join(lines) + "\n"
+
+
+func _segment_probes_csv(segment_probes: Array[Dictionary]) -> String:
+	var lines: Array[String] = [
+		"segment_field,segment_value,status,group_count,train_groups,test_groups,native_top1,learned_top1,top1_delta,native_mean_selected_rank,learned_mean_selected_rank,mean_selected_rank_delta,native_mrr,learned_mrr,mrr_delta,skip_reason"
+	]
+	for probe in segment_probes:
+		var metrics: Dictionary = probe.get("metrics", {})
+		var native_row: Dictionary = metrics.get("native_total_score_baseline", {})
+		var learned_row: Dictionary = metrics.get("learned_model", {})
+		lines.append("%s,%s,%s,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%s" % [
+			_csv_field(String(probe.get("segment_field", ""))),
+			_csv_field(String(probe.get("segment_value", ""))),
+			_csv_field(String(probe.get("status", ""))),
+			int(probe.get("group_count", 0)),
+			int(probe.get("train_groups", 0)),
+			int(probe.get("test_groups", 0)),
+			float(native_row.get("top1_selected_agreement", 0.0)),
+			float(learned_row.get("top1_selected_agreement", 0.0)),
+			float(metrics.get("top1_delta_vs_native", 0.0)),
+			float(native_row.get("mean_selected_rank", 0.0)),
+			float(learned_row.get("mean_selected_rank", 0.0)),
+			float(metrics.get("mean_selected_rank_delta_vs_native", 0.0)),
+			float(native_row.get("mrr", 0.0)),
+			float(learned_row.get("mrr", 0.0)),
+			float(metrics.get("mrr_delta_vs_native", 0.0)),
+			_csv_field(String(probe.get("skip_reason", ""))),
+		])
 	return "\n".join(lines) + "\n"
 
 
@@ -736,7 +968,7 @@ func _run_self_test() -> Dictionary:
 				"candidate_role": "tank" if candidate_index % 2 == 0 else "carry",
 			})
 	var grouped: Dictionary = _group_rows(rows)
-	var result: Dictionary = _run_experiment(rows, grouped, "self-test", "res://logs/native_draft_state_ranker_self_test", 0.8, 1337, 5)
+	var result: Dictionary = _run_experiment(rows, grouped, "self-test", "res://logs/native_draft_state_ranker_self_test", 0.8, 1337, 5, true)
 	if not bool(result.get("ok", false)):
 		return result
 	var report_path: String = ProjectSettings.globalize_path("res://logs/native_draft_state_ranker_self_test/draft_state_ranker_report.md")

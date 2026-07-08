@@ -13,7 +13,6 @@ const DEFAULT_MIN_GROUPS: int = 20
 const DEFAULT_CALIBRATION_BINS: int = 10
 const MIN_SEGMENT_GROUPS: int = 20
 const MIN_SEGMENT_TEST_GROUPS: int = 4
-const SEGMENT_PROBE_MAX_ITERATIONS: int = 80
 const LEARNING_RATE: float = 0.05
 const MAX_ITERATIONS: int = 300
 const CONVERGENCE_TOLERANCE: float = 0.000001
@@ -377,6 +376,12 @@ func _standardized_features(raw: PackedFloat32Array, scaler: Dictionary) -> Pack
 
 func _train_logistic(feature_data: Array[Dictionary], train_indices: Array, feature_key: String, scaler: Dictionary, target_key: String, max_iterations: int = MAX_ITERATIONS) -> Dictionary:
 	var num_features: int = PackedFloat32Array(feature_data[int(train_indices[0])][feature_key]).size()
+	var train_features: Array[PackedFloat32Array] = []
+	var train_targets: Array[float] = []
+	for idx_var in train_indices:
+		var item: Dictionary = feature_data[int(idx_var)]
+		train_features.append(_standardized_features(item[feature_key], scaler))
+		train_targets.append(float(item[target_key]))
 	var weights := PackedFloat32Array()
 	weights.resize(num_features)
 	var bias: float = 0.0
@@ -384,22 +389,20 @@ func _train_logistic(feature_data: Array[Dictionary], train_indices: Array, feat
 		var grad_w := PackedFloat32Array()
 		grad_w.resize(num_features)
 		var grad_b: float = 0.0
-		for idx_var in train_indices:
-			var idx: int = int(idx_var)
-			var item: Dictionary = feature_data[idx]
-			var features: PackedFloat32Array = _standardized_features(item[feature_key], scaler)
+		for train_index in range(train_features.size()):
+			var features: PackedFloat32Array = train_features[train_index]
 			var pred: float = _predict_logistic(weights, bias, features)
-			var error: float = pred - float(item[target_key])
+			var error: float = pred - train_targets[train_index]
 			for i in range(num_features):
 				grad_w[i] += error * features[i]
 			grad_b += error
 		var max_delta: float = 0.0
 		for i in range(num_features):
-			grad_w[i] = grad_w[i] / float(train_indices.size()) + L2_REGULARIZATION * weights[i]
+			grad_w[i] = grad_w[i] / float(train_features.size()) + L2_REGULARIZATION * weights[i]
 			var delta: float = LEARNING_RATE * grad_w[i]
 			weights[i] -= delta
 			max_delta = maxf(max_delta, absf(delta))
-		bias -= LEARNING_RATE * grad_b / float(train_indices.size())
+		bias -= LEARNING_RATE * grad_b / float(train_features.size())
 		if max_delta < CONVERGENCE_TOLERANCE:
 			break
 	return {"weights": weights, "bias": bias}
@@ -506,7 +509,7 @@ func _run_segment_probes(feature_data: Array[Dictionary], train_fraction: float,
 			probes.append(_skipped_segment_probe(field_name, field_value, group_keys.size(), "empty_train_or_test_rows"))
 			continue
 		var choice_scaler: Dictionary = _fit_scaler(feature_data, row_split["train"], "features")
-		var choice_model: Dictionary = _train_logistic(feature_data, row_split["train"], "features", choice_scaler, "choice_target", SEGMENT_PROBE_MAX_ITERATIONS)
+		var choice_model: Dictionary = _train_logistic(feature_data, row_split["train"], "features", choice_scaler, "choice_target")
 		var metrics: Dictionary = _ranking_metrics_for_groups(feature_data, split["test"], choice_model, choice_scaler)
 		var with_deltas: Dictionary = _metrics_with_deltas(metrics)
 		var top1_delta: float = float(with_deltas["top1_delta_vs_native"])
@@ -857,23 +860,29 @@ func _report_markdown(
 	for field_name in ["step_action", "acting_side", "phase_label", "step_band"]:
 		lines.append("")
 		lines.append("### %s" % field_name)
-		lines.append("| Value | Groups | Native top-1 | Learned top-1 | Top-1 delta | Native MRR | Learned MRR | MRR delta | Mean-rank delta |")
-		lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+		lines.append("| Value | Groups | Random top-1 | Native top-1 | Learned top-1 | Top-1 delta | Random mean rank | Native mean rank | Learned mean rank | Mean-rank delta | Random MRR | Native MRR | Learned MRR | MRR delta |")
+		lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 		var field_metrics: Dictionary = grouped_ranking_diagnostics.get(field_name, {})
 		for value in _sorted_keys(field_metrics):
 			var item: Dictionary = field_metrics[value]
+			var random_row: Dictionary = item["random_baseline"]
 			var native_row: Dictionary = item["native_total_score_baseline"]
 			var learned_row: Dictionary = item["learned_model"]
-			lines.append("| %s | %d | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f | %.4f |" % [
+			lines.append("| %s | %d | %.4f | %.4f | %.4f | %.4f | %.3f | %.3f | %.3f | %.3f | %.4f | %.4f | %.4f | %.4f |" % [
 				value,
 				int(native_row["groups"]),
+				float(random_row["top1_selected_agreement"]),
 				float(native_row["top1_selected_agreement"]),
 				float(learned_row["top1_selected_agreement"]),
 				float(item["top1_delta_vs_native"]),
+				float(random_row["mean_selected_rank"]),
+				float(native_row["mean_selected_rank"]),
+				float(learned_row["mean_selected_rank"]),
+				float(item["mean_selected_rank_delta_vs_native"]),
+				float(random_row["mrr"]),
 				float(native_row["mrr"]),
 				float(learned_row["mrr"]),
 				float(item["mrr_delta_vs_native"]),
-				float(item["mean_selected_rank_delta_vs_native"]),
 			])
 	lines.append("")
 	if segment_probes_enabled:

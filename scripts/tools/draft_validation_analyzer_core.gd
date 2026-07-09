@@ -383,8 +383,8 @@ static func _build_ab_report(
 		control_p * (1.0 - control_p) / float(maxi(1, control_n)) +
 		treatment_p * (1.0 - treatment_p) / float(maxi(1, treatment_n))
 	)
-	var delta_ci_lower: float = delta - Z_95 * se_delta
-	var delta_ci_upper: float = delta + Z_95 * se_delta
+	var delta_ci_lower: float = clampf(delta - Z_95 * se_delta, -1.0, 1.0)
+	var delta_ci_upper: float = clampf(delta + Z_95 * se_delta, -1.0, 1.0)
 
 	var z_test: Dictionary = _two_proportion_z_test(control_wins, control_n, treatment_wins, treatment_n)
 	var z: float = z_test["z"]

@@ -206,6 +206,20 @@ godot --headless --path . --script res://scripts/tools/native_draft_state_ranker
 
 Candidate-wide rows are separate training artifacts and are not included in `stats_manifest.json`. The ranker reports `PASS` only when learned top-1 selected-candidate agreement improves over native `total_score` ranking without MRR or mean selected-rank regression. `--segment-probes=true` adds grouped diagnostics and validation-only per-segment probes for pick/ban and phase labels. Even a segment `PASS` is not runtime-ready; policy ladder, side-bias, calibration, and realism gates must clear before any runtime integration.
 
+Multi-seed policy candidate sweep:
+
+```powershell
+godot --headless --path . --script res://scripts/tools/native_draft_policy_candidate_sweep.gd `
+  -- --trials-per-seed=20 `
+     --sims-per-draft=10 `
+     --seeds=1337,9257,17231 `
+     --control=native_softmax `
+     --candidates=native_lookahead_softmax,native_softmax_safe,native_softmax_ceiling,native_softmax_counter_heavy `
+     --output-dir=res://model_stats/draft_policy_candidate_sweep
+```
+
+The sweep reports `PROMOTION_CANDIDATE`, `FOLLOW_UP_ONLY`, or `REJECTED` for each candidate and writes merged harness/analyzer/Elo/realism artifacts under the output dir. It is validation-only; a `PROMOTION_CANDIDATE` identifies a follow-up promotion plan, not an automatic runtime or stats change.
+
 **Smoke:**
 
 ```powershell

@@ -14,6 +14,8 @@ const DEFAULT_ELO_MIN_GAP: float = 0.0
 const DEFAULT_SIDE_BIAS_MARGIN_PP: float = 3.0
 const DEFAULT_P_VALUE_THRESHOLD: float = 0.05
 const DEFAULT_REALISM_MARGIN: float = 0.03
+const COMPARISON_EPSILON: float = 0.000001
+const Z_95: float = 1.959963984540054
 const SQRT_2: float = 1.4142135623730951
 const DraftPersonaRealismCoreScript := preload("res://scripts/tools/draft_persona_realism_core.gd")
 
@@ -195,6 +197,18 @@ static func self_test() -> Dictionary:
 		"REJECT"
 	))
 	cases.append(_self_test_case(
+		"promote at side-bias threshold boundary",
+		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
+		[
+			{"metric": "matchup", "grouping": "blue=native_softmax red=native_softmax", "wins": 286, "losses": 314, "draws": 0},
+			{"metric": "matchup", "grouping": "blue=native_softmax_safe red=native_softmax_safe", "wins": 277, "losses": 323, "draws": 0},
+		],
+		_ab_rows(0.52),
+		{"realism_metrics": _realism_metrics(false)},
+		true,
+		"PROMOTE"
+	))
+	cases.append(_self_test_case(
 		"reject on significant A/B regression",
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
 		_self_play_rows(0.52, 0.53),
@@ -203,6 +217,7 @@ static func self_test() -> Dictionary:
 		false,
 		"REJECT"
 	))
+	cases.append(_self_test_ci_bounds())
 	cases.append(_self_test_case(
 		"fail on stale input paths",
 		{"native_softmax": 1500.0, "native_softmax_safe": 1510.0},
@@ -264,6 +279,26 @@ static func _self_test_case(
 	}
 
 
+static func _self_test_ci_bounds() -> Dictionary:
+	var rows: Array[Dictionary] = [
+		{"metric": "matchup_winrate_ci", "grouping": "blue=native_softmax_safe red=native_softmax", "wins": 0, "losses": 2},
+		{"metric": "matchup_winrate_ci", "grouping": "blue=native_softmax red=native_softmax_safe", "wins": 1, "losses": 1},
+	]
+	var result: Dictionary = _derived_ab_regression(rows, CONTROL_STRATEGY, "native_softmax_safe", DEFAULT_P_VALUE_THRESHOLD)
+	var lower: float = float(result.get("delta_ci_lower", NAN))
+	var upper: float = float(result.get("delta_ci_upper", NAN))
+	var ok: bool = lower >= -1.0 and lower <= 1.0 and upper >= -1.0 and upper <= 1.0
+	return {
+		"name": "clamp derived A/B CI bounds",
+		"pass": ok,
+		"expected_pass": true,
+		"actual_pass": ok,
+		"expected_status": "",
+		"actual_status": "",
+		"errors": [] if ok else ["A/B CI outside [-1, 1]: [%.4f, %.4f]" % [lower, upper]],
+	}
+
+
 static func _self_test_path_case(name: String, params: Dictionary, expected_pass: bool) -> Dictionary:
 	var result: Dictionary = evaluate_from_paths(params)
 	var actual_pass: bool = bool(result.get("pass", false))
@@ -304,7 +339,7 @@ static func _evaluate_persona(
 	var side_bias_limit: float = control_bias + side_bias_margin_pp
 	if is_nan(persona_bias):
 		reasons.append("persona self-play row missing from analyzer summary")
-	elif persona_bias > side_bias_limit:
+	elif persona_bias > side_bias_limit + COMPARISON_EPSILON:
 		reasons.append("side-bias %.2fpp exceeds %.2fpp" % [persona_bias, side_bias_limit])
 
 	var ab: Dictionary = _ab_regression(ab_rows, control, persona, p_value_threshold)
@@ -340,6 +375,8 @@ static func _evaluate_persona(
 		"control_self_play_bias_pp": control_bias,
 		"side_bias_limit_pp": side_bias_limit,
 		"ab_delta": ab.get("delta", NAN),
+		"ab_delta_ci_lower": ab.get("delta_ci_lower", NAN),
+		"ab_delta_ci_upper": ab.get("delta_ci_upper", NAN),
 		"ab_p_value": ab.get("p_value", NAN),
 		"ab_status": String(ab.get("status", "NOT_EVALUATED")),
 		"realism_status": realism_status,
@@ -425,6 +462,8 @@ static func _ab_regression(
 	return {
 		"status": "NOT_EVALUATED",
 		"delta": NAN,
+		"delta_ci_lower": NAN,
+		"delta_ci_upper": NAN,
 		"p_value": NAN,
 		"significant_regression": false,
 	}
@@ -460,12 +499,17 @@ static func _derived_ab_regression(
 	var control_p: float = float(control_wins) / float(decisive)
 	var persona_p: float = float(persona_wins) / float(decisive)
 	var delta: float = persona_p - control_p
+	var se_delta: float = 2.0 * sqrt(persona_p * (1.0 - persona_p) / float(decisive))
+	var delta_ci_lower: float = clampf(delta - Z_95 * se_delta, -1.0, 1.0)
+	var delta_ci_upper: float = clampf(delta + Z_95 * se_delta, -1.0, 1.0)
 	var z: float = _one_proportion_z(persona_wins, decisive, 0.5)
 	var p_value: float = 2.0 * (1.0 - _normal_cdf(absf(z)))
 	var significant_regression: bool = delta < 0.0 and p_value <= p_value_threshold
 	return {
 		"status": "REGRESSION" if significant_regression else "PASS",
 		"delta": delta,
+		"delta_ci_lower": delta_ci_lower,
+		"delta_ci_upper": delta_ci_upper,
 		"p_value": p_value,
 		"significant_regression": significant_regression,
 	}

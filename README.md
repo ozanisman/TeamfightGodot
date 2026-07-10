@@ -15,7 +15,7 @@ The GDExtension core runs combat, targeting, and batch matches at high throughpu
 
 - **Deterministic by design** — seeded match loops, reproducible batch runs, and regression checks (`--check-determinism`, fixture parity).
 - **Native performance** — C++17 simulation in `native/`; modular coordinator and effect pipeline tuned for large-scale batch execution (multi-thousand matches per gate).
-- **Native draft AI** — C++ pick/ban recommender (`sim::draft_ai`) off the match hot path; interactive draft testing UI and headless validation gates.
+- **Native draft AI** — C++ pick/ban recommender (`sim::draft_ai`) with configurable difficulty tiers, self-play stats snapshots, and validation gates; interactive draft testing UI.
 - **Agent-oriented docs** — [`wiki/`](wiki/) captures module maps, invariants, and validation gates for ongoing work.
 
 ## Quick start
@@ -45,7 +45,7 @@ Native build output lands in `native/bin/` and is loaded via [`teamfight_simulat
 | Runtime | Match loop, units, effects, damage, targeting | `native/src/` (`teamfight_simulation_core.*`, `simulation/`) |
 | Bindings | Godot API, batch hosts, benchmarks | `native/src/`, `scripts/simulation/` |
 | Validation | Fixture parity, determinism, telemetry | `fixtures/goldens/`, headless flags via `run_godot.ps1` |
-| Draft AI | Pick/ban recommendations (off match hot path) | `native/src/simulation/sim_draft_ai_*`, `sim_draft_recommender.*`, `scripts/tools/draft_strategy_*.gd` |
+| Draft AI | Pick/ban recommendations and validation gates (off match hot path) | `native/src/simulation/sim_draft_ai_*`, `sim_draft_recommender.*`, `scripts/tools/draft_*.gd`, `scripts/tools/native_draft_*.gd` |
 | Tooling & UI | Viewer, stats, catalog authoring, draft testing | `scripts/`, `scenes/` |
 
 ```
@@ -93,7 +93,7 @@ Native build output lands in `native/bin/` and is loaded via [`teamfight_simulat
 - **Python 3** — `--check-only` runs `check_sim_effects_compile_structure.py` and `check_gdscript_preload.gd`
 - PowerShell on **Windows** (`run_godot.ps1` is the supported launcher; other platforms are untested)
 
-Set the Godot executable in `run_godot.ps1` (and `GODOT_EXE` / `GODOT` for cmake) if it is not at `C:\Godot\godot.exe`.
+Set the Godot executable in `run_godot.ps1` (and the `GODOT_EXE` CMake cache variable or `GODOT` environment variable for CMake) if it is not at `C:\Godot\godot.exe`.
 
 There is **no repo-root CI**; correctness is enforced by the Godot-hosted native module suite, local headless gates, and real-champion golden fixtures.
 
@@ -144,12 +144,14 @@ All runs should go through `run_godot.ps1` (logging to `logs/godot.log`, timeout
 | `.\run_godot.ps1 -- --check-balance-patches` | Balance patch and kit resolution |
 | `.\run_godot.ps1 -- --check-stats-aggregator` | Stats CSV aggregator roundtrip |
 | `.\run_godot.ps1 -- --check-projectile-payloads` | Projectile payload regression |
+| `.\run_godot.ps1 -- --check-large-projectile-damage` | Large projectile damage regression |
+| `.\run_godot.ps1 -- --check-stats-csv-determinism` | Stats CSV determinism |
 | `.\run_godot.ps1 -- --fixture-file=res://fixtures/goldens/match_fixtures.json` | Real-champion golden parity (15 fixtures) |
 | `.\run_godot.ps1 -- --check-benchmark ...` | Throughput benchmark |
 
 ## Draft AI
 
-Native C++ pick/ban recommender off the match hot path. Default stats: `res://model_stats/stats_output_100k/` (generate via `--generate-stats`). Interactive testing: `.\run_godot.ps1 --main-menu` → Draft Testing.
+Native C++ pick/ban recommender with configurable difficulty tiers (easy/normal/hard) and self-play stats snapshots. Default stats: `res://model_stats/stats_output_100k/` (generate via `--generate-stats`). Interactive testing: `.\run_godot.ps1 --main-menu` → Draft Testing.
 
 - [`wiki/notes/native_draft_ai.md`](wiki/notes/native_draft_ai.md) — architecture and scoring
 - [`wiki/notes/draft_ai_validation_gate.md`](wiki/notes/draft_ai_validation_gate.md) — quantitative validation pipeline
